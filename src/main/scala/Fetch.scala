@@ -1,10 +1,5 @@
 package fetch
 
-// TODO:
-// - ensure stack safety
-// - inyectable cache
-// - abstract over fetch type (Future)
-
 import cats.{ Applicative, Traverse }
 import cats.std.list._
 import cats.std.future._
