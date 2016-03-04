@@ -91,7 +91,7 @@ fut.value
 // => Some(Success(List(Tweet(1,A tweet with id 1), Tweet(2,A tweet with id 2), Tweet(1,A tweet with id 1))))
 ```
 
-### Baching
+### Batching
 
 In the previous example, when collecting a list of tweets, we fetch separate tweets concurrently. Oftentimes remote
 data sources have batch APIs that we can use for fetching multiple results at once, considerably reducing latency.
