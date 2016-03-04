@@ -56,6 +56,9 @@ case class Call[A](ds: DataSource[A]) extends Fetch[A]
 /* Transformation of a fetch. */
 case class Fmap[A, B](f: A => B, fetch: Fetch[A]) extends Fetch[B]
 
+/* Combination of two fetches into one. */
+case class Join[A, B](a: Fetch[A], b: Fetch[B]) extends Fetch[(A, B)]
+
 /* Collection of data sources as a single fetch. */
 case class Collect[A](ss: List[Fetch[A]]) extends Fetch[List[A]]
 
@@ -92,6 +95,16 @@ object AST {
       case Done(x) => Done(f(x))
       case next: Fetch[_] => Fmap(f, next)
     }
+    case Join(a, b) => {
+      val newA = inject(a, env)
+      val newB = inject(b, env)
+      val resolved = List(newA, newB).collect({ case Done(x) => x })
+
+      (newA, newB) match {
+        case (Done(x), Done(y)) => Done((x, y).asInstanceOf[T])
+        case _ => Join(newA, newB).asInstanceOf[Fetch[T]]
+      }
+    }
     case Collect(ftches) => {
       val collected = ftches.map(inject(_, env))
       val resolved = collected.collect({ case Done(x) => x })
@@ -121,6 +134,7 @@ object AST {
   def children[T](f: Fetch[T]): List[DataSource[_]] = f match {
     case Call(ds) => List(ds)
     case Fmap(f, ftch) => children(ftch)
+    case Join(a, b) => children(a) ++ children(b)
     case Collect(ftchs) => ftchs.map(children(_)).flatten
     case FlatMap(f, ftch) => children(ftch)
     case Done(_) => Nil
@@ -152,6 +166,9 @@ object Fetch {
   def apply[T](ds: DataSource[T]): Fetch[T] = Call(ds)
 
   def pure[T](t: T): Fetch[T] = Done(t)
+
+  def join[A, B](a: Fetch[A], b: Fetch[B]): Fetch[(A, B)] =
+    Join(a, b)
 
   def collect[T](ss: List[Fetch[T]]): Fetch[List[T]] =
     Collect(ss)

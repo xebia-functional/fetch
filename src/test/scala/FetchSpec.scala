@@ -55,6 +55,12 @@ class FetchSpec extends Specification {
     deref(Fetch.run(fetch)) must_== expected
   }
 
+  "We can join the results of two fetches into one" >> {
+    val expected = (1, 2)
+    val fetch = Fetch.join(Fetch(One(1)), Fetch(One(2)))
+    deref(Fetch.run(fetch)) must_== expected
+  }
+
   // deduplication
 
   "Duplicated sources are only fetched once" >> {
@@ -93,6 +99,25 @@ class FetchSpec extends Specification {
     val fetch = Fetch.traverse(List(1, 2, 1))((x: Int) => Fetch(BatchedOne(x)))
 
     deref(Fetch.run(fetch)) must_== List(1, 2, 1)
+    batchedCount must_== 2
+  }
+
+  "Joined fetches are run concurrently" >> {
+    var batchedCount = 0
+
+    case class BatchedOne(x: Int) extends DataSource[Int] {
+      override def identity = x.toString
+      override def fetch = {
+        Future.successful(x)
+      }
+      override def fetchMulti(sources: List[DataSource[Int]]): Future[List[Int]] = {
+        batchedCount += sources.size
+        Future.successful(sources.asInstanceOf[List[BatchedOne]].map(_.x))
+      }
+    }
+
+    val fetch = Fetch.join(Fetch(BatchedOne(1)), Fetch(BatchedOne(2)))
+    deref(Fetch.run(fetch)) must_== (1, 2)
     batchedCount must_== 2
   }
 
