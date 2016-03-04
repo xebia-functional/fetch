@@ -98,7 +98,6 @@ object AST {
     case Join(a, b) => {
       val newA = inject(a, env)
       val newB = inject(b, env)
-      val resolved = List(newA, newB).collect({ case Done(x) => x })
 
       (newA, newB) match {
         case (Done(x), Done(y)) => Done((x, y).asInstanceOf[T])
