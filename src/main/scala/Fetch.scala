@@ -42,7 +42,7 @@ trait DataSource[T] {
 }
 
 /* A remote data fetch. */
-sealed trait Fetch[T] {
+sealed trait Fetch[+T] {
   def map[B](f: T => B): Fetch[B] =
     Fmap(f, this)
 
@@ -51,22 +51,22 @@ sealed trait Fetch[T] {
 }
 
 /* A single call to a remote data source. */
-case class Call[A](ds: DataSource[A]) extends Fetch[A]
+final case class Call[A](ds: DataSource[A]) extends Fetch[A]
 
 /* Transformation of a fetch. */
-case class Fmap[A, B](f: A => B, fetch: Fetch[A]) extends Fetch[B]
+final case class Fmap[A, B](f: A => B, fetch: Fetch[A]) extends Fetch[B]
 
 /* Combination of two fetches into one. */
-case class Join[A, B](a: Fetch[A], b: Fetch[B]) extends Fetch[(A, B)]
+final case class Join[A, B](a: Fetch[A], b: Fetch[B]) extends Fetch[(A, B)]
 
 /* Collection of data sources as a single fetch. */
-case class Collect[A](ss: List[Fetch[A]]) extends Fetch[List[A]]
+final case class Collect[A](ss: List[Fetch[A]]) extends Fetch[List[A]]
 
 /* Sequential composition of fetches. */
-case class FlatMap[A, B](f: A => Fetch[B], fetch: Fetch[A]) extends Fetch[B]
+final case class FlatMap[A, B](f: A => Fetch[B], fetch: Fetch[A]) extends Fetch[B]
 
 /* A fetch that has completed with a value. */
-case class Done[A](a: A) extends Fetch[A]
+final case class Done[A](a: A) extends Fetch[A]
 
 object AST {
   type Env = Map[String, Map[String, T forSome { type T }]]
