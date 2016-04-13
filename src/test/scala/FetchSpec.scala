@@ -45,6 +45,10 @@ class FetchSpec extends Specification {
     }
 
     "many" >> {
+      import cats.implicits._
+
+      println("DEPS " + Fetch.dependencies(Fetch.many(List(1, 2, 3))))
+
       Fetch.run(Fetch.many(List(1, 2, 3))) == List(1, 2, 3)
     }
 
@@ -63,6 +67,8 @@ class FetchSpec extends Specification {
         two <- Fetch.one("yolo").monad
       } yield (one, two)
 
+
+
       Fetch.run(ftch) == (Some(1), Some("yolo"))
     }
 
@@ -70,6 +76,9 @@ class FetchSpec extends Specification {
       import cats.syntax.all._
 
       val ftch = (Fetch.one(1) |@| Fetch.one("yolo")).map { case (a, b) => (a, b) }
+      
+      import cats.implicits._
+      println("DEPS " + Fetch.dependencies(ftch))
 
       Fetch.run(ftch) == (Some(1), Some("yolo"))
     }

@@ -49,6 +49,17 @@ object Fetch {
     }
   }
 
+  def dependencies[A](f: FreeApplicative[Fetch, A])(
+    implicit
+      MM: MonoidK[List]
+  ): List[_] =
+    f.analyze(new (Fetch ~> ({type L[A] = List[_]})#L) {
+      def apply[B](fa: Fetch[B]): List[_] = fa match {
+        case One(i, _) => List(i)
+        case Many(ids, _) => ids
+      }
+    })(MM.algebra.asInstanceOf[Monoid[List[_]]])
+
   def run[I, A, M[_]](fa: Free[Fetch, A])(
     implicit
       AP: ApplicativeError[M, Throwable],
