@@ -50,8 +50,8 @@ class FetchSpec extends Specification {
 
     "for comprehension" >> {
       val ftch = for {
-        one <- Fetch.one(1)
-        many <- Fetch.many(List(1, 2, 3))
+        one <- Fetch.one(1).monad
+        many <- Fetch.many(List(1, 2, 3)).monad
       } yield (one, many)
 
       Fetch.run(ftch) == (Some(1), List(1, 2, 3))
@@ -59,8 +59,8 @@ class FetchSpec extends Specification {
 
     "mixing data sources" >> {
       val ftch = for {
-        one <- Fetch.one(1)
-        two <- Fetch.one("yolo")
+        one <- Fetch.one(1).monad
+        two <- Fetch.one("yolo").monad
       } yield (one, two)
 
       Fetch.run(ftch) == (Some(1), Some("yolo"))
