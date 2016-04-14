@@ -83,10 +83,12 @@ object Fetch {
         case Errored(e) => AP.raiseError(e)
         case One(id: I, ds) => AP.pureEval(Eval.later({
           ds.fetchMany(List(id)).asInstanceOf[Map[I, A]].get(id).get
-        }))          
+        }))
       }
     }
   }
+
+  // Cache
 
   type DataSourceCache[I, A] = Map[I, A]
   type Cache[I, A, M[_]] = Map[DataSource[I, A, M], DataSourceCache[I, A]]
@@ -102,9 +104,14 @@ object Fetch {
 
   def insert[I, A, M[_]](
     cache: Cache[I, A, M],
+    ds: DataSource[I, A, M],
     i: I,
     v: A
-  ): Cache[I, A, M] =
-    cache
+  ): Cache[I, A, M] = {
+    lazy val initialCache = Map(i -> v)
+    val resourceCache = cache.get(ds).fold(initialCache)(_.updated(i, v))
+    cache.updated(ds, resourceCache)
+  }
+
 }
 
