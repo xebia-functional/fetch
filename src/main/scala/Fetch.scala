@@ -107,7 +107,7 @@ object Fetch {
         case Collect(ids: List[I], ds) => {
           AP.pureEval(Eval.later({
             // FIXME: Option.get
-            val results = ds.fetchMany(ids).asInstanceOf[Map[I, A]]
+            val results = ds.fetchMany(ids.distinct).asInstanceOf[Map[I, A]]
             ids.map(results.get(_).get)
           }))
         }

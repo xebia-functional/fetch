@@ -126,13 +126,13 @@ class FetchSpec extends Specification {
     // deduplication
 
     "Duplicated sources are only fetched once" >> {
-      var fetchCount = 0
+      var batchCount = 0
 
       case class TrackedOne(x: Int)
 
       implicit object TrackedOneSource extends DataSource[TrackedOne, Int, Id] {
         override def fetchMany(ids: List[TrackedOne]): Id[Map[TrackedOne, Int]] = {
-          fetchCount += 1
+          batchCount += 1
           ids.map(t => (t, t.x)).toMap
         }
       }
@@ -140,49 +140,65 @@ class FetchSpec extends Specification {
       val fetch = Fetch.traverse(List(1, 2, 1))((x: Int) => TrackedOne(x))
 
       Fetch.run(fetch) must_== List(1, 2, 1)
-      fetchCount must_== 1
+      batchCount must_== 1
     }
 
-  // // batching & deduplication
+    // batching & deduplication
 
-  // "Sources that can be fetched in batches will be" >> {
-  //   var batchedCount = 0
+    "Sources that can be fetched in batches will be" >> {
+      var fetchCount = 0
 
-  //   case class BatchedOne(x: Int) extends DataSource[Int] {
-  //     override def identity = x.toString
-  //     override def fetch = {
-  //       Future.successful(x)
-  //     }
-  //     override def fetchMulti(sources: List[DataSource[Int]]): Future[List[Int]] = {
-  //       batchedCount += sources.size
-  //       Future.successful(sources.asInstanceOf[List[BatchedOne]].map(_.x))
-  //     }
-  //   }
+      case class TrackedOne(x: Int)
 
-  //   val fetch = Fetch.traverse(List(1, 2, 1))((x: Int) => Fetch(BatchedOne(x)))
+      implicit object TrackedOneSource extends DataSource[TrackedOne, Int, Id] {
+        override def fetchMany(ids: List[TrackedOne]): Id[Map[TrackedOne, Int]] = {
+          fetchCount += ids.size
+          ids.map(t => (t, t.x)).toMap
+        }
+      }
 
-  //   deref(Fetch.run(fetch)) must_== List(1, 2, 1)
-  //   batchedCount must_== 2
-  // }
+      val fetch = Fetch.traverse(List(1, 2, 1))((x: Int) => TrackedOne(x))
+      Fetch.run(fetch) must_== List(1, 2, 1)
+      fetchCount must_== 2
+    }
 
-  // "Joined fetches are run concurrently" >> {
-  //   var batchedCount = 0
+    "Sources that can be fetched in batches inside a for comprehension will be" >> {
+      var fetchCount = 0
 
-  //   case class BatchedOne(x: Int) extends DataSource[Int] {
-  //     override def identity = x.toString
-  //     override def fetch = {
-  //       Future.successful(x)
-  //     }
-  //     override def fetchMulti(sources: List[DataSource[Int]]): Future[List[Int]] = {
-  //       batchedCount += sources.size
-  //       Future.successful(sources.asInstanceOf[List[BatchedOne]].map(_.x))
-  //     }
-  //   }
+      case class TrackedOne(x: Int)
 
-  //   val fetch = Fetch.join(Fetch(BatchedOne(1)), Fetch(BatchedOne(2)))
-  //   deref(Fetch.run(fetch)) must_== (1, 2)
-  //   batchedCount must_== 2
-  // }
+      implicit object TrackedOneSource extends DataSource[TrackedOne, Int, Id] {
+        override def fetchMany(ids: List[TrackedOne]): Id[Map[TrackedOne, Int]] = {
+          fetchCount += ids.size
+          ids.map(t => (t, t.x)).toMap
+        }
+      }
+
+      val fetch = for {
+        v <- Fetch.pure(List(1, 2, 1))
+        result <- Fetch.traverse(v)((x: Int) => TrackedOne(x))
+      } yield result
+
+      Fetch.run(fetch) must_== List(1, 2, 1)
+      fetchCount must_== 2
+    }
+
+    // "Joined fetches are run concurrently" >> {
+    //   var batchCount = 0
+
+    //   case class TrackedOne(x: Int)
+
+    //   implicit object TrackedOneSource extends DataSource[TrackedOne, Int, Id] {
+    //     override def fetchMany(ids: List[TrackedOne]): Id[Map[TrackedOne, Int]] = {
+    //       batchCount += 1
+    //       ids.map(t => (t, t.x)).toMap
+    //     }
+    //   }
+
+    //   val fetch = Fetch.join(TrackedOne(1), TrackedOne(2))
+    //   Fetch.run(fetch) must_== (1, 2)
+    //   batchCount must_== 1
+    // }
 
   // // caching
 
