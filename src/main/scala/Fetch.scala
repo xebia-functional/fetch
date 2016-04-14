@@ -1,7 +1,8 @@
 package fetch
 
 import cats._
-import cats.implicits._
+import cats.syntax.cartesian._
+//import cats.implicits._
 import cats.free._
 import shapeless._
 
@@ -87,6 +88,13 @@ object Fetch {
     implicit DS: DataSource[I, A, M]
   ): FreeApplicative[Fetch, List[A]] =
     collect(ids.map(f))
+
+  def join[I, R, A, B, M[_]](fl: I, fr: R)(
+    implicit
+      DS: DataSource[I, A, M],
+      DSS: DataSource[R, B, M]
+  ): FreeApplicative[Fetch, (A, B)] =
+    (Fetch(fl) |@| Fetch(fr)).tupled
 
   def interpreter[I, A, M[_]](
     implicit

@@ -111,11 +111,17 @@ class FetchSpec extends Specification {
       Fetch.run(fetch) must_== expected
     }
 
-  // "We can join the results of two fetches into one" >> {
-  //   val expected = (1, 2)
-  //   val fetch = Fetch.join(Fetch(One(1)), Fetch(One(2)))
-  //   deref(Fetch.run(fetch)) must_== expected
-  // }
+    "We can join the results of two fetches into one" >> {
+      val expected = (1, 2)
+      val fetch = Fetch.join(One(1), One(2))
+      Fetch.run(fetch) must_== expected
+    }
+
+    "We can join the results of two fetches with different data sources into one" >> {
+      val expected = (1, List(0, 1, 2))
+      val fetch = Fetch.join(One(1), Many(3))
+      Fetch.run(fetch) must_== expected
+    }
 
   // // deduplication
 
