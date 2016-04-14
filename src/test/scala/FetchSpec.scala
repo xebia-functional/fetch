@@ -225,6 +225,15 @@ class FetchSpec extends Specification {
     "Elements are cached and thus not fetched more than once" >> {
       var fetchCount = 0
 
+      case class TrackedOne(x: Int)
+
+      implicit object TrackedOneSource extends DataSource[TrackedOne, Int, Id] {
+        override def fetchMany(ids: List[TrackedOne]): Id[Map[TrackedOne, Int]] = {
+          fetchCount += ids.size
+          ids.map(t => (t, t.x)).toMap
+        }
+      }
+
       case class CachedValue(x: Int)
 
       implicit object CachedValueSource extends DataSource[CachedValue, Int, Id] {
@@ -237,11 +246,18 @@ class FetchSpec extends Specification {
       val fetch = for {
         aOne <- Fetch(CachedValue(1))
         anotherOne <- Fetch(CachedValue(1))
-        _ <- Fetch.traverse(List(1, 1, 1))(CachedValue(_))
+        _ <- Fetch(TrackedOne(1))
+        _ <- Fetch(TrackedOne(2))
+        _ <- Fetch.pure(123)
+        _ <- Fetch.pure("yolo")
+        _ <- Fetch.pure(List(1, 2, 3, 4))
+        _ <- Fetch(TrackedOne(1))
+        _ <- Fetch.collect(List(CachedValue(1)))
+        _ <- Fetch(CachedValue(1))
       } yield aOne + anotherOne
 
-      Fetch.run(fetch) must_== 2
-      fetchCount must_== 1
+      Fetch.runCached(fetch) must_== 2
+      fetchCount must_== 3
     }
   }
 }
