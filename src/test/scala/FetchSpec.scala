@@ -37,65 +37,67 @@ class FetchSpec extends Specification {
         ids.map(one => (one, one.id)).toMap
     }
 
+    case class Many(n: Int)
+
+    implicit object ManySource extends DataSource[Many, List[Int], Id] {
+      override def fetchMany(ids: List[Many]): Id[Map[Many, List[Int]]] =
+        ids.map(m => (m, 0 until m.n toList)).toMap
+    }
+
     "We can lift plain values to Fetch" >> {
       val fetch = Fetch.pure(42)
       Fetch.run(fetch) must_== 42
     }
 
-    // "We can lift values which have a Data Source to Fetch" >> {
-    //   Fetch.run(Fetch(One(1))) == 1
-    // }
+    "We can lift errors to Fetch" >> {
+      val exception = new Exception("OH NOES")
+      val fetch = Fetch.error[Int](exception)
+      Fetch.run(fetch) must throwA(exception)
+    }
 
-  //   "We can map over Fetch values" >> {
-  //     val fetch = Fetch(One(1)).map((x: Int) => x + 1)
-  //     Fetch.run(fetch) must_== Some(2)
-  //   }
+    "We can lift values which have a Data Source to Fetch" >> {
+      Fetch.run(Fetch(One(1))) == 1
+    }
 
-  //   "many" >> {
-  //     import cats.implicits._
+    "We can map over Fetch values" >> {
+      val fetch = Fetch(One(1)).map((x: Int) => x + 1)
+      Fetch.run(fetch) must_== 2
+    }
 
-  //     println("DEPS " + Fetch.dependencies(Fetch.many(List(1, 2, 3))).groupBy(_.ds))
+    "We can use fetch inside a for comprehension" >> {
+      val ftch = for {
+        one <- Fetch(One(1))
+        two <- Fetch(One(2))
+      } yield (one, two)
 
-  //     Fetch.run(Fetch.many(List(1, 2, 3))) == List(1, 2, 3)
-  //   }
+      Fetch.run(ftch) == (1, 2)
+    }
 
-  //   "for comprehension" >> {
-  //     val ftch = for {
-  //       one <- Fetch.one(1)
-  //       many <- Fetch.many(List(1, 2, 3))
-  //     } yield (one, many)
+    "We can mix data sources" >> {
+      val ftch = for {
+        one <- Fetch(One(1))
+        many <- Fetch(Many(3))
+      } yield (one, many)
 
-  //     Fetch.run(ftch) == (Some(1), List(1, 2, 3))
-  //   }
+      Fetch.run(ftch) == (1, List(0, 1, 2))
+    }
 
-  //   "mixing data sources" >> {
-  //     val ftch = for {
-  //       one <- Fetch.one(1)
-  //       two <- Fetch.one("yolo")
-  //     } yield (one, two)
+    "We can use Fetch as an applicative" >> {
+      import cats.syntax.cartesian._
 
-  //     Fetch.run(ftch) == (Some(1), Some("yolo"))
-  //   }
+      val ftch = (Fetch(One(1)) |@| Fetch(Many(3))).map { case (a, b) => (a, b) }
 
-  //   "Fetch as an applicative" >> {
-  //     import cats.syntax.all._
+      Fetch.run(ftch) == (1, List(0, 1, 2))
+    }
 
-  //     val ftch = (Fetch.one(1) |@| Fetch.one("yolo")).map { case (a, b) => (a, b) }
+    "We can depend on previous computations of Fetch values" >> {
+      val fetch = for {
+        one <- Fetch(One(1))
+        two <- Fetch(One(one + 1))
+      } yield one + two
 
-  //     import cats.implicits._
-  //     println("DEPS " + Fetch.dependencies(ftch).groupBy(_.ids))
-
-  //     Fetch.run(ftch) == (Some(1), Some("yolo"))
-  //   }
-  // }
-
-  // "We can flatmap over Fetch values" >> {
-  //   val fetch = for {
-  //     one <- Fetch(One(1))
-  //     two <- Fetch(One(one + 1))
-  //   } yield one + two
-  //   deref(Fetch.run(fetch)) must_== 3
-  // }
+      Fetch.run(fetch) must_== 3
+    }
 
   // "We can collect a list of Fetch into one" >> {
   //   val sources = List(One(1), One(2), One(3))
