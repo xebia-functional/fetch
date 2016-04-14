@@ -14,37 +14,6 @@ trait DataSource[I, A, M[_]] {
   def fetchMany(ids: List[I]): M[Map[I, A]]
 }
 
-// Cache
-
-object Caching {
-  type DataSourceCache[I, A] = Map[I, A]
-  type Cache[I, A, M[_]] = Map[DataSource[I, A, M], DataSourceCache[I, A]]
-
-  object Cache {
-    def apply[I, A, M[_]](): Cache[I, A, M] = Map.empty[DataSource[I, A, M], DataSourceCache[I, A]]
-  }
-
-  def lookup[I, A, M[_]](
-    cache: Cache[I, A, M],
-    ds: DataSource[I, A, M],
-    id: I
-  ): Option[A] = for {
-    sources <- cache.get(ds)
-    result <- sources.get(id)
-  } yield result
-
-  def insert[I, A, M[_]](
-    cache: Cache[I, A, M],
-    ds: DataSource[I, A, M],
-    i: I,
-    v: A
-  ): Cache[I, A, M] = {
-    lazy val initialCache = Map(i -> v)
-    val resourceCache = cache.get(ds).fold(initialCache)(_.updated(i, v))
-    cache.updated(ds, resourceCache)
-  }
-}
-
 // Fetch
 
 sealed abstract class Fetch[A] extends Product with Serializable
@@ -99,7 +68,7 @@ object Fetch {
       DS: DataSource[I, A, M],
     DSS: DataSource[R, B, M]
   ): FreeApplicative[Fetch, (A, B)] =
-    (Fetch(fl) |@| Fetch(fr)).tupled  
+    (Fetch(fl) |@| Fetch(fr)).tupled
 
   def interpreter[I, A, M[_]](
     implicit
@@ -141,14 +110,16 @@ object Fetch {
         case Errored(e) => MM.raiseError(e)
         case Collect(ids: List[I], ds) => {
           MM.flatMap(ds.fetchMany(ids.distinct).asInstanceOf[M[Map[I, A]]])((res: Map[I, A]) => {
+            // todo: update cache with results
             val maybeResults = ids.map(res.get(_))
             if (maybeResults.forall(_.isDefined))
-              MM.pure(ids.map(res(_)))
+              MM.pure(ids.map(res(_))) // todo: read results from cache
             else
               MM.raiseError(FetchFailure())
           })
         }
         case One(id: I, ds) => {
+          //val maybeResult = lookup(cache, ds.asInstanceOf[DataSource[I, A, M]], id)
           MM.flatMap(ds.fetchMany(List(id)).asInstanceOf[M[Map[I, A]]])((res: Map[I, A]) => {
             val maybeResult = res.get(id)
             if (maybeResult.isDefined)
