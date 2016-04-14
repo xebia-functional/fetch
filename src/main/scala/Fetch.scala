@@ -104,23 +104,11 @@ object Fetch {
       def apply[A](fa: Fetch[A]): M[A] = fa match {
         case Result(a) => AP.pureEval(Eval.now(a))
         case Errored(e) => AP.raiseError(e)
-        case One(id: I, ds) => AP.pureEval(Eval.later({
-          ds.fetchMany(List(id)).asInstanceOf[Map[I, A]].get(id).get
-        }))
-      }
-    }
-
-  def run[I, A, M[_]](fa: FreeApplicative[Fetch, A])(
-    implicit
-      AP: ApplicativeError[M, Throwable]
-  ): M[A] = fa foldMap {
-    new (Fetch ~> M) {
-      def apply[A](fa: Fetch[A]): M[A] = fa match {
-        case Result(a) => AP.pureEval(Eval.now(a))
-        case Errored(e) => AP.raiseError(e)
         case Collect(ids: List[I], ds) => {
           AP.pureEval(Eval.later({
-            ds.fetchMany(ids).asInstanceOf[Map[I, A]].values.toList
+            // FIXME: Option.get
+            val results = ds.fetchMany(ids).asInstanceOf[Map[I, A]]
+            ids.map(results.get(_).get)
           }))
         }
         case One(id: I, ds) => AP.pureEval(Eval.later({
@@ -129,24 +117,16 @@ object Fetch {
         }))
       }
     }
-  }
+
+  def run[I, A, M[_]](fa: FreeApplicative[Fetch, A])(
+    implicit
+      AP: ApplicativeError[M, Throwable]
+  ): M[A] = fa foldMap interpreter
 
   def run[I, A, M[_]](fa: Free[Fetch, A])(
     implicit
       AP: ApplicativeError[M, Throwable],
     MI: Monad[M]
-  ): M[A] = fa foldMap {
-    new (Fetch ~> M) {
-      def apply[A](fa: Fetch[A]): M[A] = fa match {
-        case Result(a) => AP.pureEval(Eval.now(a))
-        case Errored(e) => AP.raiseError(e)
-        case One(id: I, ds) => AP.pureEval(Eval.later({
-          ds.fetchMany(List(id)).asInstanceOf[Map[I, A]].get(id).get
-        }))
-      }
-    }
-  }
-
-
+  ): M[A] = fa foldMap interpreter
 }
 

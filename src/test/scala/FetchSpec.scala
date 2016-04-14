@@ -123,24 +123,25 @@ class FetchSpec extends Specification {
       Fetch.run(fetch) must_== expected
     }
 
-  // // deduplication
+    // deduplication
 
-  // "Duplicated sources are only fetched once" >> {
-  //   var fetchCount = 0
+    "Duplicated sources are only fetched once" >> {
+      var fetchCount = 0
 
-  //   case class TrackedOne(x: Int) extends DataSource[Int] {
-  //     def identity = x.toString
-  //     def fetch = {
-  //       fetchCount += 1
-  //       Future.successful(x)
-  //     }
-  //   }
+      case class TrackedOne(x: Int)
 
-  //   val fetch = Fetch.traverse(List(1, 2, 1))((x: Int) => Fetch(TrackedOne(x)))
+      implicit object TrackedOneSource extends DataSource[TrackedOne, Int, Id] {
+        override def fetchMany(ids: List[TrackedOne]): Id[Map[TrackedOne, Int]] = {
+          fetchCount += 1
+          ids.map(t => (t, t.x)).toMap
+        }
+      }
 
-  //   deref(Fetch.run(fetch)) must_== List(1, 2, 1)
-  //   fetchCount must_== 2
-  // }
+      val fetch = Fetch.traverse(List(1, 2, 1))((x: Int) => TrackedOne(x))
+
+      Fetch.run(fetch) must_== List(1, 2, 1)
+      fetchCount must_== 1
+    }
 
   // // batching & deduplication
 
