@@ -1,21 +1,24 @@
 import org.specs2.mutable._
 
-import cats._
+import cats.{ MonadError, ApplicativeError, Id, Monad }
 import fetch._
 
 
 class FetchSpec extends Specification {
-  implicit def applicativeErrorId(
+  implicit def monadErrorId(
     implicit
-      I: Applicative[cats.Id]
-  ): ApplicativeError[Id, Throwable] = new ApplicativeError[Id, Throwable](){
-    override def pure[A](x: A): Id[A] = I.pure(x)
+      IDM: Monad[Id]
+  ): MonadError[Id, Throwable] = new MonadError[Id, Throwable]{
+    override def pure[A](x: A): Id[A] = x
 
-    override def ap[A, B](ff: Id[A ⇒ B])(fa: Id[A]): Id[B] = I.ap(ff)(fa)
+    override def ap[A, B](ff: Id[A ⇒ B])(fa: Id[A]): Id[B] = ff(fa)
 
-    override def map[A, B](fa: Id[A])(f: Id[A ⇒ B]): Id[B] = I.map(fa)(f)
+    override def map[A, B](fa: Id[A])(f: Id[A ⇒ B]): Id[B] = f(fa)
 
-    override def product[A, B](fa: Id[A], fb: Id[B]): Id[(A, B)] = I.product(fa, fb)
+    override def product[A, B](fa: Id[A], fb: Id[B]): Id[(A, B)] = (fa, fb)
+
+    override def flatMap[A, B](fa: Id[A])(ff: A => Id[B]): Id[B] =
+      IDM.flatMap(fa)(ff)
 
     override def raiseError[A](e: Throwable): Id[A] =
       throw e
@@ -119,7 +122,7 @@ class FetchSpec extends Specification {
 
     "We can join the results of two fetches with different data sources into one" >> {
       val expected = (1, List(0, 1, 2))
-      val fetch = Fetch.join(One(1), Many(3))
+      val fetch = Fetch.tupled(One(1), Many(3))
       Fetch.run(fetch) must_== expected
     }
 
@@ -183,22 +186,39 @@ class FetchSpec extends Specification {
       fetchCount must_== 2
     }
 
-    // "Joined fetches are run concurrently" >> {
-    //   var batchCount = 0
+    "Joined fetches are run concurrently" >> {
+      var batchCount = 0
 
-    //   case class TrackedOne(x: Int)
+      case class TrackedOne(x: Int)
 
-    //   implicit object TrackedOneSource extends DataSource[TrackedOne, Int, Id] {
-    //     override def fetchMany(ids: List[TrackedOne]): Id[Map[TrackedOne, Int]] = {
-    //       batchCount += 1
-    //       ids.map(t => (t, t.x)).toMap
-    //     }
-    //   }
+      implicit object TrackedOneSource extends DataSource[TrackedOne, Int, Id] {
+        override def fetchMany(ids: List[TrackedOne]): Id[Map[TrackedOne, Int]] = {
+          batchCount += 1
+          ids.map(t => (t, t.x)).toMap
+        }
+      }
 
-    //   val fetch = Fetch.join(TrackedOne(1), TrackedOne(2))
-    //   Fetch.run(fetch) must_== (1, 2)
-    //   batchCount must_== 1
-    // }
+      val fetch = Fetch.join(TrackedOne(1), TrackedOne(2))
+      Fetch.run(fetch) must_== (1, 2)
+      batchCount must_== 1
+    }
+
+    "Joined fetches are deduped" >> {
+      var fetchCount = 0
+
+      case class TrackedOne(x: Int)
+
+      implicit object TrackedOneSource extends DataSource[TrackedOne, Int, Id] {
+        override def fetchMany(ids: List[TrackedOne]): Id[Map[TrackedOne, Int]] = {
+          fetchCount += ids.size
+          ids.map(t => (t, t.x)).toMap
+        }
+      }
+
+      val fetch = Fetch.join(TrackedOne(1), TrackedOne(1))
+      Fetch.run(fetch) must_== (1, 1)
+      fetchCount must_== 1
+    }
 
   // // caching
 
