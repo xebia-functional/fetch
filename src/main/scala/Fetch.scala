@@ -83,6 +83,11 @@ object Fetch {
   ): FreeApplicative[Fetch, List[A]] =
     FreeApplicative.lift(Collect[I, A, M](ids, DS))
 
+  def traverse[I, A, B, M[_]](ids: List[B])(f: B => I)(
+    implicit DS: DataSource[I, A, M]
+  ): FreeApplicative[Fetch, List[A]] =
+    collect(ids.map(f))
+
   def interpreter[I, A, M[_]](
     implicit
       AP: ApplicativeError[M, Throwable]

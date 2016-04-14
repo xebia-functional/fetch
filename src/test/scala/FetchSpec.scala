@@ -105,11 +105,11 @@ class FetchSpec extends Specification {
       Fetch.run(fetch) must_== List(1, 2, 3)
     }
 
-  // "We can collect the results of a traversal" >> {
-  //   val expected = List(1, 2, 3)
-  //   val fetch = Fetch.traverse(expected)((x: Int) => Fetch(One(x)))
-  //   deref(Fetch.run(fetch)) must_== expected
-  // }
+    "We can collect the results of a traversal" >> {
+      val expected = List(1, 2, 3)
+      val fetch = Fetch.traverse(expected)((x: Int) => One(x))
+      Fetch.run(fetch) must_== expected
+    }
 
   // "We can join the results of two fetches into one" >> {
   //   val expected = (1, 2)
