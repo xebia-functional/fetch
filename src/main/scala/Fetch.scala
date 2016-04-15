@@ -3,7 +3,10 @@ package fetch
 
 import cats.{ Monad, ApplicativeError, MonadError, ~>, Eval }
 import cats.data.{ State, StateT }
+import cats.std.option._
+import cats.std.list._
 import cats.syntax.cartesian._
+import cats.syntax.traverse._
 import cats.free.{ Free, FreeApplicative }
 
 // Errors
@@ -82,110 +85,47 @@ object Fetch {
         case Errored(e) => MM.raiseError(e)
         case Collect(ids: List[I], ds) => {
           MM.flatMap(ds.fetchMany(ids.distinct).asInstanceOf[M[Map[I, A]]])((res: Map[I, A]) => {
-            val maybeResults = ids.map(res.get(_))
-            if (maybeResults.forall(_.isDefined))
-              MM.pure(ids.map(res(_)))
-            else
+            ids.map(res.get(_)).sequence.fold[M[A]](
               MM.raiseError(FetchFailure())
+            )(results => { MM.pure(results) })
           })
         }
         case One(id: I, ds) => {
           MM.flatMap(ds.fetchMany(List(id)).asInstanceOf[M[Map[I, A]]])((res: Map[I, A]) => {
-            val maybeResult = res.get(id)
-            if (maybeResult.isDefined)
-              MM.pure(maybeResult.get)
-            else
+            res.get(id).fold[M[A]](
               MM.raiseError(FetchFailure())
+            )(result => MM.pure(result))
           })
         }
       }
     }
   }
 
-  def impureCachedInterpreter[I, M[_]](
-    implicit
-      MM: MonadError[M, Throwable]
-  ): Fetch ~> M = {
-    new (Fetch ~> M) {
-      // xxx: make it safe to concurrent updates
-      var cache: Map[I, Any] = Map()
+  type Cache = Map[Any, Any]
 
-      def apply[A](fa: Fetch[A]): M[A] = fa match {
-        case Result(a) => MM.pureEval(Eval.now(a))
-        case Errored(e) => MM.raiseError(e)
-        case Collect(ids: List[I], ds) => {
-          val newIds = ids.distinct.filterNot(i => cache.get(i).isDefined)
-          if (newIds.isEmpty)
-            MM.pure(ids.map(id => cache.get(id).get))
-          else {
-            MM.flatMap(ds.fetchMany(newIds).asInstanceOf[M[Map[I, A]]])((res: Map[I, A]) => {
-              // update cache
-              res.foreach({ case (i, a) => {
-                cache = cache.updated(i, a)
-              }})
-              val maybeResults = ids.map(res.get(_))
-              if (maybeResults.forall(_.isDefined))
-                MM.pure(ids.map(id => cache.get(id).get))
-              else
-                MM.raiseError(FetchFailure())
-            })
-          }
-
-
-        }
-        case One(id: I, ds) => {
-          val maybeCached = cache.get(id)
-          if (maybeCached.isDefined) {
-            MM.pure(maybeCached.get.asInstanceOf[A])
-          } else {
-            MM.flatMap(ds.fetchMany(List(id)).asInstanceOf[M[Map[I, A]]])((res: Map[I, A]) => {
-              val maybeResult = res.get(id)
-              if (maybeResult.isDefined) {
-                val result = maybeResult.get
-                cache = cache.updated(id, result)
-                MM.pure(result)
-              } else {
-                MM.raiseError(FetchFailure())
-              }
-            })
-          }
-        }
-      }
-    }
-  }
-
-
-
-  //type FetchST[A] = Lambda[F[_] => StateT[F, Map[Any, Any], A]]
   type FetchST[M[_]] = {
-    type f[x] = StateT[M, Map[Any, Any], x]
+    type f[x] = StateT[M, Cache, x]
   }
 
-  def pureCachedInterpreter[I, M[_]](
+  def cachedInterpreter[I, M[_]](
     implicit
       MM: MonadError[M, Throwable]
   ): Fetch ~> FetchST[M]#f = {
     new (Fetch ~> FetchST[M]#f) {
       def apply[A](fa: Fetch[A]): FetchST[M]#f[A] = {
-        StateT[M, Map[Any, Any], A] { cache => fa match {
+        StateT[M, Cache, A] { cache => fa match {
           case Result(a) => MM.pure((cache, a))
           case Errored(e) => MM.raiseError(e)
           case One(id: I, ds) => {
-            // xxx: get rid of Option#get
-            val maybeCached = cache.get(id)
-            if (maybeCached.isDefined) {
-              MM.pure((cache, maybeCached.get.asInstanceOf[A]))
-            } else {
+            cache.get(id).fold[M[(Cache, A)]](
               MM.flatMap(ds.fetchMany(List(id)).asInstanceOf[M[Map[I, A]]])((res: Map[I, A]) => {
-                val maybeResult = res.get(id)
-                if (maybeResult.isDefined) {
-                  val result = maybeResult.get
+                res.get(id).fold[M[(Cache, A)]](MM.raiseError(FetchFailure()))(result => {
                   MM.pure((cache.updated(id, result), result))
-                } else {
-                  MM.raiseError(FetchFailure())
-                }
+                })
               })
-            }
+            )(cached => {
+              MM.pure((cache, cached.asInstanceOf[A]))
+            })
           }
           case Collect(ids: List[I], ds) => {
             val newIds = ids.distinct.filterNot(i => cache.get(i).isDefined)
@@ -193,16 +133,14 @@ object Fetch {
               MM.pureEval(Eval.later((cache, ids.flatMap(id => cache.get(id)))))
             else {
               MM.flatMap(ds.fetchMany(newIds).asInstanceOf[M[Map[I, A]]])((res: Map[I, A]) => {
-                // update cache
-                val newCache = res.foldLeft(cache)({
-                  case (c, (k, v)) => c.updated(k, v)
-                })
-
-                val maybeResults = ids.map(res.get(_))
-                if (maybeResults.forall(_.isDefined))
-                  MM.pureEval(Eval.later((newCache, ids.flatMap(id => cache.get(id)))))
-                else
+                ids.map(res.get(_)).sequence.fold[M[(Cache, A)]](
                   MM.raiseError(FetchFailure())
+                )(results => {
+                  val newCache = res.foldLeft(cache)({
+                    case (c, (k, v)) => c.updated(k, v)
+                  })
+                  MM.pureEval(Eval.later((newCache, results)))
+                })
               })
             }
           }
@@ -222,6 +160,16 @@ object Fetch {
     MM: MonadError[M, Throwable]
   ): M[A] = fa foldMap interpreter
 
+  def runCached[I, A, M[_]](fa: FreeApplicative[Fetch, A])(
+    implicit
+    MM: MonadError[M, Throwable]
+  ): M[A] = fa.foldMap[FetchST[M]#f](cachedInterpreter).runA(Map.empty[Any, Any])
+
+  def runCached[I, A, M[_]](fa: Free[Fetch, A])(
+    implicit
+    MM: MonadError[M, Throwable]
+  ): M[A] = fa.foldMap[FetchST[M]#f](cachedInterpreter).runA(Map.empty[Any, Any])
+
   def runWith[I, A, M[_]](
     fa: FreeApplicative[Fetch, A],
     i: Fetch ~> M
@@ -237,15 +185,5 @@ object Fetch {
     implicit
     MM: MonadError[M, Throwable]
   ): M[A] = fa foldMap i
-
-  def runCached[I, A, M[_]](fa: FreeApplicative[Fetch, A])(
-    implicit
-    MM: MonadError[M, Throwable]
-  ): M[A] = fa.foldMap[FetchST[M]#f](pureCachedInterpreter).runA(Map.empty[Any, Any])
-
-  def runCached[I, A, M[_]](fa: Free[Fetch, A])(
-    implicit
-    MM: MonadError[M, Throwable]
-  ): M[A] = fa.foldMap[FetchST[M]#f](pureCachedInterpreter).runA(Map.empty[Any, Any])
 }
 
