@@ -31,15 +31,6 @@ object Fetch {
   implicit def freeApToFreeMonad[F[_], A](fa : FreeApplicative[F, A]) : Free[F, A] =
     fa.monad
 
-  class OnePartiallyApplied[A] {
-    def apply[I, M[_]](id : I)(
-      implicit DS : DataSource[I, A, M]
-    ) : FreeApplicative[Fetch, A] =
-      FreeApplicative.lift(One[I, A, M](id, DS))
-  }
-
-  def one[A] = new OnePartiallyApplied[A]
-
   def pure[A](a: A): FreeApplicative[Fetch, A] =
     FreeApplicative.lift(Result(a))
 
@@ -61,7 +52,6 @@ object Fetch {
   ): FreeApplicative[Fetch, List[A]] =
     collect(ids.map(f))
 
-  // xxx: how can we avoid having separated `join` and `tupled`?
   def join[I, A, M[_]](fl: I, fr: I)(
     implicit
       DS: DataSource[I, A, M]
