@@ -7,6 +7,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import cats.{ MonadError, Comonad }
 import cats.syntax.comonad._
 import fetch._
+import fetch.cache._
 
 class FetchScalaFutureSpec extends Specification {
   implicit def FM: MonadError[Future, Throwable] with Comonad[Future] = new MonadError[Future, Throwable] with Comonad[Future]{
@@ -307,7 +308,7 @@ class FetchScalaFutureSpec extends Specification {
         _ <- Fetch(CachedValue(1))
       } yield aOne + anotherOne
 
-      Fetch.runCached(fetch, Fetch.Cache(
+      Fetch.runCached(fetch, Cache(
         CachedValue(1) -> 1,
         TrackedOne(1) -> 1,
         TrackedOne(2) -> 2

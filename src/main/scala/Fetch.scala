@@ -8,6 +8,8 @@ import cats.syntax.cartesian._
 import cats.syntax.traverse._
 import cats.free.{ Free }
 
+
+
 // Data source
 
 trait DataSource[I, A, M[_]] {
@@ -20,19 +22,33 @@ sealed abstract class FetchOp[A] extends Product with Serializable
 final case class FetchOne[I, A, M[_]](a: I, ds: DataSource[I, A, M]) extends FetchOp[A]
 final case class FetchMany[I, A, M[_]](as: List[I], ds: DataSource[I, A, M]) extends FetchOp[List[A]]
 final case class Result[A](a: A) extends FetchOp[A]
-final case class FetchError[A, E](err: E)() extends FetchOp[A]
+final case class FetchError[A, E <: Throwable](err: E)() extends FetchOp[A]
 
 object FetchType {
   type Fetch[A] = Free[FetchOp, A]
 }
 
+object cache {
+  type Cache = Map[Any, Any]
+
+  object Cache {
+    def empty: Cache = Map.empty[Any, Any]
+
+    def apply(tuples: (Any, Any)*): Cache =
+      tuples.foldLeft(Cache.empty)({
+        case (c, (k, v)) => c.updated(k, v)
+      })
+  }
+}
+
 object Fetch {
   import FetchType._
+  import cache._
 
   def pure[A](a: A): Fetch[A] =
     Free.liftF(Result(a))
 
-  def error[A, E](e: E): Fetch[A] =
+  def error[A](e: Throwable): Fetch[A] =
     Free.liftF(FetchError(e))
 
   def apply[I, A, M[_]](i: I)(
@@ -63,25 +79,26 @@ object Fetch {
   ): Fetch[(A, B)] =
     (Fetch(fl) |@| Fetch(fr)).tupled
 
-  def interpreter[I, A, E, M[_]](
+  def interpreter[I, A, M[_]](
     implicit
-      MM: MonadError[M, E]
+      MM: MonadError[M, Throwable]
   ): FetchOp ~> M = {
     new (FetchOp ~> M) {
       def apply[A](fa: FetchOp[A]): M[A] = fa match {
         case Result(a) => MM.pureEval(Eval.now(a))
-        case FetchError(e: E) => MM.raiseError(e)
+        case FetchError(e) => MM.raiseError(e)
         case FetchMany(ids: List[I], ds) => {
-          MM.flatMap(ds.fetchMany(ids.distinct).asInstanceOf[M[Map[I, A]]])((res: Map[I, A]) => {
+          val newIds = ids.distinct
+          MM.flatMap(ds.fetchMany(newIds).asInstanceOf[M[Map[I, A]]])((res: Map[I, A]) => {
             ids.map(res.get(_)).sequence.fold[M[A]](
-              MM.raiseError(???) // xxx
+              MM.raiseError(FetchFailure(Cache.empty, ids.distinct))
             )(results => { MM.pure(results) })
           })
         }
         case FetchOne(id: I, ds) => {
           MM.flatMap(ds.fetchMany(List(id)).asInstanceOf[M[Map[I, A]]])((res: Map[I, A]) => {
             res.get(id).fold[M[A]](
-              MM.raiseError(???) // xxx
+              MM.raiseError(FetchFailure(Cache.empty, List(id)))
             )(result => MM.pure(result))
           })
         }
@@ -89,34 +106,24 @@ object Fetch {
     }
   }
 
-  type Cache = Map[Any, Any]
-
-  object Cache {
-    def empty: Cache = Map.empty[Any, Any]
-
-    def apply(tuples: (Any, Any)*): Cache =
-      tuples.foldLeft(Cache.empty)({
-        case (c, (k, v)) => c.updated(k, v)
-      })
-  }
 
   type FetchOpST[M[_]] = {
     type f[x] = StateT[M, Cache, x]
   }
 
-  def cachedInterpreter[I, E, M[_]](
+  def cachedInterpreter[I, M[_]](
     implicit
-      MM: MonadError[M, E]
+      MM: MonadError[M, Throwable]
   ): FetchOp ~> FetchOpST[M]#f = {
     new (FetchOp ~> FetchOpST[M]#f) {
       def apply[A](fa: FetchOp[A]): FetchOpST[M]#f[A] = {
         StateT[M, Cache, A] { cache => fa match {
           case Result(a) => MM.pure((cache, a))
-          case FetchError(e: E) => MM.raiseError(e)
+          case FetchError(e) => MM.raiseError(e)
           case FetchOne(id: I, ds) => {
             cache.get(id).fold[M[(Cache, A)]](
               MM.flatMap(ds.fetchMany(List(id)).asInstanceOf[M[Map[I, A]]])((res: Map[I, A]) => {
-                res.get(id).fold[M[(Cache, A)]](MM.raiseError(???))(result => {
+                res.get(id).fold[M[(Cache, A)]](MM.raiseError(FetchFailure(cache, List(id))))(result => {
                   MM.pure((cache.updated(id, result), result))
                 })
               })
@@ -131,7 +138,7 @@ object Fetch {
             else {
               MM.flatMap(ds.fetchMany(newIds).asInstanceOf[M[Map[I, A]]])((res: Map[I, A]) => {
                 ids.map(res.get(_)).sequence.fold[M[(Cache, A)]](
-                  MM.raiseError(???)
+                  MM.raiseError(FetchFailure(cache, newIds))
                 )(results => {
                   val newCache = res.foldLeft(cache)({
                     case (c, (k, v)) => c.updated(k, v)
@@ -147,24 +154,28 @@ object Fetch {
     }
   }
 
-  def run[I, A, E, M[_]](fa: Fetch[A])(
+  def run[I, A, M[_]](fa: Fetch[A])(
     implicit
-    MM: MonadError[M, E]
+    MM: MonadError[M, Throwable]
   ): M[A] = fa foldMap interpreter
 
-  def runCached[I, A, E, M[_]](
+  def runCached[I, A, M[_]](
     fa: Fetch[A],
     cache: Cache = Cache.empty
   )(
     implicit
-    MM: MonadError[M, E]
+    MM: MonadError[M, Throwable]
   ): M[A] = fa.foldMap[FetchOpST[M]#f](cachedInterpreter).runA(cache)
 
-  def runWith[I, A, E, M[_]](
+  def runWith[I, A, M[_]](
     fa: Fetch[A],
     i: FetchOp ~> M
   )(
     implicit
-    MM: MonadError[M, E]
+    MM: MonadError[M, Throwable]
   ): M[A] = fa foldMap i
 }
+
+// Errors
+
+case class FetchFailure[I](cache: fetch.cache.Cache, ids: List[I]) extends Exception
