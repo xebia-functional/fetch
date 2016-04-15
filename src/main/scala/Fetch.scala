@@ -1,9 +1,8 @@
+
 package fetch
 
-import scala.math.Equiv
-import scala.util.hashing.Hashing
-
 import cats.{ Monad, ApplicativeError, MonadError, ~>, Eval }
+import cats.data.{ State, StateT }
 import cats.syntax.cartesian._
 import cats.free.{ Free, FreeApplicative }
 
@@ -16,8 +15,6 @@ case class FetchFailure() extends Exception
 trait DataSource[I, A, M[_]] {
   def fetchMany(ids: List[I]): M[Map[I, A]]
 }
-
-// Cache
 
 // Fetch
 
@@ -105,7 +102,7 @@ object Fetch {
     }
   }
 
-  def cachedInterpreter[I, AA, M[_]](
+  def impureCachedInterpreter[I, M[_]](
     implicit
       MM: MonadError[M, Throwable]
   ): Fetch ~> M = {
@@ -157,6 +154,64 @@ object Fetch {
     }
   }
 
+
+
+  //type FetchST[A] = Lambda[F[_] => StateT[F, Map[Any, Any], A]]
+  type FetchST[M[_]] = {
+    type f[x] = StateT[M, Map[Any, Any], x]
+  }
+
+  def pureCachedInterpreter[I, M[_]](
+    implicit
+      MM: MonadError[M, Throwable]
+  ): Fetch ~> FetchST[M]#f = {
+    new (Fetch ~> FetchST[M]#f) {
+      def apply[A](fa: Fetch[A]): FetchST[M]#f[A] = {
+        StateT[M, Map[Any, Any], A] { cache => fa match {
+          case Result(a) => MM.pure((cache, a))
+          case Errored(e) => MM.raiseError(e)
+          case One(id: I, ds) => {
+            // xxx: get rid of Option#get
+            val maybeCached = cache.get(id)
+            if (maybeCached.isDefined) {
+              MM.pure((cache, maybeCached.get.asInstanceOf[A]))
+            } else {
+              MM.flatMap(ds.fetchMany(List(id)).asInstanceOf[M[Map[I, A]]])((res: Map[I, A]) => {
+                val maybeResult = res.get(id)
+                if (maybeResult.isDefined) {
+                  val result = maybeResult.get
+                  MM.pure((cache.updated(id, result), result))
+                } else {
+                  MM.raiseError(FetchFailure())
+                }
+              })
+            }
+          }
+          case Collect(ids: List[I], ds) => {
+            val newIds = ids.distinct.filterNot(i => cache.get(i).isDefined)
+            if (newIds.isEmpty)
+              MM.pureEval(Eval.later((cache, ids.flatMap(id => cache.get(id)))))
+            else {
+              MM.flatMap(ds.fetchMany(newIds).asInstanceOf[M[Map[I, A]]])((res: Map[I, A]) => {
+                // update cache
+                val newCache = res.foldLeft(cache)({
+                  case (c, (k, v)) => c.updated(k, v)
+                })
+
+                val maybeResults = ids.map(res.get(_))
+                if (maybeResults.forall(_.isDefined))
+                  MM.pureEval(Eval.later((newCache, ids.flatMap(id => cache.get(id)))))
+                else
+                  MM.raiseError(FetchFailure())
+              })
+            }
+          }
+        }
+        }
+      }
+    }
+  }
+
   def run[I, A, M[_]](fa: FreeApplicative[Fetch, A])(
     implicit
     MM: MonadError[M, Throwable]
@@ -186,13 +241,11 @@ object Fetch {
   def runCached[I, A, M[_]](fa: FreeApplicative[Fetch, A])(
     implicit
     MM: MonadError[M, Throwable]
-  ): M[A] = fa foldMap cachedInterpreter
+  ): M[A] = fa.foldMap[FetchST[M]#f](pureCachedInterpreter).runA(Map.empty[Any, Any])
 
   def runCached[I, A, M[_]](fa: Free[Fetch, A])(
     implicit
     MM: MonadError[M, Throwable]
-  ): M[A] = fa foldMap cachedInterpreter
-
-
+  ): M[A] = fa.foldMap[FetchST[M]#f](pureCachedInterpreter).runA(Map.empty[Any, Any])
 }
 
