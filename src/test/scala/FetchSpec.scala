@@ -1,13 +1,10 @@
 import org.specs2.mutable._
 
-import cats.{ MonadError, ApplicativeError, Id, Monad }
+import cats.{ MonadError, Id }
 import fetch._
 
 class FetchSpec extends Specification {
-  implicit def monadErrorId(
-    implicit
-      IDM: Monad[Id]
-  ): MonadError[Id, FetchError] = new MonadError[Id, FetchError]{
+  implicit def IM: MonadError[Id, Throwable] = new MonadError[Id, Throwable]{
     override def pure[A](x: A): Id[A] = x
 
     override def ap[A, B](ff: Id[A ⇒ B])(fa: Id[A]): Id[B] = ff(fa)
@@ -16,17 +13,15 @@ class FetchSpec extends Specification {
 
     override def product[A, B](fa: Id[A], fb: Id[B]): Id[(A, B)] = (fa, fb)
 
-    override def flatMap[A, B](fa: Id[A])(ff: A => Id[B]): Id[B] =
-      IDM.flatMap(fa)(ff)
+    override def flatMap[A, B](fa: Id[A])(ff: A => Id[B]): Id[B] = ff(fa)
 
-    override def raiseError[A](e: FetchError): Id[A] =
-      throw e.throwable
+    override def raiseError[A](e: Throwable): Id[A] = throw e
 
-    override def handleErrorWith[A](fa: Id[A])(f: FetchError ⇒ Id[A]): Id[A] = {
+    override def handleErrorWith[A](fa: Id[A])(f: Throwable ⇒ Id[A]): Id[A] = {
       try {
         fa
       } catch {
-        case e: FetchError ⇒ f(e)
+        case e: Throwable ⇒ f(e)
       }
     }
   }
@@ -56,23 +51,31 @@ class FetchSpec extends Specification {
       Fetch.runCached(fetch) must_== 42
     }
 
+    // xxx: test data sources with errors
+
     "We can lift errors to Fetch" >> {
-      val ohnoes = new Exception("OH NOES")
-      case class NotFound() extends FetchError {
-        override def throwable = ohnoes
-      }
-      val fetch = Fetch.error[Int](NotFound())
-      Fetch.run(fetch) must throwA(ohnoes)
+      case class NotFound() extends Throwable
+      val fetch: Fetch[Int] = Fetch.error(NotFound())
+      Fetch.run(fetch) must throwA[NotFound]
     }
 
     "We can lift errors to Fetch and run them with a cache" >> {
-      val ohnoes = new Exception("OH NOES")
-      case class NotFound() extends FetchError {
-        override def throwable = ohnoes
-      }
-      val fetch = Fetch.error[Int](NotFound())
-      Fetch.runCached(fetch) must throwA(ohnoes)
+      case class NotFound() extends Throwable
+      val fetch: Fetch[Int] = Fetch.error(NotFound())
+      Fetch.runCached(fetch) must throwA[NotFound]
     }
+
+    // "We can lift handle and recover from errors in Fetch" >> {
+    //   case class NotFound() extends Throwable
+    //   val fetch: Fetch[Int] = Fetch.error(NotFound())
+    //   IM.handleErrorWith(Fetch.run(fetch))(err => IM.pure(42)) must_== 42
+    // }
+
+    // "We can lift errors to Fetch and run them with a cache" >> {
+    //   case class NotFound() extends Throwable
+    //   val fetch: Fetch[Int] = Fetch.error(NotFound())
+    //   FM.handleErrorWith(Fetch.runCached(fetch))(err => Future.successful(42)).extract must_== 42
+    // }
 
     "We can lift values which have a Data Source to Fetch" >> {
       Fetch.run(Fetch(One(1))) == 1
@@ -83,15 +86,14 @@ class FetchSpec extends Specification {
     }
 
     "We can map over Fetch values" >> {
-      val fetch = Fetch(One(1)).map((x: Int) => x + 1)
+      val fetch = Fetch(One(1)).map(_ + 1)
       Fetch.run(fetch) must_== 2
     }
 
-    // xxx
-    // "We can map over Fetch values and run them with a cache" >> {
-    //   val fetch = Fetch(One(1)).map((x: Int) => x + 1)
-    //   Fetch.run(fetch) must_== 2
-    // }    
+    "We can map over Fetch values and run them with a cache" >> {
+      val fetch = Fetch(One(1)).map(_ + 1)
+      Fetch.run(fetch) must_== 2
+    }
 
     "We can use fetch inside a for comprehension" >> {
       val ftch = for {
@@ -136,7 +138,7 @@ class FetchSpec extends Specification {
 
     "We can collect the results of a traversal" >> {
       val expected = List(1, 2, 3)
-      val fetch = Fetch.traverse(expected)((x: Int) => One(x))
+      val fetch = Fetch.traverse(expected)(One(_))
       Fetch.run(fetch) must_== expected
     }
 
@@ -166,7 +168,7 @@ class FetchSpec extends Specification {
         }
       }
 
-      val fetch = Fetch.traverse(List(1, 2, 1))((x: Int) => TrackedOne(x))
+      val fetch = Fetch.traverse(List(1, 2, 1))(TrackedOne(_))
 
       Fetch.run(fetch) must_== List(1, 2, 1)
       batchCount must_== 1
@@ -186,7 +188,7 @@ class FetchSpec extends Specification {
         }
       }
 
-      val fetch = Fetch.traverse(List(1, 2, 1))((x: Int) => TrackedOne(x))
+      val fetch = Fetch.traverse(List(1, 2, 1))(TrackedOne(_))
       Fetch.run(fetch) must_== List(1, 2, 1)
       fetchCount must_== 2
     }
@@ -205,7 +207,7 @@ class FetchSpec extends Specification {
 
       val fetch = for {
         v <- Fetch.pure(List(1, 2, 1))
-        result <- Fetch.traverse(v)((x: Int) => TrackedOne(x))
+        result <- Fetch.traverse(v)(TrackedOne(_))
       } yield result
 
       Fetch.run(fetch) must_== List(1, 2, 1)
