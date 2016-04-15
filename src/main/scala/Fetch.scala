@@ -8,8 +8,6 @@ import cats.syntax.cartesian._
 import cats.syntax.traverse._
 import cats.free.{ Free }
 
-
-
 // Data source
 
 trait DataSource[I, A, M[_]] {
@@ -24,7 +22,7 @@ final case class FetchMany[I, A, M[_]](as: List[I], ds: DataSource[I, A, M]) ext
 final case class Result[A](a: A) extends FetchOp[A]
 final case class FetchError[A, E <: Throwable](err: E)() extends FetchOp[A]
 
-object FetchType {
+object types {
   type Fetch[A] = Free[FetchOp, A]
 }
 
@@ -42,7 +40,7 @@ object cache {
 }
 
 object Fetch {
-  import FetchType._
+  import types._
   import cache._
 
   def pure[A](a: A): Fetch[A] =

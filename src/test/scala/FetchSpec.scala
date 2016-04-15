@@ -1,138 +1,157 @@
 import org.specs2.mutable._
 
 import cats.{ MonadError, Eval }
+import cats.data.{ State, Xor }
 import cats.syntax.comonad._
+
 import fetch._
 import fetch.cache._
+import fetch.types._
 
 class FetchSpec extends Specification {
-  implicit def IM: MonadError[Eval, Throwable] = new MonadError[Eval, Throwable] {
-    override def pure[A](x: A): Eval[A] = Eval.now(x)
+  type Count[A] = State[Int, Xor[Throwable, A]]
 
-    override def ap[A, B](ff: Eval[A ⇒ B])(fa: Eval[A]): Eval[B] = Eval.now(ff.value(fa.value))
+  implicit def ISM: MonadError[Count, Throwable] = new MonadError[Count, Throwable] {
+    override def pure[A](x: A): Count[A] = State.pure(Xor.Right(x))
 
-    override def map[A, B](fa: Eval[A])(f: A ⇒ B): Eval[B] = fa.map(f)
+    override def map[A, B](fa: Count[A])(f: A ⇒ B): Count[B] = fa.map(_.map(f))
 
-    override def product[A, B](fa: Eval[A], fb: Eval[B]): Eval[(A, B)] = Eval.now(fa.value, fb.value)
-
-    override def flatMap[A, B](fa: Eval[A])(ff: A => Eval[B]): Eval[B] = fa.flatMap(ff)
-
-    override def raiseError[A](e: Throwable): Eval[A] = Eval.later({
-      throw e
+    override def flatMap[A, B](fa: Count[A])(ff: A => Count[B]): Count[B] = State(s => {
+      fa.run(s).map(result => {
+        val state = result._1
+        val xor: Xor[Throwable, A] = result._2
+        xor.fold(
+          (left: Throwable) => (state, Xor.Left(left)),
+          (a: A) => ff(a).run(state).value
+        )
+      }).value
     })
 
-    override def handleErrorWith[A](fa: Eval[A])(f: Throwable ⇒ Eval[A]): Eval[A] = {
-      try {
-        Eval.now(fa.value)
-      } catch {
-        case e: Throwable ⇒ f(e)
-      }
-    }
+    override def raiseError[A](e: Throwable): Count[A] = State.pure(Xor.Left(e))
+
+    override def handleErrorWith[A](fa: Count[A])(f: Throwable ⇒ Count[A]): Count[A] = State(s => {
+      val (state, result) = fa.run(s).value
+      result.fold(
+        (left: Throwable) => f(left).run(s).value,
+        (a: A) => (state, result)
+      )
+    })
   }
 
   "Fetch" >> {
-    case class One(id: Int)
+    case object NotFound extends Throwable
 
-    implicit object OneSource extends DataSource[One, Int, Eval] {
-      override def fetchMany(ids: List[One]): Eval[Map[One, Int]] =
-        Eval.now(ids.map(one => (one, one.id)).toMap)
+    case class One(id: Int)
+    implicit object OneSource extends DataSource[One, Int, Count] {
+      override def fetchMany(ids: List[One]): Count[Map[One, Int]] =
+        ISM.pure(ids.map(one => (one, one.id)).toMap)
     }
 
     case class Many(n: Int)
-
-    implicit object ManySource extends DataSource[Many, List[Int], Eval] {
-      override def fetchMany(ids: List[Many]): Eval[Map[Many, List[Int]]] =
-        Eval.now(ids.map(m => (m, 0 until m.n toList)).toMap)
+    implicit object ManySource extends DataSource[Many, List[Int], Count] {
+      override def fetchMany(ids: List[Many]): Count[Map[Many, List[Int]]] =
+        ISM.pure(ids.map(m => (m, 0 until m.n toList)).toMap)
     }
+
+    case class Never()
+    implicit object NeverSource extends DataSource[Never, Int, Count] {
+      override def fetchMany(ids: List[Never]): Count[Map[Never, Int]] =
+        ISM.pure(Map.empty[Never, Int])
+    }
+
+    case class BatchCountOne(x: Int)
+
+    implicit object BatchCountOneSource extends DataSource[BatchCountOne, Int, Count] {
+      override def fetchMany(ids: List[BatchCountOne]): Count[Map[BatchCountOne, Int]] = {
+        State.modify((x: Int) => x + 1).flatMap(_ => ISM.pure(ids.map(t => (t, t.x)).toMap))
+      }
+    }
+
+    case class CountedOne(x: Int)
+
+    implicit object CountedOneSource extends DataSource[CountedOne, Int, Count] {
+      override def fetchMany(ids: List[CountedOne]): Count[Map[CountedOne, Int]] = {
+        State.modify((x: Int) => x + ids.size).flatMap(_ => ISM.pure(ids.map(t => (t, t.x)).toMap))
+      }
+    }
+
+    def run[A](f: Count[A]): (Int, Xor[Throwable, A]) = f.run(0).value
+
+    def right[A](f: Count[A]): A = run(f)._2.toOption.get
+
+    def left[A](f: Count[A]): Throwable = run(f)._2.fold(identity, foo => { new Exception() })
 
     "We can lift plain values to Fetch" >> {
       val fetch: Fetch[Int] = Fetch.pure(42)
-      Fetch.run(fetch).extract must_== 42
+      right(Fetch.run(fetch)) must_== 42
     }
 
     "We can lift plain values to Fetch and run them with a cache" >> {
       val fetch = Fetch.pure(42)
-      Fetch.runCached(fetch).extract must_== 42
+      right(Fetch.runCached(fetch)) must_== 42
     }
 
     "Data sources with errors throw fetch failures" >> {
-      case class Never()
-
-      implicit object NeverSource extends DataSource[Never, Int, Eval] {
-        override def fetchMany(ids: List[Never]): Eval[Map[Never, Int]] =
-          Eval.now(Map.empty[Never, Int])
-      }
-
       val fetch: Fetch[Int] = Fetch(Never())
-      Fetch.run(fetch).extract must throwA(FetchFailure(Cache.empty, List(Never())))
+      left(Fetch.run(fetch)) must_== FetchFailure(Cache.empty, List(Never()))
     }
 
     "Data sources with errors and cached values throw fetch failures with the cache" >> {
-      case class Never()
-
-      implicit object NeverSource extends DataSource[Never, Int, Eval] {
-        override def fetchMany(ids: List[Never]): Eval[Map[Never, Int]] =
-          Eval.now(Map.empty[Never, Int])
-      }
-
       val fetch: Fetch[Int] = Fetch(Never())
       val cache = Cache(One(1) -> 1)
-      Fetch.runCached(fetch, cache).extract must throwA(FetchFailure(cache, List(Never())))
+      left(Fetch.runCached(fetch, cache)) must_== FetchFailure(cache, List(Never()))
     }
 
     "Data sources with errors won't fail if they're cached" >> {
-      case class Never()
-
-      implicit object NeverSource extends DataSource[Never, Int, Eval] {
-        override def fetchMany(ids: List[Never]): Eval[Map[Never, Int]] =
-          Eval.now(Map.empty[Never, Int])
-      }
-
       val fetch: Fetch[Int] = Fetch(Never())
       val cache = Cache(Never() -> 1)
-      Fetch.runCached(fetch, cache).extract must_== 1
+      right(Fetch.runCached(fetch, cache)) must_== 1
     }
 
     "We can lift errors to Fetch" >> {
-      case class NotFound() extends Throwable
-      val fetch: Fetch[Int] = Fetch.error(NotFound())
-      Fetch.run(fetch).extract must throwA[NotFound]
+      val fetch: Fetch[Int] = Fetch.error(NotFound)
+      left(Fetch.run(fetch)) must_== NotFound
     }
 
     "We can lift errors to Fetch and run them with a cache" >> {
-      case class NotFound() extends Throwable
-      val fetch: Fetch[Int] = Fetch.error(NotFound())
-      Fetch.runCached(fetch).extract must throwA[NotFound]
+      val fetch: Fetch[Int] = Fetch.error(NotFound)
+      left(Fetch.runCached(fetch)) must_== NotFound
     }
 
     "We can lift handle and recover from errors in Fetch" >> {
-      case class NotFound() extends Throwable
-      val fetch: Fetch[Int] = Fetch.error(NotFound())
-      IM.handleErrorWith(Fetch.run(fetch))(err => IM.pure(42)).extract must_== 42
+      val fetch: Fetch[Int] = Fetch.error(NotFound)
+      right(
+        ISM.handleErrorWith(
+          Fetch.run(fetch)
+        )(err => ISM.pure(42))
+      ) must_== 42
     }
 
     "We can lift errors to Fetch and run them with a cache" >> {
-      case class NotFound() extends Throwable
-      val fetch: Fetch[Int] = Fetch.error(NotFound())
-      IM.handleErrorWith(Fetch.runCached(fetch))(err => IM.pure(42)).extract must_== 42
+      val fetch: Fetch[Int] = Fetch.error(NotFound)
+      right(
+        ISM.handleErrorWith(
+          Fetch.run(fetch)
+        )(err => ISM.pure(42))
+      ) must_== 42
     }
 
     "We can lift values which have a Data Source to Fetch" >> {
-      Fetch.run(Fetch(One(1))).extract == 1
+      right(Fetch.run(Fetch(One(1)))) == 1
     }
 
     "We can lift values which have a Data Source to Fetch and run them with a cache" >> {
-      Fetch.runCached(Fetch(One(1))).extract == 1
+      right(Fetch.runCached(Fetch(One(1)))) == 1
     }
 
     "We can map over Fetch values" >> {
       val fetch = Fetch(One(1)).map(_ + 1)
-      Fetch.run(fetch).extract must_== 2
+      right(Fetch.run(fetch)) must_== 2
     }
 
     "We can map over Fetch values and run them with a cache" >> {
       val fetch = Fetch(One(1)).map(_ + 1)
-      Fetch.run(fetch).extract must_== 2
+      right(Fetch.run(fetch)) must_== 2
     }
 
     "We can use fetch inside a for comprehension" >> {
@@ -141,7 +160,7 @@ class FetchSpec extends Specification {
         two <- Fetch(One(2))
       } yield (one, two)
 
-      Fetch.run(ftch).extract == (1, 2)
+      right(Fetch.run(ftch)) == (1, 2)
     }
 
     "We can mix data sources" >> {
@@ -150,7 +169,7 @@ class FetchSpec extends Specification {
         many <- Fetch(Many(3))
       } yield (one, many)
 
-      Fetch.run(ftch).extract == (1, List(0, 1, 2))
+      right(Fetch.run(ftch)) == (1, List(0, 1, 2))
     }
 
     "We can use Fetch as an applicative" >> {
@@ -158,7 +177,7 @@ class FetchSpec extends Specification {
 
       val ftch = (Fetch(One(1)) |@| Fetch(Many(3))).map { case (a, b) => (a, b) }
 
-      Fetch.run(ftch).extract == (1, List(0, 1, 2))
+      right(Fetch.run(ftch)) == (1, List(0, 1, 2))
     }
 
     "We can depend on previous computations of Fetch values" >> {
@@ -167,201 +186,123 @@ class FetchSpec extends Specification {
         two <- Fetch(One(one + 1))
       } yield one + two
 
-      Fetch.run(fetch).extract must_== 3
+      right(Fetch.run(fetch)) must_== 3
     }
 
     "We can collect a list of Fetch into one" >> {
       val sources = List(One(1), One(2), One(3))
       val fetch = Fetch.collect(sources)
-      Fetch.run(fetch).extract must_== List(1, 2, 3)
+      right(Fetch.run(fetch)) must_== List(1, 2, 3)
     }
 
     "We can collect the results of a traversal" >> {
       val expected = List(1, 2, 3)
       val fetch = Fetch.traverse(expected)(One(_))
-      Fetch.run(fetch).extract must_== expected
+      right(Fetch.run(fetch)) must_== expected
     }
 
     "We can coalesce the results of two fetches into one" >> {
       val expected = (1, 2)
       val fetch = Fetch.coalesce(One(1), One(2))
-      Fetch.run(fetch).extract must_== expected
+      right(Fetch.run(fetch)) must_== expected
     }
 
     "We can join the results of two fetches with different data sources into one" >> {
       val expected = (1, List(0, 1, 2))
       val fetch = Fetch.join(One(1), Many(3))
-      Fetch.run(fetch).extract must_== expected
+      right(Fetch.run(fetch)) must_== expected
     }
 
     // deduplication
 
     "Duplicated sources are only fetched once" >> {
-      var batchCount = 0
+      val fetch = Fetch.traverse(List(1, 2, 1))(CountedOne(_))
 
-      case class TrackedOne(x: Int)
+      val (count, result) = run(Fetch.run(fetch))
 
-      implicit object TrackedOneSource extends DataSource[TrackedOne, Int, Eval] {
-        override def fetchMany(ids: List[TrackedOne]): Eval[Map[TrackedOne, Int]] = {
-          batchCount += 1
-          Eval.now(ids.map(t => (t, t.x)).toMap)
-        }
-      }
-
-      val fetch = Fetch.traverse(List(1, 2, 1))(TrackedOne(_))
-
-      Fetch.run(fetch).extract must_== List(1, 2, 1)
-      batchCount must_== 1
+      result must_== Xor.Right(List(1, 2, 1))
+      count must_== 2
     }
 
     // batching & deduplication
 
     "Sources that can be fetched in batches will be" >> {
-      var fetchCount = 0
+      val fetch = Fetch.traverse(List(1, 2, 1))(BatchCountOne(_))
 
-      case class TrackedOne(x: Int)
+      val (batches, result) = run(Fetch.run(fetch))
 
-      implicit object TrackedOneSource extends DataSource[TrackedOne, Int, Eval] {
-        override def fetchMany(ids: List[TrackedOne]): Eval[Map[TrackedOne, Int]] = {
-          fetchCount += ids.size
-          Eval.now(ids.map(t => (t, t.x)).toMap)
-        }
-      }
-
-      val fetch = Fetch.traverse(List(1, 2, 1))(TrackedOne(_))
-      Fetch.run(fetch).extract must_== List(1, 2, 1)
-      fetchCount must_== 2
+      result must_== Xor.Right(List(1, 2, 1))
+      batches must_== 1
     }
 
     "Sources that can be fetched in batches inside a for comprehension will be" >> {
-      var fetchCount = 0
-
-      case class TrackedOne(x: Int)
-
-      implicit object TrackedOneSource extends DataSource[TrackedOne, Int, Eval] {
-        override def fetchMany(ids: List[TrackedOne]): Eval[Map[TrackedOne, Int]] = {
-          fetchCount += ids.size
-          Eval.now(ids.map(t => (t, t.x)).toMap)
-        }
-      }
-
       val fetch = for {
         v <- Fetch.pure(List(1, 2, 1))
-        result <- Fetch.traverse(v)(TrackedOne(_))
+        result <- Fetch.traverse(v)(BatchCountOne(_))
       } yield result
 
-      Fetch.run(fetch).extract must_== List(1, 2, 1)
-      fetchCount must_== 2
+      val (batches, result) = run(Fetch.run(fetch))
+
+      result must_== Xor.Right(List(1, 2, 1))
+      batches must_== 1
     }
 
-    "Coalesced fetches are run concurrently" >> {
-      var batchCount = 0
+    "Coalesced fetches are run in a batch" >> {
+      val fetch = Fetch.coalesce(BatchCountOne(1), BatchCountOne(2))
 
-      case class TrackedOne(x: Int)
+      val (batches, result) = run(Fetch.run(fetch))
 
-      implicit object TrackedOneSource extends DataSource[TrackedOne, Int, Eval] {
-        override def fetchMany(ids: List[TrackedOne]): Eval[Map[TrackedOne, Int]] = {
-          batchCount += 1
-          Eval.now(ids.map(t => (t, t.x)).toMap)
-        }
-      }
-
-      val fetch = Fetch.coalesce(TrackedOne(1), TrackedOne(2))
-      Fetch.run(fetch).extract must_== (1, 2)
-      batchCount must_== 1
+      result must_== Xor.Right((1, 2))
+      batches must_== 1
     }
 
     "Coalesced fetches are deduped" >> {
-      var fetchCount = 0
+      val fetch = Fetch.coalesce(CountedOne(1), CountedOne(1))
 
-      case class TrackedOne(x: Int)
+      val (count, result) = run(Fetch.run(fetch))
 
-      implicit object TrackedOneSource extends DataSource[TrackedOne, Int, Eval] {
-        override def fetchMany(ids: List[TrackedOne]): Eval[Map[TrackedOne, Int]] = {
-          fetchCount += ids.size
-          Eval.now(ids.map(t => (t, t.x)).toMap)
-        }
-      }
-
-      val fetch = Fetch.coalesce(TrackedOne(1), TrackedOne(1))
-      Fetch.run(fetch).extract must_== (1, 1)
-      fetchCount must_== 1
+      result must_== Xor.Right((1, 1))
+      count must_== 1
     }
 
     // caching
 
     "Elements are cached and thus not fetched more than once" >> {
-      var fetchCount = 0
-
-      case class TrackedOne(x: Int)
-
-      implicit object TrackedOneSource extends DataSource[TrackedOne, Int, Eval] {
-        override def fetchMany(ids: List[TrackedOne]): Eval[Map[TrackedOne, Int]] = {
-          fetchCount += ids.size
-          Eval.now(ids.map(t => (t, t.x)).toMap)
-        }
-      }
-
-      case class CachedValue(x: Int)
-
-      implicit object CachedValueSource extends DataSource[CachedValue, Int, Eval] {
-        override def fetchMany(ids: List[CachedValue]): Eval[Map[CachedValue, Int]] = {
-          fetchCount += ids.size
-          Eval.now(ids.map(t => (t, t.x)).toMap)
-        }
-      }
-
       val fetch = for {
-        aOne <- Fetch(CachedValue(1))
-        anotherOne <- Fetch(CachedValue(1))
-        _ <- Fetch(TrackedOne(1))
-        _ <- Fetch(TrackedOne(2))
-        _ <- Fetch(TrackedOne(1))
-        _ <- Fetch.collect(List(CachedValue(1)))
-        _ <- Fetch(CachedValue(1))
+        aOne <- Fetch(CountedOne(1))
+        anotherOne <- Fetch(CountedOne(1))
+        _ <- Fetch(CountedOne(1))
+        _ <- Fetch(CountedOne(2))
+        _ <- Fetch(CountedOne(3))
+        _ <- Fetch.collect(List(CountedOne(1), CountedOne(2), CountedOne(3)))
+        _ <- Fetch(CountedOne(1))
       } yield aOne + anotherOne
 
-      Fetch.runCached(fetch).extract must_== 2
-      fetchCount must_== 3
+      val (count, result) = run(Fetch.runCached(fetch))
+
+      result must_== Xor.Right(2)
+      count must_== 3
     }
 
     "Elements that are cached won't be fetched" >> {
-      var fetchCount = 0
-
-      case class TrackedOne(x: Int)
-
-      implicit object TrackedOneSource extends DataSource[TrackedOne, Int, Eval] {
-        override def fetchMany(ids: List[TrackedOne]): Eval[Map[TrackedOne, Int]] = {
-          fetchCount += ids.size
-          Eval.now(ids.map(t => (t, t.x)).toMap)
-        }
-      }
-
-      case class CachedValue(x: Int)
-
-      implicit object CachedValueSource extends DataSource[CachedValue, Int, Eval] {
-        override def fetchMany(ids: List[CachedValue]): Eval[Map[CachedValue, Int]] = {
-          fetchCount += ids.size
-          Eval.now(ids.map(t => (t, t.x)).toMap)
-        }
-      }
-
       val fetch = for {
-        aOne <- Fetch(CachedValue(1))
-        anotherOne <- Fetch(CachedValue(1))
-        _ <- Fetch(TrackedOne(1))
-        _ <- Fetch(TrackedOne(2))
-        _ <- Fetch(TrackedOne(1))
-        _ <- Fetch.collect(List(CachedValue(1)))
-        _ <- Fetch(CachedValue(1))
+        aOne <- Fetch(CountedOne(1))
+        anotherOne <- Fetch(CountedOne(1))
+        _ <- Fetch(CountedOne(1))
+        _ <- Fetch(CountedOne(2))
+        _ <- Fetch(CountedOne(3))
+        _ <- Fetch.collect(List(CountedOne(1), CountedOne(2), CountedOne(3)))
+        _ <- Fetch(CountedOne(1))
       } yield aOne + anotherOne
 
-      Fetch.runCached(fetch, Cache(
-        CachedValue(1) -> 1,
-        TrackedOne(1) -> 1,
-        TrackedOne(2) -> 2
-      )).extract must_== 2
-      fetchCount must_== 0
+      val (count, result) = run(Fetch.runCached(fetch, Cache(
+        CountedOne(1) -> 1,
+        CountedOne(2) -> 2,
+        CountedOne(3) -> 3
+      )))
+
+      result must_== Xor.Right(2)
+      count must_== 0
     }
   }
 }
