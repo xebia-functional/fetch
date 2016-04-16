@@ -109,7 +109,6 @@ object Fetch {
   ): Fetch[(A, B)] =
     (Fetch(fl) |@| Fetch(fr)).tupled
 
-
   def run[I, A, M[_]](fa: Fetch[A])(
     implicit
     MM: MonadError[M, Throwable]
