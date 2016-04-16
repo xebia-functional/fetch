@@ -90,6 +90,7 @@ object Fetch {
   ): Fetch[List[A]] =
     Free.liftF(FetchMany[I, A, M](ids, DS))
 
+  /// xxx: List[B] -> (B -> Fetch[A]) -> Fetch[List[A]]
   def traverse[I, A, B, M[_]](ids: List[B])(f: B => I)(
     implicit DS: DataSource[I, A, M]
   ): Fetch[List[A]] =

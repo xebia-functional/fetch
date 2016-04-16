@@ -1,6 +1,6 @@
 import org.specs2.mutable._
 
-import cats.{ MonadError, Eval }
+import cats.{ MonadError }
 import cats.data.{ State, Xor }
 import cats.syntax.comonad._
 
@@ -273,6 +273,8 @@ class FetchSpec extends Specification {
         _ <- Fetch(CountedOne(1))
         _ <- Fetch(CountedOne(2))
         _ <- Fetch(CountedOne(3))
+        _ <- Fetch(One(1))
+        _ <- Fetch(Many(3))
         _ <- Fetch.collect(List(CountedOne(1), CountedOne(2), CountedOne(3)))
         _ <- Fetch(CountedOne(1))
       } yield aOne + anotherOne
@@ -290,6 +292,8 @@ class FetchSpec extends Specification {
         _ <- Fetch(CountedOne(1))
         _ <- Fetch(CountedOne(2))
         _ <- Fetch(CountedOne(3))
+        _ <- Fetch(One(1))
+        _ <- Fetch(Many(3))
         _ <- Fetch.collect(List(CountedOne(1), CountedOne(2), CountedOne(3)))
         _ <- Fetch(CountedOne(1))
       } yield aOne + anotherOne
@@ -311,7 +315,9 @@ class FetchSpec extends Specification {
     val fullcache: Map[Any, Any] = Map(
       CountedOne(1) -> 1,
       CountedOne(2) -> 2,
-      CountedOne(3) -> 3
+      CountedOne(3) -> 3,
+      One(1) -> 1,
+      Many(2) -> List(0, 1)
     )
 
     implicit object DC extends Cache[FullCache] {
@@ -324,6 +330,8 @@ class FetchSpec extends Specification {
         aOne <- Fetch(CountedOne(1))
         anotherOne <- Fetch(CountedOne(1))
         _ <- Fetch(CountedOne(1))
+        _ <- Fetch(One(1))
+        _ <- Fetch(Many(2))
         _ <- Fetch(CountedOne(2))
         _ <- Fetch(CountedOne(3))
         _ <- Fetch.collect(List(CountedOne(1), CountedOne(2), CountedOne(3)))
@@ -339,3 +347,120 @@ class FetchSpec extends Specification {
 }
 
 
+class FetchFutureSpec extends Specification {
+  import scala.concurrent._
+  import scala.concurrent.duration._
+  import scala.concurrent.ExecutionContext.Implicits.global
+
+  import cats.std.future._
+
+  case class ArticleId(id: Int)
+  case class Article(id: Int, content: String) {
+    def author: Int = id + 1
+  }
+  def article(id: Int): ArticleId = ArticleId(id)
+
+  implicit object ArticleFuture extends DataSource[ArticleId, Article, Future] {
+    override def fetchMany(ids: List[ArticleId]): Future[Map[ArticleId, Article]] = {
+      Future({
+        ids.map(tid => (tid, Article(tid.id, "An article with id " + tid.id))).toMap
+      })
+    }
+  }
+
+  case class AuthorId(id: Int)
+  case class Author(id: Int, name: String)
+  def author(a: Article): AuthorId = AuthorId(a.author)
+  implicit object AuthorFuture extends DataSource[AuthorId, Author, Future] {
+    override def fetchMany(ids: List[AuthorId]): Future[Map[AuthorId, Author]] = {
+      Future({
+        ids.map(tid => (tid, Author(tid.id, "@egg" + tid.id))).toMap
+      })
+    }
+  }
+
+  val fetchArticleAndAuthor: Fetch[(Article, Author)] = for {
+    art <- Fetch(article(1))
+    author <- Fetch(author(art))
+  } yield (art, author)
+
+  val fetchAuthors: Fetch[List[Article]] = for {
+    articles <- Fetch.collect(List(article(1), article(1), article(3)))
+  } yield articles
+
+  "Fetch futures" >> {
+    "We can interpret a fetch into a future" >> {
+      val fetchArticle: Fetch[Article] = Fetch(ArticleId(1))
+      val article: Future[Article] = Fetch.run(fetchArticle)
+      Await.result(article, 1 seconds) must_== Article(1, "An article with id 1")
+    }
+
+    "We can combine several data sources and interpret a fetch into a future" >> {
+      val fetchArticleAndAuthor: Fetch[(Article, Author)] = for {
+        art <- Fetch(article(1))
+        author <- Fetch(author(art))
+      } yield (art, author)
+      val articleAndAuthor: Future[(Article, Author)] = Fetch.run(fetchArticleAndAuthor)
+      Await.result(articleAndAuthor, 1 seconds) must_== (Article(1, "An article with id 1"), Author(2, "@egg2"))
+    }
+
+    "We can use combinators in a for comprehension and interpret a fetch into a future" >> {
+      val fetchArticles: Fetch[List[Article]] = for {
+        articles <- Fetch.collect(List(article(1), article(1), article(2)))
+      } yield articles
+      val articles: Future[List[Article]] = Fetch.run(fetchArticles)
+      Await.result(articles, 1 seconds) must_== List(
+        Article(1, "An article with id 1"),
+        Article(1, "An article with id 1"),
+        Article(2, "An article with id 2")
+      )
+    }
+
+    "We can interpret a fetch into a future with an in-memory cache" >> {
+      val fetchArticle: Fetch[Article] = Fetch(ArticleId(1))
+      val article: Future[Article] = Fetch.runCached(fetchArticle, InMemoryCache.empty)
+      Await.result(article, 1 seconds) must_== Article(1, "An article with id 1")
+    }
+
+    "We can combine several data sources and interpret a fetch into a future with an in-memory cache" >> {
+      val fetchArticleAndAuthor: Fetch[(Article, Author)] = for {
+        art <- Fetch(article(1))
+        author <- Fetch(author(art))
+      } yield (art, author)
+      val articleAndAuthor: Future[(Article, Author)] = Fetch.runCached(fetchArticleAndAuthor, InMemoryCache.empty)
+      Await.result(articleAndAuthor, 1 seconds) must_== (Article(1, "An article with id 1"), Author(2, "@egg2"))
+    }
+
+    "We can use combinators in a for comprehension and interpret a fetch into a future with an in-memory cache" >> {
+      val fetchArticles: Fetch[List[Article]] = for {
+        articles <- Fetch.collect(List(article(1), article(1), article(2)))
+      } yield articles
+      val articles: Future[List[Article]] = Fetch.runCached(fetchArticles, InMemoryCache.empty)
+      Await.result(articles, 1 seconds) must_== List(
+        Article(1, "An article with id 1"),
+        Article(1, "An article with id 1"),
+        Article(2, "An article with id 2")
+      )
+    }
+
+    "We can use combinators and multiple sources in a for comprehension and interpret a fetch into a future with an in-memory cache" >> {
+      val fetchArticleAndAuthor = for {
+        articles <- Fetch.collect(List(article(1), article(1), article(2)))
+        authors <- Fetch.traverse(articles)(author)
+      } yield (articles, authors)
+      val articleAndAuthor: Future[(List[Article], List[Author])] = Fetch.runCached(fetchArticleAndAuthor, InMemoryCache.empty)
+      Await.result(articleAndAuthor, 1 seconds) must_== (
+        List(
+          Article(1, "An article with id 1"),
+          Article(1, "An article with id 1"),
+          Article(2, "An article with id 2")
+        ),
+        List(
+          Author(2, "@egg2"),
+          Author(2, "@egg2"),
+          Author(3, "@egg3")
+        )
+      )
+    }
+  }
+}
