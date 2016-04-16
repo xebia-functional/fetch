@@ -88,23 +88,23 @@ class FetchSpec extends Specification {
 
     "We can lift plain values to Fetch and run them with a cache" >> {
       val fetch = Fetch.pure(42)
-      right(Fetch.runCached(fetch)) must_== 42
+      right(Fetch.runCached(fetch, InMemoryCache.empty)) must_== 42
     }
 
     "Data sources with errors throw fetch failures" >> {
       val fetch: Fetch[Int] = Fetch(Never())
-      left(Fetch.run(fetch)) must_== FetchFailure(Cache.empty, List(Never()))
+      left(Fetch.run(fetch)) must_== FetchFailure(None, List(Never()))
     }
 
     "Data sources with errors and cached values throw fetch failures with the cache" >> {
       val fetch: Fetch[Int] = Fetch(Never())
-      val cache = Cache(One(1) -> 1)
-      left(Fetch.runCached(fetch, cache)) must_== FetchFailure(cache, List(Never()))
+      val cache = InMemoryCache(One(1) -> 1)
+      left(Fetch.runCached(fetch, cache)) must_== FetchFailure(Option(cache), List(Never()))
     }
 
     "Data sources with errors won't fail if they're cached" >> {
       val fetch: Fetch[Int] = Fetch(Never())
-      val cache = Cache(Never() -> 1)
+      val cache = InMemoryCache(Never() -> 1)
       right(Fetch.runCached(fetch, cache)) must_== 1
     }
 
@@ -115,7 +115,7 @@ class FetchSpec extends Specification {
 
     "We can lift errors to Fetch and run them with a cache" >> {
       val fetch: Fetch[Int] = Fetch.error(NotFound)
-      left(Fetch.runCached(fetch)) must_== NotFound
+      left(Fetch.runCached(fetch, InMemoryCache.empty)) must_== NotFound
     }
 
     "We can lift handle and recover from errors in Fetch" >> {
@@ -141,7 +141,7 @@ class FetchSpec extends Specification {
     }
 
     "We can lift values which have a Data Source to Fetch and run them with a cache" >> {
-      right(Fetch.runCached(Fetch(One(1)))) == 1
+      right(Fetch.runCached(Fetch(One(1)), InMemoryCache.empty)) == 1
     }
 
     "We can map over Fetch values" >> {
@@ -278,7 +278,7 @@ class FetchSpec extends Specification {
         _ <- Fetch(CountedOne(1))
       } yield aOne + anotherOne
 
-      val (count, result) = run(Fetch.runCached(fetch))
+      val (count, result) = run(Fetch.runCached(fetch, InMemoryCache.empty))
 
       result must_== Xor.Right(2)
       count must_== 3
@@ -295,7 +295,7 @@ class FetchSpec extends Specification {
         _ <- Fetch(CountedOne(1))
       } yield aOne + anotherOne
 
-      val (count, result) = run(Fetch.runCached(fetch, Cache(
+      val (count, result) = run(Fetch.runCached(fetch, InMemoryCache(
         CountedOne(1) -> 1,
         CountedOne(2) -> 2,
         CountedOne(3) -> 3
