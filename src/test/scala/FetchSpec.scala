@@ -43,18 +43,21 @@ class FetchSpec extends Specification {
 
     case class One(id: Int)
     implicit object OneSource extends DataSource[One, Int, Count] {
+      override def name = "OneSource"
       override def fetchMany(ids: List[One]): Count[Map[One, Int]] =
         ISM.pure(ids.map(one => (one, one.id)).toMap)
     }
 
     case class Many(n: Int)
     implicit object ManySource extends DataSource[Many, List[Int], Count] {
+      override def name = "ManySource"
       override def fetchMany(ids: List[Many]): Count[Map[Many, List[Int]]] =
         ISM.pure(ids.map(m => (m, 0 until m.n toList)).toMap)
     }
 
     case class Never()
     implicit object NeverSource extends DataSource[Never, Int, Count] {
+      override def name = "NeverSource"
       override def fetchMany(ids: List[Never]): Count[Map[Never, Int]] =
         ISM.pure(Map.empty[Never, Int])
     }
@@ -62,6 +65,7 @@ class FetchSpec extends Specification {
     case class BatchCountOne(x: Int)
 
     implicit object BatchCountOneSource extends DataSource[BatchCountOne, Int, Count] {
+      override def name = "BatchCountOne"
       override def fetchMany(ids: List[BatchCountOne]): Count[Map[BatchCountOne, Int]] = {
         State.modify((x: Int) => x + 1).flatMap(_ => ISM.pure(ids.map(t => (t, t.x)).toMap))
       }
@@ -70,12 +74,16 @@ class FetchSpec extends Specification {
     case class CountedOne(x: Int)
 
     implicit object CountedOneSource extends DataSource[CountedOne, Int, Count] {
+      override def name = "CountedOneSource"
       override def fetchMany(ids: List[CountedOne]): Count[Map[CountedOne, Int]] = {
         State.modify((x: Int) => x + ids.size).flatMap(_ => ISM.pure(ids.map(t => (t, t.x)).toMap))
       }
     }
 
     def run[A](f: Count[A]): (Int, Xor[Throwable, A]) = f.run(0).value
+
+    def runEnv[A](f: Fetch[A]): FetchEnv[InMemoryCache] =
+      Fetch.runEnv(f, FetchEnv(InMemoryCache())).run(0).value._2.toOption.get
 
     def right[A](f: Count[A]): A = run(f)._2.toOption.get
 
@@ -94,24 +102,36 @@ class FetchSpec extends Specification {
     "Data sources with errors throw fetch failures" >> {
       val fetch: Fetch[Int] = Fetch(Never())
       left(Fetch.run(fetch)) match {
-        case FetchFailure(env: Env[_, _]) => env.ids must_== List(Never())
+        case FetchFailure(env: Env[_]) => {
+          println("*" * 80)
+          env.printRounds
+          println("*" * 80)
+
+          env.rounds.size must_== 1
+          env.rounds.headOption.fold(
+            false
+          )(round => round.kind match {
+            case OneRound(id) => id must_== Never()
+            case _ => false
+          })
+        }
       }
     }
 
     "Data sources with errors and cached values throw fetch failures with the cache" >> {
       val fetch: Fetch[Int] = Fetch(Never())
       val cache = InMemoryCache(
-        (OneSource.toString, One(1)) -> 1
+        OneSource.identity(One(1)) -> 1
       )
       left(Fetch.runCached(fetch, cache)) match {
-        case FetchFailure(env: Env[_, _]) => env.cache must_== cache
+        case FetchFailure(env: Env[_]) => env.cache must_== cache
       }
     }
 
     "Data sources with errors won't fail if they're cached" >> {
       val fetch: Fetch[Int] = Fetch(Never())
       val cache = InMemoryCache(
-        (NeverSource.toString, Never()) -> 1
+        NeverSource.identity(Never()) -> 1
       )
       right(Fetch.runCached(fetch, cache)) must_== 1
     }
@@ -308,9 +328,9 @@ class FetchSpec extends Specification {
       } yield aOne + anotherOne
 
       val (count, result) = run(Fetch.runCached(fetch, InMemoryCache(
-        (CountedOneSource.toString, CountedOne(1)) -> 1,
-        (CountedOneSource.toString, CountedOne(2)) -> 2,
-        (CountedOneSource.toString, CountedOne(3)) -> 3
+        CountedOneSource.identity(CountedOne(1)) -> 1,
+        CountedOneSource.identity(CountedOne(2)) -> 2,
+        CountedOneSource.identity(CountedOne(3)) -> 3
       )))
 
       result must_== Xor.Right(2)
@@ -319,20 +339,20 @@ class FetchSpec extends Specification {
 
     // caching with custom caches
 
-    case class FullCache() extends DataSourceCache
+    case class MyCache(state: Map[Any, Any] = Map.empty[Any, Any]) extends DataSourceCache
 
-    val fullcache: Map[Any, Any] = Map(
-      (CountedOneSource.toString, CountedOne(1)) -> 1,
-      (CountedOneSource.toString, CountedOne(2)) -> 2,
-      (CountedOneSource.toString, CountedOne(3)) -> 3,
-      (OneSource.toString, One(1)) -> 1,
-      (ManySource.toString, Many(2)) -> List(0, 1)
-    )
-
-    implicit object DC extends Cache[FullCache] {
-      override def get[I](c: FullCache, k: (String, I)): Option[Any] = fullcache.get(k)
-      override def update[I, A](c: FullCache, k: (String, I), v: A): FullCache = c
+    implicit object DC extends Cache[MyCache] {
+      override def get[I](c: MyCache, k: DataSourceIdentity): Option[Any] = c.state.get(k)
+      override def update[I, A](c: MyCache, k: DataSourceIdentity, v: A): MyCache = c.copy(state = c.state.updated(k, v))
     }
+
+    val fullCache: MyCache = MyCache(Map(
+      CountedOneSource.identity(CountedOne(1)) -> 1,
+      CountedOneSource.identity(CountedOne(2)) -> 2,
+      CountedOneSource.identity(CountedOne(3)) -> 3,
+      OneSource.identity(One(1)) -> 1,
+      ManySource.identity(Many(2)) -> List(0, 1)
+    ))
 
     "we can use a custom cache" >> {
       val fetch = for {
@@ -347,12 +367,36 @@ class FetchSpec extends Specification {
         _ <- Fetch(CountedOne(1))
       } yield aOne + anotherOne
 
-      val (count, result) = run(Fetch.runCached(fetch, FullCache()))
+      val (count, result) = run(Fetch.runCached(fetch, fullCache))
 
       result must_== Xor.Right(2)
       count must_== 0
     }
+
+    // Environment
+
+    "Can be printed" >> {
+      val fetch: Fetch[Int] = for {
+        aOne <- Fetch(CountedOne(1))
+        anotherOne <- Fetch(CountedOne(1))
+        _ <- Fetch(CountedOne(1))
+        _ <- Fetch(One(1))
+        _ <- Fetch(Many(2))
+        _ <- Fetch(CountedOne(2))
+        _ <- Fetch(CountedOne(3))
+        _ <- Fetch.collect(List(CountedOne(1), CountedOne(2), CountedOne(3)))
+        _ <- Fetch(CountedOne(1))
+      } yield aOne + anotherOne
+
+      val env = runEnv(fetch)
+
+      println("*" * 100)
+      env.printRounds
+      println("*" * 100)
+      env.rounds.size must_== 9
+    }
   }
+
 }
 
 
@@ -370,6 +414,7 @@ class FetchFutureSpec extends Specification {
   def article(id: Int): ArticleId = ArticleId(id)
 
   implicit object ArticleFuture extends DataSource[ArticleId, Article, Future] {
+    override def name = "ArticleFuture"
     override def fetchMany(ids: List[ArticleId]): Future[Map[ArticleId, Article]] = {
       Future({
         ids.map(tid => (tid, Article(tid.id, "An article with id " + tid.id))).toMap
@@ -381,6 +426,7 @@ class FetchFutureSpec extends Specification {
   case class Author(id: Int, name: String)
   def author(a: Article): AuthorId = AuthorId(a.author)
   implicit object AuthorFuture extends DataSource[AuthorId, Author, Future] {
+    override def name = "AuthorFuture"
     override def fetchMany(ids: List[AuthorId]): Future[Map[AuthorId, Author]] = {
       Future({
         ids.map(tid => (tid, Author(tid.id, "@egg" + tid.id))).toMap
