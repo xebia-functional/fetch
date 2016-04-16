@@ -93,7 +93,9 @@ class FetchSpec extends Specification {
 
     "Data sources with errors throw fetch failures" >> {
       val fetch: Fetch[Int] = Fetch(Never())
-      left(Fetch.run(fetch)).asInstanceOf[FetchFailure[_, _]].ids must_== List(Never())
+      left(Fetch.run(fetch)) match {
+        case FetchFailure(env: Env[_, _]) => env.ids must_== List(Never())
+      }
     }
 
     "Data sources with errors and cached values throw fetch failures with the cache" >> {
@@ -101,7 +103,9 @@ class FetchSpec extends Specification {
       val cache = InMemoryCache(
         (OneSource.toString, One(1)) -> 1
       )
-      left(Fetch.runCached(fetch, cache)) must_== FetchFailure(Option(cache), List(Never()))
+      left(Fetch.runCached(fetch, cache)) match {
+        case FetchFailure(env: Env[_, _]) => env.cache must_== Option(cache)
+      }
     }
 
     "Data sources with errors won't fail if they're cached" >> {
@@ -315,7 +319,7 @@ class FetchSpec extends Specification {
 
     // caching with custom caches
 
-    case class FullCache()
+    case class FullCache() extends DataSourceCache
 
     val fullcache: Map[Any, Any] = Map(
       (CountedOneSource.toString, CountedOne(1)) -> 1,

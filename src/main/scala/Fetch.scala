@@ -13,17 +13,28 @@ trait DataSource[I, A, M[_]] {
   def fetchMany(ids: List[I]): M[Map[I, A]]
 }
 
-trait Cache[T]{
+trait DataSourceCache
+
+trait Cache[T <: DataSourceCache]{
   def makeKey[M[_]](k: Any, ds: DataSource[_, _, M]): (String, Any) =
     (ds.identity, k)
   def update[I, A](c: T, k: (String, I), v: A): T
   def get[I](c: T, k: (String, I)): Option[Any]
 }
 
-case class FetchFailure[C, I](
+trait Env[C <: DataSourceCache, I]{
+  def cache: Option[C]
+  def ids: List[I]
+}
+
+case class FetchEnv[C <: DataSourceCache, I](
   cache: Option[C],
   ids: List[I]
-)(implicit CC: Cache[C]) extends Throwable
+) extends Env[C, I]
+
+case class FetchFailure[C <: DataSourceCache, I](env: Env[C, I])(
+  implicit CC: Cache[C]
+) extends Throwable
 
 object algebra {
   sealed abstract class FetchOp[A] extends Product with Serializable
@@ -46,7 +57,7 @@ object types {
 
 object cache {
   // no cache
-  case class NoCache()
+  case class NoCache() extends DataSourceCache
 
   implicit object NoCacheImpl extends Cache[NoCache]{
     override def get[I](c: NoCache, k: (String, I)): Option[Any] = None
@@ -54,20 +65,20 @@ object cache {
   }
 
   // in-memory cache
-  type InMemoryCache = Map[Any, Any]
+  case class InMemoryCache(state:Map[Any, Any]) extends DataSourceCache
 
   object InMemoryCache {
-    def empty: InMemoryCache = Map.empty[Any, Any]
+    def empty: InMemoryCache = InMemoryCache(Map.empty[Any, Any])
 
     def apply(results: (Any, Any)*): InMemoryCache =
-      results.foldLeft(empty)({
+      InMemoryCache(results.foldLeft(Map.empty[Any, Any])({
         case (c, (k, v)) => c.updated(k, v)
-      })
+      }))
   }
 
   implicit object InMemoryCacheImpl extends Cache[InMemoryCache]{
-    override def get[I](c: InMemoryCache, k: (String, I)): Option[Any] = c.get(k)
-    override def update[I, A](c: InMemoryCache, k: (String, I), v: A): InMemoryCache = c.updated(k, v)
+    override def get[I](c: InMemoryCache, k: (String, I)): Option[Any] = c.state.get(k)
+    override def update[I, A](c: InMemoryCache, k: (String, I), v: A): InMemoryCache = InMemoryCache(c.state.updated(k, v))
   }
 }
 
@@ -117,7 +128,7 @@ object Fetch {
     MM: MonadError[M, Throwable]
   ): M[A] = runCached[I, A, NoCache, M](fa, NoCache())(MM, NoCacheImpl)
 
-  def runCached[I, A, C, M[_]](
+  def runCached[I, A, C <: DataSourceCache, M[_]](
     fa: Fetch[A],
     cache: C
   )(
@@ -140,7 +151,7 @@ object interpreters {
   import types._
   import cache._
 
-  def cached[I, C, M[_]](
+  def cached[I, C <: DataSourceCache, M[_]](
     implicit
       MM: MonadError[M, Throwable],
     CC: Cache[C]
@@ -153,7 +164,13 @@ object interpreters {
           case FetchOne(id: I, ds) => {
             CC.get(cache, CC.makeKey[Any](id, ds)).fold[M[(C, A)]](
               MM.flatMap(ds.fetchMany(List(id)).asInstanceOf[M[Map[I, A]]])((res: Map[I, A]) => {
-                res.get(id).fold[M[(C, A)]](MM.raiseError(FetchFailure(Option(cache), List(id))))(result => {
+                res.get(id).fold[M[(C, A)]](
+                  MM.raiseError(
+                    FetchFailure(
+                      FetchEnv(Option(cache), List(id))
+                    )
+                  )
+                )(result => {
                   MM.pure((CC.update(cache, CC.makeKey[Any](id, ds), result), result))
                 })
               })
@@ -168,7 +185,11 @@ object interpreters {
             else {
               MM.flatMap(ds.fetchMany(newIds).asInstanceOf[M[Map[I, A]]])((res: Map[I, A]) => {
                 ids.map(res.get(_)).sequence.fold[M[(C, A)]](
-                  MM.raiseError(FetchFailure(Option(cache), newIds))
+                  MM.raiseError(
+                    FetchFailure(
+                      FetchEnv(Option(cache), newIds)
+                    )
+                  )
                 )(results => {
                   val newCache = res.foldLeft(cache)({
                     case (c, (k, v)) => CC.update(c, CC.makeKey[Any](k, ds), v)
