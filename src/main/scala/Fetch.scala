@@ -23,14 +23,36 @@ trait Cache[T <: DataSourceCache]{
 }
 
 trait Env[C <: DataSourceCache, I]{
-  def cache: Option[C]
+  def cache: C
   def ids: List[I]
+  def rounds: List[Round]
+
+  def next(
+    newCache: C,
+    newRounds: List[Round],
+    newIds: List[I]
+  ): Env[C, I]
 }
 
+case class Round(ds: String, kind: RoundKind) // todo: time info
+
+sealed abstract class RoundKind
+case class OneRound(id: Any) extends RoundKind
+case class ManyRound(ids: List[Any]) extends RoundKind
+
 case class FetchEnv[C <: DataSourceCache, I](
-  cache: Option[C],
-  ids: List[I]
-) extends Env[C, I]
+  cache: C,
+  ids: List[I] = Nil,
+  rounds: List[Round] = Nil
+) extends Env[C, I]{
+
+  def next(
+    newCache: C,
+    newRounds: List[Round],
+    newIds: List[I]
+  ): FetchEnv[C, I] =
+    copy(cache = newCache, rounds = newRounds, ids = newIds)
+}
 
 case class FetchFailure[C <: DataSourceCache, I](env: Env[C, I])(
   implicit CC: Cache[C]
@@ -50,8 +72,8 @@ object types {
 
   type Fetch[A] = Free[FetchOp, A]
 
-  type FetchOpSTC[M[_], C] = {
-    type f[x] = StateT[M, C, x]
+  type FetchInterpreter[M[_], E <: Env[_, _]] = {
+    type f[x] = StateT[M, E, x]
   }
 }
 
@@ -123,10 +145,30 @@ object Fetch {
   ): Fetch[(A, B)] =
     (Fetch(fl) |@| Fetch(fr)).tupled
 
-  def run[I, A, M[_]](fa: Fetch[A])(
+  def runFetch[I, A, C <: DataSourceCache, M[_]](
+    fa: Fetch[A],
+    env: FetchEnv[C, I]
+  )(
     implicit
-    MM: MonadError[M, Throwable]
-  ): M[A] = runCached[I, A, NoCache, M](fa, NoCache())(MM, NoCacheImpl)
+      MM: MonadError[M, Throwable],
+    CC: Cache[C]
+  ): M[A] = fa.foldMap[FetchInterpreter[M, FetchEnv[C, I]]#f](interpreter).runA(env)
+
+  def runEnv[I, A, C <: DataSourceCache, M[_]](
+    fa: Fetch[A],
+    env: FetchEnv[C, I]
+  )(
+    implicit
+      MM: MonadError[M, Throwable],
+    CC: Cache[C]
+  ): M[FetchEnv[C, I]] = fa.foldMap[FetchInterpreter[M, FetchEnv[C, I]]#f](interpreter).runS(env)
+
+  def run[I, A, M[_]](
+    fa: Fetch[A]
+  )(
+    implicit
+      MM: MonadError[M, Throwable]
+  ): M[A] = runFetch[I, A, NoCache, M](fa, FetchEnv(NoCache()))(MM, NoCacheImpl)
 
   def runCached[I, A, C <: DataSourceCache, M[_]](
     fa: Fetch[A],
@@ -135,7 +177,7 @@ object Fetch {
     implicit
       MM: MonadError[M, Throwable],
     CC: Cache[C]
-  ): M[A] = fa.foldMap[FetchOpSTC[M, C]#f](cached).runA(cache)
+  ): M[A] = runFetch[I, A, C, M](fa, FetchEnv(cache))(MM, CC)
 
   def runWith[I, A, M[_]](
     fa: Fetch[A],
@@ -151,50 +193,57 @@ object interpreters {
   import types._
   import cache._
 
-  def cached[I, C <: DataSourceCache, M[_]](
+  def interpreter[C <: DataSourceCache, I, E <: Env[C, I], M[_]](
     implicit
       MM: MonadError[M, Throwable],
     CC: Cache[C]
-  ): FetchOp ~> FetchOpSTC[M, C]#f = {
-    new (FetchOp ~> FetchOpSTC[M, C]#f) {
-      def apply[A](fa: FetchOp[A]): FetchOpSTC[M, C]#f[A] = {
-        StateT[M, C, A] { cache => fa match {
-          case Result(a) => MM.pure((cache, a))
+  ): FetchOp ~> FetchInterpreter[M, FetchEnv[C, I]]#f = {
+    new (FetchOp ~> FetchInterpreter[M, FetchEnv[C, I]]#f) {
+      def apply[A](fa: FetchOp[A]): FetchInterpreter[M, FetchEnv[C, I]]#f[A] = {
+        StateT[M, FetchEnv[C, I], A] { env: FetchEnv[C, I] => fa match {
+          case Result(a) => MM.pure((env, a))
           case FetchError(e) => MM.raiseError(e)
           case FetchOne(id: I, ds) => {
-            CC.get(cache, CC.makeKey[Any](id, ds)).fold[M[(C, A)]](
+            val cache = env.cache
+            val round = Round(ds.identity, OneRound(id))
+            val newRounds = env.rounds ++ List(round)
+            CC.get(cache, CC.makeKey[Any](id, ds)).fold[M[(FetchEnv[C, I], A)]](
               MM.flatMap(ds.fetchMany(List(id)).asInstanceOf[M[Map[I, A]]])((res: Map[I, A]) => {
-                res.get(id).fold[M[(C, A)]](
+                res.get(id).fold[M[(FetchEnv[C, I], A)]](
                   MM.raiseError(
                     FetchFailure(
-                      FetchEnv(Option(cache), List(id))
+                      env.next(cache, newRounds, List(id))
                     )
                   )
                 )(result => {
-                  MM.pure((CC.update(cache, CC.makeKey[Any](id, ds), result), result))
+                  val newCache = CC.update(cache, CC.makeKey[Any](id, ds), result)
+                  MM.pure((env.next(newCache, newRounds, List(id)), result))
                 })
               })
             )(cached => {
-              MM.pure((cache, cached.asInstanceOf[A]))
+              MM.pure((env.next(cache, newRounds, List(id)), cached.asInstanceOf[A]))
             })
           }
           case FetchMany(ids: List[I], ds) => {
+            val cache = env.cache
+            val round = Round(ds.identity, ManyRound(ids))
+            val newRounds = env.rounds ++ List(round)
             val newIds = ids.distinct.filterNot(i => CC.get(cache, CC.makeKey[Any](i, ds)).isDefined)
             if (newIds.isEmpty)
-              MM.pureEval(Eval.later((cache, ids.flatMap(id => CC.get(cache, CC.makeKey[Any](id, ds))))))
+              MM.pure((env.next(cache, newRounds, newIds), ids.flatMap(id => CC.get(cache, CC.makeKey[Any](id, ds)))))
             else {
               MM.flatMap(ds.fetchMany(newIds).asInstanceOf[M[Map[I, A]]])((res: Map[I, A]) => {
-                ids.map(res.get(_)).sequence.fold[M[(C, A)]](
+                ids.map(res.get(_)).sequence.fold[M[(FetchEnv[C, I], A)]](
                   MM.raiseError(
                     FetchFailure(
-                      FetchEnv(Option(cache), newIds)
+                      env.next(cache, newRounds, newIds)
                     )
                   )
                 )(results => {
                   val newCache = res.foldLeft(cache)({
                     case (c, (k, v)) => CC.update(c, CC.makeKey[Any](k, ds), v)
                   })
-                  MM.pureEval(Eval.later((newCache, results)))
+                  MM.pure((env.next(newCache, newRounds, newIds), results))
                 })
               })
             }

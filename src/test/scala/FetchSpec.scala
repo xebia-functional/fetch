@@ -104,7 +104,7 @@ class FetchSpec extends Specification {
         (OneSource.toString, One(1)) -> 1
       )
       left(Fetch.runCached(fetch, cache)) match {
-        case FetchFailure(env: Env[_, _]) => env.cache must_== Option(cache)
+        case FetchFailure(env: Env[_, _]) => env.cache must_== cache
       }
     }
 
