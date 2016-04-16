@@ -6,6 +6,7 @@ import cats.syntax.comonad._
 
 import fetch._
 import fetch.types._
+import fetch.cache._
 
 class FetchSpec extends Specification {
   type Count[A] = State[Int, Xor[Throwable, A]]

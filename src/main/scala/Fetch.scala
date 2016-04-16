@@ -39,8 +39,21 @@ object types {
 
   type Fetch[A] = Free[FetchOp, A]
 
-  // in-memory cache
+  type FetchOpSTC[M[_], C] = {
+    type f[x] = StateT[M, C, x]
+  }
+}
 
+object cache {
+  // no cache
+  case class NoCache()
+
+  implicit object NoCacheImpl extends Cache[NoCache]{
+    override def get[I](c: NoCache, k: (String, I)): Option[Any] = None
+    override def update[I, A](c: NoCache, k: (String, I), v: A): NoCache = c
+  }
+
+  // in-memory cache
   type InMemoryCache = Map[Any, Any]
 
   object InMemoryCache {
@@ -55,19 +68,6 @@ object types {
   implicit object InMemoryCacheImpl extends Cache[InMemoryCache]{
     override def get[I](c: InMemoryCache, k: (String, I)): Option[Any] = c.get(k)
     override def update[I, A](c: InMemoryCache, k: (String, I), v: A): InMemoryCache = c.updated(k, v)
-  }
-
-  type FetchOpSTC[M[_], C] = {
-    type f[x] = StateT[M, C, x]
-  }
-}
-
-object cache {
-  case class NoCache()
-
-  implicit object NoCacheImpl extends Cache[NoCache]{
-    override def get[I](c: NoCache, k: (String, I)): Option[Any] = None
-    override def update[I, A](c: NoCache, k: (String, I), v: A): NoCache = c
   }
 }
 
