@@ -325,8 +325,8 @@ class FetchSpec extends Specification {
     )
 
     implicit object DC extends Cache[FullCache] {
-      override def get(c: FullCache, k: (String, Any)): Option[Any] = fullcache.get(k)
-      override def update(c: FullCache, k: (String, Any), v: Any): FullCache = c
+      override def get[I](c: FullCache, k: (String, I)): Option[Any] = fullcache.get(k)
+      override def update[I, A](c: FullCache, k: (String, I), v: A): FullCache = c
     }
 
     "we can use a custom cache" >> {

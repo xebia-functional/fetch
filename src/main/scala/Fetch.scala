@@ -16,8 +16,8 @@ trait DataSource[I, A, M[_]] {
 trait Cache[T]{
   def makeKey[M[_]](k: Any, ds: DataSource[_, _, M]): (String, Any) =
     (ds.identity, k)
-  def update(c: T, k: (String, Any), v: Any): T
-  def get(c: T, k: (String, Any)): Option[Any]
+  def update[I, A](c: T, k: (String, I), v: A): T
+  def get[I](c: T, k: (String, I)): Option[Any]
 }
 
 case class FetchFailure[C, I](
@@ -53,8 +53,8 @@ object types {
   }
 
   implicit object InMemoryCacheImpl extends Cache[InMemoryCache]{
-    override def get(c: InMemoryCache, k: (String, Any)): Option[Any] = c.get(k)
-    override def update(c: InMemoryCache, k: (String, Any), v: Any): InMemoryCache = c.updated(k, v)
+    override def get[I](c: InMemoryCache, k: (String, I)): Option[Any] = c.get(k)
+    override def update[I, A](c: InMemoryCache, k: (String, I), v: A): InMemoryCache = c.updated(k, v)
   }
 
   type FetchOpSTC[M[_], C] = {
@@ -66,8 +66,8 @@ object cache {
   case class NoCache()
 
   implicit object NoCacheImpl extends Cache[NoCache]{
-    override def get(c: NoCache, k: (String, Any)): Option[Any] = None
-    override def update(c: NoCache, k: (String, Any), v: Any): NoCache = c
+    override def get[I](c: NoCache, k: (String, I)): Option[Any] = None
+    override def update[I, A](c: NoCache, k: (String, I), v: A): NoCache = c
   }
 }
 
