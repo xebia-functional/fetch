@@ -9,12 +9,15 @@ import cats.syntax.traverse._
 import cats.free.{ Free }
 
 trait DataSource[I, A, M[_]] {
+  def identity: String = this.toString
   def fetchMany(ids: List[I]): M[Map[I, A]]
 }
 
 trait Cache[T]{
-  def update(c: T, k: Any, v: Any): T
-  def get(c: T, k: Any): Option[Any]
+  def makeKey[M[_]](k: Any, ds: DataSource[_, _, M]): (String, Any) =
+    (ds.identity, k)
+  def update(c: T, k: (String, Any), v: Any): T
+  def get(c: T, k: (String, Any)): Option[Any]
 }
 
 case class FetchFailure[C, I](
@@ -50,8 +53,8 @@ object types {
   }
 
   implicit object InMemoryCacheImpl extends Cache[InMemoryCache]{
-    override def get(c: InMemoryCache, k: Any): Option[Any] = c.get(k)
-    override def update(c: InMemoryCache, k: Any, v: Any): InMemoryCache = c.updated(k, v)
+    override def get(c: InMemoryCache, k: (String, Any)): Option[Any] = c.get(k)
+    override def update(c: InMemoryCache, k: (String, Any), v: Any): InMemoryCache = c.updated(k, v)
   }
 
   type FetchOpSTC[M[_], C] = {
@@ -63,8 +66,8 @@ object cache {
   case class NoCache()
 
   implicit object NoCacheImpl extends Cache[NoCache]{
-    override def get(c: NoCache, k: Any): Option[Any] = None
-    override def update(c: NoCache, k: Any, v: Any): NoCache = c
+    override def get(c: NoCache, k: (String, Any)): Option[Any] = None
+    override def update(c: NoCache, k: (String, Any), v: Any): NoCache = c
   }
 }
 
@@ -148,10 +151,10 @@ object interpreters {
           case Result(a) => MM.pure((cache, a))
           case FetchError(e) => MM.raiseError(e)
           case FetchOne(id: I, ds) => {
-            CC.get(cache, id).fold[M[(C, A)]](
+            CC.get(cache, CC.makeKey[Any](id, ds)).fold[M[(C, A)]](
               MM.flatMap(ds.fetchMany(List(id)).asInstanceOf[M[Map[I, A]]])((res: Map[I, A]) => {
                 res.get(id).fold[M[(C, A)]](MM.raiseError(FetchFailure(Option(cache), List(id))))(result => {
-                  MM.pure((CC.update(cache, id, result), result))
+                  MM.pure((CC.update(cache, CC.makeKey[Any](id, ds), result), result))
                 })
               })
             )(cached => {
@@ -159,16 +162,16 @@ object interpreters {
             })
           }
           case FetchMany(ids: List[I], ds) => {
-            val newIds = ids.distinct.filterNot(i => CC.get(cache, i).isDefined)
+            val newIds = ids.distinct.filterNot(i => CC.get(cache, CC.makeKey[Any](i, ds)).isDefined)
             if (newIds.isEmpty)
-              MM.pureEval(Eval.later((cache, ids.flatMap(id => CC.get(cache, id)))))
+              MM.pureEval(Eval.later((cache, ids.flatMap(id => CC.get(cache, CC.makeKey[Any](id, ds))))))
             else {
               MM.flatMap(ds.fetchMany(newIds).asInstanceOf[M[Map[I, A]]])((res: Map[I, A]) => {
                 ids.map(res.get(_)).sequence.fold[M[(C, A)]](
                   MM.raiseError(FetchFailure(Option(cache), newIds))
                 )(results => {
                   val newCache = res.foldLeft(cache)({
-                    case (c, (k, v)) => CC.update(c, k, v)
+                    case (c, (k, v)) => CC.update(c, CC.makeKey[Any](k, ds), v)
                   })
                   MM.pureEval(Eval.later((newCache, results)))
                 })

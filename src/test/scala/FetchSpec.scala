@@ -97,13 +97,17 @@ class FetchSpec extends Specification {
 
     "Data sources with errors and cached values throw fetch failures with the cache" >> {
       val fetch: Fetch[Int] = Fetch(Never())
-      val cache = InMemoryCache(One(1) -> 1)
+      val cache = InMemoryCache(
+        (OneSource.toString, One(1)) -> 1
+      )
       left(Fetch.runCached(fetch, cache)) must_== FetchFailure(Option(cache), List(Never()))
     }
 
     "Data sources with errors won't fail if they're cached" >> {
       val fetch: Fetch[Int] = Fetch(Never())
-      val cache = InMemoryCache(Never() -> 1)
+      val cache = InMemoryCache(
+        (NeverSource.toString, Never()) -> 1
+      )
       right(Fetch.runCached(fetch, cache)) must_== 1
     }
 
@@ -299,9 +303,9 @@ class FetchSpec extends Specification {
       } yield aOne + anotherOne
 
       val (count, result) = run(Fetch.runCached(fetch, InMemoryCache(
-        CountedOne(1) -> 1,
-        CountedOne(2) -> 2,
-        CountedOne(3) -> 3
+        (CountedOneSource.toString, CountedOne(1)) -> 1,
+        (CountedOneSource.toString, CountedOne(2)) -> 2,
+        (CountedOneSource.toString, CountedOne(3)) -> 3
       )))
 
       result must_== Xor.Right(2)
@@ -313,16 +317,16 @@ class FetchSpec extends Specification {
     case class FullCache()
 
     val fullcache: Map[Any, Any] = Map(
-      CountedOne(1) -> 1,
-      CountedOne(2) -> 2,
-      CountedOne(3) -> 3,
-      One(1) -> 1,
-      Many(2) -> List(0, 1)
+      (CountedOneSource.toString, CountedOne(1)) -> 1,
+      (CountedOneSource.toString, CountedOne(2)) -> 2,
+      (CountedOneSource.toString, CountedOne(3)) -> 3,
+      (OneSource.toString, One(1)) -> 1,
+      (ManySource.toString, Many(2)) -> List(0, 1)
     )
 
     implicit object DC extends Cache[FullCache] {
-      override def get(c: FullCache, k: Any): Option[Any] = fullcache.get(k)
-      override def update(c: FullCache, k: Any, v: Any): FullCache = c
+      override def get(c: FullCache, k: (String, Any)): Option[Any] = fullcache.get(k)
+      override def update(c: FullCache, k: (String, Any), v: Any): FullCache = c
     }
 
     "we can use a custom cache" >> {
