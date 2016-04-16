@@ -29,12 +29,17 @@ trait Env[C <: DataSourceCache, I]{
 
   def next(
     newCache: C,
-    newRounds: List[Round],
+    newRound: Round,
     newIds: List[I]
   ): Env[C, I]
 }
 
-case class Round(ds: String, kind: RoundKind) // todo: time info
+case class Round(
+  ds: String,
+  kind: RoundKind,
+  startRound: Long,
+  endRound: Long
+)
 
 sealed abstract class RoundKind
 case class OneRound(id: Any) extends RoundKind
@@ -48,10 +53,10 @@ case class FetchEnv[C <: DataSourceCache, I](
 
   def next(
     newCache: C,
-    newRounds: List[Round],
+    newRound: Round,
     newIds: List[I]
   ): FetchEnv[C, I] =
-    copy(cache = newCache, rounds = newRounds, ids = newIds)
+    copy(cache = newCache, rounds = rounds ++ List(newRound), ids = newIds)
 }
 
 case class FetchFailure[C <: DataSourceCache, I](env: Env[C, I])(
@@ -204,46 +209,76 @@ object interpreters {
           case Result(a) => MM.pure((env, a))
           case FetchError(e) => MM.raiseError(e)
           case FetchOne(id: I, ds) => {
+            val startRound = System.nanoTime()
             val cache = env.cache
-            val round = Round(ds.identity, OneRound(id))
-            val newRounds = env.rounds ++ List(round)
             CC.get(cache, CC.makeKey[Any](id, ds)).fold[M[(FetchEnv[C, I], A)]](
               MM.flatMap(ds.fetchMany(List(id)).asInstanceOf[M[Map[I, A]]])((res: Map[I, A]) => {
+                val endRound = System.nanoTime()
                 res.get(id).fold[M[(FetchEnv[C, I], A)]](
                   MM.raiseError(
                     FetchFailure(
-                      env.next(cache, newRounds, List(id))
+                      env.next(
+                        cache,
+                        Round(ds.identity, OneRound(id), startRound, endRound),
+                        List(id)
+                      )
                     )
                   )
                 )(result => {
+                  val endRound = System.nanoTime()
                   val newCache = CC.update(cache, CC.makeKey[Any](id, ds), result)
-                  MM.pure((env.next(newCache, newRounds, List(id)), result))
+                  MM.pure(
+                    (env.next(
+                      newCache,
+                      Round(ds.identity, OneRound(id), startRound, endRound),
+                      List(id)
+                    ), result))
                 })
               })
             )(cached => {
-              MM.pure((env.next(cache, newRounds, List(id)), cached.asInstanceOf[A]))
+              val endRound = System.nanoTime()
+              MM.pure(
+                (env.next(
+                  cache,
+                  Round(ds.identity, OneRound(id), startRound, endRound),
+                  List(id)), cached.asInstanceOf[A]))
             })
           }
           case FetchMany(ids: List[I], ds) => {
+            val startRound = System.nanoTime()
             val cache = env.cache
-            val round = Round(ds.identity, ManyRound(ids))
-            val newRounds = env.rounds ++ List(round)
             val newIds = ids.distinct.filterNot(i => CC.get(cache, CC.makeKey[Any](i, ds)).isDefined)
             if (newIds.isEmpty)
-              MM.pure((env.next(cache, newRounds, newIds), ids.flatMap(id => CC.get(cache, CC.makeKey[Any](id, ds)))))
+              MM.pure(
+                (env.next(
+                  cache,
+                  Round(ds.identity, ManyRound(ids), startRound, startRound),
+                  newIds
+                ), ids.flatMap(id => CC.get(cache, CC.makeKey[Any](id, ds)))))
             else {
               MM.flatMap(ds.fetchMany(newIds).asInstanceOf[M[Map[I, A]]])((res: Map[I, A]) => {
+                val endRound = System.nanoTime()
                 ids.map(res.get(_)).sequence.fold[M[(FetchEnv[C, I], A)]](
                   MM.raiseError(
                     FetchFailure(
-                      env.next(cache, newRounds, newIds)
+                      env.next(
+                        cache,
+                        Round(ds.identity, ManyRound(ids), startRound, endRound),
+                        newIds
+                      )
                     )
                   )
                 )(results => {
+                  val endRound = System.nanoTime()
                   val newCache = res.foldLeft(cache)({
                     case (c, (k, v)) => CC.update(c, CC.makeKey[Any](k, ds), v)
                   })
-                  MM.pure((env.next(newCache, newRounds, newIds), results))
+                  MM.pure(
+                    (env.next(
+                      newCache,
+                      Round(ds.identity, ManyRound(ids), startRound, endRound),
+                      newIds
+                    ), results))
                 })
               })
             }
