@@ -93,7 +93,7 @@ class FetchSpec extends Specification {
 
     "Data sources with errors throw fetch failures" >> {
       val fetch: Fetch[Int] = Fetch(Never())
-      left(Fetch.run(fetch)) must_== FetchFailure(None, List(Never()))
+      left(Fetch.run(fetch)).asInstanceOf[FetchFailure[_, _]].ids must_== List(Never())
     }
 
     "Data sources with errors and cached values throw fetch failures with the cache" >> {
@@ -300,6 +300,38 @@ class FetchSpec extends Specification {
         CountedOne(2) -> 2,
         CountedOne(3) -> 3
       )))
+
+      result must_== Xor.Right(2)
+      count must_== 0
+    }
+
+    // caching with custom caches
+
+    case class FullCache()
+
+    val fullcache: Map[Any, Any] = Map(
+      CountedOne(1) -> 1,
+      CountedOne(2) -> 2,
+      CountedOne(3) -> 3
+    )
+
+    implicit object DC extends Cache[FullCache] {
+      override def get(c: FullCache, k: Any): Option[Any] = fullcache.get(k)
+      override def update(c: FullCache, k: Any, v: Any): FullCache = c
+    }
+
+    "we can use a custom cache" >> {
+      val fetch = for {
+        aOne <- Fetch(CountedOne(1))
+        anotherOne <- Fetch(CountedOne(1))
+        _ <- Fetch(CountedOne(1))
+        _ <- Fetch(CountedOne(2))
+        _ <- Fetch(CountedOne(3))
+        _ <- Fetch.collect(List(CountedOne(1), CountedOne(2), CountedOne(3)))
+        _ <- Fetch(CountedOne(1))
+      } yield aOne + anotherOne
+
+      val (count, result) = run(Fetch.runCached(fetch, FullCache()))
 
       result must_== Xor.Right(2)
       count must_== 0

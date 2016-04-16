@@ -8,18 +8,19 @@ import cats.syntax.cartesian._
 import cats.syntax.traverse._
 import cats.free.{ Free }
 
-// Data source
-
 trait DataSource[I, A, M[_]] {
   def fetchMany(ids: List[I]): M[Map[I, A]]
 }
 
-trait Cacheo[T]{
-  def empty(): T
+trait Cache[T]{
   def update(c: T, k: Any, v: Any): T
   def get(c: T, k: Any): Option[Any]
 }
 
+case class FetchFailure[C, I](
+  cache: Option[C],
+  ids: List[I]
+)(implicit CC: Cache[C]) extends Throwable
 
 object algebra {
   sealed abstract class FetchOp[A] extends Product with Serializable
@@ -35,6 +36,8 @@ object types {
 
   type Fetch[A] = Free[FetchOp, A]
 
+  // in-memory cache
+
   type InMemoryCache = Map[Any, Any]
 
   object InMemoryCache {
@@ -46,18 +49,22 @@ object types {
       })
   }
 
+  implicit object InMemoryCacheImpl extends Cache[InMemoryCache]{
+    override def get(c: InMemoryCache, k: Any): Option[Any] = c.get(k)
+    override def update(c: InMemoryCache, k: Any, v: Any): InMemoryCache = c.updated(k, v)
+  }
+
   type FetchOpSTC[M[_], C] = {
     type f[x] = StateT[M, C, x]
   }
 }
 
 object cache {
-  import types.InMemoryCache
+  case class NoCache()
 
-  implicit object CacheoCache extends Cacheo[InMemoryCache]{
-    override def empty() = Map.empty[Any, Any]
-    override def get(c: InMemoryCache, k: Any): Option[Any] = c.get(k)
-    override def update(c: InMemoryCache, k: Any, v: Any): InMemoryCache = c.updated(k, v)
+  implicit object NoCacheImpl extends Cache[NoCache]{
+    override def get(c: NoCache, k: Any): Option[Any] = None
+    override def update(c: NoCache, k: Any, v: Any): NoCache = c
   }
 }
 
@@ -105,7 +112,7 @@ object Fetch {
   def run[I, A, M[_]](fa: Fetch[A])(
     implicit
     MM: MonadError[M, Throwable]
-  ): M[A] = fa.foldMap(uncached)
+  ): M[A] = runCached[I, A, NoCache, M](fa, NoCache())(MM, NoCacheImpl)
 
   def runCached[I, A, C, M[_]](
     fa: Fetch[A],
@@ -113,7 +120,7 @@ object Fetch {
   )(
     implicit
       MM: MonadError[M, Throwable],
-    CC: Cacheo[C]
+    CC: Cache[C]
   ): M[A] = fa.foldMap[FetchOpSTC[M, C]#f](cached).runA(cache)
 
   def runWith[I, A, M[_]](
@@ -130,37 +137,10 @@ object interpreters {
   import types._
   import cache._
 
-  def uncached[I, A, M[_]](
-    implicit
-      MM: MonadError[M, Throwable]
-  ): FetchOp ~> M = {
-    new (FetchOp ~> M) {
-      def apply[A](fa: FetchOp[A]): M[A] = fa match {
-        case Result(a) => MM.pureEval(Eval.now(a))
-        case FetchError(e) => MM.raiseError(e)
-        case FetchMany(ids: List[I], ds) => {
-          val newIds = ids.distinct
-          MM.flatMap(ds.fetchMany(newIds).asInstanceOf[M[Map[I, A]]])((res: Map[I, A]) => {
-            ids.map(res.get(_)).sequence.fold[M[A]](
-              MM.raiseError(FetchFailure(None, ids.distinct))
-            )(results => { MM.pure(results) })
-          })
-        }
-        case FetchOne(id: I, ds) => {
-          MM.flatMap(ds.fetchMany(List(id)).asInstanceOf[M[Map[I, A]]])((res: Map[I, A]) => {
-            res.get(id).fold[M[A]](
-              MM.raiseError(FetchFailure(None, List(id)))
-            )(result => MM.pure(result))
-          })
-        }
-      }
-    }
-  }
-
   def cached[I, C, M[_]](
     implicit
       MM: MonadError[M, Throwable],
-    CC: Cacheo[C]
+    CC: Cache[C]
   ): FetchOp ~> FetchOpSTC[M, C]#f = {
     new (FetchOp ~> FetchOpSTC[M, C]#f) {
       def apply[A](fa: FetchOp[A]): FetchOpSTC[M, C]#f[A] = {
@@ -201,10 +181,3 @@ object interpreters {
     }
   }
 }
-
-// Errors
-
-case class FetchFailure[C, I](
-  cache: Option[C],
-  ids: List[I]
-)(implicit CC: Cacheo[C]) extends Exception
