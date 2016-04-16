@@ -5,7 +5,6 @@ import cats.data.{ State, Xor }
 import cats.syntax.comonad._
 
 import fetch._
-import fetch.cache._
 import fetch.types._
 
 class FetchSpec extends Specification {
