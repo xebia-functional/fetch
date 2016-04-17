@@ -326,6 +326,7 @@ class FetchSpec extends Specification {
         _ <- Fetch(One(2))
         _ <- Fetch(One(3))
         _ <- Fetch(One(1))
+        _ <- Fetch.join(one(1), one(2))
         _ <- Fetch.traverse(List(1, 2, 3))(one)
         _ <- Fetch(One(1))
       } yield aOne + anotherOne

@@ -240,33 +240,38 @@ object interpreters {
                 ds,
                 ids.filterNot(id => CC.get(cache, ds.asInstanceOf[DataSource[I, A, M]].identity(id.asInstanceOf[I])).isDefined)
               )
+            }).filterNot({
+              case (_, ids) => ids.isEmpty
             })
-            MM.flatMap(sids.map({
-              case (ds, as) => ds.asInstanceOf[DataSource[I, A, M]].fetchMany(as.asInstanceOf[List[I]])
-            }).sequence)((results: List[Map[_, _]]) => {
-              val endRound = System.nanoTime()
-              val newCache = (sources zip results).foldLeft(cache)((accache, resultset) => resultset match {
-                case (ds: DataSource[I, _, Any], resultmap) => resultmap.foldLeft(accache)({
-                  case (c, (k, v)) => CC.update(c, ds.identity(k.asInstanceOf[I]), v)
+            if (sids.isEmpty)
+              MM.pure((env, ()))
+            else
+              MM.flatMap(sids.map({
+                case (ds, as) => ds.asInstanceOf[DataSource[I, A, M]].fetchMany(as.asInstanceOf[List[I]])
+              }).sequence)((results: List[Map[_, _]]) => {
+                val endRound = System.nanoTime()
+                val newCache = (sources zip results).foldLeft(cache)((accache, resultset) => resultset match {
+                  case (ds: DataSource[I, _, Any], resultmap) => resultmap.foldLeft(accache)({
+                    case (c, (k, v)) => CC.update(c, ds.identity(k.asInstanceOf[I]), v)
+                  })
                 })
-              })
-              val newEnv = env.next(
-                newCache,
-                Round(
-                  cache,
-                  "Concurrent",
-                  ConcurrentRound(
-                    sids.map({
-                      case (ds, as) => (ds.name, as)
-                    }).toMap
+                val newEnv = env.next(
+                  newCache,
+                  Round(
+                    cache,
+                    "Concurrent",
+                    ConcurrentRound(
+                      sids.map({
+                        case (ds, as) => (ds.name, as)
+                      }).toMap
+                    ),
+                    startRound,
+                    endRound
                   ),
-                  startRound,
-                  endRound
-                ),
-                Nil
-              )
-              MM.pure((newEnv, ()))
-            })
+                  Nil
+                )
+                MM.pure((newEnv, ()))
+              })
           }
           case FetchOne(id: I, ds) => {
             val startRound = System.nanoTime()
