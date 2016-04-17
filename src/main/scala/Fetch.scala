@@ -5,7 +5,7 @@ import scala.collection.immutable.Queue
 
 import fetch.types._
 
-import cats.{ MonadError, ~>, Eval }
+import cats.{ MonadError, ~>, Eval, Id }
 import cats.data.{ State, StateT }
 import cats.std.option._
 import cats.std.list._
@@ -30,22 +30,11 @@ trait Env[C <: DataSourceCache]{
   def cache: C
   def rounds: Seq[Round]
 
-  def printRounds = {
-    rounds.foreach({
-      case r@Round(cache, identity, ids, _, _, cached) => {
-        println(">" * 100)
-        // info
-        if (cached) {
-          println("[" + identity + "][" + ids + "] fetched from the cache in " + r.duration  + " miliseconds")
-        } else {
-          println("[" + identity + "][" + ids + "] took " + r.duration + " miliseconds to fetch")
-        }
-        // cache
-        println("[CACHE]")
-        println(cache)
-      }
-    })
-  }
+  def cached: Seq[Round] =
+    rounds.filter(_.cached)
+
+  def uncached: Seq[Round] =
+    rounds.filterNot(_.cached)
 
   def next(
     newCache: C,
@@ -68,6 +57,7 @@ case class Round(
 sealed trait RoundKind
 final case class OneRound(id: Any) extends RoundKind
 final case class ManyRound(ids: List[Any]) extends RoundKind
+final case class ConcurrentRound(ids: Map[String, List[Any]]) extends RoundKind
 
 case class FetchEnv[C <: DataSourceCache](
   cache: C,
@@ -90,10 +80,9 @@ object algebra {
   sealed abstract class FetchOp[A] extends Product with Serializable
   final case class FetchOne[I, A, M[_]](a: I, ds: DataSource[I, A, M]) extends FetchOp[A]
   final case class FetchMany[I, A, M[_]](as: List[I], ds: DataSource[I, A, M]) extends FetchOp[List[A]]
-  final case class Result[A](a: A) extends FetchOp[A]
+  final case class Concurrent[M[_]](as: List[FetchMany[_, _, M]]) extends FetchOp[Unit]
   final case class FetchError[A, E <: Throwable](err: E)() extends FetchOp[A]
 }
-
 
 object types {
   import algebra.FetchOp
@@ -104,21 +93,14 @@ object types {
 
   type Fetch[A] = Free[FetchOp, A]
 
-  type FetchInterpreter[M[_], E <: Env[_]] = {
-    type f[x] = StateT[M, E, x]
+  type FetchAccumulator[A] = State[List[FetchOp[_]], A]
+
+  type FetchInterpreter[M[_], C <: DataSourceCache] = {
+    type f[x] = StateT[M, FetchEnv[C], x]
   }
 }
 
 object cache {
-  // no cache
-  case class NoCache() extends DataSourceCache
-
-  implicit object NoCacheImpl extends Cache[NoCache]{
-    override def get[I](c: NoCache, k: DataSourceIdentity): Option[Any] = None
-    override def update[I, A](c: NoCache, k: DataSourceIdentity, v: A): NoCache = c
-  }
-
-  // in-memory cache
   case class InMemoryCache(state:Map[Any, Any]) extends DataSourceCache
 
   object InMemoryCache {
@@ -143,7 +125,7 @@ object Fetch {
   import interpreters._
 
   def pure[A](a: A): Fetch[A] =
-    Free.liftF(Result(a))
+    Free.pure(a)
 
   def error[A](e: Throwable): Fetch[A] =
     Free.liftF(FetchError(e))
@@ -153,29 +135,42 @@ object Fetch {
   ): Fetch[A] =
     Free.liftF(FetchOne[I, A, M](i, DS))
 
-  def collect[I, A, M[_]](ids: List[I])(
-    implicit DS: DataSource[I, A, M]
-  ): Fetch[List[A]] =
-    Free.liftF(FetchMany[I, A, M](ids, DS))
+  def deps[A, M[_]](f: Fetch[A]): List[FetchMany[_, A, M]] = {
+    f.foldMap(accumulator).runS(List()).value.asInstanceOf[List[FetchMany[_, A, M]]]
+  }
 
-  /// xxx: List[B] -> (B -> Fetch[A]) -> Fetch[List[A]]
-  def traverse[I, A, B, M[_]](ids: List[B])(f: B => I)(
-    implicit DS: DataSource[I, A, M]
-  ): Fetch[List[A]] =
+  def combineDeps[A, M[_]](ds: List[FetchOp[A]]): List[FetchMany[_, _, M]] = {
+    ds.foldLeft(Map.empty[Any, List[_]])((acc, op) => op match {
+      case one@FetchOne(id, ds) => acc.updated(ds, acc.get(ds).fold(List(id))(accids => accids :+ id))
+      case many@FetchMany(ids, ds) => acc.updated(ds, acc.get(ds).fold(ids)(accids => accids ++ ids))
+      case _ => acc
+    }).toList.map({
+      case (ds, ids) => FetchMany[Any, A, M](ids, ds.asInstanceOf[DataSource[Any, A, M]])
+    })
+  }
+
+  def concurrently[A, M[_]](fs: List[Fetch[A]]): Fetch[Unit] = {
+    val fetches: List[FetchMany[_, _, M]] = combineDeps(fs.map(deps).flatten)
+    Free.liftF(Concurrent[M](fetches))
+  }
+
+  def collect[I, A, M[_]](ids: List[Fetch[A]]): Fetch[List[A]] = {
+    for {
+      _ <- concurrently[A, M](ids)
+      l <- ids.sequence
+    } yield l
+  }
+
+  def traverse[I, A, B, M[_]](ids: List[I])(f: I => Fetch[A]): Fetch[List[A]] =
     collect(ids.map(f))
 
-  def coalesce[I, A, M[_]](fl: I, fr: I)(
-    implicit
-      DS: DataSource[I, A, M]
-  ): Fetch[(A, A)] =
-    Free.liftF(FetchMany[I, A, M](List(fl, fr), DS)).map(l => (l(0), l(1)))
-
-  def join[I, R, A, B, M[_]](fl: I, fr: R)(
-    implicit
-      DS: DataSource[I, A, M],
-    DSS: DataSource[R, B, M]
-  ): Fetch[(A, B)] =
-    (Fetch(fl) |@| Fetch(fr)).tupled
+  def join[A, B, C, M[_]](fl: Fetch[A], fr: Fetch[B]): Fetch[(A, B)] = {
+    for {
+      _ <- concurrently[C, M](List(fl, fr).asInstanceOf[List[Fetch[C]]])
+      l <- fl
+      r <- fr
+    } yield (l, r)
+  }
 
   def runFetch[I, A, C <: DataSourceCache, M[_]](
     fa: Fetch[A],
@@ -184,26 +179,20 @@ object Fetch {
     implicit
       MM: MonadError[M, Throwable],
     CC: Cache[C]
-  ): M[A] = fa.foldMap[FetchInterpreter[M, FetchEnv[C]]#f](interpreter).runA(FetchEnv(cache))
+  ): M[A] = fa.foldMap[FetchInterpreter[M, C]#f](interpreter).runA(FetchEnv(cache))
 
   def runEnv[I, A, C <: DataSourceCache, M[_]](
     fa: Fetch[A],
-    env: FetchEnv[C]
+    cache: C = InMemoryCache.empty
   )(
     implicit
       MM: MonadError[M, Throwable],
     CC: Cache[C]
-  ): M[FetchEnv[C]] = fa.foldMap[FetchInterpreter[M, FetchEnv[C]]#f](interpreter).runS(env)
-  def run[I, A, M[_]](
-    fa: Fetch[A]
-  )(
-    implicit
-      MM: MonadError[M, Throwable]
-  ): M[A] = runFetch[I, A, NoCache, M](fa, NoCache())(MM, NoCacheImpl)
+  ): M[FetchEnv[C]] = fa.foldMap[FetchInterpreter[M, C]#f](interpreter).runS(FetchEnv(cache))
 
-  def runCached[I, A, C <: DataSourceCache, M[_]](
+  def run[I, A, C <: DataSourceCache, M[_]](
     fa: Fetch[A],
-    cache: C
+    cache: C = InMemoryCache.empty
   )(
     implicit
       MM: MonadError[M, Throwable],
@@ -216,16 +205,69 @@ object interpreters {
   import types._
   import cache._
 
+  def accumulator: FetchOp ~> FetchAccumulator = {
+    new (FetchOp ~> FetchAccumulator) {
+      def apply[A](fa: FetchOp[A]): FetchAccumulator[A] = {
+        State[List[FetchOp[_]], A] { env: List[FetchOp[_]] =>
+          fa match {
+            case one@FetchOne(id, ds) => (env :+ one, null.asInstanceOf[A])
+            case many@FetchMany(ids, ds) => (env :+ many, null.asInstanceOf[A])
+            case _ => (env, null.asInstanceOf[A])
+          }
+        }
+      }
+    }
+  }
+
   def interpreter[C <: DataSourceCache, I, E <: Env[C], M[_]](
     implicit
       MM: MonadError[M, Throwable],
     CC: Cache[C]
-  ): FetchOp ~> FetchInterpreter[M, FetchEnv[C]]#f = {
-    new (FetchOp ~> FetchInterpreter[M, FetchEnv[C]]#f) {
-      def apply[A](fa: FetchOp[A]): FetchInterpreter[M, FetchEnv[C]]#f[A] = {
+  ): FetchOp ~> FetchInterpreter[M, C]#f = {
+    new (FetchOp ~> FetchInterpreter[M, C]#f) {
+      def apply[A](fa: FetchOp[A]): FetchInterpreter[M, C]#f[A] = {
         StateT[M, FetchEnv[C], A] { env: FetchEnv[C] => fa match {
-          case Result(a) => MM.pure((env, a))
           case FetchError(e) => MM.raiseError(e)
+          case Concurrent(manies) => {
+            val startRound = System.nanoTime()
+            val cache = env.cache
+            // dedupe ids
+            val sources = manies.map(_.ds)
+            val ids = manies.map(_.as.distinct)
+            // don't ask for cached results
+            val sids = (sources zip ids).map({
+              case (ds, ids) => (
+                ds,
+                ids.filterNot(id => CC.get(cache, ds.asInstanceOf[DataSource[I, A, M]].identity(id.asInstanceOf[I])).isDefined)
+              )
+            })
+            MM.flatMap(sids.map({
+              case (ds, as) => ds.asInstanceOf[DataSource[I, A, M]].fetchMany(as.asInstanceOf[List[I]])
+            }).sequence)((results: List[Map[_, _]]) => {
+              val endRound = System.nanoTime()
+              val newCache = (sources zip results).foldLeft(cache)((accache, resultset) => resultset match {
+                case (ds: DataSource[I, _, Any], resultmap) => resultmap.foldLeft(accache)({
+                  case (c, (k, v)) => CC.update(c, ds.identity(k.asInstanceOf[I]), v)
+                })
+              })
+              val newEnv = env.next(
+                newCache,
+                Round(
+                  cache,
+                  "Concurrent",
+                  ConcurrentRound(
+                    sids.map({
+                      case (ds, as) => (ds.name, as)
+                    }).toMap
+                  ),
+                  startRound,
+                  endRound
+                ),
+                Nil
+              )
+              MM.pure((newEnv, ()))
+            })
+          }
           case FetchOne(id: I, ds) => {
             val startRound = System.nanoTime()
             val cache = env.cache
@@ -248,7 +290,7 @@ object interpreters {
                   MM.pure(
                     (env.next(
                       newCache,
-                      Round(cache, ds.name, OneRound(id), startRound, endRound, true),
+                      Round(cache, ds.name, OneRound(id), startRound, endRound),
                       List(id)
                     ), result))
                 })
@@ -265,7 +307,8 @@ object interpreters {
           case FetchMany(ids: List[I], ds) => {
             val startRound = System.nanoTime()
             val cache = env.cache
-            val newIds = ids.distinct.filterNot(i => CC.get(cache, ds.identity(i)).isDefined)
+            val oldIds = ids.distinct
+            val newIds = oldIds.filterNot(i => CC.get(cache, ds.identity(i)).isDefined)
             if (newIds.isEmpty)
               MM.pure(
                 (env.next(
@@ -291,10 +334,12 @@ object interpreters {
                   val newCache = res.foldLeft(cache)({
                     case (c, (k, v)) => CC.update(c, ds.identity(k), v)
                   })
+                  // todo: improve round reporting
+                  val someCached = oldIds.size == newIds.size
                   MM.pure(
                     (env.next(
                       newCache,
-                      Round(cache, ds.name, ManyRound(ids), startRound, endRound),
+                      Round(cache, ds.name, ManyRound(ids), startRound, endRound, someCached),
                       newIds
                     ), results))
                 })

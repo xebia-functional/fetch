@@ -1,5 +1,6 @@
 import org.specs2.mutable._
 
+import cats.Eval
 import cats.{ MonadError }
 import cats.data.{ State, Xor }
 import cats.syntax.comonad._
@@ -9,113 +10,96 @@ import fetch.types._
 import fetch.cache._
 
 class FetchSpec extends Specification {
-  type Count[A] = State[Int, Xor[Throwable, A]]
+  implicit def ISM: MonadError[Eval, Throwable] = new MonadError[Eval, Throwable] {
+    override def pure[A](x: A): Eval[A] = Eval.now(x)
 
-  implicit def ISM: MonadError[Count, Throwable] = new MonadError[Count, Throwable] {
-    override def pure[A](x: A): Count[A] = State.pure(Xor.Right(x))
+    override def map[A, B](fa: Eval[A])(f: A ⇒ B): Eval[B] = fa.map(f)
 
-    override def map[A, B](fa: Count[A])(f: A ⇒ B): Count[B] = fa.map(_.map(f))
+    override def flatMap[A, B](fa: Eval[A])(ff: A => Eval[B]): Eval[B] = fa.flatMap(ff)
 
-    override def flatMap[A, B](fa: Count[A])(ff: A => Count[B]): Count[B] = State(s => {
-      fa.run(s).map(result => {
-        val state = result._1
-        val xor: Xor[Throwable, A] = result._2
-        xor.fold(
-          (left: Throwable) => (state, Xor.Left(left)),
-          (a: A) => ff(a).run(state).value
-        )
-      }).value
-    })
+    override def raiseError[A](e: Throwable): Eval[A] = Eval.later({ throw e })
 
-    override def raiseError[A](e: Throwable): Count[A] = State.pure(Xor.Left(e))
-
-    override def handleErrorWith[A](fa: Count[A])(f: Throwable ⇒ Count[A]): Count[A] = State(s => {
-      val (state, result) = fa.run(s).value
-      result.fold(
-        (left: Throwable) => f(left).run(s).value,
-        (a: A) => (state, result)
-      )
+    override def handleErrorWith[A](fa: Eval[A])(f: Throwable ⇒ Eval[A]): Eval[A] = Eval.now({
+      try{
+        fa.value
+      } catch {
+        case e: Throwable => f(e).value
+      }
     })
   }
 
   "Fetch" >> {
-    case object NotFound extends Throwable
+    case class NotFound() extends Throwable
 
     case class One(id: Int)
-    implicit object OneSource extends DataSource[One, Int, Count] {
+    implicit object OneSource extends DataSource[One, Int, Eval] {
       override def name = "OneSource"
-      override def fetchMany(ids: List[One]): Count[Map[One, Int]] =
+      override def fetchMany(ids: List[One]): Eval[Map[One, Int]] =
         ISM.pure(ids.map(one => (one, one.id)).toMap)
     }
+    def one(id: Int): Fetch[Int] = Fetch(One(id))
 
     case class Many(n: Int)
-    implicit object ManySource extends DataSource[Many, List[Int], Count] {
+    implicit object ManySource extends DataSource[Many, List[Int], Eval] {
       override def name = "ManySource"
-      override def fetchMany(ids: List[Many]): Count[Map[Many, List[Int]]] =
+      override def fetchMany(ids: List[Many]): Eval[Map[Many, List[Int]]] =
         ISM.pure(ids.map(m => (m, 0 until m.n toList)).toMap)
     }
 
     case class Never()
-    implicit object NeverSource extends DataSource[Never, Int, Count] {
+    implicit object NeverSource extends DataSource[Never, Int, Eval] {
       override def name = "NeverSource"
-      override def fetchMany(ids: List[Never]): Count[Map[Never, Int]] =
+      override def fetchMany(ids: List[Never]): Eval[Map[Never, Int]] =
         ISM.pure(Map.empty[Never, Int])
     }
 
-    case class BatchCountOne(x: Int)
-
-    implicit object BatchCountOneSource extends DataSource[BatchCountOne, Int, Count] {
-      override def name = "BatchCountOne"
-      override def fetchMany(ids: List[BatchCountOne]): Count[Map[BatchCountOne, Int]] = {
-        State.modify((x: Int) => x + 1).flatMap(_ => ISM.pure(ids.map(t => (t, t.x)).toMap))
-      }
-    }
-
-    case class CountedOne(x: Int)
-
-    implicit object CountedOneSource extends DataSource[CountedOne, Int, Count] {
-      override def name = "CountedOneSource"
-      override def fetchMany(ids: List[CountedOne]): Count[Map[CountedOne, Int]] = {
-        State.modify((x: Int) => x + ids.size).flatMap(_ => ISM.pure(ids.map(t => (t, t.x)).toMap))
-      }
-    }
-
-    def run[A](f: Count[A]): (Int, Xor[Throwable, A]) = f.run(0).value
-
     def runEnv[A](f: Fetch[A]): FetchEnv[InMemoryCache] =
-      Fetch.runEnv(f, FetchEnv(InMemoryCache())).run(0).value._2.toOption.get
+      Fetch.runEnv(f).value
 
-    def right[A](f: Count[A]): A = run(f)._2.toOption.get
+    def totalFetched(rs: Seq[Round]): Int = rs.filterNot(_.cached).foldLeft(0)((acc, round) => round.kind match {
+      case OneRound(_) => acc + 1
+      case ManyRound(ids) => acc + ids.size
+      case ConcurrentRound(ids) => acc + ids.map(_._2.size).sum
+    })
 
-    def left[A](f: Count[A]): Throwable = run(f)._2.fold(identity, foo => { new Exception() })
+    def totalBatches(rs: Seq[Round]): Int = rs.filterNot(_.cached).foldLeft(0)((acc, round) => round.kind match {
+      case OneRound(_) => acc
+      case ManyRound(ids) => acc + 1
+      case ConcurrentRound(ids) => acc + ids.size
+    })
+
+    def concurrent(rs: Seq[Round]): Seq[Round] = rs.filter(r => r.kind match {
+      case ConcurrentRound(_) => true
+      case other => false
+    })
 
     "We can lift plain values to Fetch" >> {
       val fetch: Fetch[Int] = Fetch.pure(42)
-      right(Fetch.run(fetch)) must_== 42
-    }
-
-    "We can lift plain values to Fetch and run them with a cache" >> {
-      val fetch = Fetch.pure(42)
-      right(Fetch.runCached(fetch, InMemoryCache.empty)) must_== 42
+      Fetch.run(fetch).value must_== 42
     }
 
     "Data sources with errors throw fetch failures" >> {
       val fetch: Fetch[Int] = Fetch(Never())
-      left(Fetch.run(fetch)) match {
-        case FetchFailure(env: Env[_]) => {
-          println("*" * 80)
-          env.printRounds
-          println("*" * 80)
 
+      Fetch.runEnv(fetch).value must throwA[Throwable].like {
+        case FetchFailure(env: Env[_]) => {
           env.rounds.size must_== 1
           env.rounds.headOption.fold(
-            false
+            false must_== true
           )(round => round.kind match {
             case OneRound(id) => id must_== Never()
-            case _ => false
+            case _ => false must_== true
           })
         }
       }
+    }
+
+    "Data sources with errors throw fetch failures that can be handled" >> {
+      val fetch: Fetch[Int] = Fetch(Never())
+
+      ISM.handleErrorWith(
+        Fetch.run(fetch)
+      )(err => Eval.now({ 42 })).value must_== 42
     }
 
     "Data sources with errors and cached values throw fetch failures with the cache" >> {
@@ -123,7 +107,7 @@ class FetchSpec extends Specification {
       val cache = InMemoryCache(
         OneSource.identity(One(1)) -> 1
       )
-      left(Fetch.runCached(fetch, cache)) match {
+      Fetch.run(fetch, cache).value must throwA[Throwable].like {
         case FetchFailure(env: Env[_]) => env.cache must_== cache
       }
     }
@@ -133,208 +117,226 @@ class FetchSpec extends Specification {
       val cache = InMemoryCache(
         NeverSource.identity(Never()) -> 1
       )
-      right(Fetch.runCached(fetch, cache)) must_== 1
+      Fetch.run(fetch, cache).value must_== 1
     }
 
     "We can lift errors to Fetch" >> {
-      val fetch: Fetch[Int] = Fetch.error(NotFound)
-      left(Fetch.run(fetch)) must_== NotFound
-    }
-
-    "We can lift errors to Fetch and run them with a cache" >> {
-      val fetch: Fetch[Int] = Fetch.error(NotFound)
-      left(Fetch.runCached(fetch, InMemoryCache.empty)) must_== NotFound
+      val fetch: Fetch[Int] = Fetch.error(NotFound())
+      Fetch.run(fetch).value must throwA[NotFound]
     }
 
     "We can lift handle and recover from errors in Fetch" >> {
-      val fetch: Fetch[Int] = Fetch.error(NotFound)
-      right(
-        ISM.handleErrorWith(
-          Fetch.run(fetch)
-        )(err => ISM.pure(42))
-      ) must_== 42
-    }
-
-    "We can lift errors to Fetch and run them with a cache" >> {
-      val fetch: Fetch[Int] = Fetch.error(NotFound)
-      right(
-        ISM.handleErrorWith(
-          Fetch.run(fetch)
-        )(err => ISM.pure(42))
-      ) must_== 42
+      val fetch: Fetch[Int] = Fetch.error(NotFound())
+      ISM.handleErrorWith(
+        Fetch.run(fetch)
+      )(err => ISM.pure(42)
+      ).value must_== 42
     }
 
     "We can lift values which have a Data Source to Fetch" >> {
-      right(Fetch.run(Fetch(One(1)))) == 1
-    }
-
-    "We can lift values which have a Data Source to Fetch and run them with a cache" >> {
-      right(Fetch.runCached(Fetch(One(1)), InMemoryCache.empty)) == 1
+      Fetch.run(Fetch(One(1))).value == 1
     }
 
     "We can map over Fetch values" >> {
       val fetch = Fetch(One(1)).map(_ + 1)
-      right(Fetch.run(fetch)) must_== 2
-    }
-
-    "We can map over Fetch values and run them with a cache" >> {
-      val fetch = Fetch(One(1)).map(_ + 1)
-      right(Fetch.run(fetch)) must_== 2
+      Fetch.run(fetch).value must_== 2
     }
 
     "We can use fetch inside a for comprehension" >> {
-      val ftch = for {
+      val fetch = for {
         one <- Fetch(One(1))
         two <- Fetch(One(2))
       } yield (one, two)
 
-      right(Fetch.run(ftch)) == (1, 2)
+      Fetch.run(fetch).value == (1, 2)
+    }
+
+    "Monadic bind implies sequential execution" >> {
+      val fetch = for {
+        one <- Fetch(One(1))
+        two <- Fetch(One(2))
+      } yield (one, two)
+
+      Fetch.runEnv(fetch).value.rounds.size must_== 2
     }
 
     "We can mix data sources" >> {
-      val ftch = for {
+      val fetch: Fetch[(Int, List[Int])] = for {
         one <- Fetch(One(1))
         many <- Fetch(Many(3))
       } yield (one, many)
 
-      right(Fetch.run(ftch)) == (1, List(0, 1, 2))
+      Fetch.run(fetch).value == (1, List(0, 1, 2))
     }
 
     "We can use Fetch as an applicative" >> {
       import cats.syntax.cartesian._
 
-      val ftch = (Fetch(One(1)) |@| Fetch(Many(3))).map { case (a, b) => (a, b) }
+      val fetch: Fetch[(Int, List[Int])] = (Fetch(One(1)) |@| Fetch(Many(3))).map { case (a, b) => (a, b) }
 
-      right(Fetch.run(ftch)) == (1, List(0, 1, 2))
+      Fetch.run(fetch).value == (1, List(0, 1, 2))
     }
 
+    "The product of two fetches implies concurrent fetching" >> {
+      import cats.syntax.cartesian._
+
+      val fetch: Fetch[(Int, List[Int])] = Fetch.join(Fetch(One(1)), Fetch(Many(3)))
+
+      val rounds = Fetch.runEnv(fetch).value.rounds
+
+      concurrent(rounds).size must_== 1
+    }
+
+    "The product of two fetches from the same data source implies batching" >> {
+      import cats.syntax.cartesian._
+
+      val fetch: Fetch[(Int, Int)] = Fetch.join(Fetch(One(1)), Fetch(One(3)))
+
+      val rounds = Fetch.runEnv(fetch).value.rounds
+
+      concurrent(rounds).size must_== 1
+      totalBatches(concurrent(rounds)) must_== 1
+    }
+
+    // xxx
+    // "Applicative syntax is implicitly concurrent" >> {
+    //   import cats.syntax.cartesian._
+
+    //   val fetch: Fetch[(Int, List[Int])] = (Fetch(One(1)) |@| Fetch(Many(3))).tupled
+
+    //   val rounds = Fetch.runEnv(fetch).value.rounds
+
+    //   rounds.size must_== 3
+    //   concurrent(rounds).size must_== 1
+    //   cached(rounds).size must_== 2
+    // }
+
     "We can depend on previous computations of Fetch values" >> {
-      val fetch = for {
+      val fetch: Fetch[Int] = for {
         one <- Fetch(One(1))
         two <- Fetch(One(one + 1))
       } yield one + two
 
-      right(Fetch.run(fetch)) must_== 3
+      Fetch.run(fetch).value must_== 3
     }
 
     "We can collect a list of Fetch into one" >> {
-      val sources = List(One(1), One(2), One(3))
-      val fetch = Fetch.collect(sources)
-      right(Fetch.run(fetch)) must_== List(1, 2, 3)
+      val sources: List[Fetch[Int]] = List(one(1), one(2), one(3))
+      val fetch: Fetch[List[Int]] = Fetch.collect(sources)
+      Fetch.run(fetch).value must_== List(1, 2, 3)
+    }
+
+    "Collected fetches are run concurrently" >> {
+      val sources: List[Fetch[Int]] = List(one(1), one(2), one(3))
+      val fetch: Fetch[List[Int]] = Fetch.collect(sources)
+
+      val rounds = Fetch.runEnv(fetch).value.rounds
+
+      concurrent(rounds).size must_== 1
+    }
+
+    "Collected fetches are deduped" >> {
+      val sources: List[Fetch[Int]] = List(one(1), one(2), one(1))
+      val fetch: Fetch[List[Int]] = Fetch.collect(sources)
+
+      val rounds = Fetch.runEnv(fetch).value.rounds
+
+      totalFetched(concurrent(rounds)) must_== 2
+      concurrent(rounds).size must_== 1
+    }
+
+    "Collected fetches are not asked for when cached" >> {
+      val sources: List[Fetch[Int]] = List(one(1), one(2), one(3), one(4))
+      val fetch: Fetch[List[Int]] = Fetch.collect(sources)
+
+      val rounds = Fetch.runEnv(fetch, InMemoryCache(
+        OneSource.identity(One(1)) -> 1,
+        OneSource.identity(One(2)) -> 2
+      )).value.rounds
+
+      totalFetched(concurrent(rounds)) must_== 2
+      concurrent(rounds).size must_== 1
     }
 
     "We can collect the results of a traversal" >> {
       val expected = List(1, 2, 3)
-      val fetch = Fetch.traverse(expected)(One(_))
-      right(Fetch.run(fetch)) must_== expected
+
+      val fetch = Fetch.traverse(expected)(one)
+
+      Fetch.run(fetch).value must_== expected
     }
 
-    "We can coalesce the results of two fetches into one" >> {
-      val expected = (1, 2)
-      val fetch = Fetch.coalesce(One(1), One(2))
-      right(Fetch.run(fetch)) must_== expected
-    }
+    "Traversals are run concurrently" >> {
+      val fetch = Fetch.traverse(List(1, 2, 3))(one)
 
-    "We can join the results of two fetches with different data sources into one" >> {
-      val expected = (1, List(0, 1, 2))
-      val fetch = Fetch.join(One(1), Many(3))
-      right(Fetch.run(fetch)) must_== expected
+      val rounds = Fetch.runEnv(fetch).value.rounds
+
+      concurrent(rounds).size must_== 1
     }
 
     // deduplication
 
     "Duplicated sources are only fetched once" >> {
-      val fetch = Fetch.traverse(List(1, 2, 1))(CountedOne(_))
+      val fetch = Fetch.traverse(List(1, 2, 1))(one)
 
-      val (count, result) = run(Fetch.run(fetch))
+      val rounds = Fetch.runEnv(fetch).value.rounds
 
-      result must_== Xor.Right(List(1, 2, 1))
-      count must_== 2
+      concurrent(rounds).size must_== 1
+      totalFetched(concurrent(rounds)) must_== 2
     }
 
     // batching & deduplication
 
-    "Sources that can be fetched in batches will be" >> {
-      val fetch = Fetch.traverse(List(1, 2, 1))(BatchCountOne(_))
-
-      val (batches, result) = run(Fetch.run(fetch))
-
-      result must_== Xor.Right(List(1, 2, 1))
-      batches must_== 1
-    }
-
-    "Sources that can be fetched in batches inside a for comprehension will be" >> {
+    "Sources that can be fetched concurrently inside a for comprehension will be" >> {
       val fetch = for {
         v <- Fetch.pure(List(1, 2, 1))
-        result <- Fetch.traverse(v)(BatchCountOne(_))
+        result <- Fetch.traverse(v)(one)
       } yield result
 
-      val (batches, result) = run(Fetch.run(fetch))
+      val rounds = Fetch.runEnv(fetch).value.rounds
 
-      result must_== Xor.Right(List(1, 2, 1))
-      batches must_== 1
-    }
-
-    "Coalesced fetches are run in a batch" >> {
-      val fetch = Fetch.coalesce(BatchCountOne(1), BatchCountOne(2))
-
-      val (batches, result) = run(Fetch.run(fetch))
-
-      result must_== Xor.Right((1, 2))
-      batches must_== 1
-    }
-
-    "Coalesced fetches are deduped" >> {
-      val fetch = Fetch.coalesce(CountedOne(1), CountedOne(1))
-
-      val (count, result) = run(Fetch.run(fetch))
-
-      result must_== Xor.Right((1, 1))
-      count must_== 1
+      concurrent(rounds).size must_== 1
+      totalFetched(concurrent(rounds)) must_== 2
     }
 
     // caching
 
     "Elements are cached and thus not fetched more than once" >> {
       val fetch = for {
-        aOne <- Fetch(CountedOne(1))
-        anotherOne <- Fetch(CountedOne(1))
-        _ <- Fetch(CountedOne(1))
-        _ <- Fetch(CountedOne(2))
-        _ <- Fetch(CountedOne(3))
+        aOne <- Fetch(One(1))
+        anotherOne <- Fetch(One(1))
         _ <- Fetch(One(1))
-        _ <- Fetch(Many(3))
-        _ <- Fetch.collect(List(CountedOne(1), CountedOne(2), CountedOne(3)))
-        _ <- Fetch(CountedOne(1))
+        _ <- Fetch(One(2))
+        _ <- Fetch(One(3))
+        _ <- Fetch(One(1))
+        _ <- Fetch.traverse(List(1, 2, 3))(one)
+        _ <- Fetch(One(1))
       } yield aOne + anotherOne
 
-      val (count, result) = run(Fetch.runCached(fetch, InMemoryCache.empty))
+      val rounds = Fetch.runEnv(fetch).value.rounds
 
-      result must_== Xor.Right(2)
-      count must_== 3
+      totalFetched(rounds) must_== 3
     }
 
     "Elements that are cached won't be fetched" >> {
       val fetch = for {
-        aOne <- Fetch(CountedOne(1))
-        anotherOne <- Fetch(CountedOne(1))
-        _ <- Fetch(CountedOne(1))
-        _ <- Fetch(CountedOne(2))
-        _ <- Fetch(CountedOne(3))
+        aOne <- Fetch(One(1))
+        anotherOne <- Fetch(One(1))
         _ <- Fetch(One(1))
-        _ <- Fetch(Many(3))
-        _ <- Fetch.collect(List(CountedOne(1), CountedOne(2), CountedOne(3)))
-        _ <- Fetch(CountedOne(1))
+        _ <- Fetch(One(2))
+        _ <- Fetch(One(3))
+        _ <- Fetch(One(1))
+        _ <- Fetch.traverse(List(1, 2, 3))(one)
+        _ <- Fetch(One(1))
       } yield aOne + anotherOne
 
-      val (count, result) = run(Fetch.runCached(fetch, InMemoryCache(
-        CountedOneSource.identity(CountedOne(1)) -> 1,
-        CountedOneSource.identity(CountedOne(2)) -> 2,
-        CountedOneSource.identity(CountedOne(3)) -> 3
-      )))
+      val rounds = Fetch.runEnv(fetch, InMemoryCache(
+        OneSource.identity(One(1)) -> 1,
+        OneSource.identity(One(2)) -> 2,
+        OneSource.identity(One(3)) -> 3
+      )).value.rounds
 
-      result must_== Xor.Right(2)
-      count must_== 0
+      totalFetched(rounds) must_== 0
     }
 
     // caching with custom caches
@@ -347,58 +349,37 @@ class FetchSpec extends Specification {
     }
 
     val fullCache: MyCache = MyCache(Map(
-      CountedOneSource.identity(CountedOne(1)) -> 1,
-      CountedOneSource.identity(CountedOne(2)) -> 2,
-      CountedOneSource.identity(CountedOne(3)) -> 3,
+      OneSource.identity(One(1)) -> 1,
+      OneSource.identity(One(2)) -> 2,
+      OneSource.identity(One(3)) -> 3,
       OneSource.identity(One(1)) -> 1,
       ManySource.identity(Many(2)) -> List(0, 1)
     ))
 
     "we can use a custom cache" >> {
       val fetch = for {
-        aOne <- Fetch(CountedOne(1))
-        anotherOne <- Fetch(CountedOne(1))
-        _ <- Fetch(CountedOne(1))
+        aOne <- Fetch(One(1))
+        anotherOne <- Fetch(One(1))
         _ <- Fetch(One(1))
+        _ <- Fetch(One(2))
         _ <- Fetch(Many(2))
-        _ <- Fetch(CountedOne(2))
-        _ <- Fetch(CountedOne(3))
-        _ <- Fetch.collect(List(CountedOne(1), CountedOne(2), CountedOne(3)))
-        _ <- Fetch(CountedOne(1))
+        _ <- Fetch(One(3))
+        _ <- Fetch(One(1))
+        _ <- Fetch.traverse(List(1, 2, 3))(one)
+        _ <- Fetch(One(1))
       } yield aOne + anotherOne
 
-      val (count, result) = run(Fetch.runCached(fetch, fullCache))
+      val rounds = Fetch.runEnv(fetch, InMemoryCache(
+        OneSource.identity(One(1)) -> 1,
+        OneSource.identity(One(2)) -> 2,
+        OneSource.identity(One(3)) -> 3,
+        ManySource.identity(Many(2)) -> List(0, 1)
+      )).value.rounds
 
-      result must_== Xor.Right(2)
-      count must_== 0
-    }
-
-    // Environment
-
-    "Can be printed" >> {
-      val fetch: Fetch[Int] = for {
-        aOne <- Fetch(CountedOne(1))
-        anotherOne <- Fetch(CountedOne(1))
-        _ <- Fetch(CountedOne(1))
-        _ <- Fetch(One(1))
-        _ <- Fetch(Many(2))
-        _ <- Fetch(CountedOne(2))
-        _ <- Fetch(CountedOne(3))
-        _ <- Fetch.collect(List(CountedOne(1), CountedOne(2), CountedOne(3)))
-        _ <- Fetch(CountedOne(1))
-      } yield aOne + anotherOne
-
-      val env = runEnv(fetch)
-
-      println("*" * 100)
-      env.printRounds
-      println("*" * 100)
-      env.rounds.size must_== 9
+      totalFetched(rounds) must_== 0
     }
   }
-
 }
-
 
 class FetchFutureSpec extends Specification {
   import scala.concurrent._
@@ -411,100 +392,91 @@ class FetchFutureSpec extends Specification {
   case class Article(id: Int, content: String) {
     def author: Int = id + 1
   }
-  def article(id: Int): ArticleId = ArticleId(id)
 
   implicit object ArticleFuture extends DataSource[ArticleId, Article, Future] {
     override def name = "ArticleFuture"
     override def fetchMany(ids: List[ArticleId]): Future[Map[ArticleId, Article]] = {
       Future({
+        // val threadId = Thread.currentThread().getId()
+        // val wait = scala.util.Random.nextInt(100)
+
+        // println("->[" + threadId + "] ArticleFuture: " + ids + " will take " + wait)
+        // Thread.sleep(wait)
+        // println("<-[" + threadId + "] ArticleFuture: " + ids)
+
         ids.map(tid => (tid, Article(tid.id, "An article with id " + tid.id))).toMap
       })
     }
   }
 
+  def article(id: Int): Fetch[Article] = Fetch(ArticleId(id))
+
   case class AuthorId(id: Int)
   case class Author(id: Int, name: String)
-  def author(a: Article): AuthorId = AuthorId(a.author)
+
   implicit object AuthorFuture extends DataSource[AuthorId, Author, Future] {
     override def name = "AuthorFuture"
     override def fetchMany(ids: List[AuthorId]): Future[Map[AuthorId, Author]] = {
       Future({
+        // val threadId = Thread.currentThread().getId()
+        // val wait = scala.util.Random.nextInt(100)
+
+        // println("->[" + threadId + "] AuthorFuture: " + ids + " will take " + wait)
+        // Thread.sleep(wait)
+        // println("<-[" + threadId + "] AuthorFuture: " + ids)
+
         ids.map(tid => (tid, Author(tid.id, "@egg" + tid.id))).toMap
       })
     }
   }
 
-  val fetchArticleAndAuthor: Fetch[(Article, Author)] = for {
-    art <- Fetch(article(1))
-    author <- Fetch(author(art))
-  } yield (art, author)
+  def author(a: Article): Fetch[Author] = Fetch(AuthorId(a.author))
 
-  val fetchAuthors: Fetch[List[Article]] = for {
-    articles <- Fetch.collect(List(article(1), article(1), article(3)))
-  } yield articles
 
   "Fetch futures" >> {
     "We can interpret a fetch into a future" >> {
-      val fetchArticle: Fetch[Article] = Fetch(ArticleId(1))
-      val article: Future[Article] = Fetch.run(fetchArticle)
-      Await.result(article, 1 seconds) must_== Article(1, "An article with id 1")
+      val fetch: Fetch[Article] = article(1)
+
+      val fut: Future[Article] = Fetch.run(fetch)
+
+      Await.result(fut, 1 seconds) must_== Article(1, "An article with id 1")
     }
 
     "We can combine several data sources and interpret a fetch into a future" >> {
-      val fetchArticleAndAuthor: Fetch[(Article, Author)] = for {
-        art <- Fetch(article(1))
-        author <- Fetch(author(art))
+      val fetch: Fetch[(Article, Author)] = for {
+        art <- article(1)
+        author <- author(art)
       } yield (art, author)
-      val articleAndAuthor: Future[(Article, Author)] = Fetch.run(fetchArticleAndAuthor)
-      Await.result(articleAndAuthor, 1 seconds) must_== (Article(1, "An article with id 1"), Author(2, "@egg2"))
+
+      val fut: Future[(Article, Author)] = Fetch.run(fetch)
+
+      Await.result(fut, 1 seconds) must_== (Article(1, "An article with id 1"), Author(2, "@egg2"))
     }
+
 
     "We can use combinators in a for comprehension and interpret a fetch into a future" >> {
-      val fetchArticles: Fetch[List[Article]] = for {
-        articles <- Fetch.collect(List(article(1), article(1), article(2)))
+      val fetch: Fetch[List[Article]] = for {
+        articles <- Fetch.traverse(List(1, 1, 2))(article)
       } yield articles
-      val articles: Future[List[Article]] = Fetch.run(fetchArticles)
-      Await.result(articles, 1 seconds) must_== List(
+
+      val fut: Future[List[Article]] = Fetch.run(fetch)
+
+      Await.result(fut, 1 seconds) must_== List(
         Article(1, "An article with id 1"),
         Article(1, "An article with id 1"),
         Article(2, "An article with id 2")
       )
     }
 
-    "We can interpret a fetch into a future with an in-memory cache" >> {
-      val fetchArticle: Fetch[Article] = Fetch(ArticleId(1))
-      val article: Future[Article] = Fetch.runCached(fetchArticle, InMemoryCache.empty)
-      Await.result(article, 1 seconds) must_== Article(1, "An article with id 1")
-    }
-
-    "We can combine several data sources and interpret a fetch into a future with an in-memory cache" >> {
-      val fetchArticleAndAuthor: Fetch[(Article, Author)] = for {
-        art <- Fetch(article(1))
-        author <- Fetch(author(art))
-      } yield (art, author)
-      val articleAndAuthor: Future[(Article, Author)] = Fetch.runCached(fetchArticleAndAuthor, InMemoryCache.empty)
-      Await.result(articleAndAuthor, 1 seconds) must_== (Article(1, "An article with id 1"), Author(2, "@egg2"))
-    }
-
-    "We can use combinators in a for comprehension and interpret a fetch into a future with an in-memory cache" >> {
-      val fetchArticles: Fetch[List[Article]] = for {
-        articles <- Fetch.collect(List(article(1), article(1), article(2)))
-      } yield articles
-      val articles: Future[List[Article]] = Fetch.runCached(fetchArticles, InMemoryCache.empty)
-      Await.result(articles, 1 seconds) must_== List(
-        Article(1, "An article with id 1"),
-        Article(1, "An article with id 1"),
-        Article(2, "An article with id 2")
-      )
-    }
-
-    "We can use combinators and multiple sources in a for comprehension and interpret a fetch into a future with an in-memory cache" >> {
-      val fetchArticleAndAuthor = for {
-        articles <- Fetch.collect(List(article(1), article(1), article(2)))
+    "We can use combinators and multiple sources in a for comprehension and interpret a fetch into a future" >> {
+      val fetch = for {
+        articles <- Fetch.traverse(List(1, 1, 2))(article)
         authors <- Fetch.traverse(articles)(author)
       } yield (articles, authors)
-      val articleAndAuthor: Future[(List[Article], List[Author])] = Fetch.runCached(fetchArticleAndAuthor, InMemoryCache.empty)
-      Await.result(articleAndAuthor, 1 seconds) must_== (
+
+      val fut: Future[(List[Article], List[Author])] = Fetch.run(fetch, InMemoryCache.empty)
+
+      Await.result(fut, 1 seconds) must_== (
         List(
           Article(1, "An article with id 1"),
           Article(1, "An article with id 1"),
