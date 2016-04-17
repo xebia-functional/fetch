@@ -5,7 +5,7 @@ import scala.collection.immutable.Queue
 
 import fetch.types._
 
-import cats.{ MonadError, ~>, Eval, Id }
+import cats.{ MonadError, ~> }
 import cats.data.{ State, StateT }
 import cats.std.option._
 import cats.std.list._
@@ -172,32 +172,32 @@ object Fetch {
     } yield (l, r)
   }
 
-  def runFetch[I, A, C <: DataSourceCache, M[_]](
+  def runFetch[A, C <: DataSourceCache, M[_]](
     fa: Fetch[A],
     cache: C
   )(
     implicit
       MM: MonadError[M, Throwable],
     CC: Cache[C]
-  ): M[A] = fa.foldMap[FetchInterpreter[M, C]#f](interpreter).runA(FetchEnv(cache))
+  ): M[(FetchEnv[C], A)] = fa.foldMap[FetchInterpreter[M, C]#f](interpreter).run(FetchEnv(cache))
 
-  def runEnv[I, A, C <: DataSourceCache, M[_]](
+  def runEnv[A, C <: DataSourceCache, M[_]](
     fa: Fetch[A],
     cache: C = InMemoryCache.empty
   )(
     implicit
       MM: MonadError[M, Throwable],
     CC: Cache[C]
-  ): M[FetchEnv[C]] = fa.foldMap[FetchInterpreter[M, C]#f](interpreter).runS(FetchEnv(cache))
+  ): M[FetchEnv[C]] = MM.map(runFetch[A, C, M](fa, cache)(MM, CC))(_._1)
 
-  def run[I, A, C <: DataSourceCache, M[_]](
+  def run[A, C <: DataSourceCache, M[_]](
     fa: Fetch[A],
     cache: C = InMemoryCache.empty
   )(
     implicit
       MM: MonadError[M, Throwable],
     CC: Cache[C]
-  ): M[A] = runFetch[I, A, C, M](fa, cache)(MM, CC)
+  ): M[A] = MM.map(runFetch[A, C, M](fa, cache)(MM, CC))(_._2)
 }
 
 object interpreters {
