@@ -13,19 +13,34 @@ import cats.syntax.cartesian._
 import cats.syntax.traverse._
 import cats.free.{ Free }
 
+/**
+  * A `DataSource` is the recipe for fetching a certain identity `I`, which yields
+  * results of type `A` with the concurrency and error handling specified by the Monad
+  * `M`.
+  */
 trait DataSource[I, A, M[_]] {
   def name: DataSourceName = this.toString
   def identity(i: I): DataSourceIdentity = (name, i)
   def fetchMany(ids: List[I]): M[Map[I, A]]
 }
 
+/**
+  * A marker trait for cache implementations.
+  */
 trait DataSourceCache
 
+/**
+  * A `Cache` trait so the users of the library can provide their own cache.
+  */
 trait Cache[T <: DataSourceCache]{
   def update[I, A](c: T, k: DataSourceIdentity, v: A): T
   def get[I](c: T, k: DataSourceIdentity): Option[Any]
 }
 
+/**
+  * An environment that is passed along during the fetch rounds. It holds the
+  * cache and the list of rounds that have been executed.
+  */
 trait Env[C <: DataSourceCache]{
   def cache: C
   def rounds: Seq[Round]
@@ -43,6 +58,9 @@ trait Env[C <: DataSourceCache]{
   ): Env[C]
 }
 
+/**
+  * A data structure that holds information about a fetch round.
+  */
 case class Round(
   cache: DataSourceCache,
   ds: DataSourceName,
@@ -64,6 +82,9 @@ final case class OneRound(id: Any) extends RoundKind
 final case class ManyRound(ids: List[Any]) extends RoundKind
 final case class ConcurrentRound(ids: Map[String, List[Any]]) extends RoundKind
 
+/**
+  * A concrete implementation of `Env` used in the default Fetch interpreter.
+  */
 case class FetchEnv[C <: DataSourceCache](
   cache: C,
   ids: List[Any] = Nil,
@@ -77,11 +98,17 @@ case class FetchEnv[C <: DataSourceCache](
     copy(cache = newCache, rounds = rounds :+ newRound, ids = newIds)
 }
 
+/**
+  * An exception thrown from the interpreter when failing to perform a data fetch.
+  */
 case class FetchFailure[C <: DataSourceCache](env: Env[C])(
   implicit CC: Cache[C]
 ) extends Throwable
 
 object algebra {
+  /**
+    * Primitive operations in the Fetch Free monad.
+    */
   sealed abstract class FetchOp[A] extends Product with Serializable
   final case class FetchOne[I, A, M[_]](a: I, ds: DataSource[I, A, M]) extends FetchOp[A]
   final case class FetchMany[I, A, M[_]](as: List[I], ds: DataSource[I, A, M]) extends FetchOp[List[A]]
@@ -106,6 +133,8 @@ object types {
 }
 
 object cache {
+  /** A cache that stores its elements in memory.
+    */
   case class InMemoryCache(state:Map[Any, Any]) extends DataSourceCache
 
   object InMemoryCache {
@@ -129,17 +158,29 @@ object Fetch {
   import cache._
   import interpreters._
 
+  /**
+    * Lift a plain value to the Fetch monad.
+    */
   def pure[A](a: A): Fetch[A] =
     Free.pure(a)
 
+  /**
+    * Lift an error to the Fetch monad.
+    */
   def error[A](e: Throwable): Fetch[A] =
     Free.liftF(FetchError(e))
 
+  /**
+    * Given a value that has a related `DataSource` implementation, lift it
+    * to the `Fetch` monad. When executing the fetch the data source will be
+    * queried and the fetch will return its result.
+    */
   def apply[I, A, M[_]](i: I)(
     implicit DS: DataSource[I, A, M]
   ): Fetch[A] =
     Free.liftF(FetchOne[I, A, M](i, DS))
 
+  // xxx: cleanup
   def deps[A, M[_]](f: Fetch[A]): List[FetchMany[_, A, M]] = {
     f.foldMap(accumulator).runS(List()).value.asInstanceOf[List[FetchMany[_, A, M]]]
   }
@@ -154,11 +195,18 @@ object Fetch {
     })
   }
 
+  /**
+    * Given a list of `Fetch` instances, return a new `Fetch` that will run as much as it can
+    * concurrently.
+    */
   def concurrently[A, M[_]](fs: List[Fetch[A]]): Fetch[Unit] = {
     val fetches: List[FetchMany[_, _, M]] = combineDeps(fs.map(deps).flatten)
     Free.liftF(Concurrent[M](fetches))
   }
 
+  /**
+    * Collect a list of fetches into a fetch of a list. It implies concurrent execution of fetches.
+    */
   def collect[I, A, M[_]](ids: List[Fetch[A]]): Fetch[List[A]] = {
     for {
       _ <- concurrently[A, M](ids)
@@ -166,9 +214,17 @@ object Fetch {
     } yield l
   }
 
+  /**
+    * Apply a fetch-returning function to every element in a list and return a Fetch of the list of
+    * results. It implies concurrent execution of fetches.
+    */
   def traverse[I, A, B, M[_]](ids: List[I])(f: I => Fetch[A]): Fetch[List[A]] =
     collect(ids.map(f))
 
+  /**
+    * Join two fetches from any data sources and return a Fetch that returns a tuple with the two
+    * results. It implies concurrent execution of fetches.
+    */
   def join[A, B, C, M[_]](fl: Fetch[A], fr: Fetch[B]): Fetch[(A, B)] = {
     for {
       _ <- concurrently[C, M](List(fl, fr).asInstanceOf[List[Fetch[C]]])
@@ -177,6 +233,10 @@ object Fetch {
     } yield (l, r)
   }
 
+  /**
+    * Run a `Fetch` with the given cache, returning a pair of the final environment and result
+    * in the monad `M`.
+    */
   def runFetch[A, C <: DataSourceCache, M[_]](
     fa: Fetch[A],
     cache: C
@@ -186,6 +246,9 @@ object Fetch {
     CC: Cache[C]
   ): M[(FetchEnv[C], A)] = fa.foldMap[FetchInterpreter[M, C]#f](interpreter).run(FetchEnv(cache))
 
+  /**
+    * Run a `Fetch` with the given cache, returning the final environment in the monad `M`.
+    */
   def runEnv[A, C <: DataSourceCache, M[_]](
     fa: Fetch[A],
     cache: C = InMemoryCache.empty
@@ -195,6 +258,9 @@ object Fetch {
     CC: Cache[C]
   ): M[FetchEnv[C]] = MM.map(runFetch[A, C, M](fa, cache)(MM, CC))(_._1)
 
+  /**
+    * Run a `Fetch` with the given cache, the result in the monad `M`.
+    */
   def run[A, C <: DataSourceCache, M[_]](
     fa: Fetch[A],
     cache: C = InMemoryCache.empty
