@@ -235,8 +235,16 @@ class FetchSpec extends Specification {
 
       val fetch = Fetch.join(
         Fetch.join(
-          one(1),
-          Fetch.join(one(2), one(3))
+          for {
+            a <- one(1)
+            b <- one(2)
+            c <- one(b)
+          } yield c,
+          for {
+            a <- one(1)
+            m <- Fetch(Many(4))
+            c <- one(m(1))
+          } yield c
         ),
         one(1)
       )

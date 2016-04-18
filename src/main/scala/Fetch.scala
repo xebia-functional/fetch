@@ -5,8 +5,8 @@ import scala.collection.immutable.Queue
 
 import fetch.types._
 
-import cats.{ MonadError, ~> }
-import cats.data.{ State, StateT }
+import cats.{ Functor, Monad, MonadError, ~> }
+import cats.data.{ State, StateT, Const }
 import cats.std.option._
 import cats.std.list._
 import cats.syntax.cartesian._
@@ -129,8 +129,6 @@ object types {
   type FetchInterpreter[M[_], C <: DataSourceCache] = {
     type f[x] = StateT[M, FetchEnv[C], x]
   }
-
-  type FetchAccumulator[A] = State[List[FetchOp[_]], A]
 }
 
 object cache {
@@ -181,11 +179,21 @@ object Fetch {
   ): Fetch[A] =
     Free.liftF(FetchOne[I, A, M](i, DS))
 
-  // xxx: cleanup
   def deps[A, M[_]](f: Fetch[A]): List[FetchMany[_, A, M]] = {
-    f.foldMap[FetchAccumulator](
-      accumulator
-    ).runS(List()).value.asInstanceOf[List[FetchMany[_, A, M]]]
+    type FM = List[FetchMany[_, A, M]]
+
+    f.foldMap[Const[List[FetchMany[_, A, M]], ?]](new (FetchOp ~> Const[FM, ?]) {
+      def apply[X](x: FetchOp[X]): Const[FM, X] = x match {
+        case one@FetchOne(id, ds) => Const(List(FetchMany(List(id), ds.asInstanceOf[DataSource[Any, A, M]])))
+        case conc@Concurrent(as) => Const(as.asInstanceOf[FM])
+        case _ => Const(List())
+      }
+    })(new Monad[Const[FM, ?]] {
+      def pure[A](x: A): Const[FM, A] = Const(List())
+
+      def flatMap[A, B](fa: Const[FM, A])(f: A => Const[FM, B]): Const[FM, B] =
+        fa.asInstanceOf[Const[FM, B]]
+    }).getConst
   }
 
   def combineDeps[A, M[_]](ds: List[FetchOp[A]]): List[FetchMany[_, _, M]] = {
@@ -278,29 +286,6 @@ object interpreters {
   import algebra._
   import types._
   import cache._
-
-  def accumulator: FetchOp ~> FetchAccumulator = {
-    new (FetchOp ~> FetchAccumulator) {
-      def apply[A](fa: FetchOp[A]): FetchAccumulator[A] = {
-        State { env: List[FetchOp[_]] =>
-          fa match {
-            case one@FetchOne(id, ds) => (
-              env :+ one, null.asInstanceOf[A] // xxx: don't do this abomination
-            )
-            case many@FetchMany(ids, ds) => (
-              env :+ many, null.asInstanceOf[A]
-            )
-            case conc@Concurrent(as) => (
-              env ++ as, null.asInstanceOf[A]
-            )
-            case _ => (
-              env, null.asInstanceOf[A]
-            )
-          }
-        }
-      }
-    }
-  }
 
   def interpreter[C <: DataSourceCache, I, E <: Env[C], M[_]](
     implicit
