@@ -52,6 +52,11 @@ case class Round(
   cached: Boolean = false
 ) {
   def duration: Double = (endRound - startRound) / 1e6
+
+  def isConcurrent: Boolean = kind match {
+    case ConcurrentRound(_) => true
+    case _ => false
+  }
 }
 
 sealed trait RoundKind
@@ -212,6 +217,7 @@ object interpreters {
           fa match {
             case one@FetchOne(id, ds) => (env :+ one, null.asInstanceOf[A])
             case many@FetchMany(ids, ds) => (env :+ many, null.asInstanceOf[A])
+            case conc@Concurrent(as) => (env ++ as, null.asInstanceOf[A])
             case _ => (env, null.asInstanceOf[A])
           }
         }
