@@ -39,6 +39,15 @@ class FetchSpec extends Specification {
     }
     def one(id: Int): Fetch[Int] = Fetch(One(id))
 
+    case class AnotherOne(id: Int)
+    implicit object AnotheroneSource extends DataSource[AnotherOne, Int, Eval] {
+      override def name = "AnotherOneSource"
+
+      override def fetchMany(ids: List[AnotherOne]): Eval[Map[AnotherOne, Int]] =
+        ISM.pure(ids.map(anotherone => (anotherone, anotherone.id)).toMap)
+    }
+    def anotherOne(id: Int): Fetch[Int] = Fetch(AnotherOne(id))
+
     case class Many(n: Int)
     implicit object ManySource extends DataSource[Many, List[Int], Eval] {
       override def name = "ManySource"
@@ -187,6 +196,22 @@ class FetchSpec extends Specification {
       concurrent(rounds).size must_== 1
     }
 
+    "If a fetch fails in the left hand of a product the product will fail" >> {
+      import cats.syntax.cartesian._
+
+      val fetch: Fetch[(Int, List[Int])] = Fetch.join(Fetch.error(NotFound()), Fetch(Many(3)))
+
+      Fetch.run(fetch).value must throwA[NotFound]
+    }
+
+    "If a fetch fails in the right hand of a product the product will fail" >> {
+      import cats.syntax.cartesian._
+
+      val fetch: Fetch[(List[Int], Int)] = Fetch.join(Fetch(Many(3)), Fetch.error(NotFound()))
+
+      Fetch.run(fetch).value must throwA[NotFound]
+    }
+
     "The product of concurrent fetches implies everything fetched concurrently" >> {
       import cats.syntax.cartesian._
 
@@ -262,13 +287,20 @@ class FetchSpec extends Specification {
       Fetch.run(fetch).value must_== List(1, 2, 3)
     }
 
+    "We can collect a list of Fetches with heterogeneous sources" >> {
+      val sources: List[Fetch[Int]] = List(one(1), one(2), one(3), anotherOne(4), anotherOne(5))
+      val fetch: Fetch[List[Int]] = Fetch.collect(sources)
+      Fetch.run(fetch).value must_== List(1, 2, 3, 4, 5)
+    }
+
     "Collected fetches are run concurrently" >> {
-      val sources: List[Fetch[Int]] = List(one(1), one(2), one(3))
+      val sources: List[Fetch[Int]] = List(one(1), one(2), one(3), anotherOne(4), anotherOne(5))
       val fetch: Fetch[List[Int]] = Fetch.collect(sources)
 
       val rounds = Fetch.runEnv(fetch).value.rounds
 
       concurrent(rounds).size must_== 1
+      totalBatches(rounds) must_== 2
     }
 
     "Collected fetches are deduped" >> {
