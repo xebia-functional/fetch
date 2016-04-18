@@ -57,6 +57,7 @@ trait Env[C <: DataSourceCache]{
     newIds: List[Any]
   ): Env[C]
 }
+// todo: configuration, profiling, etc. based on the used environment?
 
 /**
   * A data structure that holds information about a fetch round.
@@ -125,11 +126,11 @@ object types {
 
   type Fetch[A] = Free[FetchOp, A]
 
-  type FetchAccumulator[A] = State[List[FetchOp[_]], A]
-
   type FetchInterpreter[M[_], C <: DataSourceCache] = {
     type f[x] = StateT[M, FetchEnv[C], x]
   }
+
+  type FetchAccumulator[A] = State[List[FetchOp[_]], A]
 }
 
 object cache {
@@ -182,7 +183,9 @@ object Fetch {
 
   // xxx: cleanup
   def deps[A, M[_]](f: Fetch[A]): List[FetchMany[_, A, M]] = {
-    f.foldMap(accumulator).runS(List()).value.asInstanceOf[List[FetchMany[_, A, M]]]
+    f.foldMap[FetchAccumulator](
+      accumulator
+    ).runS(List()).value.asInstanceOf[List[FetchMany[_, A, M]]]
   }
 
   def combineDeps[A, M[_]](ds: List[FetchOp[A]]): List[FetchMany[_, _, M]] = {
@@ -279,12 +282,20 @@ object interpreters {
   def accumulator: FetchOp ~> FetchAccumulator = {
     new (FetchOp ~> FetchAccumulator) {
       def apply[A](fa: FetchOp[A]): FetchAccumulator[A] = {
-        State[List[FetchOp[_]], A] { env: List[FetchOp[_]] =>
+        State { env: List[FetchOp[_]] =>
           fa match {
-            case one@FetchOne(id, ds) => (env :+ one, null.asInstanceOf[A])
-            case many@FetchMany(ids, ds) => (env :+ many, null.asInstanceOf[A])
-            case conc@Concurrent(as) => (env ++ as, null.asInstanceOf[A])
-            case _ => (env, null.asInstanceOf[A])
+            case one@FetchOne(id, ds) => (
+              env :+ one, null.asInstanceOf[A] // xxx: don't do this abomination
+            )
+            case many@FetchMany(ids, ds) => (
+              env :+ many, null.asInstanceOf[A]
+            )
+            case conc@Concurrent(as) => (
+              env ++ as, null.asInstanceOf[A]
+            )
+            case _ => (
+              env, null.asInstanceOf[A]
+            )
           }
         }
       }
