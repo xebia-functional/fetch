@@ -112,9 +112,10 @@ object algebra {
     */
   sealed abstract class FetchOp[A] extends Product with Serializable
 
+  final case class Cached[A](a: A) extends FetchOp[A]
   final case class FetchOne[I, A, M[_]](a: I, ds: DataSource[I, A, M]) extends FetchOp[A]
   final case class FetchMany[I, A, M[_]](as: List[I], ds: DataSource[I, A, M]) extends FetchOp[List[A]]
-  final case class Concurrent[M[_]](as: List[FetchMany[_, _, M]]) extends FetchOp[Unit]
+  final case class Concurrent[C <: DataSourceCache, E <: Env[C], M[_]](as: List[FetchMany[_, _, M]]) extends FetchOp[E]
   final case class FetchError[A, E <: Throwable](err: E) extends FetchOp[A]
 }
 
@@ -180,30 +181,34 @@ object Fetch {
   ): Fetch[A] =
     Free.liftF(FetchOne[I, A, M](i, DS))
 
-  def deps[A, M[_]](f: Fetch[A]): List[FetchMany[_, A, M]] = {
-    type FM = List[FetchMany[_, A, M]]
+  def deps[A, M[_]](f: Fetch[A]): List[FetchOp[_]] = {
+    type FM = List[FetchOp[_]]
 
-    f.foldMap[Const[List[FetchMany[_, A, M]], ?]](new (FetchOp ~> Const[FM, ?]) {
+    f.foldMap[Const[FM, ?]](new (FetchOp ~> Const[FM, ?]) {
       def apply[X](x: FetchOp[X]): Const[FM, X] = x match {
         case one@FetchOne(id, ds) => Const(List(FetchMany(List(id), ds.asInstanceOf[DataSource[Any, A, M]])))
         case conc@Concurrent(as) => Const(as.asInstanceOf[FM])
+        case cach@Cached(a) => Const(List(cach))
         case _ => Const(List())
       }
     })(new Monad[Const[FM, ?]] {
       def pure[A](x: A): Const[FM, A] = Const(List())
 
-      def flatMap[A, B](fa: Const[FM, A])(f: A => Const[FM, B]): Const[FM, B] =
-        fa.asInstanceOf[Const[FM, B]]
+      def flatMap[A, B](fa: Const[FM, A])(f: A => Const[FM, B]): Const[FM, B] = fa match {
+        case Const(List(Cached(a: A))) => f(a)
+        case other => fa.asInstanceOf[Const[FM, B]]
+      }
+
     }).getConst
   }
 
-  def combineDeps[A, M[_]](ds: List[FetchOp[A]]): List[FetchMany[_, _, M]] = {
+  def combineDeps[M[_]](ds: List[FetchOp[_]]): List[FetchMany[_, _, M]] = {
     ds.foldLeft(Map.empty[Any, List[_]])((acc, op) => op match {
       case one@FetchOne(id, ds) => acc.updated(ds, acc.get(ds).fold(List(id))(accids => accids :+ id))
       case many@FetchMany(ids, ds) => acc.updated(ds, acc.get(ds).fold(ids)(accids => accids ++ ids))
       case _ => acc
     }).toList.map({
-      case (ds, ids) => FetchMany[Any, A, M](ids, ds.asInstanceOf[DataSource[Any, A, M]])
+      case (ds, ids) => FetchMany[Any, Any, M](ids, ds.asInstanceOf[DataSource[Any, Any, M]])
     })
   }
 
@@ -211,9 +216,9 @@ object Fetch {
     * Given a list of `Fetch` instances, return a new `Fetch` that will run as much as it can
     * concurrently.
     */
-  def concurrently[A, M[_]](fs: List[Fetch[A]]): Fetch[Unit] = {
-    val fetches: List[FetchMany[_, _, M]] = combineDeps(fs.map(deps).flatten)
-    Free.liftF(Concurrent[M](fetches))
+  def concurrently[A, B, C <: DataSourceCache, E <: Env[C], M[_]](fa: Fetch[A], fb: Fetch[B]): Fetch[E] = {
+    val fetches: List[FetchMany[_, _, M]] = combineDeps(List(deps(fa), deps(fb)).flatten)
+    Free.liftF(Concurrent[C, E, M](fetches))
   }
 
   /**
@@ -236,12 +241,65 @@ object Fetch {
     * Join two fetches from any data sources and return a Fetch that returns a tuple with the two
     * results. It implies concurrent execution of fetches.
     */
-  def join[A, B, C, M[_]](fl: Fetch[A], fr: Fetch[B]): Fetch[(A, B)] = {
+  def join[A, B, C <: DataSourceCache, E <: Env[C], M[_]](fl: Fetch[A], fr: Fetch[B])(
+    implicit
+      CC: Cache[C]
+  ): Fetch[(A, B)] = {
     for {
-      _ <- concurrently[C, M](List(fl, fr).asInstanceOf[List[Fetch[C]]])
-      l <- fl
-      r <- fr
-    } yield (l, r)
+      env <- concurrently[A, B, C, E, M](fl, fr)
+
+      result <- {
+
+        val simplify: FetchOp ~> FetchOp = new (FetchOp ~> FetchOp) {
+          def apply[B](f: FetchOp[B]): FetchOp[B] = f match {
+            case one@FetchOne(id, ds) => {
+              CC.get(env.cache, ds.identity(id)).fold(one : FetchOp[B])(b => Cached(b).asInstanceOf[FetchOp[B]])
+            }
+            case many@FetchMany(ids, ds) => {
+              val results = ids.flatMap(id =>
+                CC.get(env.cache, ds.identity(id))
+              )
+
+              if (results.size == ids.size) {
+                Cached(results)
+              } else {
+                many
+              }
+            }
+            case conc@Concurrent(manies) => {
+              val newManies = manies.filterNot({fm =>
+                val ids: List[Any] = fm.as
+                val ds: DataSource[Any, _, M] = fm.ds.asInstanceOf[DataSource[Any, _, M]]
+
+                val results = ids.flatMap(id => {
+                  CC.get(env.cache, ds.identity(id))
+                })
+
+                results.size == ids.size
+              }).asInstanceOf[List[FetchMany[_, _, M]]]
+
+
+              if (newManies.isEmpty)
+                Cached(env).asInstanceOf[FetchOp[B]]
+              else
+                Concurrent(newManies).asInstanceOf[FetchOp[B]]
+            }
+            case other => other
+          }
+        }
+
+        val sfl = fl.compile(simplify)
+        val sfr = fr.compile(simplify)
+        val remainingDeps = combineDeps(deps(sfl) ++  deps(sfr))
+
+        if (remainingDeps.isEmpty) {
+          sfl.product(sfr)
+        } else {
+          join[A, B, C, E, M](sfl, sfr)
+        }
+
+      }
+    } yield result
   }
 
   /**
@@ -296,6 +354,7 @@ object interpreters {
       def apply[A](fa: FetchOp[A]): FetchInterpreter[M, C]#f[A] = {
         StateT[M, FetchEnv[C], A] { env: FetchEnv[C] => fa match {
           case FetchError(e) => MM.raiseError(e)
+          case Cached(a) => MM.pure((env, a))
           case Concurrent(manies) => {
             val startRound = System.nanoTime()
             val cache = env.cache
@@ -312,7 +371,7 @@ object interpreters {
               case (_, ids) => ids.isEmpty
             })
             if (sids.isEmpty)
-              MM.pure((env, ()))
+              MM.pure((env, env.asInstanceOf[A]))
             else
               MM.flatMap(sids.map({
                 case (ds, as) => ds.asInstanceOf[DataSource[I, A, M]].fetch(as.asInstanceOf[List[I]])
@@ -338,7 +397,7 @@ object interpreters {
                   ),
                   Nil
                 )
-                MM.pure((newEnv, ()))
+                MM.pure((newEnv, newEnv.asInstanceOf[A]))
               })
           }
           case FetchOne(id: I, ds) => {
