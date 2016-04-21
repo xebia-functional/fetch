@@ -61,6 +61,7 @@ class FetchSpec extends Specification {
       override def fetch(ids: List[Never]): Eval[Map[Never, Int]] =
         ISM.pure(Map.empty[Never, Int])
     }
+    def many(id: Int): Fetch[List[Int]] = Fetch(Many(id))
 
     def runEnv[A](f: Fetch[A]): FetchEnv[InMemoryCache] =
       Fetch.runEnv(f).value
@@ -171,9 +172,9 @@ class FetchSpec extends Specification {
 
     "We can mix data sources" >> {
       val fetch: Fetch[(Int, List[Int])] = for {
-        one <- Fetch(One(1))
-        many <- Fetch(Many(3))
-      } yield (one, many)
+        o <- one(1)
+        m <- many(3)
+      } yield (o, m)
 
       Fetch.run(fetch).value == (1, List(0, 1, 2))
     }
@@ -181,7 +182,7 @@ class FetchSpec extends Specification {
     "We can use Fetch as an applicative" >> {
       import cats.syntax.cartesian._
 
-      val fetch: Fetch[(Int, List[Int])] = (Fetch(One(1)) |@| Fetch(Many(3))).map { case (a, b) => (a, b) }
+      val fetch: Fetch[(Int, List[Int])] = (one(1) |@| many(3)).map { case (a, b) => (a, b) }
 
       Fetch.run(fetch).value == (1, List(0, 1, 2))
     }
@@ -189,7 +190,7 @@ class FetchSpec extends Specification {
     "The product of two fetches implies concurrent fetching" >> {
       import cats.syntax.cartesian._
 
-      val fetch: Fetch[(Int, List[Int])] = Fetch.join(Fetch(One(1)), Fetch(Many(3)))
+      val fetch: Fetch[(Int, List[Int])] = Fetch.join(one(1), many(3))
 
       val rounds = Fetch.runEnv(fetch).value.rounds
 
@@ -199,7 +200,7 @@ class FetchSpec extends Specification {
     "If a fetch fails in the left hand of a product the product will fail" >> {
       import cats.syntax.cartesian._
 
-      val fetch: Fetch[(Int, List[Int])] = Fetch.join(Fetch.error(NotFound()), Fetch(Many(3)))
+      val fetch: Fetch[(Int, List[Int])] = Fetch.join(Fetch.error(NotFound()), many(3))
 
       Fetch.run(fetch).value must throwA[NotFound]
     }
@@ -207,7 +208,7 @@ class FetchSpec extends Specification {
     "If a fetch fails in the right hand of a product the product will fail" >> {
       import cats.syntax.cartesian._
 
-      val fetch: Fetch[(List[Int], Int)] = Fetch.join(Fetch(Many(3)), Fetch.error(NotFound()))
+      val fetch: Fetch[(List[Int], Int)] = Fetch.join(many(3), Fetch.error(NotFound()))
 
       Fetch.run(fetch).value must throwA[NotFound]
     }
@@ -220,7 +221,7 @@ class FetchSpec extends Specification {
           one(1),
           Fetch.join(one(2), one(3))
         ),
-        Fetch(Many(3))
+        many(3)
       )
 
       val env = Fetch.runEnv(fetch).value
@@ -242,7 +243,7 @@ class FetchSpec extends Specification {
           } yield c,
           for {
             a <- one(1)
-            m <- Fetch(Many(4))
+            m <- many(4)
             c <- one(m(1))
           } yield c
         ),
@@ -257,10 +258,37 @@ class FetchSpec extends Specification {
       totalFetched(rounds) must_== 3
     }
 
+    "Every level of concurrent fetches is batched" >> {
+      import cats.syntax.cartesian._
+
+      val fetch = Fetch.join(
+        Fetch.join(
+          for {
+            a <- one(2)
+            b <- many(1)
+            c <- one(5)
+          } yield c,
+          for {
+            a <- one(3)
+            b <- many(2)
+            c <- one(4)
+          } yield c
+        ),
+        one(1)
+      )
+
+      val env = Fetch.runEnv(fetch).value
+      val rounds = env.rounds
+
+      concurrent(rounds).size must_== 3
+      totalBatches(rounds) must_== 3
+      totalFetched(rounds) must_== 7
+    }
+
     "The product of two fetches from the same data source implies batching" >> {
       import cats.syntax.cartesian._
 
-      val fetch: Fetch[(Int, Int)] = Fetch.join(Fetch(One(1)), Fetch(One(3)))
+      val fetch: Fetch[(Int, Int)] = Fetch.join(one(1), one(3))
 
       val rounds = Fetch.runEnv(fetch).value.rounds
 
@@ -282,9 +310,9 @@ class FetchSpec extends Specification {
 
     "We can depend on previous computations of Fetch values" >> {
       val fetch: Fetch[Int] = for {
-        one <- Fetch(One(1))
-        two <- Fetch(One(one + 1))
-      } yield one + two
+        o <- one(1)
+        t <- one(o + 1)
+      } yield o + t
 
       Fetch.run(fetch).value must_== 3
     }
@@ -379,14 +407,14 @@ class FetchSpec extends Specification {
 
     "Elements are cached and thus not fetched more than once" >> {
       val fetch = for {
-        aOne <- Fetch(One(1))
-        anotherOne <- Fetch(One(1))
-        _ <- Fetch(One(1))
-        _ <- Fetch(One(2))
-        _ <- Fetch(One(3))
-        _ <- Fetch(One(1))
+        aOne <- one(1)
+        anotherOne <- one(1)
+        _ <- one(1)
+        _ <- one(2)
+        _ <- one(3)
+        _ <- one(1)
         _ <- Fetch.traverse(List(1, 2, 3))(one)
-        _ <- Fetch(One(1))
+        _ <- one(1)
       } yield aOne + anotherOne
 
       val rounds = Fetch.runEnv(fetch).value.rounds
@@ -396,15 +424,14 @@ class FetchSpec extends Specification {
 
     "Elements that are cached won't be fetched" >> {
       val fetch = for {
-        aOne <- Fetch(One(1))
-        anotherOne <- Fetch(One(1))
-        _ <- Fetch(One(1))
-        _ <- Fetch(One(2))
-        _ <- Fetch(One(3))
-        _ <- Fetch(One(1))
-        _ <- Fetch.join(one(1), one(2))
+        aOne <- one(1)
+        anotherOne <- one(1)
+        _ <- one(1)
+        _ <- one(2)
+        _ <- one(3)
+        _ <- one(1)
         _ <- Fetch.traverse(List(1, 2, 3))(one)
-        _ <- Fetch(One(1))
+        _ <- one(1)
       } yield aOne + anotherOne
 
       val rounds = Fetch.runEnv(fetch, InMemoryCache(
@@ -435,15 +462,14 @@ class FetchSpec extends Specification {
 
     "we can use a custom cache" >> {
       val fetch = for {
-        aOne <- Fetch(One(1))
-        anotherOne <- Fetch(One(1))
-        _ <- Fetch(One(1))
-        _ <- Fetch(One(2))
-        _ <- Fetch(Many(2))
-        _ <- Fetch(One(3))
-        _ <- Fetch(One(1))
+        aOne <- one(1)
+        anotherOne <- one(1)
+        _ <- one(1)
+        _ <- one(2)
+        _ <- one(3)
+        _ <- one(1)
         _ <- Fetch.traverse(List(1, 2, 3))(one)
-        _ <- Fetch(One(1))
+        _ <- one(1)
       } yield aOne + anotherOne
 
       val rounds = Fetch.runEnv(fetch, InMemoryCache(
