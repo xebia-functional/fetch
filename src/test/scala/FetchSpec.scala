@@ -93,13 +93,9 @@ class FetchSpec extends Specification {
 
       Fetch.runEnv(fetch).value must throwA[Throwable].like {
         case FetchFailure(env: Env[_]) => {
-          env.rounds.size must_== 1
-          env.rounds.headOption.fold(
-            false must_== true
-          )(round => round.kind match {
-            case OneRound(id) => id must_== Never()
-            case _ => false must_== true
-          })
+          env.rounds.headOption match {
+            case Some(Round(_, _, OneRound(id), _, _, _)) => id must_== Never()
+          }
         }
       }
     }
