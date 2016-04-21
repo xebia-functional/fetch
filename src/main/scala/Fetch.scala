@@ -466,7 +466,6 @@ object interpreters {
                   val newCache = res.foldLeft(cache)({
                     case (c, (k, v)) => CC.update(c, ds.identity(k), v)
                   })
-                  // todo: improve round reporting
                   val someCached = oldIds.size == newIds.size
                   MM.pure(
                     (env.next(

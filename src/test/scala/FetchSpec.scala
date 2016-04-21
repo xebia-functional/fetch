@@ -521,13 +521,6 @@ class FetchFutureSpec extends Specification {
     override def name = "ArticleFuture"
     override def fetch(ids: List[ArticleId]): Future[Map[ArticleId, Article]] = {
       Future({
-        // val threadId = Thread.currentThread().getId()
-        // val wait = scala.util.Random.nextInt(100)
-
-        // println("->[" + threadId + "] ArticleFuture: " + ids + " will take " + wait)
-        // Thread.sleep(wait)
-        // println("<-[" + threadId + "] ArticleFuture: " + ids)
-
         ids.map(tid => (tid, Article(tid.id, "An article with id " + tid.id))).toMap
       })
     }
@@ -542,13 +535,6 @@ class FetchFutureSpec extends Specification {
     override def name = "AuthorFuture"
     override def fetch(ids: List[AuthorId]): Future[Map[AuthorId, Author]] = {
       Future({
-        // val threadId = Thread.currentThread().getId()
-        // val wait = scala.util.Random.nextInt(100)
-
-        // println("->[" + threadId + "] AuthorFuture: " + ids + " will take " + wait)
-        // Thread.sleep(wait)
-        // println("<-[" + threadId + "] AuthorFuture: " + ids)
-
         ids.map(tid => (tid, Author(tid.id, "@egg" + tid.id))).toMap
       })
     }
