@@ -220,10 +220,9 @@ object Fetch {
     * Collect a list of fetches into a fetch of a list. It implies concurrent execution of fetches.
     */
   def collect[I, A, M[_]](ids: List[Fetch[A]]): Fetch[List[A]] = {
-    for {
-      _ <- concurrently[A, M](ids)
-      l <- ids.sequence
-    } yield l
+    ids.foldLeft(Fetch.pure(List(): List[A]))((f, newF) =>
+      Fetch.join(f, newF).map(t => t._1 :+ t._2)
+    )
   }
 
   /**
