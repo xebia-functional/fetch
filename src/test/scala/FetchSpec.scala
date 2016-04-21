@@ -140,28 +140,28 @@ class FetchSpec extends Specification {
     }
 
     "We can lift values which have a Data Source to Fetch" >> {
-      Fetch.run(Fetch(One(1))).value == 1
+      Fetch.run(one(1)).value == 1
     }
 
     "We can map over Fetch values" >> {
-      val fetch = Fetch(One(1)).map(_ + 1)
+      val fetch = one(1).map(_ + 1)
       Fetch.run(fetch).value must_== 2
     }
 
     "We can use fetch inside a for comprehension" >> {
       val fetch = for {
-        one <- Fetch(One(1))
-        two <- Fetch(One(2))
-      } yield (one, two)
+        o <- one(1)
+        t <- one(2)
+      } yield (o, t)
 
       Fetch.run(fetch).value == (1, 2)
     }
 
     "Monadic bind implies sequential execution" >> {
       val fetch = for {
-        one <- Fetch(One(1))
-        two <- Fetch(One(2))
-      } yield (one, two)
+        o <- one(1)
+        t <- one(2)
+      } yield (o, t)
 
       Fetch.runEnv(fetch).value.rounds.size must_== 2
     }
@@ -323,7 +323,7 @@ class FetchSpec extends Specification {
     // "Applicative syntax is implicitly concurrent" >> {
     //   import cats.syntax.cartesian._
 
-    //   val fetch: Fetch[(Int, List[Int])] = (Fetch(One(1)) |@| Fetch(Many(3))).tupled
+    //   val fetch: Fetch[(Int, List[Int])] = (one(1) |@| many(3)).tupled
 
     //   val env = Fetch.runEnv(fetch).value
     //   val rounds = env.rounds
