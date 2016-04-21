@@ -34,7 +34,7 @@ class FetchSpec extends Specification {
     case class One(id: Int)
     implicit object OneSource extends DataSource[One, Int, Eval] {
       override def name = "OneSource"
-      override def fetchMany(ids: List[One]): Eval[Map[One, Int]] =
+      override def fetch(ids: List[One]): Eval[Map[One, Int]] =
         ISM.pure(ids.map(one => (one, one.id)).toMap)
     }
     def one(id: Int): Fetch[Int] = Fetch(One(id))
@@ -43,7 +43,7 @@ class FetchSpec extends Specification {
     implicit object AnotheroneSource extends DataSource[AnotherOne, Int, Eval] {
       override def name = "AnotherOneSource"
 
-      override def fetchMany(ids: List[AnotherOne]): Eval[Map[AnotherOne, Int]] =
+      override def fetch(ids: List[AnotherOne]): Eval[Map[AnotherOne, Int]] =
         ISM.pure(ids.map(anotherone => (anotherone, anotherone.id)).toMap)
     }
     def anotherOne(id: Int): Fetch[Int] = Fetch(AnotherOne(id))
@@ -51,14 +51,14 @@ class FetchSpec extends Specification {
     case class Many(n: Int)
     implicit object ManySource extends DataSource[Many, List[Int], Eval] {
       override def name = "ManySource"
-      override def fetchMany(ids: List[Many]): Eval[Map[Many, List[Int]]] =
+      override def fetch(ids: List[Many]): Eval[Map[Many, List[Int]]] =
         ISM.pure(ids.map(m => (m, 0 until m.n toList)).toMap)
     }
 
     case class Never()
     implicit object NeverSource extends DataSource[Never, Int, Eval] {
       override def name = "NeverSource"
-      override def fetchMany(ids: List[Never]): Eval[Map[Never, Int]] =
+      override def fetch(ids: List[Never]): Eval[Map[Never, Int]] =
         ISM.pure(Map.empty[Never, Int])
     }
 
@@ -472,7 +472,7 @@ class FetchFutureSpec extends Specification {
 
   implicit object ArticleFuture extends DataSource[ArticleId, Article, Future] {
     override def name = "ArticleFuture"
-    override def fetchMany(ids: List[ArticleId]): Future[Map[ArticleId, Article]] = {
+    override def fetch(ids: List[ArticleId]): Future[Map[ArticleId, Article]] = {
       Future({
         // val threadId = Thread.currentThread().getId()
         // val wait = scala.util.Random.nextInt(100)
@@ -493,7 +493,7 @@ class FetchFutureSpec extends Specification {
 
   implicit object AuthorFuture extends DataSource[AuthorId, Author, Future] {
     override def name = "AuthorFuture"
-    override def fetchMany(ids: List[AuthorId]): Future[Map[AuthorId, Author]] = {
+    override def fetch(ids: List[AuthorId]): Future[Map[AuthorId, Author]] = {
       Future({
         // val threadId = Thread.currentThread().getId()
         // val wait = scala.util.Random.nextInt(100)

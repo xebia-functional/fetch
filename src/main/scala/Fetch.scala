@@ -21,7 +21,7 @@ import cats.free.{ Free }
 trait DataSource[I, A, M[_]] {
   def name: DataSourceName = this.toString
   def identity(i: I): DataSourceIdentity = (name, i)
-  def fetchMany(ids: List[I]): M[Map[I, A]]
+  def fetch(ids: List[I]): M[Map[I, A]]
 }
 
 /**
@@ -111,10 +111,11 @@ object algebra {
     * Primitive operations in the Fetch Free monad.
     */
   sealed abstract class FetchOp[A] extends Product with Serializable
+
   final case class FetchOne[I, A, M[_]](a: I, ds: DataSource[I, A, M]) extends FetchOp[A]
   final case class FetchMany[I, A, M[_]](as: List[I], ds: DataSource[I, A, M]) extends FetchOp[List[A]]
   final case class Concurrent[M[_]](as: List[FetchMany[_, _, M]]) extends FetchOp[Unit]
-  final case class FetchError[A, E <: Throwable](err: E)() extends FetchOp[A]
+  final case class FetchError[A, E <: Throwable](err: E) extends FetchOp[A]
 }
 
 object types {
@@ -315,7 +316,7 @@ object interpreters {
               MM.pure((env, ()))
             else
               MM.flatMap(sids.map({
-                case (ds, as) => ds.asInstanceOf[DataSource[I, A, M]].fetchMany(as.asInstanceOf[List[I]])
+                case (ds, as) => ds.asInstanceOf[DataSource[I, A, M]].fetch(as.asInstanceOf[List[I]])
               }).sequence)((results: List[Map[_, _]]) => {
                 val endRound = System.nanoTime()
                 val newCache = (sources zip results).foldLeft(cache)((accache, resultset) => resultset match {
@@ -345,7 +346,7 @@ object interpreters {
             val startRound = System.nanoTime()
             val cache = env.cache
             CC.get(cache, ds.identity(id)).fold[M[(FetchEnv[C], A)]](
-              MM.flatMap(ds.fetchMany(List(id)).asInstanceOf[M[Map[I, A]]])((res: Map[I, A]) => {
+              MM.flatMap(ds.fetch(List(id)).asInstanceOf[M[Map[I, A]]])((res: Map[I, A]) => {
                 val endRound = System.nanoTime()
                 res.get(id).fold[M[(FetchEnv[C], A)]](
                   MM.raiseError(
@@ -390,7 +391,7 @@ object interpreters {
                   newIds
                 ), ids.flatMap(id => CC.get(cache, ds.identity(id)))))
             else {
-              MM.flatMap(ds.fetchMany(newIds).asInstanceOf[M[Map[I, A]]])((res: Map[I, A]) => {
+              MM.flatMap(ds.fetch(newIds).asInstanceOf[M[Map[I, A]]])((res: Map[I, A]) => {
                 val endRound = System.nanoTime()
                 ids.map(res.get(_)).sequence.fold[M[(FetchEnv[C], A)]](
                   MM.raiseError(
