@@ -238,6 +238,12 @@ object Fetch {
     collect(ids.map(f))
 
   /**
+    * Apply the given function to the result of the two fetches. It implies concurrent execution of fetches.
+    */
+  def map2[A, B, C](f: (A, B) => C)(fa: Fetch[A], fb: Fetch[B]): Fetch[C] =
+    Fetch.join(fa, fb).map({ case (a, b) => f(a, b) })
+
+  /**
     * Join two fetches from any data sources and return a Fetch that returns a tuple with the two
     * results. It implies concurrent execution of fetches.
     */
