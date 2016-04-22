@@ -184,8 +184,6 @@ case class GetAuthor(id: Int)
 case class Author(id: Int, username: String)
 
 implicit object AuthorSource extends DataSource[GetAuthor, Author, Future]{
-  override def name = "Author"
-
   override def fetch(ids: List[GetAuthor]): Future[Map[GetAuthor, Author]] = {
     val results = ids.map(auth => (auth, Author(auth.id, "@egg_" + auth.id))).toMap
     latency(results, s"$ids")
