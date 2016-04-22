@@ -34,7 +34,14 @@ trait DataSourceCache
   */
 trait Cache[T <: DataSourceCache]{
   def update[I, A](c: T, k: DataSourceIdentity, v: A): T
+
   def get[I](c: T, k: DataSourceIdentity): Option[Any]
+
+  def cacheResults[I, A, M[_]](cache: T, results: Map[I, A], ds: DataSource[I, A, M]): T = {
+    results.foldLeft(cache)({
+      case (acc, (i, a)) => update(acc, ds.identity(i), a)
+    })
+  }
 }
 
 /**
@@ -181,7 +188,7 @@ object Fetch {
   ): Fetch[A] =
     Free.liftF(FetchOne[I, A, M](i, DS))
 
-  def deps[A, M[_]](f: Fetch[A]): List[FetchOp[_]] = {
+  def deps[A, M[_]](f: Fetch[_]): List[FetchOp[_]] = {
     type FM = List[FetchOp[_]]
 
     f.foldMap[Const[FM, ?]](new (FetchOp ~> Const[FM, ?]) {
@@ -212,19 +219,15 @@ object Fetch {
     })
   }
 
-  /**
-    * Given a list of `Fetch` instances, return a new `Fetch` that will run as much as it can
-    * concurrently.
-    */
-  def concurrently[A, B, C <: DataSourceCache, E <: Env[C], M[_]](fa: Fetch[A], fb: Fetch[B]): Fetch[E] = {
-    val fetches: List[FetchMany[_, _, M]] = combineDeps(List(deps(fa), deps(fb)).flatten)
+  private[this] def concurrently[C <: DataSourceCache, E <: Env[C], M[_]](fa: Fetch[_], fb: Fetch[_]): Fetch[E] = {
+    val fetches: List[FetchMany[_, _, M]] = combineDeps(deps(fa) ++ deps(fb))
     Free.liftF(Concurrent[C, E, M](fetches))
   }
 
   /**
     * Collect a list of fetches into a fetch of a list. It implies concurrent execution of fetches.
     */
-  def collect[I, A, M[_]](ids: List[Fetch[A]]): Fetch[List[A]] = {
+  def collect[I, A](ids: List[Fetch[A]]): Fetch[List[A]] = {
     ids.foldLeft(Fetch.pure(List(): List[A]))((f, newF) =>
       Fetch.join(f, newF).map(t => t._1 :+ t._2)
     )
@@ -234,7 +237,7 @@ object Fetch {
     * Apply a fetch-returning function to every element in a list and return a Fetch of the list of
     * results. It implies concurrent execution of fetches.
     */
-  def traverse[I, A, B, M[_]](ids: List[I])(f: I => Fetch[A]): Fetch[List[A]] =
+  def traverse[A, B](ids: List[A])(f: A => Fetch[B]): Fetch[List[B]] =
     collect(ids.map(f))
 
   /**
@@ -252,7 +255,7 @@ object Fetch {
       CC: Cache[C]
   ): Fetch[(A, B)] = {
     for {
-      env <- concurrently[A, B, C, E, M](fl, fr)
+      env <- concurrently[C, E, M](fl, fr)
 
       result <- {
 
@@ -283,7 +286,6 @@ object Fetch {
 
                 results.size == ids.size
               }).asInstanceOf[List[FetchMany[_, _, M]]]
-
 
               if (newManies.isEmpty)
                 Cached(env).asInstanceOf[FetchOp[B]]
@@ -354,6 +356,10 @@ object interpreters {
       MM: MonadError[M, Throwable],
     CC: Cache[C]
   ): FetchOp ~> FetchInterpreter[M, C]#f = {
+    def dedupeIds[I, A, M[_]](ids: List[I], ds: DataSource[I, A, M], cache: C) = {
+      ids.distinct.filterNot(i => CC.get(cache, ds.identity(i)).isDefined)
+    }
+
     new (FetchOp ~> FetchInterpreter[M, C]#f) {
       def apply[A](fa: FetchOp[A]): FetchInterpreter[M, C]#f[A] = {
         StateT[M, FetchEnv[C], A] { env: FetchEnv[C] => fa match {
@@ -362,31 +368,30 @@ object interpreters {
           case Concurrent(manies) => {
             val startRound = System.nanoTime()
             val cache = env.cache
-            // dedupe ids
             val sources = manies.map(_.ds)
-            val ids = manies.map(_.as.distinct)
-            // don't ask for cached results
-            val sids = (sources zip ids).map({
+            val ids = manies.map(_.as)
+
+            val sourcesAndIds = (sources zip ids).map({
               case (ds, ids) => (
                 ds,
-                ids.filterNot(id => CC.get(cache, ds.asInstanceOf[DataSource[I, A, M]].identity(id.asInstanceOf[I])).isDefined)
+                dedupeIds[I, A, M](ids.asInstanceOf[List[I]], ds.asInstanceOf[DataSource[I, A, M]], cache)
               )
             }).filterNot({
               case (_, ids) => ids.isEmpty
             })
-            if (sids.isEmpty)
+
+            if (sourcesAndIds.isEmpty)
               MM.pure((env, env.asInstanceOf[A]))
             else
-              MM.flatMap(sids.map({
+              MM.flatMap(sourcesAndIds.map({
                 case (ds, as) => ds.asInstanceOf[DataSource[I, A, M]].fetch(as.asInstanceOf[List[I]])
               }).sequence)((results: List[Map[_, _]]) => {
                 val endRound = System.nanoTime()
                 val newCache = (sources zip results).foldLeft(cache)((accache, resultset) => {
                   val (ds, resultmap) = resultset
+                  val tresults = resultmap.asInstanceOf[Map[I, A]]
                   val tds = ds.asInstanceOf[DataSource[I, A, M]]
-                  resultmap.foldLeft(accache)({
-                    case (c, (k, v)) => CC.update(c, tds.identity(k.asInstanceOf[I]), v)
-                  })
+                  CC.cacheResults[I, A, M](accache, tresults, tds)
                 })
                 val newEnv = env.next(
                   newCache,
@@ -394,7 +399,7 @@ object interpreters {
                     cache,
                     "Concurrent",
                     ConcurrentRound(
-                      sids.map({
+                      sourcesAndIds.map({
                         case (ds, as) => (ds.name, as)
                       }).toMap
                     ),
@@ -446,7 +451,7 @@ object interpreters {
             val startRound = System.nanoTime()
             val cache = env.cache
             val oldIds = ids.distinct
-            val newIds = oldIds.filterNot(i => CC.get(cache, ds.identity(i)).isDefined)
+            val newIds = dedupeIds[Any, Any, Any](ids, ds, cache)
             if (newIds.isEmpty)
               MM.pure(
                 (env.next(
@@ -469,9 +474,7 @@ object interpreters {
                   )
                 )(results => {
                   val endRound = System.nanoTime()
-                  val newCache = res.foldLeft(cache)({
-                    case (c, (k, v)) => CC.update(c, ds.identity(k), v)
-                  })
+                  val newCache = CC.cacheResults[I, A, M](cache, res, ds.asInstanceOf[DataSource[I, A, M]])
                   val someCached = oldIds.size == newIds.size
                   MM.pure(
                     (env.next(
