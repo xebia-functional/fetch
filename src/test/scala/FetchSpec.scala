@@ -2,8 +2,6 @@ import org.specs2.mutable._
 
 import cats.Eval
 import cats.{ MonadError }
-import cats.data.{ State, Xor }
-import cats.syntax.comonad._
 
 import fetch._
 import fetch.types._

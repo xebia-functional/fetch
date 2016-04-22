@@ -5,8 +5,8 @@ import scala.collection.immutable.Queue
 
 import fetch.types._
 
-import cats.{ Functor, Monad, MonadError, ~> }
-import cats.data.{ State, StateT, Const }
+import cats.{ Monad, MonadError, ~> }
+import cats.data.{ StateT, Const }
 import cats.std.option._
 import cats.std.list._
 import cats.syntax.cartesian._
@@ -195,7 +195,7 @@ object Fetch {
       def pure[A](x: A): Const[FM, A] = Const(List())
 
       def flatMap[A, B](fa: Const[FM, A])(f: A => Const[FM, B]): Const[FM, B] = fa match {
-        case Const(List(Cached(a: A))) => f(a)
+        case Const(List(Cached(a))) => f(a.asInstanceOf[A])
         case other => fa.asInstanceOf[Const[FM, B]]
       }
 
@@ -348,7 +348,6 @@ object Fetch {
 object interpreters {
   import algebra._
   import types._
-  import cache._
 
   def interpreter[C <: DataSourceCache, I, E <: Env[C], M[_]](
     implicit
@@ -382,9 +381,11 @@ object interpreters {
                 case (ds, as) => ds.asInstanceOf[DataSource[I, A, M]].fetch(as.asInstanceOf[List[I]])
               }).sequence)((results: List[Map[_, _]]) => {
                 val endRound = System.nanoTime()
-                val newCache = (sources zip results).foldLeft(cache)((accache, resultset) => resultset match {
-                  case (ds: DataSource[I, _, Any], resultmap) => resultmap.foldLeft(accache)({
-                    case (c, (k, v)) => CC.update(c, ds.identity(k.asInstanceOf[I]), v)
+                val newCache = (sources zip results).foldLeft(cache)((accache, resultset) => {
+                  val (ds, resultmap) = resultset
+                  val tds = ds.asInstanceOf[DataSource[I, A, M]]
+                  resultmap.foldLeft(accache)({
+                    case (c, (k, v)) => CC.update(c, tds.identity(k.asInstanceOf[I]), v)
                   })
                 })
                 val newEnv = env.next(
@@ -405,13 +406,13 @@ object interpreters {
                 MM.pure((newEnv, newEnv.asInstanceOf[A]))
               })
           }
-          case FetchOne(id: I, ds) => {
+          case FetchOne(id, ds) => {
             val startRound = System.nanoTime()
             val cache = env.cache
             CC.get(cache, ds.identity(id)).fold[M[(FetchEnv[C], A)]](
               MM.flatMap(ds.fetch(List(id)).asInstanceOf[M[Map[I, A]]])((res: Map[I, A]) => {
                 val endRound = System.nanoTime()
-                res.get(id).fold[M[(FetchEnv[C], A)]](
+                res.get(id.asInstanceOf[I]).fold[M[(FetchEnv[C], A)]](
                   MM.raiseError(
                     FetchFailure(
                       env.next(
@@ -441,7 +442,7 @@ object interpreters {
                   List(id)), cached.asInstanceOf[A]))
             })
           }
-          case FetchMany(ids: List[I], ds) => {
+          case FetchMany(ids, ds) => {
             val startRound = System.nanoTime()
             val cache = env.cache
             val oldIds = ids.distinct
@@ -456,7 +457,7 @@ object interpreters {
             else {
               MM.flatMap(ds.fetch(newIds).asInstanceOf[M[Map[I, A]]])((res: Map[I, A]) => {
                 val endRound = System.nanoTime()
-                ids.map(res.get(_)).sequence.fold[M[(FetchEnv[C], A)]](
+                ids.map(i => res.get(i.asInstanceOf[I])).sequence.fold[M[(FetchEnv[C], A)]](
                   MM.raiseError(
                     FetchFailure(
                       env.next(
