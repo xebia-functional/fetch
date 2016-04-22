@@ -1,0 +1,369 @@
+* Rendering a blog with Fetch
+
+** The problem
+
+   Oftentimes, our programs read data from a variety of data sources such as databases, web services or file systems.
+   These data sources usually have a latency cost, and we often have to trade code clarity for performance when querying
+   them. We can easily end up with code that complects the business logic performed on the data we're fetching with
+   explicit synchronization or optimizations such as caching and batching.
+
+   We can do better.
+
+** Enter Fetch
+
+   Fetch can automatically request data from multiple sources concurrently, batch multiple requests to the same data
+   source, and cache previous requests' results without you having to use any explicit concurrency construct.
+
+   Fetch is a Scala library for making your code that reads data from remote sources simple and efficient. Fetch
+   can automatically
+
+ - batch requests to the same data source;
+ - request data from multiple sources concurrently;
+ - cache previous requests' results.
+
+
+** Case study
+
+   Imagine that we have to render the home page of a blog. The home page has:
+
+    - a main pane with a list of the latest 5 articles, together with some information for every article:
+     + the article's author
+     + the article's topic and view count
+
+    - a left pane with a list of popular posts, together with a list of topics and the count of posts for each topic
+
+   First of all we need a way to tell ~Fetch~ how to fetch that data. We can accomplish this by implementing the ~DataSource~
+   trait. A ~DataSource~ takes three type parameters:
+
+   - a request type
+   - a response type
+   - a target ~Monad~ for the Fetch that will control the concurrency and error handling
+
+   For fetching articles, we know that the response type must be ~Article~. We can use ~Int~ for the request type,
+   assuming that its the article's id in a database, and we'll use ~Future~ as the target monad. The ~cats~ library
+   already provides a ~MonadError[Future, Throwable]~ implementation so we won't have to implement it ourselves.
+
+   But before that, let's simulate unpredictable latency with a simple function:
+
+#+BEGIN_SRC scala
+import scala.util.Random
+
+def latency[A](
+  result: A,
+  msg: String,
+  wait: Int = Random.nextInt(100)
+): Future[A] = {
+  Future({
+    val threadId = Thread.currentThread().getId()
+    println(s"~~~>[$threadId] $msg")
+    Thread.sleep(wait)
+    println(s"<~~~[$threadId] $msg")
+    result
+  })
+}
+#+END_SRC
+
+   Data sources have a method called ~fetch~ where the user specifies how the data is fetches. Given a list of requests,
+   the user must give back a map from requests to responses wrapped in the target ~Monad~. This allows ~Fetch~ to group
+   requests to the same data source and detect when an entity couldn't be fetched.
+
+#+BEGIN_SRC scala
+  import cats.std.future._
+
+  import fetch._
+
+  case class GetArticle(id: Int)
+
+  implicit object ArticleSource extends DataSource[GetArticle, Article, Future]{
+    override def fetch(ids: List[GetArticle]): Future[Map[GetArticle, Article]] = {
+      val results = ids.map(id => {
+        (id, Article(s"An article with id $id", id + 10))
+      }).toMap
+
+      latency(results, s"$ids")
+    }
+  }
+
+  def getArticle(id: Int): Fetch[Article] = Fetch(GetArticle(id))
+#+END_SRC
+
+Now that we've told ~Fetch~ how to request articles, let's try performing some requests:
+
+#+BEGIN_SRC scala
+val fetch: Fetch[Article] = getArticle(1)
+val fut: Future[Article] = Fetch.run(fetch)
+
+val result = Await.result(fut, 1 seconds)
+// ~~~>[54] List(GetArticle(1))
+// <~~~[54] List(GetArticle(1))
+// result: Article = Article(1,An article with id 1,11)
+#+END_SRC
+
+We can also use for comprehensions when the results of some of our fetches depend on previous ones:
+
+#+BEGIN_SRC scala
+val fetch: Fetch[(Article, Article)] = for {
+  anArticle <- getArticle(1)
+  anotherArticle <- getArticle(anArticle.id + 1)
+} yield (anArticle, anotherArticle)
+
+val fut: Future[(Article, Article)] = Fetch.run(fetch)
+
+val result = Await.result(fut, 1 seconds)
+// ~~~>[55] List(GetArticle(1))
+// <~~~[55] List(GetArticle(1))
+// ~~~>[45] List(GetArticle(2))
+// <~~~[45] List(GetArticle(2))
+// result: (Article, Article) = (Article(1,An article with id 1,11),Article(2,An article with id 2,12))
+#+END_SRC
+
+
+As you can see, the fetch executed in two rounds: one for the first article and another for the second.
+
+If we want to fetch a couple of users but they are independent, we can use ~join~ for telling ~Fetch~ that
+two fetches are independent:
+
+#+BEGIN_SRC scala
+val fetch: Fetch[(Article, Article)] = Fetch.join(getArticle(1), getArticle(2))
+
+val fut: Future[(Article, Article)] = Fetch.run(fetch)
+
+val result = Await.result(fut, 1 seconds)
+// ~~~>[58] List(GetArticle(1), GetArticle(2))
+// <~~~[58] List(GetArticle(1), GetArticle(2))
+// result: (Article, Article) = (Article(1,An article with id 1,11),Article(2,An article with id 2,12))
+#+END_SRC
+
+As you can see, ~Fetch~ detected that both requests were querying the same data source and batched them!
+
+Let's see what happens if we join two fetches that requests the same data:
+
+#+BEGIN_SRC scala
+val fetch: Fetch[(Article, Article)] = Fetch.join(getArticle(1), getArticle(1))
+
+val fut: Future[(Article, Article)] = Fetch.run(fetch)
+
+val result = Await.result(fut, 1 seconds)
+// ~~~>[60] List(GetArticle(1))
+// <~~~[60] List(GetArticle(1))
+// result: (Article, Article) = (Article(1,An article with id 1,11),Article(1,An article with id 1,11))
+#+END_SRC
+
+~Fetch~ was able to detect that the two fetches were requesting the same data and only fetched it once.
+
+Furthermore, ~Fetch~ will cache all the data you have already fetched for consistency and performance:
+
+#+BEGIN_SRC scala
+val fetch: Fetch[(Article, Article)] = for {
+  a <- getArticle(1)
+  b <- getArticle(1)
+} yield (a, b)
+
+val fut: Future[(Article, Article)] = Fetch.run(fetch)
+
+val result = Await.result(fut, 1 seconds)
+// ~~~>[63] List(GetArticle(1))
+// <~~~[63] List(GetArticle(1))
+// result: (Article, Article) = (Article(1,An article with id 1,11),Article(1,An article with id 1,11))
+#+END_SRC
+
+Even though we requested the same data more than once, ~Fetch~ only performed one request to get it. Further
+requests of the same data will use the cached version. This allows our data-fetching code to be modular,
+and makes our data consistent even when the remote entities can change while we're running a fetch.
+
+We'll now define the data source for article authors and see how we can combine multiple data sources in a single
+fetch. Let's start by implementing the Data source for authors:
+
+#+BEGIN_SRC scala
+case class GetAuthor(id: Int)
+
+case class Author(id: Int, username: String)
+
+implicit object AuthorSource extends DataSource[GetAuthor, Author, Future]{
+  override def name = "Author"
+
+  override def fetch(ids: List[GetAuthor]): Future[Map[GetAuthor, Author]] = {
+    val results = ids.map(auth => (auth, Author(auth.id, "@egg_" + auth.id))).toMap
+    latency(results, s"$ids")
+  }
+}
+
+def getAuthor(art: Article): Fetch[Author] = Fetch(GetAuthor(art.authorId))
+#+END_SRC
+
+The simplest scenario is when we want to fetch an article and its corresponding author:
+
+#+BEGIN_SRC scala
+val fetch: Fetch[(Article, Author)] = for {
+  article <- getArticle(1)
+  author <- getAuthor(article)
+} yield (article, author)
+
+val fut: Future[(Article, Author)] = Fetch.run(fetch)
+
+val result = Await.result(fut, 1 seconds)
+// ~~~>[66] List(GetArticle(1))
+// <~~~[66] List(GetArticle(1))
+// ~~~>[60] List(GetAuthor(11))
+// <~~~[60] List(GetAuthor(11))
+// result: (Article, Author) = (Article(1,An article with id 1,11),Author(11,@egg_11))
+#+END_SRC
+
+This works fine for one article and author, but when we have more than one we should start using
+the combinators that ~Fetch~ offers. The most simple one is ~collect~, given a list of fetches
+of the same type it will run them concurrently, batching whatever it can:
+
+#+BEGIN_SRC scala
+val fetch: Fetch[List[Article]] = Fetch.collect(List(getArticle(1), getArticle(2)))
+
+val fut: Future[List[Article]] = Fetch.run(fetch)
+
+val result = Await.result(fut, 1 seconds)
+// ~~~>[68] List(GetArticle(1), GetArticle(2))
+// <~~~[68] List(GetArticle(1), GetArticle(2))
+// result: List[Article] = List(Article(1,An article with id 1,11), Article(2,An article with id 2,12))
+#+END_SRC
+
+A similar combinator is ~traverse~, which is the combination of ~map~ and ~collect~:
+
+#+BEGIN_SRC scala
+val fetch: Fetch[List[Article]] = Fetch.traverse(List(1, 2))(getArticle)
+
+val fut: Future[List[Article]] = Fetch.run(fetch)
+
+val result = Await.result(fut, 1 seconds)
+// ~~~>[71] List(GetArticle(1), GetArticle(2))
+// <~~~[71] List(GetArticle(1), GetArticle(2))
+// result: List[Article] = List(Article(1,An article with id 1,11), Article(2,An article with id 2,12))
+#+END_SRC
+
+Note how ~traverse~ detects that we're requesting data from the same data sources and groups the requests
+to both article and author data sources:
+
+#+BEGIN_SRC scala
+val fetch: Fetch[List[(Article, Author)]] = Fetch.traverse(List(1, 2))(id => {
+  for {
+    article <- getArticle(id)
+    author <- getAuthor(article)
+  } yield (article, author)
+})
+
+val fut: Future[List[(Article, Author)]] = Fetch.run(fetch)
+
+val result = Await.result(fut, 1 seconds)
+// ~~~>[74] List(GetArticle(1), GetArticle(2))
+// <~~~[74] List(GetArticle(1), GetArticle(2))
+// ~~~>[74] List(GetAuthor(11), GetAuthor(12))
+// <~~~[74] List(GetAuthor(11), GetAuthor(12))
+// result: List[(Article, Author)] = List((Article(1,An article with id 1,11),Author(11,@egg_11)), (Article(2,An article with id 2,12),Author(12,@egg_12)))
+#+END_SRC
+
+Now that we have the article and author data sources, let's implement a couple more: one to get an article's metadata (topic and view count).
+
+#+BEGIN_SRC scala
+case class GetArticleMetadata(article: Article)
+
+case class ArticleMetadata(topic: String, views: Int)
+
+implicit object ArticleMetadataSource extends DataSource[GetArticleMetadata, ArticleMetadata, Future]{
+  override def fetch(ids: List[GetArticleMetadata]): Future[Map[GetArticleMetadata, ArticleMetadata]] = {
+    val results = ids.map(m => {
+      val topic = if (m.article.id % 2 == 0) "monads" else "applicatives"
+      val views = Random.nextInt(100)
+      (m, ArticleMetadata(topic, views))
+    }).toMap
+    latency(results, s"$ids")
+  }
+}
+
+def getMetadata(article: Article): Fetch[ArticleMetadata] = Fetch(GetArticleMetadata(article))
+#+END_SRC
+
+After having told ~Fetch~ how to fetch all the data we can start writing our blog-rendering code. For
+the purpose of this example We'll assume we have the following rendering functions:
+
+#+BEGIN_SRC scala
+type Html = String
+
+def renderPage(leftPane: Html, mainPane: Html): Html
+def renderPosts(ps: List[(Article, Author, ArticleMetadata)]): Html
+def renderPostList(l: List[Article]): Html
+def renderSidePane(popular: Html, topics: Html): Html
+#+END_SRC
+
+As we mentioned earlier, our blog consists of a left pane and a main pane:
+
+#+BEGIN_SRC scala
+def blog: Fetch[Html] = Fetch.map2(renderPage)(leftPane, mainPane)
+#+END_SRC
+
+The left pane will have to render the popular posts together with a list of the posts by topic:
+
+#+BEGIN_SRC scala
+def leftPane: Fetch[Html] = Fetch.map2(renderSidePane)(popularPosts, postsByTopic)
+#+END_SRC
+
+Now we can start writing the fetching code, note how both ~popularPosts~ and ~postsByTopic~ require the same data, albeit
+they perform different calculations with it:
+
+#+BEGIN_SRC scala
+def latestPosts: Fetch[List[Article]] = Fetch.traverse(List(1, 2, 3, 4, 5))(getArticle)
+
+def popularPosts: Fetch[Html] = for {
+  posts <- latestPosts
+  metadata <- Fetch.traverse(posts)(getMetadata)
+  orderedByViews = (posts zip metadata).sortBy(_._2.views).map(_._1)
+} yield renderPostList(orderedByViews)
+
+def postsByTopic: Fetch[Html] = for {
+  posts <- latestPosts
+  metadata <- Fetch.traverse(posts)(getMetadata)
+  topicCounts = (posts zip metadata).groupBy(_._2.topic).mapValues(_.size)
+} yield topicCounts.toString
+#+END_SRC
+
+Let's try to run the ~leftPane~ fetch and see what happens:
+
+#+BEGIN_SRC scala
+Await.result(Fetch.run(leftPane), 1 second)
+// ~~~>[77] List(GetArticle(1), GetArticle(2), GetArticle(3), GetArticle(4), GetArticle(5))
+// <~~~[77] List(GetArticle(1), GetArticle(2), GetArticle(3), GetArticle(4), GetArticle(5))
+// ~~~>[78] List(GetArticleMetadata(Article(1,An article with id 1,11)), GetArticleMetadata(Article(2,An article with id 2,12)), GetArticleMetadata(Article(3,An article with id 3,13)), GetArticleMetadata(Article(4,An article with id 4,14)), GetArticleMetadata(Article(5,An article with id 5,15)))
+// <~~~[78] List(GetArticleMetadata(Article(1,An article with id 1,11)), GetArticleMetadata(Article(2,An article with id 2,12)), GetArticleMetadata(Article(3,An article with id 3,13)), GetArticleMetadata(Article(4,An article with id 4,14)), GetArticleMetadata(Article(5,An article with id 5,15)))
+#+END_SRC
+
+As you can see, only two rounds were executed: one for fetching the latest articles and another for fetching their metadata. Fetch figured
+out that both ~popularPosts~ and ~postsByTopic~ need the same data and only fetched it once.
+
+Now we're ready to write the ~mainPane~ function, which gets all the articles, their authors and metadata and renders a lists of posts.
+
+#+BEGIN_SRC scala
+def mainPane: Fetch[Html] = for {
+  posts <- latestPosts
+  metadataAndAuthors <- Fetch.join(
+    Fetch.traverse(posts)(getMetadata),
+    Fetch.traverse(posts)(getAuthor)
+  )
+  (metadata, authors) = metadataAndAuthors
+  result = (posts zip (authors zip metadata)).map({ case (p, (author, meta)) => (p, author, meta) }).toList
+} yield renderPosts(result)
+#+END_SRC
+
+We're ready to run our blog now, note how everything is fetched in two rounds:
+ - Fetch the latest 5 articles in a batch
+ - Fetch every article's metadata and authors concurrently, batching both requests
+
+#+BEGIN_SRC scala
+Await.result(Fetch.run(blog), 1 seconds)
+// ~~~>[80] List(GetArticle(1), GetArticle(2), GetArticle(3), GetArticle(4), GetArticle(5))
+// <~~~[80] List(GetArticle(1), GetArticle(2), GetArticle(3), GetArticle(4), GetArticle(5))
+// ~~~>[81] List(GetArticleMetadata(Article(1,An article with id 1,11)), GetArticleMetadata(Article(2,An article with id 2,12)), GetArticleMetadata(Article(3,An article with id 3,13)), GetArticleMetadata(Article(4,An article with id 4,14)), GetArticleMetadata(Article(5,An article with id 5,15)))
+// ~~~>[80] List(GetAuthor(11), GetAuthor(12), GetAuthor(13), GetAuthor(14), GetAuthor(15))
+// <~~~[81] List(GetArticleMetadata(Article(1,An article with id 1,11)), GetArticleMetadata(Article(2,An article with id 2,12)), GetArticleMetadata(Article(3,An article with id 3,13)), GetArticleMetadata(Article(4,An article with id 4,14)), GetArticleMetadata(Article(5,An article with id 5,15)))
+// <~~~[80] List(GetAuthor(11), GetAuthor(12), GetAuthor(13), GetAuthor(14), GetAuthor(15))
+#+END_SRC
+
+As you can see, since we are using ~Future~ as our target concurrency and error handling monad, concurrent fetches in a round run 
+in separate threads.
+
+
