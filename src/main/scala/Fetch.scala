@@ -296,14 +296,13 @@ object Fetch {
 
         val sfl = fl.compile(simplify)
         val sfr = fr.compile(simplify)
-        val remainingDeps = combineDeps(deps(sfl) ++  deps(sfr))
+        val remainingDeps = combineDeps(deps(sfl) ++ deps(sfr))
 
         if (remainingDeps.isEmpty) {
           sfl.product(sfr)
         } else {
           join[A, B, C, E, M](sfl, sfr)
         }
-
       }
     } yield result
   }
