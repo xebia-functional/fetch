@@ -1,12 +1,14 @@
 import scala.collection.immutable.Seq
 import scala.collection.immutable.Queue
 
-import cats.{ Cartesian, Monad, MonadError, ~> }
+import cats.{ Applicative, Monad, MonadError, ~> }
 import cats.data.{ StateT, Const }
+import cats.free.{ Free }
+
 import cats.std.option._
 import cats.std.list._
+
 import cats.syntax.traverse._
-import cats.free.{ Free }
 
 package object fetch {
   /**
@@ -479,7 +481,14 @@ package object fetch {
     }
   }
 
-  implicit val fetchCartesian: Cartesian[Fetch] = new Cartesian[Fetch]{
+  implicit val fetchApplicative: Applicative[Fetch] = new Applicative[Fetch]{
+    def pure[A](a: A): Fetch[A] = Fetch.pure(a)
+
+    def ap[A, B](ff: Fetch[A => B])(fa: Fetch[A]): Fetch[B] =
+      Fetch.join(ff, fa).map({ case (f, a) => f(a) })
+
+    def map[A, B](fa: Fetch[A])(f: A => B): Fetch[B] = fa.map(f)
+
     def product[A, B](fa: Fetch[A], fb: Fetch[B]): Fetch[(A, B)] = Fetch.join(fa, fb)
   }
 }

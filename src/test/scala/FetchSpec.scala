@@ -322,6 +322,19 @@ class FetchSpec extends Specification {
       concurrent(rounds).size must_== 1
     }
 
+    "Apply syntax is implicitly concurrent" >> {
+      import cats.syntax.apply._
+
+      val fetch: Fetch[Int] = Fetch.pure((x: Int, y: Int) => x + y).ap2(one(1), one(2))
+
+      val env = Fetch.runEnv(fetch).value
+      val rounds = env.rounds
+
+      concurrent(rounds).size must_== 1
+      totalBatches(rounds) must_== 1
+      totalFetched(rounds) must_== 2
+    }
+
     "We can depend on previous computations of Fetch values" >> {
       val fetch: Fetch[Int] = for {
         o <- one(1)
