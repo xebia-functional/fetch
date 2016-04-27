@@ -1,28 +1,11 @@
 import org.specs2.mutable._
 
 import cats.Eval
-import cats.{ MonadError }
 
 import fetch._
 
 class FetchSpec extends Specification {
-  implicit def ISM: MonadError[Eval, Throwable] = new MonadError[Eval, Throwable] {
-    override def pure[A](x: A): Eval[A] = Eval.now(x)
-
-    override def map[A, B](fa: Eval[A])(f: A ⇒ B): Eval[B] = fa.map(f)
-
-    override def flatMap[A, B](fa: Eval[A])(ff: A => Eval[B]): Eval[B] = fa.flatMap(ff)
-
-    override def raiseError[A](e: Throwable): Eval[A] = Eval.later({ throw e })
-
-    override def handleErrorWith[A](fa: Eval[A])(f: Throwable ⇒ Eval[A]): Eval[A] = Eval.now({
-      try{
-        fa.value
-      } catch {
-        case e: Throwable => f(e).value
-      }
-    })
-  }
+  import fetch.implicits.eval.{ monadError => ISM }
 
   "Fetch" >> {
     case class NotFound() extends Throwable
@@ -180,8 +163,6 @@ class FetchSpec extends Specification {
     }
 
     "The product of two fetches implies concurrent fetching" >> {
-      import cats.syntax.cartesian._
-
       val fetch: Fetch[(Int, List[Int])] = Fetch.join(one(1), many(3))
 
       val rounds = Fetch.runEnv(fetch).value.rounds
@@ -190,24 +171,18 @@ class FetchSpec extends Specification {
     }
 
     "If a fetch fails in the left hand of a product the product will fail" >> {
-      import cats.syntax.cartesian._
-
       val fetch: Fetch[(Int, List[Int])] = Fetch.join(Fetch.error(NotFound()), many(3))
 
       Fetch.run(fetch).value must throwA[NotFound]
     }
 
     "If a fetch fails in the right hand of a product the product will fail" >> {
-      import cats.syntax.cartesian._
-
       val fetch: Fetch[(List[Int], Int)] = Fetch.join(many(3), Fetch.error(NotFound()))
 
       Fetch.run(fetch).value must throwA[NotFound]
     }
 
     "The product of concurrent fetches implies everything fetched concurrently" >> {
-      import cats.syntax.cartesian._
-
       val fetch = Fetch.join(
         Fetch.join(
           one(1),
@@ -225,8 +200,6 @@ class FetchSpec extends Specification {
     }
 
     "The product of concurrent fetches of the same type implies everything fetched in a single batch" >> {
-      import cats.syntax.cartesian._
-
       val fetch = Fetch.join(
         Fetch.join(
           for {
@@ -252,8 +225,6 @@ class FetchSpec extends Specification {
     }
 
     "Every level of joined concurrent fetches is combined and batched" >> {
-      import cats.syntax.cartesian._
-
       val fetch = Fetch.join(
         for {
           a <- one(2)
@@ -301,8 +272,6 @@ class FetchSpec extends Specification {
     }
 
     "The product of two fetches from the same data source implies batching" >> {
-      import cats.syntax.cartesian._
-
       val fetch: Fetch[(Int, Int)] = Fetch.join(one(1), one(3))
 
       val rounds = Fetch.runEnv(fetch).value.rounds
