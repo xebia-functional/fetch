@@ -4,8 +4,6 @@ import cats.Eval
 import cats.{ MonadError }
 
 import fetch._
-import fetch.types._
-import fetch.cache._
 
 class FetchSpec extends Specification {
   implicit def ISM: MonadError[Eval, Throwable] = new MonadError[Eval, Throwable] {
