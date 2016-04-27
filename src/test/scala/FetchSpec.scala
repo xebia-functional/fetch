@@ -275,32 +275,30 @@ class FetchSpec extends Specification {
       totalFetched(rounds) must_== 6
     }
 
-    // "Every level of collected concurrent of concurrent fetches is batched" >> {
-    //   import cats.syntax.cartesian._
+    "Every level of collected concurrent of concurrent fetches is batched" >> {
+      val fetch = Fetch.join(
+        Fetch.join(
+          for {
+            a <- Fetch.collect(List(one(2), one(3), one(4)))
+            b <- Fetch.collect(List(many(0), many(1)))
+            c <- Fetch.collect(List(one(9), one(10), one(11)))
+          } yield c,
+          for {
+            a <- Fetch.collect(List(one(5), one(6), one(7)))
+            b <- Fetch.collect(List(many(2), many(3)))
+            c <- Fetch.collect(List(one(12), one(13), one(14)))
+          } yield c
+        ),
+        Fetch.collect(List(one(15), one(16), one(17)))
+      )
 
-    //   val fetch = Fetch.join(
-    //     Fetch.join(
-    //       for {
-    //         a <- Fetch.collect(List(one(2), one(3), one(4)))
-    //         b <- Fetch.collect(List(many(0), many(1)))
-    //         c <- Fetch.collect(List(one(9), one(10), one(11)))
-    //       } yield c,
-    //       for {
-    //         a <- Fetch.collect(List(one(5), one(6), one(7)))
-    //         b <- Fetch.collect(List(many(2), many(3)))
-    //         c <- Fetch.collect(List(one(12), one(13), one(14)))
-    //       } yield c
-    //     ),
-    //     Fetch.collect(List(one(15), one(16), one(17)))
-    //   )
+      val env = Fetch.runEnv(fetch).value
+      val rounds = env.rounds
 
-    //   val env = Fetch.runEnv(fetch).value
-    //   val rounds = env.rounds
-
-    //   concurrent(rounds).size must_== 3
-    //   totalBatches(rounds) must_== 3
-    //   totalFetched(rounds) must_== 9 + 4 + 6
-    // }
+      concurrent(rounds).size must_== 3
+      totalBatches(rounds) must_== 3
+      totalFetched(rounds) must_== 9 + 4 + 6
+    }
 
     "The product of two fetches from the same data source implies batching" >> {
       import cats.syntax.cartesian._
@@ -313,17 +311,16 @@ class FetchSpec extends Specification {
       totalBatches(concurrent(rounds)) must_== 1
     }
 
-    // todo
-    // "Applicative syntax is implicitly concurrent" >> {
-    //   import cats.syntax.cartesian._
+    "Cartesian syntax is implicitly concurrent" >> {
+      import cats.syntax.cartesian._
 
-    //   val fetch: Fetch[(Int, List[Int])] = (one(1) |@| many(3)).tupled
+      val fetch: Fetch[(Int, List[Int])] = (one(1) |@| many(3)).tupled
 
-    //   val env = Fetch.runEnv(fetch).value
-    //   val rounds = env.rounds
+      val env = Fetch.runEnv(fetch).value
+      val rounds = env.rounds
 
-    //   concurrent(rounds).size must_== 1
-    // }
+      concurrent(rounds).size must_== 1
+    }
 
     "We can depend on previous computations of Fetch values" >> {
       val fetch: Fetch[Int] = for {

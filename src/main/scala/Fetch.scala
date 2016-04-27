@@ -1,11 +1,10 @@
 import scala.collection.immutable.Seq
 import scala.collection.immutable.Queue
 
-import cats.{ Monad, MonadError, ~> }
+import cats.{ Cartesian, Monad, MonadError, ~> }
 import cats.data.{ StateT, Const }
 import cats.std.option._
 import cats.std.list._
-import cats.syntax.cartesian._
 import cats.syntax.traverse._
 import cats.free.{ Free }
 
@@ -290,7 +289,10 @@ package object fetch {
           val remainingDeps = combineDeps(deps(sfl) ++ deps(sfr))
 
           if (remainingDeps.isEmpty) {
-            sfl.product(sfr)
+            for {
+              a <- sfl
+              b <- sfr
+            } yield (a, b)
           } else {
             join[A, B, C, E, M](sfl, sfr)
           }
@@ -475,6 +477,10 @@ package object fetch {
         }
       }
     }
+  }
+
+  implicit val fetchCartesian: Cartesian[Fetch] = new Cartesian[Fetch]{
+    def product[A, B](fa: Fetch[A], fb: Fetch[B]): Fetch[(A, B)] = Fetch.join(fa, fb)
   }
 }
 
