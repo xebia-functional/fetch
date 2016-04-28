@@ -487,10 +487,6 @@ package object fetch {
 
     def ap[A, B](ff: Fetch[A => B])(fa: Fetch[A]): Fetch[B] =
       Fetch.join(ff, fa).map({ case (f, a) => f(a) })
-
-    def map[A, B](fa: Fetch[A])(f: A => B): Fetch[B] = fa.map(f)
-
-    def product[A, B](fa: Fetch[A], fb: Fetch[B]): Fetch[(A, B)] = Fetch.join(fa, fb)
   }
 }
 
