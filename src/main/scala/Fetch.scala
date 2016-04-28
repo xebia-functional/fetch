@@ -1,3 +1,4 @@
+import scala.collection.immutable.Map
 import scala.collection.immutable.Seq
 import scala.collection.immutable.Queue
 
