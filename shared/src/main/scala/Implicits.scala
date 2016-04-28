@@ -5,7 +5,7 @@ import cats.{ Eval, Id }
 import cats.{ MonadError }
 
 object eval {
-  implicit val monadError: MonadError[Eval, Throwable] = new MonadError[Eval, Throwable] {
+  val monadError: MonadError[Eval, Throwable] = new MonadError[Eval, Throwable] {
     override def pure[A](x: A): Eval[A] = Eval.now(x)
 
     override def map[A, B](fa: Eval[A])(f: A ⇒ B): Eval[B] = fa.map(f)
@@ -25,7 +25,7 @@ object eval {
 }
 
 object id {
-  implicit val monadError: MonadError[Id, Throwable] = new MonadError[Id, Throwable] {
+  val monadError: MonadError[Id, Throwable] = new MonadError[Id, Throwable] {
     override def pure[A](x: A): Id[A] = x
 
     override def map[A, B](fa: Id[A])(f: A ⇒ B): Id[B] = f(fa)

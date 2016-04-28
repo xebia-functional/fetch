@@ -7,8 +7,8 @@ lazy val buildSettings = Seq(
 lazy val commonSettings = Seq(
   resolvers += Resolver.sonatypeRepo("releases"),
   libraryDependencies ++= Seq(
-    "org.typelevel" %% "cats" % "0.5.0",
-    "org.specs2" %% "specs2-core" % "3.7.2" % "test",
+    "org.typelevel" %%% "cats" % "0.5.0",
+    "org.scalatest" %%% "scalatest" % "3.0.0-M7" % "test",
     compilerPlugin(
       "org.spire-math" %% "kind-projector" % "0.7.1"
     )
@@ -16,19 +16,25 @@ lazy val commonSettings = Seq(
   scalacOptions ++= Seq("-Ywarn-unused-import", "-Ywarn-dead-code")
 )
 
-lazy val fetch = project.in(file("."))
-  .settings(moduleName := "fetch")
-  .settings(buildSettings)
-  .settings(commonSettings)
+lazy val allSettings = buildSettings ++ commonSettings
 
-lazy val jsSettings = Seq(
+lazy val fetchJSSettings = Seq(
   requiresDOM := false,
+  scalaJSUseRhino := false,
   jsEnv := NodeJSEnv().value
 )
 
-lazy val fetchJS = project.in(file(".fetchJS"))
+lazy val fetch = crossProject.in(file("."))
   .settings(moduleName := "fetch")
-  .settings(buildSettings)
-  .settings(commonSettings)
-  .enablePlugins(ScalaJSPlugin)
+  .settings(allSettings:_*)
+  .jsSettings(fetchJSSettings:_*)
 
+lazy val fetchJVM = fetch.jvm
+lazy val fetchJS = fetch.js
+
+lazy val root = project.in(file("."))
+  .aggregate(fetchJS, fetchJVM)
+  .settings(
+    publish := {},
+    publishLocal := {}
+  )
