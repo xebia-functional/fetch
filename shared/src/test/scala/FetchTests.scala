@@ -3,11 +3,11 @@ import org.scalatest._
 import cats.{ Eval, MonadError }
 
 import fetch._
+import implicits._
 
 class FetchTests extends FreeSpec with Matchers {
-  import fetch.implicits.eval.monadError
-
-  implicit val M: MonadError[Eval, Throwable] = monadError
+ 
+  implicit val M: MonadError[Eval, Throwable] = implicits.evalMonadError
 
   case class NotFound() extends Throwable
 
