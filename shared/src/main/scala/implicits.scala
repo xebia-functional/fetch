@@ -6,7 +6,13 @@ import cats.{MonadError}
 /**
  * A cache that stores its elements in memory.
  */
-case class InMemoryCache(state: Map[Any, Any]) extends DataSourceCache
+case class InMemoryCache(state: Map[Any, Any]) extends DataSourceCache {
+  override def get[I](k: DataSourceIdentity): Option[Any] =
+    state.get(k)
+
+  override def update[I, A](k: DataSourceIdentity, v: A): InMemoryCache =
+    InMemoryCache(state.updated(k, v))
+}
 
 object InMemoryCache {
   def empty: InMemoryCache = InMemoryCache(Map.empty[Any, Any])
@@ -51,14 +57,6 @@ object implicits {
       } catch {
         case e: Throwable => f(e)
       }
-  }
-
-  implicit object InMemoryCacheImpl extends Cache[InMemoryCache] {
-    override def get[I](c: InMemoryCache, k: DataSourceIdentity): Option[Any] =
-      c.state.get(k)
-
-    override def update[I, A](c: InMemoryCache, k: DataSourceIdentity, v: A): InMemoryCache =
-      InMemoryCache(c.state.updated(k, v))
   }
 
 }

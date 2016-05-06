@@ -6,17 +6,15 @@ import cats.{Applicative, Monad, MonadError, ~>}
 import cats.data.{StateT, Const}
 import cats.free.{Free}
 
-import implicits._
-
 /**
  * Primitive operations in the Fetch Free monad.
  */
 sealed abstract class FetchOp[A] extends Product with Serializable
 
 final case class Cached[A](a: A) extends FetchOp[A]
-final case class FetchOne[I, A, M[_]](a: I, ds: DataSource[I, A, M]) extends FetchOp[A]
-final case class FetchMany[I, A, M[_]](as: List[I], ds: DataSource[I, A, M]) extends FetchOp[List[A]]
-final case class Concurrent[C <: DataSourceCache, E <: Env[C], M[_]](as: List[FetchMany[_, _, M]]) extends FetchOp[E]
+final case class FetchOne[I, A](a: I, ds: DataSource[I, A]) extends FetchOp[A]
+final case class FetchMany[I, A](as: List[I], ds: DataSource[I, A]) extends FetchOp[List[A]]
+final case class Concurrent(as: List[FetchMany[_, _]]) extends FetchOp[Env]
 final case class FetchError[A, E <: Throwable](err: E) extends FetchOp[A]
 
 object `package` {
@@ -27,8 +25,8 @@ object `package` {
 
   type Fetch[A] = Free[FetchOp, A]
 
-  type FetchInterpreter[M[_], C <: DataSourceCache] = {
-    type f[x] = StateT[M, FetchEnv[C], x]
+  type FetchInterpreter[M[_]] = {
+    type f[x] = StateT[M, FetchEnv, x]
   }
 
   implicit val fetchApplicative: Applicative[Fetch] = new Applicative[Fetch] {
@@ -56,18 +54,18 @@ object `package` {
      * to the `Fetch` monad. When executing the fetch the data source will be
      * queried and the fetch will return its result.
      */
-    def apply[I, A, M[_]](i: I)(
+    def apply[I, A](i: I)(
       implicit
-      DS: DataSource[I, A, M]
+      DS: DataSource[I, A]
     ): Fetch[A] =
-      Free.liftF(FetchOne[I, A, M](i, DS))
+      Free.liftF(FetchOne[I, A](i, DS))
 
-    def deps[A, M[_]](f: Fetch[_]): List[FetchOp[_]] = {
+    def deps[A](f: Fetch[_]): List[FetchOp[_]] = {
       type FM = List[FetchOp[_]]
 
       f.foldMap[Const[FM, ?]](new (FetchOp ~> Const[FM, ?]) {
         def apply[X](x: FetchOp[X]): Const[FM, X] = x match {
-          case one @ FetchOne(id, ds) => Const(List(FetchMany(List(id), ds.asInstanceOf[DataSource[Any, A, M]])))
+          case one @ FetchOne(id, ds) => Const(List(FetchMany(List(id), ds.asInstanceOf[DataSource[Any, A]])))
           case conc @ Concurrent(as) => Const(as.asInstanceOf[FM])
           case cach @ Cached(a) => Const(List(cach))
           case _ => Const(List())
@@ -83,19 +81,19 @@ object `package` {
       }).getConst
     }
 
-    def combineDeps[M[_]](ds: List[FetchOp[_]]): List[FetchMany[_, _, M]] = {
+    def combineDeps(ds: List[FetchOp[_]]): List[FetchMany[_, _]] = {
       ds.foldLeft(Map.empty[Any, List[_]])((acc, op) => op match {
         case one @ FetchOne(id, ds) => acc.updated(ds, acc.get(ds).fold(List(id))(accids => accids :+ id))
         case many @ FetchMany(ids, ds) => acc.updated(ds, acc.get(ds).fold(ids)(accids => accids ++ ids))
         case _ => acc
       }).toList.map({
-        case (ds, ids) => FetchMany[Any, Any, M](ids, ds.asInstanceOf[DataSource[Any, Any, M]])
+        case (ds, ids) => FetchMany[Any, Any](ids, ds.asInstanceOf[DataSource[Any, Any]])
       })
     }
 
-    private[this] def concurrently[C <: DataSourceCache, E <: Env[C], M[_]](fa: Fetch[_], fb: Fetch[_]): Fetch[E] = {
-      val fetches: List[FetchMany[_, _, M]] = combineDeps(deps(fa) ++ deps(fb))
-      Free.liftF(Concurrent[C, E, M](fetches))
+    private[this] def concurrently(fa: Fetch[_], fb: Fetch[_]): Fetch[Env] = {
+      val fetches: List[FetchMany[_, _]] = combineDeps(deps(fa) ++ deps(fb))
+      Free.liftF(Concurrent(fetches))
     }
 
     /**
@@ -123,23 +121,20 @@ object `package` {
      * Join two fetches from any data sources and return a Fetch that returns a tuple with the two
      * results. It implies concurrent execution of fetches.
      */
-    def join[A, B, C <: DataSourceCache, E <: Env[C], M[_]](fl: Fetch[A], fr: Fetch[B])(
-      implicit
-      CC: Cache[C]
-    ): Fetch[(A, B)] = {
+    def join[A, B](fl: Fetch[A], fr: Fetch[B]): Fetch[(A, B)] = {
       for {
-        env <- concurrently[C, E, M](fl, fr)
+        env <- concurrently(fl, fr)
 
         result <- {
 
           val simplify: FetchOp ~> FetchOp = new (FetchOp ~> FetchOp) {
             def apply[B](f: FetchOp[B]): FetchOp[B] = f match {
               case one @ FetchOne(id, ds) => {
-                CC.get(env.cache, ds.identity(id)).fold(one: FetchOp[B])(b => Cached(b).asInstanceOf[FetchOp[B]])
+                env.cache.get(ds.identity(id)).fold(one: FetchOp[B])(b => Cached(b).asInstanceOf[FetchOp[B]])
               }
               case many @ FetchMany(ids, ds) => {
                 val results = ids.flatMap(id =>
-                  CC.get(env.cache, ds.identity(id)))
+                  env.cache.get(ds.identity(id)))
 
                 if (results.size == ids.size) {
                   Cached(results)
@@ -150,14 +145,14 @@ object `package` {
               case conc @ Concurrent(manies) => {
                 val newManies = manies.filterNot({ fm =>
                   val ids: List[Any] = fm.as
-                  val ds: DataSource[Any, _, M] = fm.ds.asInstanceOf[DataSource[Any, _, M]]
+                  val ds: DataSource[Any, _] = fm.ds.asInstanceOf[DataSource[Any, _]]
 
                   val results = ids.flatMap(id => {
-                    CC.get(env.cache, ds.identity(id))
+                    env.cache.get(ds.identity(id))
                   })
 
                   results.size == ids.size
-                }).asInstanceOf[List[FetchMany[_, _, M]]]
+                }).asInstanceOf[List[FetchMany[_, _]]]
 
                 if (newManies.isEmpty)
                   Cached(env).asInstanceOf[FetchOp[B]]
@@ -178,48 +173,61 @@ object `package` {
               b <- sfr
             } yield (a, b)
           } else {
-            join[A, B, C, E, M](sfl, sfr)
+            join[A, B](sfl, sfr)
           }
         }
       } yield result
+    }
+
+    class FetchRunner[M[_]] {
+
+      def apply[A](
+        fa: Fetch[A],
+        cache: DataSourceCache = InMemoryCache.empty
+      )(
+        implicit
+        MM: MonadError[M, Throwable]
+      ): M[(FetchEnv, A)] = fa.foldMap[FetchInterpreter[M]#f](interpreter).run(FetchEnv(cache))
+
+    }
+
+    class FetchRunnerEnv[M[_]] {
+
+      def apply[A](
+        fa: Fetch[A],
+        cache: DataSourceCache = InMemoryCache.empty
+      )(
+        implicit
+        MM: MonadError[M, Throwable]
+      ): M[FetchEnv] = fa.foldMap[FetchInterpreter[M]#f](interpreter).runS(FetchEnv(cache))
+    }
+
+    class FetchRunnerA[M[_]] {
+
+      def apply[A](
+        fa: Fetch[A],
+        cache: DataSourceCache = InMemoryCache.empty
+      )(
+        implicit
+        MM: MonadError[M, Throwable]
+      ): M[A] = fa.foldMap[FetchInterpreter[M]#f](interpreter).runA(FetchEnv(cache))
     }
 
     /**
      * Run a `Fetch` with the given cache, returning a pair of the final environment and result
      * in the monad `M`.
      */
-    def runFetch[A, C <: DataSourceCache, M[_]](
-      fa: Fetch[A],
-      cache: C
-    )(
-      implicit
-      MM: MonadError[M, Throwable],
-      CC: Cache[C]
-    ): M[(FetchEnv[C], A)] = fa.foldMap[FetchInterpreter[M, C]#f](interpreter).run(FetchEnv(cache))
+    def runFetch[M[_]]: FetchRunner[M] = new FetchRunner[M]
 
     /**
      * Run a `Fetch` with the given cache, returning the final environment in the monad `M`.
      */
-    def runEnv[A, C <: DataSourceCache, M[_]](
-      fa: Fetch[A],
-      cache: C = InMemoryCache.empty
-    )(
-      implicit
-      MM: MonadError[M, Throwable],
-      CC: Cache[C]
-    ): M[FetchEnv[C]] = MM.map(runFetch[A, C, M](fa, cache)(MM, CC))(_._1)
+    def runEnv[M[_]]: FetchRunnerEnv[M] = new FetchRunnerEnv[M]
 
     /**
      * Run a `Fetch` with the given cache, the result in the monad `M`.
      */
-    def run[A, C <: DataSourceCache, M[_]](
-      fa: Fetch[A],
-      cache: C = InMemoryCache.empty
-    )(
-      implicit
-      MM: MonadError[M, Throwable],
-      CC: Cache[C]
-    ): M[A] = MM.map(runFetch[A, C, M](fa, cache)(MM, CC))(_._2)
+    def run[M[_]]: FetchRunnerA[M] = new FetchRunnerA[M]
   }
 
 }

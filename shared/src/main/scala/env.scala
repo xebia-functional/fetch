@@ -6,8 +6,8 @@ import scala.collection.immutable._
  * An environment that is passed along during the fetch rounds. It holds the
  * cache and the list of rounds that have been executed.
  */
-trait Env[C <: DataSourceCache] {
-  def cache: C
+trait Env {
+  def cache: DataSourceCache
   def rounds: Seq[Round]
 
   def cached: Seq[Round] =
@@ -17,10 +17,10 @@ trait Env[C <: DataSourceCache] {
     rounds.filterNot(_.cached)
 
   def next(
-    newCache: C,
+    newCache: DataSourceCache,
     newRound: Round,
     newIds: List[Any]
-  ): Env[C]
+  ): Env
 }
 
 /**
@@ -50,16 +50,16 @@ final case class ConcurrentRound(ids: Map[String, List[Any]]) extends RoundKind
 /**
  * A concrete implementation of `Env` used in the default Fetch interpreter.
  */
-case class FetchEnv[C <: DataSourceCache](
-  cache: C,
+case class FetchEnv(
+  cache: DataSourceCache,
   ids: List[Any] = Nil,
   rounds: Queue[Round] = Queue.empty
-) extends Env[C] {
+) extends Env {
   def next(
-    newCache: C,
+    newCache: DataSourceCache,
     newRound: Round,
     newIds: List[Any]
-  ): FetchEnv[C] =
+  ): FetchEnv =
     copy(cache = newCache, rounds = rounds :+ newRound, ids = newIds)
 }
 
