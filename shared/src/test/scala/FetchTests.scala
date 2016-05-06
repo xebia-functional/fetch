@@ -77,6 +77,7 @@ class FetchTests extends FreeSpec with Matchers {
       case FetchFailure(env) => {
         env.rounds.headOption match {
           case Some(Round(_, _, OneRound(id), _, _, _)) => id shouldEqual Never()
+          case _ => fail("Expected Some(Round(_,_, Oneround(id),_,_,_)) but None found")
         }
       }
     }

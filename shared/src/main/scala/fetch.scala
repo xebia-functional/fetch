@@ -33,10 +33,16 @@ object `package` {
     type f[x] = StateT[M, FetchEnv[C], x]
   }
 
+  implicit val fetchApplicative: Applicative[Fetch] = new Applicative[Fetch] {
+    def pure[A](a: A): Fetch[A] = Fetch.pure(a)
+
+    def ap[A, B](ff: Fetch[A => B])(fa: Fetch[A]): Fetch[B] =
+      Fetch.join(ff, fa).map({ case (f, a) => f(a) })
+  }
+
   // Cache
 
- 
-  object Fetch extends FetchInstances with FetchInterpreters {
+  object Fetch extends FetchInterpreters {
     /**
      * Lift a plain value to the Fetch monad.
      */
@@ -218,17 +224,6 @@ object `package` {
       MM: MonadError[M, Throwable],
       CC: Cache[C]
     ): M[A] = MM.map(runFetch[A, C, M](fa, cache)(MM, CC))(_._2)
-  }
-
-}
-
-trait FetchInstances {
-
-  implicit val fetchApplicative: Applicative[Fetch] = new Applicative[Fetch] {
-    def pure[A](a: A): Fetch[A] = Fetch.pure(a)
-
-    def ap[A, B](ff: Fetch[A => B])(fa: Fetch[A]): Fetch[B] =
-      Fetch.join(ff, fa).map({ case (f, a) => f(a) })
   }
 
 }
