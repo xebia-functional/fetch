@@ -21,8 +21,6 @@ final case class FetchError[A, E <: Throwable](err: E) extends FetchOp[A]
 
 object `package` {
 
-  // Types
-
   type DataSourceName = String
 
   type DataSourceIdentity = (DataSourceName, Any)
@@ -39,8 +37,6 @@ object `package` {
     def ap[A, B](ff: Fetch[A => B])(fa: Fetch[A]): Fetch[B] =
       Fetch.join(ff, fa).map({ case (f, a) => f(a) })
   }
-
-  // Cache
 
   object Fetch extends FetchInterpreters {
     /**
