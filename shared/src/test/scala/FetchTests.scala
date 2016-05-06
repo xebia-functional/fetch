@@ -181,7 +181,7 @@ class FetchTests extends FreeSpec with Matchers {
     Fetch.run(fetch).value shouldEqual List(0, 1, 2)
   }
 
-  "Traversals are implicitly batched" in {
+  "Traversals are implicitly concurrent" in {
     import cats.std.list._
     import cats.syntax.traverse._
 
@@ -192,7 +192,7 @@ class FetchTests extends FreeSpec with Matchers {
 
     val rounds = Fetch.runEnv(fetch).value.rounds
 
-    totalBatches(rounds).size shouldEqual 2
+    concurrent(rounds).size shouldEqual 1
   }
 
   "The product of two fetches implies parallel fetching" in {
