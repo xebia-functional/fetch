@@ -126,7 +126,7 @@ class FetchTests extends FreeSpec with Matchers {
   }
 
   "We can lift values which have a Data Source to Fetch" in {
-    Fetch.run(one(1)).value == 1
+    Fetch.run(one(1)).value shouldEqual 1
   }
 
   "We can map over Fetch values" in {
@@ -140,7 +140,7 @@ class FetchTests extends FreeSpec with Matchers {
       t <- one(2)
     } yield (o, t)
 
-    Fetch.run(fetch).value == (1, 2)
+    Fetch.run(fetch).value shouldEqual (1, 2)
   }
 
   "Monadic bind implies sequential execution" in {
@@ -158,7 +158,7 @@ class FetchTests extends FreeSpec with Matchers {
       m <- many(3)
     } yield (o, m)
 
-    Fetch.run(fetch).value == (1, List(0, 1, 2))
+    Fetch.run(fetch).value shouldEqual (1, List(0, 1, 2))
   }
 
   "We can use Fetch as an applicative" in {
@@ -166,7 +166,33 @@ class FetchTests extends FreeSpec with Matchers {
 
     val fetch: Fetch[(Int, List[Int])] = (one(1) |@| many(3)).map { case (a, b) => (a, b) }
 
-    Fetch.run(fetch).value == (1, List(0, 1, 2))
+    Fetch.run(fetch).value shouldEqual (1, List(0, 1, 2))
+  }
+
+  "We can traverse over a list with a Fetch for each element" in {
+    import cats.std.list._
+    import cats.syntax.traverse._
+
+    val fetch: Fetch[List[Int]] = for {
+      manies <- many(3)
+      ones <- manies.traverse(one)
+    } yield ones
+
+    Fetch.run(fetch).value shouldEqual List(0, 1, 2)
+  }
+
+  "Traversals are implicitly batched" in {
+    import cats.std.list._
+    import cats.syntax.traverse._
+
+    val fetch: Fetch[List[Int]] = for {
+      manies <- many(3)
+      ones <- manies.traverse(one)
+    } yield ones
+
+    val rounds = Fetch.runEnv(fetch).value.rounds
+
+    totalBatches(rounds).size shouldEqual 2
   }
 
   "The product of two fetches implies parallel fetching" in {

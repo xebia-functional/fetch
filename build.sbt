@@ -13,7 +13,10 @@ lazy val commonSettings = Seq(
       "org.spire-math" %% "kind-projector" % "0.7.1"
     )
   ),
-  scalacOptions ++= Seq("-Ywarn-unused-import", "-Ywarn-dead-code")
+  scalacOptions ++= Seq(
+    "-Ywarn-unused-import",
+    "-Ywarn-dead-code"
+  )
 )
 
 lazy val allSettings = buildSettings ++ commonSettings
