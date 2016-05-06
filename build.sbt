@@ -53,4 +53,18 @@ lazy val root = project.in(file("."))
   .settings(
     publish := {},
     publishLocal := {}
+)
+
+lazy val docsSettings = Seq(
+  publish := {},
+  publishLocal := {},
+  publishArtifact := false,
+  git.remoteRepo := "git@github.com:47deg/fetch.git"
+) ++ ghpages.settings ++ buildSettings
+
+lazy val docs = (project in file("docs"))
+  .settings(
+    moduleName := "fetch-docs"
   )
+  .settings(docsSettings: _*)
+  .enablePlugins(JekyllPlugin)

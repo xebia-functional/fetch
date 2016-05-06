@@ -1,0 +1,10 @@
+name: Fetch
+description: "Simple & Efficient data access for Scala(.js)"
+github_owner: 47deg
+baseurl: /fetch
+style: fetch
+docs: true
+markdown: redcarpet
+collections:
+  tut:
+    output: true

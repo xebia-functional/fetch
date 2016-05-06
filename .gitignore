@@ -1,2 +1,4 @@
 target/
 .ensime*
+_site/*
+docs/src/jekyll/_site/
