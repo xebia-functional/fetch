@@ -507,97 +507,97 @@ class FetchTests extends FreeSpec with Matchers {
   }
 }
 
-// class FetchFutureTests extends AsyncFreeSpec with Matchers{
-//   import scala.concurrent._
-//   import scala.concurrent.ExecutionContext.global
+class FetchFutureTests extends AsyncFreeSpec with Matchers{
+  import scala.concurrent._
+  import scala.concurrent.ExecutionContext.global
 
-//   import cats.std.future._
+  import cats.std.future._
 
-//   implicit def executionContext = global
-//   override def newInstance = new FetchFutureTests
+  implicit def executionContext = global
+  override def newInstance = new FetchFutureTests
 
-//   case class ArticleId(id: Int)
-//   case class Article(id: Int, content: String) {
-//     def author: Int = id + 1
-//   }
+  case class ArticleId(id: Int)
+  case class Article(id: Int, content: String) {
+    def author: Int = id + 1
+  }
 
-//   implicit object ArticleFuture extends DataSource[ArticleId, Article, Future] {
-//     override def name = "ArticleFuture"
-//     override def fetch(ids: List[ArticleId]): Future[Map[ArticleId, Article]] = {
-//       Future({
-//         ids.map(tid => (tid, Article(tid.id, "An article with id " + tid.id))).toMap
-//       })
-//     }
-//   }
+  implicit object ArticleFuture extends DataSource[ArticleId, Article] {
+    override def name = "ArticleFuture"
+    override def fetch(ids: List[ArticleId]): Eval[Map[ArticleId, Article]] = {
+      Eval.later({
+        ids.map(tid => (tid, Article(tid.id, "An article with id " + tid.id))).toMap
+      })
+    }
+  }
 
-//   def article(id: Int): Fetch[Article] = Fetch(ArticleId(id))
+  def article(id: Int): Fetch[Article] = Fetch(ArticleId(id))
 
-//   case class AuthorId(id: Int)
-//   case class Author(id: Int, name: String)
+  case class AuthorId(id: Int)
+  case class Author(id: Int, name: String)
 
-//   implicit object AuthorFuture extends DataSource[AuthorId, Author, Future] {
-//     override def name = "AuthorFuture"
-//     override def fetch(ids: List[AuthorId]): Future[Map[AuthorId, Author]] = {
-//       Future({
-//         ids.map(tid => (tid, Author(tid.id, "@egg" + tid.id))).toMap
-//       })
-//     }
-//   }
+  implicit object AuthorFuture extends DataSource[AuthorId, Author] {
+    override def name = "AuthorFuture"
+    override def fetch(ids: List[AuthorId]): Eval[Map[AuthorId, Author]] = {
+      Eval.later({
+        ids.map(tid => (tid, Author(tid.id, "@egg" + tid.id))).toMap
+      })
+    }
+  }
 
-//   def author(a: Article): Fetch[Author] = Fetch(AuthorId(a.author))
+  def author(a: Article): Fetch[Author] = Fetch(AuthorId(a.author))
 
-//   "We can interpret a fetch into a future" in {
-//     val fetch: Fetch[Article] = article(1)
+  "We can interpret a fetch into a future" in {
+    val fetch: Fetch[Article] = article(1)
 
-//     val fut: Future[Article] = Fetch.run(fetch)
+    val fut: Future[Article] = Fetch.run(fetch)
 
-//     fut.map(_ shouldEqual Article(1, "An article with id 1"))
-//   }
+    fut.map(_ shouldEqual Article(1, "An article with id 1"))
+  }
 
-//   "We can combine several data sources and interpret a fetch into a future" in {
-//     val fetch: Fetch[(Article, Author)] = for {
-//       art <- article(1)
-//       author <- author(art)
-//     } yield (art, author)
+  "We can combine several data sources and interpret a fetch into a future" in {
+    val fetch: Fetch[(Article, Author)] = for {
+      art <- article(1)
+      author <- author(art)
+    } yield (art, author)
 
-//     val fut: Future[(Article, Author)] = Fetch.run(fetch)
+    val fut: Future[(Article, Author)] = Fetch.run(fetch)
 
-//     fut.map(_ shouldEqual (Article(1, "An article with id 1"), Author(2, "@egg2")))
-//   }
+    fut.map(_ shouldEqual (Article(1, "An article with id 1"), Author(2, "@egg2")))
+  }
 
-//   "We can use combinators in a for comprehension and interpret a fetch into a future" in {
-//     val fetch: Fetch[List[Article]] = for {
-//       articles <- Fetch.traverse(List(1, 1, 2))(article)
-//     } yield articles
+  "We can use combinators in a for comprehension and interpret a fetch into a future" in {
+    val fetch: Fetch[List[Article]] = for {
+      articles <- Fetch.traverse(List(1, 1, 2))(article)
+    } yield articles
 
-//     val fut: Future[List[Article]] = Fetch.run(fetch)
+    val fut: Future[List[Article]] = Fetch.run(fetch)
 
-//     fut.map(_ shouldEqual List(
-//       Article(1, "An article with id 1"),
-//       Article(1, "An article with id 1"),
-//       Article(2, "An article with id 2")
-//     ))
-//   }
+    fut.map(_ shouldEqual List(
+      Article(1, "An article with id 1"),
+      Article(1, "An article with id 1"),
+      Article(2, "An article with id 2")
+    ))
+  }
 
-//   "We can use combinators and multiple sources in a for comprehension and interpret a fetch into a future" in {
-//     val fetch = for {
-//       articles <- Fetch.traverse(List(1, 1, 2))(article)
-//       authors <- Fetch.traverse(articles)(author)
-//     } yield (articles, authors)
+  "We can use combinators and multiple sources in a for comprehension and interpret a fetch into a future" in {
+    val fetch = for {
+      articles <- Fetch.traverse(List(1, 1, 2))(article)
+      authors <- Fetch.traverse(articles)(author)
+    } yield (articles, authors)
 
-//     val fut: Future[(List[Article], List[Author])] = Fetch.run(fetch, InMemoryCache.empty)
+    val fut: Future[(List[Article], List[Author])] = Fetch.run(fetch, InMemoryCache.empty)
 
-//     fut.map(_ shouldEqual (
-//       List(
-//         Article(1, "An article with id 1"),
-//         Article(1, "An article with id 1"),
-//         Article(2, "An article with id 2")
-//       ),
-//       List(
-//         Author(2, "@egg2"),
-//         Author(2, "@egg2"),
-//         Author(3, "@egg3")
-//       )
-//     ))
-//   }
-// }
+    fut.map(_ shouldEqual (
+      List(
+        Article(1, "An article with id 1"),
+        Article(1, "An article with id 1"),
+        Article(2, "An article with id 2")
+      ),
+      List(
+        Author(2, "@egg2"),
+        Author(2, "@egg2"),
+        Author(3, "@egg3")
+      )
+    ))
+  }
+}

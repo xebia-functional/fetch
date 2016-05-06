@@ -81,7 +81,7 @@ trait FetchInterpreters {
               val startRound = System.nanoTime()
               val cache = env.cache
               cache.get(ds.identity(id)).fold[M[(FetchEnv, A)]](
-                MM.flatMap(ds.fetch(List(id)).asInstanceOf[M[Map[I, A]]])((res: Map[I, A]) => {
+                MM.flatMap(MM.pureEval(ds.fetch(List(id))).asInstanceOf[M[Map[I, A]]])((res: Map[I, A]) => {
                   val endRound = System.nanoTime()
                   res.get(id.asInstanceOf[I]).fold[M[(FetchEnv, A)]](
                     MM.raiseError(
@@ -130,7 +130,7 @@ trait FetchInterpreters {
                   ), ids.flatMap(id => cache.get(ds.identity(id))))
                 )
               else {
-                MM.flatMap(ds.fetch(newIds).asInstanceOf[M[Map[I, A]]])((res: Map[I, A]) => {
+                MM.flatMap(MM.pureEval(ds.fetch(newIds)).asInstanceOf[M[Map[I, A]]])((res: Map[I, A]) => {
                   val endRound = System.nanoTime()
                   ids.map(i => res.get(i.asInstanceOf[I])).sequence.fold[M[(FetchEnv, A)]](
                     MM.raiseError(
