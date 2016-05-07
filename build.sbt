@@ -1,7 +1,13 @@
+import de.heikoseeberger.sbtheader.AutomateHeaderPlugin
+import de.heikoseeberger.sbtheader.license.Apache2_0
+
 lazy val buildSettings = Seq(
   organization := "com.fortysevendeg",
   scalaVersion := "2.11.8",
-  crossScalaVersions := Seq("2.10.6", "2.11.8")
+  crossScalaVersions := Seq("2.10.6", "2.11.8"),
+  headers := Map(
+    "scala" -> Apache2_0("2016", "47 Degrees, LLC. <http://www.47deg.com>")
+  )
 )
 
 lazy val commonSettings = Seq(
@@ -37,6 +43,7 @@ lazy val fetch = crossProject.in(file("."))
   .settings(moduleName := "fetch")
   .settings(allSettings:_*)
   .jsSettings(fetchJSSettings:_*)
+  .enablePlugins(AutomateHeaderPlugin)
 
 lazy val fetchJVM = fetch.jvm
 lazy val fetchJS = fetch.js
