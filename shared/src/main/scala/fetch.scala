@@ -41,6 +41,8 @@ object `package` {
 
   type Fetch[A] = Free[FetchOp, A]
 
+  type FetchMonadError[M[_]] = MonadError[M, Throwable]
+
   type FetchInterpreter[M[_]] = {
     type f[x] = StateT[M, FetchEnv, x]
   }
