@@ -5,7 +5,6 @@ import cats.{Eval, Id, MonadError}
 import fetch._
 
 class FetchTests extends FreeSpec with Matchers {
-
   implicit val M: MonadError[Eval, Throwable] = implicits.evalMonadError
   implicit val I: MonadError[Id, Throwable] = implicits.idMonadError
 
@@ -162,12 +161,20 @@ class FetchTests extends FreeSpec with Matchers {
     Fetch.run[Eval](fetch).value shouldEqual (1, List(0, 1, 2))
   }
 
+  "We can use Fetch as an cartesian" in {
+    import cats.syntax.cartesian._
+
+    val fetch: Fetch[(Int, List[Int])] = (one(1) |@| many(3)).tupled
+
+    Fetch.run[Eval](fetch).value shouldEqual (1, List(0, 1, 2))
+  }
+
   "We can use Fetch as an applicative" in {
     import cats.syntax.cartesian._
 
-    val fetch: Fetch[(Int, List[Int])] = (one(1) |@| many(3)).map { case (a, b) => (a, b) }
+    val fetch: Fetch[Int] = (one(1) |@| one(2) |@| one(3)).map(_ + _ + _)
 
-    Fetch.run[Eval](fetch).value shouldEqual (1, List(0, 1, 2))
+    Fetch.run[Eval](fetch).value shouldEqual 6
   }
 
   "We can traverse over a list with a Fetch for each element" in {
