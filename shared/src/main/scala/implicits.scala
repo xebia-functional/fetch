@@ -23,10 +23,10 @@ import cats.{MonadError}
  * A cache that stores its elements in memory.
  */
 case class InMemoryCache(state: Map[DataSourceIdentity, Any]) extends DataSourceCache {
-  override def get[I](k: DataSourceIdentity): Option[Any] =
+  override def get(k: DataSourceIdentity): Option[Any] =
     state.get(k)
 
-  override def update[I, A](k: DataSourceIdentity, v: A): InMemoryCache =
+  override def update[A](k: DataSourceIdentity, v: A): InMemoryCache =
     copy(state = state.updated(k, v))
 }
 
