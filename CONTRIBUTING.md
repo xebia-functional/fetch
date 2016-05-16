@@ -10,7 +10,7 @@ the code. Pull requests are also wellcome.
 People are expected to follow the [Typelevel Code of Conduct](http://typelevel.org/conduct.html) when
 discussing Cats on the Github page, Gitter channel, or other venues.
 
-If you are being harassed, please contact one of [us](AUTHORS.md#Maintainers) immediately so that we can support you.
+If you are being harassed, please contact one of [us](AUTHORS.md#maintainers) immediately so that we can support you.
 In case you cannot get in touch with us please write an email to [47 deegrees](mailto:hello@47deg.com).
 
 ## How can I help?

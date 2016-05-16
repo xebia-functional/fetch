@@ -1,6 +1,6 @@
 # Authors
 
-## Mantainers
+## Maintainers
 
 The mantainers of the project are:
 
