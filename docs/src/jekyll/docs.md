@@ -540,7 +540,3 @@ await(fut)
 
 //=>  List(User(1,@egg_1), User(2,@egg_2), User(3,@egg_3))
 ```
-
-## scalaz
-
-There is still no integration with Scalaz, but soon will be.
