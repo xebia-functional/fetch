@@ -290,7 +290,7 @@ when combining independent requests to *different* data sources? We have the opo
 different data sources at the same time.
 
 Since we are using `Future` as our concurrency monad, the requests will effectively run in parallel,
-each in its own thread.
+each in its own logical thread.
 
 ```scala
 val fch: Fetch[(Post, User)] = Fetch.join(getPost(1), getUser(2))
