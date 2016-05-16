@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7" lang=""> <![endif]--><!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8" lang=""> <![endif]--><!--[if IE 8]>         <html class="no-js lt-ie9" lang=""> <![endif]--><!--[if gt IE 8]><!--><html class="no-js" lang="">
+<!--<![endif]-->
+
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>Fetch</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="">
+  <meta name="author" content="">
+  <link rel="apple-touch-icon" href="%5BINSERT%20apple-tuch-icon.png%5D">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.2.0/styles/tomorrow.min.css">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css">
+  <link href="https://rawgit.com/47deg/microsites/cdn/style.css" rel="stylesheet"> </head>
+
+<body>
+  <!--[if IE]>
+    <script src="https://cdn.jsdelivr.net/html5shiv/3.7.2/html5shiv.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+  <header id="site-header">
+    <div class="navbar-wrapper">
+      <div class="container">
+        <div class="row">
+          <div class="col-xs-6">
+            <a href="#" data-href="/fetch/" class="brand">
+              <div class="icon-wrapper" style="background:url('https://rawgit.com/47deg/microsites/cdn/fetch/navbar_brand.png') no-repeat"> <span>Fetch</span> </div>
+            </a>
+          </div>
+          <div class="col-xs-6">
+            <nav class="text-right">
+              <ul>
+                <li>
+                  <a href="#" data-href="https://github.com/47deg/fetch"> <i class="fa fa-github"></i> <span class="hidden-xs">GitHub</span> </a>
+                </li> 
+                <li>
+                  <a href="#" data-href="/fetch/docs"> <i class="fa fa-file-text"></i> <span class="hidden-xs">Documentation</span> </a>
+                </li>  </ul>
+            </nav>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="jumbotron" style="background-image:url('https://rawgit.com/47deg/microsites/cdn/fetch/jumbotron_pattern.png')">
+      <div class="container">
+        <h1 class="text-center">Simple & Efficient data access for Scala(.js)</h1>
+        <h2></h2>
+        <p class="text-center"> <a href="#" data-href="https://github.com/47deg/fetch" class="btn btn-outline-inverse">View on GitHub</a> </p>
+      </div>
+    </div>
+  </header>
+  <main id="site-main">
+    <section class="use">
+      <div class="container">
+        <div id="content" class="row"> <h2>Installation</h2>
+
+<p>Add the following dependency to your project&#39;s build file.</p>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="s">"org.fortysevendeg"</span> <span class="o">%%%</span> <span class="s">"fetch"</span> <span class="o">%%</span> <span class="s">"0.1.0"</span>
+</code></pre></div>
+<h2>Remote data</h2>
+
+<p>Fetch is a library for making access to data both simple &amp; efficient. Fetch is specially useful when querying data that
+has a latency cost, such as databases or web services. We&#39;ll be emulating latency with this little function:</p>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">import</span> <span class="nn">scala.util.Random</span>
+<span class="k">import</span> <span class="nn">cats.Eval</span>
+
+<span class="k">def</span> <span class="n">latency</span><span class="o">[</span><span class="kt">A</span><span class="o">](</span><span class="n">result</span><span class="k">:</span> <span class="kt">A</span><span class="o">,</span> <span class="n">msg</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">wait</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="nc">Random</span><span class="o">.</span><span class="n">nextInt</span><span class="o">(</span><span class="mi">100</span><span class="o">))</span><span class="k">:</span> <span class="kt">Eval</span><span class="o">[</span><span class="kt">A</span><span class="o">]</span> <span class="k">=</span>
+  <span class="nc">Eval</span><span class="o">.</span><span class="n">later</span><span class="o">({</span>
+    <span class="k">val</span> <span class="n">threadId</span> <span class="k">=</span> <span class="nc">Thread</span><span class="o">.</span><span class="n">currentThread</span><span class="o">().</span><span class="n">getId</span><span class="o">()</span>
+    <span class="n">println</span><span class="o">(</span><span class="n">s</span><span class="s">"~~~&gt;[thread: $threadId] $msg"</span><span class="o">)</span>
+    <span class="nc">Thread</span><span class="o">.</span><span class="n">sleep</span><span class="o">(</span><span class="n">wait</span><span class="o">)</span>
+    <span class="n">println</span><span class="o">(</span><span class="n">s</span><span class="s">"&lt;~~~[thread: $threadId] $msg"</span><span class="o">)</span>
+    <span class="n">result</span>
+  <span class="o">})</span>
+</code></pre></div>
+<h2>Define your data sources</h2>
+
+<p>For telling <code>Fetch</code> how to get the data you want, you must implement the <code>DataSource</code> typeclass. Data sources have a <code>fetch</code> method that
+  defines how to fetch such a piece of data.</p>
+
+<p>Data Sources take two type parameters:</p>
+
+<ol>
+<li><code>Identity</code> is a type that has enough information to fetch the data</li>
+<li><code>Result</code> is the type of data we want to fetch</li>
+</ol>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">trait</span> <span class="nc">DataSource</span><span class="o">[</span><span class="kt">Identity</span>, <span class="kt">Result</span><span class="o">]{</span>
+  <span class="k">def</span> <span class="n">fetch</span><span class="o">(</span><span class="n">ids</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">Identity</span><span class="o">])</span><span class="k">:</span> <span class="kt">Eval</span><span class="o">[</span><span class="kt">Map</span><span class="o">[</span><span class="kt">Identity</span>, <span class="kt">Result</span><span class="o">]]</span>
+<span class="o">}</span>
+</code></pre></div>
+<p>We&#39;ll implement a dummy data source that can convert integers to strings. For convenience we define a <code>fetchString</code> function that lifts identities (<code>Int</code> in our dummy data source) to a <code>Fetch</code>. </p>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">import</span> <span class="nn">fetch._</span>
+
+<span class="k">implicit</span> <span class="k">object</span> <span class="nc">ToStringSource</span> <span class="k">extends</span> <span class="nc">DataSource</span><span class="o">[</span><span class="kt">Int</span>, <span class="kt">String</span><span class="o">]{</span>
+  <span class="k">override</span> <span class="k">def</span> <span class="n">fetch</span><span class="o">(</span><span class="n">ids</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">Int</span><span class="o">])</span><span class="k">:</span> <span class="kt">Eval</span><span class="o">[</span><span class="kt">Map</span><span class="o">[</span><span class="kt">Int</span>, <span class="kt">String</span><span class="o">]]</span> <span class="k">=</span> <span class="o">{</span>
+    <span class="n">latency</span><span class="o">(</span><span class="n">ids</span><span class="o">.</span><span class="n">map</span><span class="o">(</span><span class="n">i</span> <span class="k">=&gt;</span> <span class="o">(</span><span class="n">i</span><span class="o">,</span> <span class="n">i</span><span class="o">.</span><span class="n">toString</span><span class="o">)).</span><span class="n">toMap</span><span class="o">,</span> <span class="n">s</span><span class="s">"ToStringSource $ids"</span><span class="o">)</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="k">def</span> <span class="n">fetchString</span><span class="o">(</span><span class="n">n</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">(</span><span class="n">n</span><span class="o">)</span> <span class="c1">// or, more explicitly: Fetch(n)(ToStringSource)
+</span></code></pre></div>
+<h2>Declare and run fetches</h2>
+
+<p>Now that we can convert <code>Int</code> values to <code>Fetch[String]</code>, let&#39;s try running a fetch and see what happens.</p>
+
+<p>Note that the target monad (<code>Future</code> in our example) needs to implement <code>MonadError[M, Throwable]</code>, that&#39;s
+why we import <code>cats.std.future._</code>.</p>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">import</span> <span class="nn">scala.concurrent._</span>
+<span class="k">import</span> <span class="nn">scala.concurrent.duration._</span>
+<span class="k">import</span> <span class="nn">scala.concurrent.ExecutionContext.Implicits.global</span>
+
+<span class="k">import</span> <span class="nn">cats.std.future._</span>
+
+<span class="k">def</span> <span class="n">await</span><span class="o">[</span><span class="kt">A</span><span class="o">](</span><span class="n">f</span><span class="k">:</span> <span class="kt">Future</span><span class="o">[</span><span class="kt">A</span><span class="o">])</span><span class="k">:</span> <span class="kt">A</span> <span class="o">=</span> <span class="nc">Await</span><span class="o">.</span><span class="n">result</span><span class="o">(</span><span class="n">f</span><span class="o">,</span> <span class="mi">5</span> <span class="n">seconds</span><span class="o">)</span>
+</code></pre></div>
+<p>And now we can interpret a fetch into a <code>Future</code></p>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">fch</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span> <span class="k">=</span> <span class="n">fetchString</span><span class="o">(</span><span class="mi">1</span><span class="o">)</span>
+
+<span class="k">val</span> <span class="n">fut</span><span class="k">:</span> <span class="kt">Future</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">(</span><span class="n">fch</span><span class="o">)</span>
+
+<span class="n">await</span><span class="o">(</span><span class="n">fut</span><span class="o">)</span>
+<span class="c1">// ~~~&gt;[thread: 67] ToStringSource List(1)
+// &lt;~~~[thread: 67] ToStringSource List(1)
+</span>
+<span class="c1">//=&gt; 1
+</span></code></pre></div>
+<h2>Batching</h2>
+
+<p>Multiple fetches to the same data source are automatically batched:</p>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">import</span> <span class="nn">cats.syntax.cartesian._</span>
+
+<span class="k">val</span> <span class="n">fch</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[(</span><span class="kt">String</span>, <span class="kt">String</span>, <span class="kt">String</span><span class="o">)]</span> <span class="k">=</span> <span class="o">(</span><span class="n">fetchString</span><span class="o">(</span><span class="mi">1</span><span class="o">)</span> <span class="o">|@|</span> <span class="n">fetchString</span><span class="o">(</span><span class="mi">2</span><span class="o">)</span> <span class="o">|@|</span> <span class="n">fetchString</span><span class="o">(</span><span class="mi">3</span><span class="o">)).</span><span class="n">tupled</span>
+
+<span class="k">val</span> <span class="n">fut</span><span class="k">:</span> <span class="kt">Future</span><span class="o">[(</span><span class="kt">String</span>, <span class="kt">String</span>, <span class="kt">String</span><span class="o">)]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">(</span><span class="n">fch</span><span class="o">)</span>
+
+<span class="n">await</span><span class="o">(</span><span class="n">fut</span><span class="o">)</span>
+<span class="c1">// ~~~&gt;[thread: 42] ToStringSource List(1, 2, 3)
+// &lt;~~~[thread: 42] ToStringSource List(1, 2, 3)
+</span>
+<span class="c1">//=&gt; (1,2,3)
+</span></code></pre></div>
+<h2>Parallelism</h2>
+
+<p>If we combine two independent fetches from different data sources, the fetches will be run in parallel. Let&#39;s first add a data source that fetches a string&#39;s size.</p>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">implicit</span> <span class="k">object</span> <span class="nc">LengthSource</span> <span class="k">extends</span> <span class="nc">DataSource</span><span class="o">[</span><span class="kt">String</span>, <span class="kt">Int</span><span class="o">]{</span>
+  <span class="k">override</span> <span class="k">def</span> <span class="n">fetch</span><span class="o">(</span><span class="n">ids</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">String</span><span class="o">])</span><span class="k">:</span> <span class="kt">Eval</span><span class="o">[</span><span class="kt">Map</span><span class="o">[</span><span class="kt">String</span>, <span class="kt">Int</span><span class="o">]]</span> <span class="k">=</span> <span class="o">{</span>
+    <span class="n">latency</span><span class="o">(</span><span class="n">ids</span><span class="o">.</span><span class="n">map</span><span class="o">(</span><span class="n">i</span> <span class="k">=&gt;</span> <span class="o">(</span><span class="n">i</span><span class="o">,</span> <span class="n">i</span><span class="o">.</span><span class="n">size</span><span class="o">)).</span><span class="n">toMap</span><span class="o">,</span> <span class="n">s</span><span class="s">"LengthSource $ids"</span><span class="o">)</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="k">def</span> <span class="n">fetchLength</span><span class="o">(</span><span class="n">s</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">(</span><span class="n">s</span><span class="o">)</span>
+</code></pre></div>
+<p>And now we can combine the two data sources in a single fetch. Note how the two independent data fetches are run in parallel, minimizing the latency cost of querying the two data sources.</p>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">fch</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[(</span><span class="kt">String</span>, <span class="kt">Int</span><span class="o">)]</span> <span class="k">=</span> <span class="o">(</span><span class="n">fetchString</span><span class="o">(</span><span class="mi">1</span><span class="o">)</span> <span class="o">|@|</span> <span class="n">fetchLength</span><span class="o">(</span><span class="s">"one"</span><span class="o">)).</span><span class="n">tupled</span>
+
+<span class="k">val</span> <span class="n">fut</span><span class="k">:</span> <span class="kt">Future</span><span class="o">[(</span><span class="kt">String</span>, <span class="kt">Int</span><span class="o">)]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">(</span><span class="n">fch</span><span class="o">)</span>
+<span class="n">await</span><span class="o">(</span><span class="n">fut</span><span class="o">)</span>
+<span class="c1">// ~~~&gt;[thread: 45] ToStringSource List(1)
+// ~~~&gt;[thread: 46] LengthSource List(one)
+// &lt;~~~[thread: 46] LengthSource List(one)
+// &lt;~~~[thread: 45] ToStringSource List(1)
+</span>
+<span class="c1">//=&gt; (1,3)
+</span></code></pre></div>
+<h2>Caching</h2>
+
+<p>When fetching an identity, subsequents fetches for the same identity are cached:</p>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">fch</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[(</span><span class="kt">String</span>, <span class="kt">String</span><span class="o">)]</span> <span class="k">=</span> <span class="k">for</span> <span class="o">{</span>
+  <span class="n">one</span> <span class="k">&lt;-</span> <span class="n">fetchString</span><span class="o">(</span><span class="mi">1</span><span class="o">)</span>
+  <span class="n">two</span> <span class="k">&lt;-</span> <span class="n">fetchString</span><span class="o">(</span><span class="mi">1</span><span class="o">)</span>
+<span class="o">}</span> <span class="k">yield</span> <span class="o">(</span><span class="n">one</span><span class="o">,</span> <span class="n">two</span><span class="o">)</span>
+
+<span class="k">val</span> <span class="n">fut</span><span class="k">:</span> <span class="kt">Future</span><span class="o">[(</span><span class="kt">String</span>, <span class="kt">String</span><span class="o">)]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">(</span><span class="n">fch</span><span class="o">)</span>
+
+<span class="n">await</span><span class="o">(</span><span class="n">fut</span><span class="o">)</span>
+<span class="c1">// ~~~&gt;[thread: 48] ToStringSource List(1)
+// &lt;~~~[thread: 48] ToStringSource List(1)
+</span>
+<span class="c1">//=&gt; (1,1)
+</span></code></pre></div>
+<h2>Bring your own concurrency</h2>
+
+<p>Albeit the examples use <code>Future</code> as the concurrency Monad, <code>Fetch</code> is not limited to just <code>Future</code>,
+any monad <code>M</code> that implements <code>MonadError[M, Throwable]</code> will do.</p>
+
+<p>Fetch provides <code>MonadError</code> instances for some existing monads like <code>Id</code> and <code>Eval</code> and is easy to write your own.</p>
+ </div>
+      </div>
+    </section>
+    <section class="technologies">
+      <div class="container">
+        <div class="row">
+          
+            
+              <div class="col-md-4">
+                <div class="scala-icon-wrapper"></div>
+                <h3>Scala</h3>
+                <p>Fetch is written in Scala and supports both Scala (JVM) and Scala.js (JavaScript environments)</p>
+              </div>
+            
+          
+            
+              <div class="col-md-4">
+                <div class="cats-icon-wrapper"></div>
+                <h3>Cats</h3>
+                <p>Fetch uses cats' Free Monad implementation as well as some of its data types.</p>
+              </div>
+            
+          
+            
+              <div class="col-md-4">
+                <div class="fp-icon-wrapper"></div>
+                <h3>Functional Programming</h3>
+                <p>Fetch is implemented using the Free Monad and Interpreter pattern.</p>
+              </div>
+            
+          
+        </div>
+      </div>
+    </section>
+  </main>
+  <footer id="site-footer">
+    <div class="container">
+      <div class="row">
+        <div class="col-xs-6">
+          <p>Fetch is design and development handcraft by <a href="http://www.47deg.com/" target="_blank">47 Degrees</a></p>
+          <p>Code licensed <a href="https://opensource.org/licenses/MIT" target="_blank">The MIT License</a></p>
+        </div>
+        <div class="col-xs-6">
+          <p class="text-right">
+            <a href="#" data-href="https://github.com/47deg/fetch"> <span class="fa fa-github"></span> View on Github </a>
+          </p>
+        </div>
+      </div>
+    </div>
+  </footer>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.6/js/bootstrap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.2.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.2.0/languages/scala.min.js"></script>
+  <script>
+    jQuery(document).ready(function() {
+      loadStyle();
+      hljs.initHighlightingOnLoad();
+      activeLinks();
+    });
+
+    function loadStyle() {
+      $("<link/>", {
+        rel: "stylesheet",
+        type: "text/css",
+        href: "https://rawgit.com/47deg/microsites/cdn/fetch/palette.css"
+      }).appendTo("head");
+    }
+
+    function activeLinks() {
+      $('a[data-href]').each(function(index, el) {
+        $(this).attr('href', $(this).attr('data-href'));
+      });
+    }
+  </script>
+</body>
+
+</html>
+
