@@ -311,7 +311,7 @@ the fetch finishes as soon as both results are available.
 ## Combinators
 
 Besides `flatMap` for sequencing fetches and `join` for running them concurrently, Fetch provides a number of
-other combinators that you can use.
+other combinators.
 
 ### Collect
 
