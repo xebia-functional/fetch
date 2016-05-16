@@ -1,5 +1,5 @@
 name: Fetch
-description: "Simple & Efficient data access for Scala(.js)"
+description: "Simple & Efficient data access for Scala and Scala.js"
 github_owner: 47deg
 baseurl: /fetch
 style: fetch
