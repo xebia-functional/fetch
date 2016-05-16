@@ -4,6 +4,11 @@ layout: docs
 
 # Introduction
 
+Fetch is a library that allows your data fetches to be written in a concise,
+composable way while executing efficiently. You don't need to use any explicit
+concurrency construct but existing idioms: applicative for concurrency and
+monad for sequencing.
+
 Oftentimes, our applications read and manipulate data from a variety of
 different sources such as databases, web services or file systems. These data
 sources are subject to latency, and we'd prefer to query them efficiently.
@@ -18,11 +23,6 @@ However, if we mix these optimizations with the code that fetches the data
 we may end up trading clarity for performance. Furthermore, we are
 mixing low-level (optimization) and high-level (business logic with the data
 we read) concerns.
-
-Fetch is a library that allows your data fetches to be written in a concise,
-composable way while executing efficiently. You don't need to use any explicit
-concurrency construct but existing idioms: applicative for concurrency and
-monad for sequencing.
 
 # Installation
 
