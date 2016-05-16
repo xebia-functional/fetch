@@ -113,9 +113,9 @@ object `package` {
     }
 
     /**
-     * Collect a list of fetches into a fetch of a list. It implies concurrent execution of fetches.
+     * Transform a list of fetches into a fetch of a list. It implies concurrent execution of fetches.
      */
-    def collect[I, A](ids: List[Fetch[A]]): Fetch[List[A]] = {
+    def sequence[I, A](ids: List[Fetch[A]]): Fetch[List[A]] = {
       ids.foldLeft(Fetch.pure(List(): List[A]))((f, newF) =>
         Fetch.join(f, newF).map(t => t._1 :+ t._2))
     }
@@ -125,7 +125,7 @@ object `package` {
      * results. It implies concurrent execution of fetches.
      */
     def traverse[A, B](ids: List[A])(f: A => Fetch[B]): Fetch[List[B]] =
-      collect(ids.map(f))
+      sequence(ids.map(f))
 
     /**
      * Apply the given function to the result of the two fetches. It implies concurrent execution of fetches.

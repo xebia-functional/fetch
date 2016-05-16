@@ -313,14 +313,14 @@ the fetch finishes as soon as both results are available.
 Besides `flatMap` for sequencing fetches and `join` for running them concurrently, Fetch provides a number of
 other combinators.
 
-### Collect
+### Sequence
 
-Whenever we have a list of fetches of the same type and want to run them concurrently we can use the `collect`
+Whenever we have a list of fetches of the same type and want to run them concurrently we can use the `sequence`
 combinator. It takes a `List[Fetch[A]]` and gives you back a `Fetch[List[A]]`, batching the fetches to the same
 data source and running fetches to different sources in parallel.
 
 ```scala
-val fch: Fetch[List[User]] = Fetch.collect(List(getUser(1), getUser(2), getUser(3)))
+val fch: Fetch[List[User]] = Fetch.sequence(List(getUser(1), getUser(2), getUser(3)))
 
 val fut: Future[List[User]] = Fetch.run(fch)
 
@@ -335,7 +335,7 @@ As you can see, requests to the user data source were batched, thus fetching all
 
 ### Traverse
 
-Another interesing combinator is `traverse`, which is the composition of `map` and `collect`.a
+Another interesing combinator is `traverse`, which is the composition of `map` and `sequence`.a
 
 ```scala
 val fch: Fetch[List[User]] = Fetch.traverse(List(1, 2, 3))(getUser)
@@ -508,7 +508,7 @@ await(fut)
 
 Apart from using Fetch with cartesian syntax and performing all fetches in a product concurrently, we can treat Fetch as an applicative and get implicit concurrency and batching as well.
 
-For the next example, we'll import cats' extensions to the `List` type and traverse syntax. This will allow us to use both `sequence` and `traverse` methods on lists, which are equivalent to `Fetch#collect` and `Fetch#traverse`.
+For the next example, we'll import cats' extensions to the `List` type and traverse syntax. This will allow us to use both `sequence` and `traverse` methods on lists, which are equivalent to `Fetch#sequence` and `Fetch#traverse`.
 
 ```scala
 import cats.std.list._
