@@ -440,7 +440,9 @@ val result: List[User] = Fetch.run[Id](fch, env.cache)
 
 ## Implementing a custom cache
 
-The default cache is implemented as an in-memory map, but users are free to use their own caches when running a fetch. Your cache should implement the `DataSourceCache` trait, and after that you can pass it to Fetch's `run` methods.
+The default cache is implemented as an immutable in-memory map, but users are free to use their own caches when running a fetch. Your cache should implement the `DataSourceCache` trait, and after that you can pass it to Fetch's `run` methods.
+
+There is no need for the cache to be mutable, since fetch executions run in an interpreter that uses the state monad. Note that the `update` method in the `DataSourceCache` trait yields a new, updated cache.
 
 ```scala
 trait DataSourceCache {
