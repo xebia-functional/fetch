@@ -17,28 +17,14 @@ Add the following dependency to your project's build file.
 ## Remote data
 
 Fetch is a library for making access to data both simple & efficient. Fetch is specially useful when querying data that
-has a latency cost, such as databases or web services. We'll be emulating latency with this little function:
-
-```scala
-import scala.util.Random
-import cats.Eval
-
-def latency[A](result: A, msg: String, wait: Int = Random.nextInt(100)): Eval[A] =
-  Eval.later({
-    val threadId = Thread.currentThread().getId()
-    println(s"~~~>[thread: $threadId] $msg")
-    Thread.sleep(wait)
-    println(s"<~~~[thread: $threadId] $msg")
-    result
-  })
-```
+has a latency cost, such as databases or web services.
 
 ## Define your data sources
 
-  For telling `Fetch` how to get the data you want, you must implement the `DataSource` typeclass. Data sources have a `fetch` method that
-  defines how to fetch such a piece of data.
+For telling `Fetch` how to get the data you want, you must implement the `DataSource` typeclass. Data sources have a `fetch` method that
+defines how to fetch such a piece of data.
 
-  Data Sources take two type parameters:
+Data Sources take two type parameters:
 
 <ol>
 <li><code>Identity</code> is a type that has enough information to fetch the data</li>
@@ -58,7 +44,10 @@ import fetch._
 
 implicit object ToStringSource extends DataSource[Int, String]{
   override def fetch(ids: List[Int]): Eval[Map[Int, String]] = {
-    latency(ids.map(i => (i, i.toString)).toMap, s"ToStringSource $ids")
+    Eval.later({
+      println(s"ToStringSource $ids")
+      ids.map(i => (i, i.toString)).toMap
+    })
   }
 }
 
@@ -69,31 +58,18 @@ def fetchString(n: Int): Fetch[String] = Fetch(n) // or, more explicitly: Fetch(
 
 Now that we can convert `Int` values to `Fetch[String]`, let's try running a fetch and see what happens.
 
-Note that the target monad (`Future` in our example) needs to implement `MonadError[M, Throwable]`, that's
-why we import `cats.std.future._`.
+Note that the target monad (`Id` in our example) needs to implement `MonadError[M, Throwable]`, we provide
+an instance for `Id` in `fetch.implicits._`, that's why we import it.
 
 ```scala
-import scala.concurrent._
-import scala.concurrent.duration._
-import scala.concurrent.ExecutionContext.Implicits.global
+import fetch.implicits._
 
-import cats.std.future._
-
-def await[A](f: Future[A]): A = Await.result(f, 5 seconds)
-```
-
-And now we can interpret a fetch into a `Future`
-
-```scala
 val fch: Fetch[String] = fetchString(1)
 
-val fut: Future[String] = Fetch.run(fch)
+val result: String = Fetch.run[Id](fch)
+// ToStringSource List(1)
 
-await(fut)
-// ~~~>[thread: 67] ToStringSource List(1)
-// <~~~[thread: 67] ToStringSource List(1)
-
-//=> 1
+//=> result: String = 1
 ```
 
 ## Batching
@@ -105,42 +81,39 @@ import cats.syntax.cartesian._
 
 val fch: Fetch[(String, String, String)] = (fetchString(1) |@| fetchString(2) |@| fetchString(3)).tupled
 
-val fut: Future[(String, String, String)] = Fetch.run(fch)
+val result: (String, String, String) = Fetch.run[Id](fch)
+// ToStringSource List(1, 2, 3)
 
-await(fut)
-// ~~~>[thread: 42] ToStringSource List(1, 2, 3)
-// <~~~[thread: 42] ToStringSource List(1, 2, 3)
-
-//=> (1,2,3)
+//=> result: (String, String, String) = (1,2,3)
 ```
 
-## Parallelism
+## Concurrency
 
-If we combine two independent fetches from different data sources, the fetches will be run in parallel. Let's first add a data source that fetches a string's size.
+If we combine two independent fetches from different data sources, the fetches will be run concurrently. Let's first add a data source that fetches a string's size.
 
 ```scala
 implicit object LengthSource extends DataSource[String, Int]{
   override def fetch(ids: List[String]): Eval[Map[String, Int]] = {
-    latency(ids.map(i => (i, i.size)).toMap, s"LengthSource $ids")
+    Eval.later({
+      println(s"LengthSource $ids")
+      ids.map(i => (i, i.size)).toMap
+    })
   }
 }
 
 def fetchLength(s: String): Fetch[Int] = Fetch(s)
 ```
 
-And now we can combine the two data sources in a single fetch. Note how the two independent data fetches are run in parallel, minimizing the latency cost of querying the two data sources.
+And now we can combine the two data sources in a single fetch. Note how the two independent data fetches are run concurrently, minimizing the latency cost of querying the two data sources. If our target monad was a concurrency monad like `Future`, they'd run in parallel, each in its own logical thread.
 
 ```scala
 val fch: Fetch[(String, Int)] = (fetchString(1) |@| fetchLength("one")).tupled
 
-val fut: Future[(String, Int)] = Fetch.run(fch)
-await(fut)
-// ~~~>[thread: 45] ToStringSource List(1)
-// ~~~>[thread: 46] LengthSource List(one)
-// <~~~[thread: 46] LengthSource List(one)
-// <~~~[thread: 45] ToStringSource List(1)
+val result: (String, Int) = Fetch.run[Id](fch)
+// ToStringSource List(1)
+// LengthSource List(one)
 
-//=> (1,3)
+//=> result: (String, Int) = (1,3)
 ```
 
 ## Caching
@@ -153,18 +126,10 @@ val fch: Fetch[(String, String)] = for {
   two <- fetchString(1)
 } yield (one, two)
 
-val fut: Future[(String, String)] = Fetch.run(fch)
+val result: (String, String) = Fetch.run[Id](fch)
+// ToStringSource List(1)
 
-await(fut)
-// ~~~>[thread: 48] ToStringSource List(1)
-// <~~~[thread: 48] ToStringSource List(1)
-
-//=> (1,1)
+//=> result: (String, String) = (1,1)
 ```
 
-## Bring your own concurrency
 
-Albeit the examples use `Future` as the concurrency Monad, `Fetch` is not limited to just `Future`,
-any monad `M` that implements `MonadError[M, Throwable]` will do.
-
-Fetch provides `MonadError` instances for some existing monads like `Id` and `Eval` and is easy to write your own.
