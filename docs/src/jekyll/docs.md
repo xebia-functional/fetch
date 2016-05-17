@@ -91,7 +91,12 @@ def getUser(id: UserId): Fetch[User] = Fetch(id) // or, more explicitly: Fetch(i
 We are now ready to declare and run fetches. We need to provide Fetch with a target
 monad when we want to execute a fetch. We'll be using `Id` for now, make sure to import
 `fetch.implicits._` since Fetch needs an instance of `MonadError[Id, Throwable]` for running
-a fetch in the `Id` monad:
+a fetch in the `Id` monad.
+
+Note that Fetch provides `MonadError` instances for a variety of different monads like `Eval` or
+`Future` so is likely that you don't have to write your own.
+
+Let's run our first fetch!
 
 ```scala
 import cats.Id
