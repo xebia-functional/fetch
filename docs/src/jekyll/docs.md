@@ -352,7 +352,7 @@ val fut: Future[(User, Post)] = Fetch.run[Future](fch)
 // Fetching users List(1)
 // Fetching posts List(1)
 
-Await.result(fut, 1 seconds)
+Await.result(fut, 1 seconds) // this call blocks the current thread, don't do this at home!
 //=> (User, Post) = (User(1,@egg_1),Post(1,2,An article with id 1))
 ```
 
