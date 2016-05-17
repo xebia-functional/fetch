@@ -59,21 +59,31 @@ Returning `Eval` makes it possible to defer evaluation with a monad when running
 ## Writing your first data source
 
 Now that we know about the `DataSource` typeclass, let's write our first data source! We'll start implementing a data
-source for fetching users given their id. The identity type will be a user's id and the result type a user.
+source for fetching users given their id. The first thing we'll do is define the types for user ids and users.
+
+```scala
+type UserId = Int
+case class User(id: UserId, username: String)
+```
+
+And now we're ready to write our user data source, we'll emulate a database with an in-memory map.
 
 ```scala
 import cats.Eval
 
 import fetch._
 
-type UserId = Int
-case class User(id: UserId, username: String)
+val userDatabase: Map[UserId, User] = Map(
+  1 -> User(1, "@one"),
+  2 -> User(2, "@two"),
+  3 -> User(3, "@three")
+)
 
 implicit object UserSource extends DataSource[UserId, User]{
   override def fetch(ids: List[UserId]): Eval[Map[UserId, User]] = {
     Eval.later({
       println(s"Fetching users $ids")
-	  ids.map(i => (i, User(i, s"@egg_$i"))).toMap
+	  userDatabase.filterKeys(ids.contains)
     })
   }
 }
@@ -112,7 +122,7 @@ val fch: Fetch[User] = getUser(1)
 val result: User = Fetch.run[Id](fch)
 // Fetching users List(1)
 
-//=> result: User = User(1,@egg_1)
+//=> result: User = User(1,@one)
 ```
 
 In the previous example, we:
@@ -137,7 +147,7 @@ val result: (User, User) = Fetch.run[Id](fch)
 // Fetching users List(1)
 // Fetching users List(2)
 
-//=> result: (User, User) = (User(1,@egg_1),User(2,@egg_2))
+//=> result: (User, User) = (User(1,@one),User(2,@two))
 ```
 
 ### Batching
@@ -155,7 +165,7 @@ val fch: Fetch[(User, User)] = getUser(1).product(getUser(2))
 val result: (User, User) = Fetch.run[Id](fch)
 // Fetching users List(1, 2)
 
-//=> result: (User, User) = (User(1,@egg_1),User(2,@egg_2))
+//=> result: (User, User) = (User(1,@one),User(2,@two))
 ```
 
 ### Deduplication
@@ -169,7 +179,7 @@ val fch: Fetch[(User, User)] = getUser(1).product(getUser(1))
 val result: (User, User) = Fetch.run[Id](fch)
 // Fetching users List(1)
 
-//=> result: (User, User) = (User(1,@egg_1),User(1,@egg_1))
+//=> result: (User, User) = (User(1,@one),User(1,@one))
 ```
 
 ### Caching
@@ -188,7 +198,7 @@ val fch: Fetch[(User, User)] = for {
 val result: (User, User) = Fetch.run[Id](fch)
 // Fetching users List(1)
 
-//=> result: (User, User) = (User(1,@egg_1),User(1,@egg_1))
+//=> result: (User, User) = (User(1,@one),User(1,@one))
 ```
 
 As you can see, the `User` with id 1 was fetched only once in a single round-trip. The next
@@ -213,22 +223,34 @@ As you can see, every `Post` has an author, but it refers to it by its id. We'll
 - another for retrieveng post metadata given a post id
 
 ```scala
+val postDatabase: Map[PostId, Post] = Map(
+  1 -> Post(1, 2, "An article"),
+  2 -> Post(2, 3, "Another article"),
+  3 -> Post(3, 4, "Yet another article")
+)
+
 implicit object PostSource extends DataSource[PostId, Post]{
   override def fetch(ids: List[PostId]): Eval[Map[PostId, Post]] = {
     Eval.later({
       println(s"Fetching posts $ids")
-      ids.map(i => (i, Post(i, i % 3 + 1, s"An article with id $i"))).toMap
+      postDatabase.filterKeys(ids.contains)
     })
   }
 }
 
 def getPost(id: PostId): Fetch[Post] = Fetch(id)
 
+val postInfoDatabase: Map[PostId, PostInfo] = Map(
+  1 -> PostInfo("monad"),
+  2 -> PostInfo("applicative"),
+  3 -> PostInfo("monad")
+)
+
 implicit object PostInfoSource extends DataSource[PostId, PostInfo]{
   override def fetch(ids: List[PostId]): Eval[Map[PostId, PostInfo]] = {
     Eval.later({
       println(s"Fetching post info $ids")
-      ids.map(i => (i, PostInfo(if (i % 2 == 0) "applicative" else "monad"))).toMap
+      postInfoDatabase.filterKeys(ids.contains)
     })
   }
 }
@@ -254,7 +276,7 @@ val result: (Post, User) = Fetch.run[Id](fch)
 // Fetching posts List(1)
 // Fetching users List(2)
 
-//=> result: (Post, User) = (Post(1,2,An article with id 1),User(2,@egg_2))
+//=> result: (Post, User) = (Post(1,2,An article),User(2,@two))
 ```
 
 In the previous example we fetched a post given its id, and then fetched its author. These
@@ -278,7 +300,7 @@ val result: (Post, User) = Fetch.run[Id](fch)
 // Fetching posts List(1)
 // Fetching users List(2)
 
-//=> result: (Post, User) = (Post(1,2,An article with id 1),User(2,@egg_2))
+//=> result: (Post, User) = (Post(1,2,An article),User(2,@two))
 ```
 
 Since we are interpreting the fetch to the `Id` monad, that doesn't give us any parallelism, the fetches
@@ -307,7 +329,7 @@ val fch: Fetch[List[User]] = List(getUser(1), getUser(2), getUser(3)).sequence
 val result: List[User] = Fetch.run[Id](fch)
 // Fetching users List(1, 2, 3)
 
-//=> result: List[User] = List(User(1,@egg_1), User(2,@egg_2), User(3,@egg_3))
+//=> result: List[User] = List(User(1,@one), User(2,@two), User(3,@three)
 ```
 
 As you can see, requests to the user data source were batched, thus fetching all the data in one round.
@@ -322,7 +344,7 @@ val fch: Fetch[List[User]] = List(1, 2, 3).traverse(getUser)
 val result: List[User] = Fetch.run[Id](fch)
 // Fetching users List(1, 2, 3)
 
-//=> result: List[User] = List(User(1,@egg_1), User(2,@egg_2), User(3,@egg_3))
+//=> result: List[User] = List(User(1,@one), User(2,@two), User(3,@three))
 ```
 
 # Interpreting a fetch to an async capable monad
@@ -358,7 +380,7 @@ val fut: Future[(User, Post)] = Fetch.run[Future](fch)
 // Fetching posts List(1)
 
 Await.result(fut, 1 seconds) // this call blocks the current thread, don't do this at home!
-//=> (User, Post) = (User(1,@egg_1),Post(1,2,An article with id 1))
+//=> res0: (User, Post) = (User(1,@one),Post(1,2,An article))
 ```
 
 # Caching
@@ -375,7 +397,7 @@ running a fetch with `Fetch.run`.
 
 ```scala
 val fch: Fetch[User] = getUser(1)
-val cache = InMemoryCache(UserSource.identity(1) -> User(1, "@dialelo"))
+
 
 val result: User = Fetch.run[Id](fch, cache)
 //=> result: User = User(1,@dialelo)
@@ -388,12 +410,12 @@ If only part of the data is cached, the cached data won't be asked for:
 
 ```scala
 val fch: Fetch[List[User]] = List(1, 2, 3).traverse(getUser)
-val cache = InMemoryCache(UserSource.identity(2) -> User(2, "@two"))
+val cache = InMemoryCache(UserSource.identity(1) -> User(1, "@dialelo"))
 
 val result: List[User] = Fetch.run[Id](fch, cache)
-// Fetching users List(1, 3)
+// Fetching users List(2, 3)
 
-//=> result: List[User] = List(User(1,@egg_1), User(2,@two), User(3,@egg_3))
+//=> result: List[User] = List(User(1,@dialelo), User(2,@two), User(3,@three))
 ```
 
 ## Replaying a fetch without querying any data source
@@ -413,7 +435,7 @@ val env: Env = Fetch.runEnv[Id](fch)
 // Fetching users List(1, 2, 3)
 
 val result: List[User] = Fetch.run[Id](fch, env.cache)
-//=> result: List[User] = List(User(1,@egg_1), User(2,@egg_2), User(3,@egg_3))
+//=> result: List[User] = List(User(1,@one), User(2,@two), User(3,@three))
 ```
 
 ## Implementing a custom cache
@@ -526,7 +548,7 @@ val result: (Post, User) = Fetch.run[Id](fch)
 // Fetching posts List(1)
 // Fetching users List(2)
 
-//=> result: (Post, User) = (Post(1,2,An article with id 1),User(2,@egg_2))
+//=> result: (Post, User) = (Post(1,2,An article),User(2,@two))
 ```
 
 ### sequence
@@ -540,7 +562,7 @@ val fch: Fetch[List[User]] = Fetch.sequence(List(getUser(1), getUser(2), getUser
 val result: List[User] = Fetch.run[Id](fch)
 // Fetching users List(1, 2, 3)
 
-//=> result: List[User] = List(User(1,@egg_1), User(2,@egg_2), User(3,@egg_3))
+//=> result: List[User] = List(User(1,@one), User(2,@two), User(3,@three))
 ```
 
 ### traverse
@@ -553,7 +575,7 @@ val fch: Fetch[List[User]] = Fetch.traverse(List(1, 2, 3))(getUser)
 val result: List[User] = Fetch.run[Id](fch)
 // Fetching users List(1, 2, 3)
 
-//=> result: List[User] = List(User(1,@egg_1), User(2,@egg_2), User(3,@egg_3))
+//=> result: List[User] = List(User(1,@one), User(2,@two), User(3,@three))
 ```
 
 ## cats
@@ -577,7 +599,7 @@ val result: (Post, User, Post) = Fetch.run[Id](fch)
 // Fetching posts List(1, 2)
 // Fetching users List(2)
 
-//=> result: (Post, User, Post) = (Post(1,2,An article with id 1),User(2,@egg_2),Post(2,3,An article with id 2))
+//=> result: (Post, User, Post) = (Post(1,2,An article),User(2,@two),Post(2,3,Another article))
 ```
 
 More interestingly, we can use it to apply a pure function to the results of various
@@ -593,7 +615,7 @@ val fch: Fetch[String] = (getUser(1) |@| getUser(2)).map({ (one, other) =>
 val result: String = Fetch.run[Id](fch)
 // Fetching users List(1, 2)
 
-//=> result: String = @egg_1 is friends with @egg_2
+//=> result: String = @one is friends with @two
 ```
 
 The avove example is equivalent to the following using the `Fetch#join` method:
@@ -608,5 +630,5 @@ val fch: Fetch[String] = Fetch.join(getUser(1), getUser(2)).map({ case (one, oth
 val result: String = Fetch.run[Id](fch)
 // Fetching users List(1, 2)
 
-//=> result: String = @egg_1 is friends with @egg_2
+//=> result: String = @one is friends with @two
 ```
