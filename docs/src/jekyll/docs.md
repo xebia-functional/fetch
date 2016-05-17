@@ -479,7 +479,7 @@ As we mentioned before, when interpreting a fetch to a target monad `M`, an impl
 available. [`MonadError`](https://github.com/typelevel/cats/blob/master/core/src/main/scala/cats/MonadError.scala) gives us a few combinators
 for working with errors, like `MonadError#raiseError` and `MonadError#attempt`.
 
-One of the most interesting combinators is `attempt`, which given a `M[A]` yields a `M[Xor[Throwable, A]]`. Knowing this, we can run fetches
+One of the most interesting combinators is `attempt`, which given a `M[A]` yields a `M[Throwable Xor A]`. Knowing this, we can run fetches
 in the `Eval` monad to an `Xor` and not worry about exceptions:
 
 ```scala
