@@ -256,11 +256,15 @@ In the previous example we fetched a post given its id, and then fetched its aut
 data could come from entirely different places but Fetch makes working with heterogeneous sources
 of data very easy.
 
-### Parallelism
+### Concurrency
 
-Combining multiple independent requests to the same data source results in batching but what happens
-when combining independent requests to *different* data sources? We have the oportunity to query the
-different data sources at the same time.
+Combining multiple independent requests to the same data source can have two outcomes:
+
+ - if the data sources are the same, the request is batched
+ - otherwise, both data sources are queried at the same time
+
+In the following example we are fetching from different data sources so both requests will be
+evaluated together.
 
 ```scala
 val fch: Fetch[(Post, User)] = getPost(1).product(getUser(2))
@@ -272,7 +276,7 @@ val result: (Post, User) = Fetch.run[Id](fch)
 //=> result: (Post, User) = (Post(1,2,An article with id 1),User(2,@egg_2))
 ```
 
-Since we are interpreting the fetch to the `Id` monad, that doesn't give us any concurrency, the fetches
+Since we are interpreting the fetch to the `Id` monad, that doesn't give us any parallelism, the fetches
 will be run sequentially. However, if we interpret it to a `Future` each request will run in its own logical
 thread.
 
