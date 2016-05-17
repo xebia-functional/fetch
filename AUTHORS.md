@@ -12,4 +12,4 @@ The mantainers of the project are:
 These are the people that have contributed to Fetch in one way or another.
 
 - Pepe García <jl.garhdez@gmail.com>
-- Alessandro Lacava
+- Alessandro Lacava <alessandrolacava@gmail.com>
