@@ -54,7 +54,7 @@ in a map from identities to results. Accepting a list of identities gives Fetch 
 the same data source, and returning a mapping from identities to results Fetch can detect whenever an identity
 couldn't be fetched or no longer exists.
 
-Returning `Eval` makes it possible to defer evaluation with a concurrency monad when running a fetch.
+Returning `Eval` makes it possible to defer evaluation with a monad when running a fetch.
 
 ## Writing your first data source
 
@@ -316,13 +316,13 @@ val result: List[User] = Fetch.run[Id](fch)
 //=> result: List[User] = List(User(1,@egg_1), User(2,@egg_2), User(3,@egg_3))
 ```
 
-# Interpreting a fetch to a concurrency monad
+# Interpreting a fetch to an async capable monad
 
-Albeit the examples use `Id` as the concurrency Monad, `Fetch` is not limited to just `Id`, any monad `M` that
+Albeit the examples use `Id` as the target Monad, `Fetch` is not limited to just `Id`, any monad `M` that
 implements `MonadError[M, Throwable]` will do. Fetch provides `MonadError` instances for some existing monads like
 `Future`, `cats.Id` and `cats.Eval` and is easy to write your own.
 
-In practice you'll be interpreting a fetch to a concurrency monad like `Future` or `scalaz.concurrent.Task` to exploit
+In practice you'll be interpreting a fetch to an async capable monad like `Future` or `scalaz.concurrent.Task` to exploit
 parallelism whenever we can make requests to multiple independent data sources at the same time.
 
 ## Future
