@@ -401,15 +401,38 @@ val result: User = Fetch.run[Id](fch, cache)
 
 # Error handling
 
+As we mentioned before, when interpreting a fetch to a target monad `M`, an implicit instance of `MonadError[M, Throwable]` has to be
+available. [`MonadError`](https://github.com/typelevel/cats/blob/master/core/src/main/scala/cats/MonadError.scala) gives us a few combinators
+for working with errors, like `MonadError#raiseError` and `MonadError#attempt`.
+
+One of the most interesting combinators is `attempt`, which given a `M[A]` yields a `M[Xor[Throwable, A]]`. Knowing this, we can run fetches
+in the `Eval` monad to an `Xor` and not worry about exceptions:
+
+```scala
+import cats.data.Xor
+import fetch.implicits.evalMonadError
+
+val fch: Fetch[User] = Fetch.error(new Exception("Oh noes"))
+
+val result: Eval[User] = Fetch.run[Eval](fch)
+
+val safeResult: Eval[Throwable Xor User] = evalMonadError.attempt(result)
+
+val finalValue: Throwable Xor User = safeResult.value
+//=> finalValue: cats.data.Xor[Throwable,User] = Left(java.lang.Exception: Oh noes)
+```
+
+In the above example we didn't use `Id` since interpreting a fetch to `Id` throws the exceptions and we can't capture it with the
+combinators in `MonadError`.
+
+## Missing identities
+
 You probably have noticed that `DataSource.fetch` takes a list of identities and returns a map of identities to their result, taking
 into account the possibility of some identities not being found. Whenever an identity isn't found, the fetch execution will
 fail.
 
-## Diagnosing fetch failures
-
-Whenever a fetch fails, a `FetchFailure` exception is thrown. The `FetchFailure` will have the environment, which gives you information about the execution of a fetch.
-
-We plan to make error handling more flexible in the future, as well as providing combinators for retrying fetches, timeouts and so on.
+Whenever a fetch fails, a `FetchFailure` exception is thrown. The `FetchFailure` will have the environment, which gives you information
+about the execution of the fetch.
 
 # Syntax
 
