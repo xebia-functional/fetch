@@ -29,7 +29,7 @@ we read) concerns.
 First of all, add the following dependency to your SBT build file:
 
 ```scala
-"org.fortysevendeg" %%% "fetch" % "0.1.0"
+"com.fortysevendeg" %%% "fetch" % "0.1.0"
 ```
 
 Now you'll have Fetch available both in Scala and Scala.js.

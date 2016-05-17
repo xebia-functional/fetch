@@ -3,6 +3,8 @@ import de.heikoseeberger.sbtheader.license.Apache2_0
 
 lazy val buildSettings = Seq(
   organization := "com.fortysevendeg",
+  organizationName := "47 Degrees",
+  organizationHomepage := Option(new URL("http://47deg.com")),
   scalaVersion := "2.11.8",
   crossScalaVersions := Seq("2.10.6", "2.11.8"),
   headers := Map(

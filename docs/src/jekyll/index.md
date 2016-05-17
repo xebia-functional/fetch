@@ -11,7 +11,7 @@ technologies:
 Add the following dependency to your project's build file.
 
 ```scala
-"org.fortysevendeg" %%% "fetch" %% "0.1.0"
+"com.fortysevendeg" %%% "fetch" %% "0.1.0"
 ```
 
 ## Remote data
