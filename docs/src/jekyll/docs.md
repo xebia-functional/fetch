@@ -311,6 +311,42 @@ val result: List[User] = Fetch.run[Id](fch)
 //=> result: List[User] = List(User(1,@egg_1), User(2,@egg_2), User(3,@egg_3))
 ```
 
+# Interpreting a fetch to a concurrency monad
+
+Albeit the examples use `Id` as the concurrency Monad, `Fetch` is not limited to just `Id`, any monad `M` that
+implements `MonadError[M, Throwable]` will do. Fetch provides `MonadError` instances for some existing monads like
+`Future`, `cats.Id` and `cats.Eval` and is easy to write your own.
+
+In practice you'll be interpreting a fetch to a concurrency monad like `Future` or `scalaz.concurrent.Task` to exploit
+parallelism whenever we can make requests to multiple independent data sources at the same time.
+
+## Future
+
+For interpreting a fetch into a `Future` we must first import the `MonadError[Future, Throwable]` available in cats.
+
+```scala
+import cats.std.future._
+```
+
+We can now interpret a fetch into a future:
+
+```scala
+import cats.std.future._
+
+import scala.concurrent._
+import scala.concurrent.duration._
+import scala.concurrent.ExecutionContext.Implicits.global
+
+val fch: Fetch[(User, Post)] = (getUser(1) |@| getPost(1)).tupled
+
+val fut: Future[(User, Post)] = Fetch.run[Future](fch)
+// Fetching users List(1)
+// Fetching posts List(1)
+
+Await.result(fut, 1 seconds)
+//=> (User, Post) = (User(1,@egg_1),Post(1,2,An article with id 1))
+```
+
 # Caching
 
 As we have learned, Fetch caches intermediate results implicitly using a cache. You can
