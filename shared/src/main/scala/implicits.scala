@@ -40,7 +40,7 @@ object InMemoryCache {
 }
 
 object implicits {
-  val evalMonadError: MonadError[Eval, Throwable] = new MonadError[Eval, Throwable] {
+  implicit val evalMonadError: MonadError[Eval, Throwable] = new MonadError[Eval, Throwable] {
     override def pure[A](x: A): Eval[A] = Eval.now(x)
 
     override def map[A, B](fa: Eval[A])(f: A ⇒ B): Eval[B] = fa.map(f)
@@ -49,7 +49,7 @@ object implicits {
 
     override def raiseError[A](e: Throwable): Eval[A] = Eval.later({ throw e })
 
-    override def handleErrorWith[A](fa: Eval[A])(f: Throwable ⇒ Eval[A]): Eval[A] = Eval.now({
+    override def handleErrorWith[A](fa: Eval[A])(f: Throwable ⇒ Eval[A]): Eval[A] = Eval.later({
       try {
         fa.value
       } catch {
@@ -58,7 +58,7 @@ object implicits {
     })
   }
 
-  val idMonadError: MonadError[Id, Throwable] = new MonadError[Id, Throwable] {
+  implicit val idMonadError: MonadError[Id, Throwable] = new MonadError[Id, Throwable] {
     override def pure[A](x: A): Id[A] = x
 
     override def map[A, B](fa: Id[A])(f: A ⇒ B): Id[B] = f(fa)
@@ -74,5 +74,4 @@ object implicits {
         case e: Throwable => f(e)
       }
   }
-
 }
