@@ -54,41 +54,16 @@ in a map from identities to results. Accepting a list of identities gives Fetch 
 the same data source, and returning a mapping from identities to results Fetch can detect whenever an identity
 couldn't be fetched or no longer exists.
 
-Returning `Eval` makes it possible to defer evaluation with a concurrency monad when running a fetch. For example
-when using `Future` as your target monad when running a fetch the data source fetches will possibly run in a thread pool,
-depending on the implicit execution context you use.
+Returning `Eval` makes it possible to defer evaluation with a concurrency monad when running a fetch.
 
 ## Writing your first data source
 
-Now that we know about the `DataSource` typeclass, let's write our first data source! We'll be using Scala's
-`Future` as our concurrency monad for the examples. We'll write a little function for simulating latency and
-another for blocking on futures to get their results. Note that the `Future` API differs in Scala and Scala.js,
-since there are no threads in JavaScript and you cannot block for a `Future`'s result.
+Now that we know about the `DataSource` typeclass, let's write our first data source! We'll start implementing a data
+source for fetching users given their id. The identity type will be a user's id and the result type a user.
 
 ```scala
-import scala.util.Random
-import scala.concurrent._
-import scala.concurrent.duration._
-import scala.concurrent.ExecutionContext.Implicits.global
-
 import cats.Eval
 
-def latency[A](result: A, msg: String, wait: Int = Random.nextInt(100)): Eval[A] =
-  Eval.later({
-    val threadId = Thread.currentThread().getId()
-    println(s"~~~>[thread: $threadId] $msg")
-    Thread.sleep(wait)
-    println(s"<~~~[thread: $threadId] $msg")
-    result
-  })
-
-def await[A](f: Future[A]): A = Await.result(f, 5 seconds)
-```
-
-We'll start implementing a data source for fetching users given their id. The identity type will be a user's
-id and the result type a user.
-
-```scala
 import fetch._
 
 type UserId = Int
@@ -96,8 +71,10 @@ case class User(id: UserId, username: String)
 
 implicit object UserSource extends DataSource[UserId, User]{
   override def fetch(ids: List[UserId]): Eval[Map[UserId, User]] = {
-    val result = ids.map(i => (i, User(i, s"@egg_$i"))).toMap
-    latency(result, s"Fetching users $ids")
+    Eval.later({
+      println(s"Fetching users $ids")
+	  ids.map(i => (i, User(i, s"@egg_$i"))).toMap
+    })
   }
 }
 ```
@@ -111,28 +88,28 @@ def getUser(id: UserId): Fetch[User] = Fetch(id) // or, more explicitly: Fetch(i
 
 ## Declaring and running a fetch
 
-We are now ready to declare and run fetches, the only thing missing is an instance
-of `MonadError[M, Throwable]` for our target monad (`scala.concurrent.Future`), which
-the `cats` library already provides.
+We are now ready to declare and run fetches. We need to provide Fetch with a target
+monad when we want to execute a fetch. We'll be using `Id` for now, make sure to import
+`fetch.implicits._` since Fetch needs an instance of `MonadError[Id, Throwable]` for running
+a fetch in the `Id` monad:
 
 ```scala
-import cats.std.future._
+import cats.Id
+import fetch.implicits._
 
 val fch: Fetch[User] = getUser(1)
-val fut: Future[User] = Fetch.run(fch)
 
-await(fut)
-// ~~~>[thread: 43] Fetching users List(1)
-// <~~~[thread: 43] Fetching users List(1)
+val result: User = Fetch.run[Id](fch)
+// Fetching users List(1)
 
-//=> User(1,@egg_1)
+//=> result: User = User(1,@egg_1)
 ```
 
 In the previous example, we:
 
-- brought the implicit instance of `MonadError[Future, Throwable]` into scope importing `cats.std.future._`
+- brought the implicit instance of `MonadError[Id, Throwable]` into scope importing `fetch.implicits._`
 - created a fetch for a `User` using the `getUser` function
-- interpreted the fetch to a `Future` using `Fetch.run`
+- interpreted the fetch to a `Id[User]` (which is just a `User`) using `Fetch.run`
 
 As you can see, the fetch was executed only in one round to fetch the user and was finished after that.
 
@@ -146,15 +123,11 @@ val fch: Fetch[(User, User)] = for {
   anotherUser <- getUser(aUser.id + 1)
 } yield (aUser, anotherUser)
   
-val fut: Future[(User, User)] = Fetch.run(fch)
-  
-await(fut)
-// ~~~>[thread: 44] Fetching users List(1)
-// <~~~[thread: 44] Fetching users List(1)
-// ~~~>[thread: 42] Fetching users List(2)
-// <~~~[thread: 42] Fetching users List(2)
+val result: (User, User) = Fetch.run[Id](fch)
+// Fetching users List(1)
+// Fetching users List(2)
 
-//=> (User(1,@egg_1),User(2,@egg_2))
+//=> result: (User, User) = (User(1,@egg_1),User(2,@egg_2))
 ```
 
 ### Batching
@@ -165,14 +138,14 @@ help us tell the library that two fetches are independent, and thus can be batch
 if they use the same data source:
 
 ```scala
-val fch: Fetch[(User, User)] = Fetch.join(getUser(1), getUser(2))
-val fut: Future[(User, User)] = Fetch.run(fch)
+import cats.syntax.cartesian._
 
-await(fut)
-// ~~~>[thread: 47] Fetching users List(1, 2)
-// <~~~[thread: 47] Fetching users List(1, 2)
+val fch: Fetch[(User, User)] = getUser(1).product(getUser(2))
 
-//=> (User(1,@egg_1),User(2,@egg_2))
+val result: (User, User) = Fetch.run[Id](fch)
+// Fetching users List(1, 2)
+
+//=> result: (User, User) = (User(1,@egg_1),User(2,@egg_2))
 ```
 
 ### Deduplication
@@ -181,14 +154,12 @@ If two independent requests ask for the same identity, Fetch will detect that an
 deduplicate such id.
 
 ```scala
-val fch: Fetch[(User, User)] = Fetch.join(getUser(1), getUser(1))
-val fut: Future[(User, User)] = Fetch.run(fch)
+val fch: Fetch[(User, User)] = getUser(1).product(getUser(1))
 
-await(fut)
-// ~~~>[thread: 47] Fetching users List(1)
-// <~~~[thread: 47] Fetching users List(1)
+val result: (User, User) = Fetch.run[Id](fch)
+// Fetching users List(1)
 
-//=> (User(1,@egg_1),User(1,@egg_1))
+//=> result: (User, User) = (User(1,@egg_1),User(1,@egg_1))
 ```
 
 ### Caching
@@ -204,13 +175,10 @@ val fch: Fetch[(User, User)] = for {
   anotherUser <- getUser(1)
 } yield (aUser, anotherUser)
 
-val fut: Future[(User, User)] = Fetch.run(fch)
+val result: (User, User) = Fetch.run[Id](fch)
+// Fetching users List(1)
 
-await(fut)
-// ~~~>[thread: 53] Fetching users List(1)
-// <~~~[thread: 53] Fetching users List(1)
-
-//=> (User(1,@egg_1),User(1,@egg_1))
+//=> result: (User, User) = (User(1,@egg_1),User(1,@egg_1))
 ```
 
 As you can see, the `User` with id 1 was fetched only once in a single round-trip. The next
@@ -237,8 +205,10 @@ As you can see, every `Post` has an author, but it refers to it by its id. We'll
 ```scala
 implicit object PostSource extends DataSource[PostId, Post]{
   override def fetch(ids: List[PostId]): Eval[Map[PostId, Post]] = {
-    val result = ids.map(i => (i, Post(i, i % 3 + 1, s"An article with id $i"))).toMap
-    latency(result, s"Fetching posts $ids")
+    Eval.later({
+      println(s"Fetching posts $ids")
+      ids.map(i => (i, Post(i, i % 3 + 1, s"An article with id $i"))).toMap
+    })
   }
 }
 
@@ -246,8 +216,10 @@ def getPost(id: PostId): Fetch[Post] = Fetch(id)
 
 implicit object PostInfoSource extends DataSource[PostId, PostInfo]{
   override def fetch(ids: List[PostId]): Eval[Map[PostId, PostInfo]] = {
-    val result = ids.map(i => (i, PostInfo(if (i % 2 == 0) "applicative" else "monad"))).toMap
-    latency(result, s"Fetching post info $ids")
+    Eval.later({
+      println(s"Fetching post info $ids")
+      ids.map(i => (i, PostInfo(if (i % 2 == 0) "applicative" else "monad"))).toMap	
+    })
   }
 }
   
@@ -268,15 +240,11 @@ val fch: Fetch[(Post, User)] = for {
   user <- getAuthor(post)
 } yield (post, user)
 
-val fut: Future[(Post, User)] = Fetch.run(fch)
+val result: (Post, User) = Fetch.run[Id](fch)
+// Fetching posts List(1)
+// Fetching users List(2)
 
-await(fut)
-// ~~~>[thread: 81] Fetching posts List(1)
-// <~~~[thread: 81] Fetching posts List(1)
-// ~~~>[thread: 82] Fetching users List(2)
-// <~~~[thread: 82] Fetching users List(2)
-
-//=> (Post(1,2,An article with id 1),User(2,@egg_2))
+//=> result: (Post, User) = (Post(1,2,An article with id 1),User(2,@egg_2))
 ```
 
 In the previous example we fetched a post given its id, and then fetched its author. These
@@ -289,28 +257,23 @@ Combining multiple independent requests to the same data source results in batch
 when combining independent requests to *different* data sources? We have the oportunity to query the
 different data sources at the same time.
 
-Since we are using `Future` as our concurrency monad, the requests will effectively run in parallel,
-each in its own logical thread.
-
 ```scala
-val fch: Fetch[(Post, User)] = Fetch.join(getPost(1), getUser(2))
-val fut: Future[(Post, User)] = Fetch.run(fch)
+val fch: Fetch[(Post, User)] = getPost(1).product(getUser(2))
 
-await(fut)
-// ~~~>[thread: 83] Fetching posts List(1)
-// ~~~>[thread: 84] Fetching users List(2)
-// <~~~[thread: 84] Fetching users List(2)
-// <~~~[thread: 83] Fetching posts List(1)
+val result: (Post, User) = Fetch.run[Id](fch)
+// Fetching posts List(1)
+// Fetching users List(2)
 
-//=> (Post(1,2,An article with id 1),User(2,@egg_2))
+//=> result: (Post, User) = (Post(1,2,An article with id 1),User(2,@egg_2))
 ```
 
-As you can notice, both requests are started at the same time in different threads (with ids 83 and 84) and
-the fetch finishes as soon as both results are available.
+Since we are interpreting the fetch to the `Id` monad, that doesn't give us any concurrency, the fetches
+will be run sequentially. However, if we interpret it to a `Future` each request will run in its own logical
+thread.
 
 ## Combinators
 
-Besides `flatMap` for sequencing fetches and `join` for running them concurrently, Fetch provides a number of
+Besides `flatMap` for sequencing fetches and `product` for running them concurrently, Fetch provides a number of
 other combinators.
 
 ### Sequence
@@ -319,34 +282,35 @@ Whenever we have a list of fetches of the same type and want to run them concurr
 combinator. It takes a `List[Fetch[A]]` and gives you back a `Fetch[List[A]]`, batching the fetches to the same
 data source and running fetches to different sources in parallel.
 
-```scala
-val fch: Fetch[List[User]] = Fetch.sequence(List(getUser(1), getUser(2), getUser(3)))
+Note that the `sequence` combinator is more general and not only works on lists but any type that has a [`Traverse`](http://typelevel.org/cats/tut/traverse.html) instance.
 
-val fut: Future[List[User]] = Fetch.run(fch)
+```scala
+import cats.std.list._
+import cats.syntax.traverse._
+
+val fch: Fetch[List[User]] = List(getUser(1), getUser(2), getUser(3)).sequence
+
+val result: List[User] = Fetch.run[Id](fch)
 
 await(fut)
-// ~~~>[thread: 86] Fetching users List(1, 2, 3)
-// <~~~[thread: 86] Fetching users List(1, 2, 3)
+// Fetching users List(1, 2, 3)
 
-//=> List(User(1,@egg_1), User(2,@egg_2), User(3,@egg_3))
+//=> result: List[User] = List(User(1,@egg_1), User(2,@egg_2), User(3,@egg_3))
 ```
 
 As you can see, requests to the user data source were batched, thus fetching all the data in one round.
 
 ### Traverse
 
-Another interesing combinator is `traverse`, which is the composition of `map` and `sequence`.a
+Another interesing combinator is `traverse`, which is the composition of `map` and `sequence`.
 
 ```scala
-val fch: Fetch[List[User]] = Fetch.traverse(List(1, 2, 3))(getUser)
+val fch: Fetch[List[User]] = List(1, 2, 3).traverse(getUser)
 
-val fut: Future[List[User]] = Fetch.run(fch)
+val result: List[User] = Fetch.run[Id](fch)
+// Fetching users List(1, 2, 3)
 
-await(fut)
-// ~~~>[thread: 86] Fetching users List(1, 2, 3)
-// <~~~[thread: 86] Fetching users List(1, 2, 3)
-
-//=> List(User(1,@egg_1), User(2,@egg_2), User(3,@egg_3))
+//=> result: List[User] = List(User(1,@egg_1), User(2,@egg_2), User(3,@egg_3))
 ```
 
 # Caching
@@ -364,10 +328,9 @@ running a fetch with `Fetch.run`.
 ```scala
 val fch: Fetch[User] = getUser(1)
 val cache = InMemoryCache(UserSource.identity(1) -> User(1, "@dialelo"))
-val fut: Future[User] = Fetch.run(fch, cache)
 
-await(fut)
-//=> User(1,@dialelo)
+val result: User = Fetch.run[Id](fch, cache)
+//=> result: User = User(1,@dialelo)
 ```
 
 As you can see, when all the data is cached no fetch is executed at all since the results are available
@@ -378,13 +341,11 @@ If only part of the data is cached, the cached data won't be asked for:
 ```scala
 val fch: Fetch[List[User]] = Fetch.traverse(List(1, 2, 3))(getUser)
 val cache = InMemoryCache(UserSource.identity(2) -> User(2, "@two"))
-val fut: Future[List[User]] = Fetch.run(fch, cache)
 
-await(fut)
-// ~~~>[thread: 180] Fetching users List(1, 3)
-// <~~~[thread: 180] Fetching users List(1, 3)
+val result: List[User] = Fetch.run[Id](fch, cache)
+// Fetching users List(1, 3)
 
-//=> List(User(1,@egg_1), User(2,@two), User(3,@egg_3))
+//=> result: List[User] = List(User(1,@egg_1), User(2,@two), User(3,@egg_3))
 ```
 
 ## Replaying a fetch
@@ -398,17 +359,13 @@ Knowing this, we can replay a fetch reusing the cache of a previous one. The rep
 data sources.
 
 ```scala
-val fch: Fetch[List[User]] = Fetch.traverse(List(1, 2, 3))(getUser)
-val env = await(Fetch.runEnv[Future](fch))
-// ~~~>[thread: 261] Fetching users List(1, 2, 3)
-// <~~~[thread: 261] Fetching users List(1, 2, 3)
+val fch: Fetch[List[User]] = List(1, 2, 3).traverse(getUser)
 
-//=> List(User(1,@egg_1), User(2,@egg_2), User(3,@egg_3))
+val env: Env = Fetch.runEnv[Id](fch)
+// Fetching users List(1, 2, 3)
 
-val fut: Future[List[User]] = Fetch.run(fch, env.cache)
-
-await(fut)
-//=> List(User(1,@egg_1), User(2,@egg_2), User(3,@egg_3))
+val result: List[User] = Fetch.run[Id](fch, env.cache)
+//=> result: List[User] = List(User(1,@egg_1), User(2,@egg_2), User(3,@egg_3))
 ```
 
 ## Implementing a custom cache
@@ -417,8 +374,8 @@ The default cache is implemented as an in-memory map, but users are free to use 
 
 ```scala
 trait DataSourceCache {
-  def update[I, A](k: DataSourceIdentity, v: A): DataSourceCache
-  def get[I](k: DataSourceIdentity): Option[Any]
+  def update[A](k: DataSourceIdentity, v: A): DataSourceCache
+  def get(k: DataSourceIdentity): Option[Any]
 }
 ```
 
@@ -426,10 +383,10 @@ Let's reimplement the in memory cache found in Fetch, we'll write a case class t
 
 ```scala
 case class MyInMemoryCache(state: Map[DataSourceIdentity, Any]) extends DataSourceCache {
-  override def get[I](k: DataSourceIdentity): Option[Any] =
+  override def get(k: DataSourceIdentity): Option[Any] =
     state.get(k)
 
-  override def update[I, A](k: DataSourceIdentity, v: A): MyInMemoryCache =
+  override def update[A](k: DataSourceIdentity, v: A): MyInMemoryCache =
     copy(state = state.updated(k, v))
 }
 ```
@@ -439,10 +396,8 @@ Now that we have a data type, we can use it when running a fetch:
 ```scala
 val cache = MyInMemoryCache(Map(UserSource.identity(1) -> User(1, "dialelo")))
 val fch: Fetch[User] = getUser(1)
-val fut: Future[User] = Fetch.run(fch, cache)
 
-await(fut)
-//=> User(1,dialelo)
+val result: User = Fetch.run[Id](fch, cache)
 ```
 
 # Error handling
