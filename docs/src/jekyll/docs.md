@@ -122,7 +122,7 @@ val fch: Fetch[(User, User)] = for {
   aUser <- getUser(1)
   anotherUser <- getUser(aUser.id + 1)
 } yield (aUser, anotherUser)
-  
+
 val result: (User, User) = Fetch.run[Id](fch)
 // Fetching users List(1)
 // Fetching users List(2)
@@ -218,11 +218,11 @@ implicit object PostInfoSource extends DataSource[PostId, PostInfo]{
   override def fetch(ids: List[PostId]): Eval[Map[PostId, PostInfo]] = {
     Eval.later({
       println(s"Fetching post info $ids")
-      ids.map(i => (i, PostInfo(if (i % 2 == 0) "applicative" else "monad"))).toMap	
+      ids.map(i => (i, PostInfo(if (i % 2 == 0) "applicative" else "monad"))).toMap
     })
   }
 }
-  
+
 def getPostInfo(id: PostId): Fetch[PostInfo] = Fetch(id)
 ```
 
@@ -291,8 +291,6 @@ import cats.syntax.traverse._
 val fch: Fetch[List[User]] = List(getUser(1), getUser(2), getUser(3)).sequence
 
 val result: List[User] = Fetch.run[Id](fch)
-
-await(fut)
 // Fetching users List(1, 2, 3)
 
 //=> result: List[User] = List(User(1,@egg_1), User(2,@egg_2), User(3,@egg_3))
@@ -339,7 +337,7 @@ in the cache.
 If only part of the data is cached, the cached data won't be asked for:
 
 ```scala
-val fch: Fetch[List[User]] = Fetch.traverse(List(1, 2, 3))(getUser)
+val fch: Fetch[List[User]] = List(1, 2, 3).traverse(getUser)
 val cache = InMemoryCache(UserSource.identity(2) -> User(2, "@two"))
 
 val result: List[User] = Fetch.run[Id](fch, cache)
@@ -398,6 +396,7 @@ val cache = MyInMemoryCache(Map(UserSource.identity(1) -> User(1, "dialelo")))
 val fch: Fetch[User] = getUser(1)
 
 val result: User = Fetch.run[Id](fch, cache)
+//=> result: User = User(1,dialelo)
 ```
 
 # Error handling
@@ -414,6 +413,76 @@ We plan to make error handling more flexible in the future, as well as providing
 
 # Syntax
 
+## Companion object
+
+We've been using cats' syntax throughout the examples since its more concise and general than the
+methods in the `Fetch` companion object. However, you can use the methods in the companion object
+directly.
+
+Note that using cats syntax gives you a plethora of combinators, much richer that what the companion object provides.
+
+### pure
+
+Plain values can be lifted to the Fetch monad with `Fetch#pure`:
+
+```scala
+val fch: Fetch[Int] = Fetch.pure(42)
+
+val result: Int = Fetch.run[Id](fch)
+//=> result: Int = 42
+```
+
+### error
+
+Errors can also be lifted to the Fetch monad, in this case with `Fetch#error`. Note that interpreting
+a errorful fetch to `Id` will throw the exception so we won't do that:
+
+```scala
+val fch: Fetch[Int] = Fetch.error(new Exception("Something went terribly wrong"))
+```
+
+### join
+
+We can compose two independent fetches with `Fetch#join`. If the fetches are to the same data source they will
+be batched; if they aren't, they will be evaluated at the same time.
+
+```scala
+val fch: Fetch[(Post, User)] = Fetch.join(getPost(1), getUser(2))
+
+val result: (Post, User) = Fetch.run[Id](fch)
+// Fetching posts List(1)
+// Fetching users List(2)
+
+//=> result: (Post, User) = (Post(1,2,An article with id 1),User(2,@egg_2))
+```
+
+### sequence
+
+The `Fetch#sequence` combinator turns a `List[Fetch[A]]` into a `Fetch[List[A]]`, running all the fetches concurrently
+and batching when possible.
+
+```scala
+val fch: Fetch[List[User]] = Fetch.sequence(List(getUser(1), getUser(2), getUser(3)))
+
+val result: List[User] = Fetch.run[Id](fch)
+// Fetching users List(1, 2, 3)
+
+//=> result: List[User] = List(User(1,@egg_1), User(2,@egg_2), User(3,@egg_3))
+```
+
+### traverse
+
+The `Fetch#traverse` combinator is a combination of `map` and `sequence`.
+
+```scala
+val fch: Fetch[List[User]] = Fetch.traverse(List(1, 2, 3))(getUser)
+
+val result: List[User] = Fetch.run[Id](fch)
+// Fetching users List(1, 2, 3)
+
+//=> result: List[User] = List(User(1,@egg_1), User(2,@egg_2), User(3,@egg_3))
+```
+
 ## cats
 
 Fetch is built using cats' Free monad construction and thus works out of the box with
@@ -424,21 +493,18 @@ the need to use the combinators in the `Fetch` companion object.
 
 The `|@|` operator allow us to combine multiple independent fetches, even when they
 are from different types, and apply a pure function to their results. We can use it
-as a more powerful alternative to `Fetch.join`:
+as a more powerful alternative to the `product` method or `Fetch#join`:
 
 ```scala
 import cats.syntax.cartesian._
 
-val fch: Fetch[(Post, User)] = (getPost(1) |@| getUser(2)).tupled
-val fut: Future[(Post, User)] = Fetch.run(fch)
+val fch: Fetch[(Post, User, Post)] = (getPost(1) |@| getUser(2) |@| getPost(2)).tupled
 
-await(fut)
-// ~~~>[thread: 92] Fetching posts List(1)
-// ~~~>[thread: 93] Fetching users List(2)
-// <~~~[thread: 92] Fetching posts List(1)
-// <~~~[thread: 93] Fetching users List(2)
+val result: (Post, User, Post) = Fetch.run[Id](fch)
+// Fetching posts List(1, 2)
+// Fetching users List(2)
 
-//=> (Post(1,2,An article with id 1),User(2,@egg_2))
+//=> result: (Post, User, Post) = (Post(1,2,An article with id 1),User(2,@egg_2),Post(2,3,An article with id 2))
 ```
 
 More interestingly, we can use it to apply a pure function to the results of various
@@ -450,48 +516,24 @@ import cats.syntax.cartesian._
 val fch: Fetch[String] = (getUser(1) |@| getUser(2)).map({ (one, other) =>
   s"${one.username} is friends with ${other.username}"
 })
-val fut: Future[String] = Fetch.run(fch)
 
-await(fut)
-// ~~~>[thread: 56] Fetching users List(1, 2)
-// <~~~[thread: 56] Fetching users List(1, 2)
+val result: String = Fetch.run[Id](fch)
+// Fetching users List(1, 2)
 
-//=> @egg_1 is friends with @egg_2
+//=> result: String = @egg_1 is friends with @egg_2
 ```
 
-### Traverse
-
-Apart from using Fetch with cartesian syntax and performing all fetches in a product concurrently, we can treat Fetch as an applicative and get implicit concurrency and batching as well.
-
-For the next example, we'll import cats' extensions to the `List` type and traverse syntax. This will allow us to use both `sequence` and `traverse` methods on lists, which are equivalent to `Fetch#sequence` and `Fetch#traverse`.
+The avove example is equivalent to the following using the `Fetch#join` method:
 
 ```scala
-import cats.std.list._
-import cats.syntax.traverse._
-```
+import cats.syntax.cartesian._
 
-We'll start by using `sequence`, which can transform `List[Fetch[A]]` to a `Fetch[List[A]]`.
+val fch: Fetch[String] = Fetch.join(getUser(1), getUser(2)).map({ case (one, other) =>
+  s"${one.username} is friends with ${other.username}"
+})
 
-```scala
-val fch: Fetch[List[User]] = List(getUser(1), getUser(2), getUser(3)).sequence
-val fut: Future[List[User]] = Fetch.run(fch)
+val result: String = Fetch.run[Id](fch)
+// Fetching users List(1, 2)
 
-await(fut)
-// ~~~>[thread: 65] Fetching users List(1, 2, 3)
-// <~~~[thread: 65] Fetching users List(1, 2, 3)
-
-//=> List(User(1,@egg_1), User(2,@egg_2), User(3,@egg_3))
-```
-
-Next is `traverse`, which traverses a collection with a fetch-returning function and collapses the result into a fetch of a collection.
-
-```scala
-val fch: Fetch[List[User]] = List(1, 2, 3).traverse(getUser)
-val fut: Future[List[User]] = Fetch.run(fch)
-
-await(fut)
-// ~~~>[thread: 62] Fetching users List(1, 2, 3)
-// <~~~[thread: 62] Fetching users List(1, 2, 3)
-
-//=>  List(User(1,@egg_1), User(2,@egg_2), User(3,@egg_3))
+//=> result: String = @egg_1 is friends with @egg_2
 ```
