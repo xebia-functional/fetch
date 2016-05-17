@@ -24,6 +24,7 @@ The process is simple:
  3. Implement your contribution
  4. Write tests
  5. Update the documentation
- 6. Submit pull request
+ 6. Add yourself to AUTHORS.md
+ 7. Submit pull request
 
 If you encounter any confusion or frustration during the contribution process, please create a GitHub issue and we'll do our best to improve the process.
