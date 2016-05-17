@@ -96,9 +96,9 @@ given an id, we just have to pass a `UserId` as an argument to `Fetch`.
 def getUser(id: UserId): Fetch[User] = Fetch(id) // or, more explicitly: Fetch(id)(UserSource)
 ```
 
-## Declaring and running a fetch
+## Creating and running a fetch
 
-We are now ready to declare and run fetches. Note the distinction between Fetch declaration and execution.
+We are now ready to creating and run fetches. Note the distinction between Fetch creation and execution.
 When we are creating and combinining `Fetch` values, we are just constructing a recipe of our data
 dependencies. A `Fetch` is just a value, and in order to get something out of it, we must execute it.
 We can execute a `Fetch` value as many times as we want, even to different target monads, since it is just
@@ -184,7 +184,7 @@ val result: (User, User) = Fetch.run[Id](fch)
 
 ### Caching
 
-During a fetch, previously requested results are implicitly cached. This allows us to write
+During the execution of a fetch, previously requested results are implicitly cached. This allows us to write
 fetches in a very modular way, asking for all the data they need as if it
 was in memory; furthermore, it also avoids refetching an identity that may have changed
 during the course of a fetch execution, which can lead to inconsistencies in the data.
