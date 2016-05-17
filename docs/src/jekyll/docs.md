@@ -88,9 +88,14 @@ def getUser(id: UserId): Fetch[User] = Fetch(id) // or, more explicitly: Fetch(i
 
 ## Declaring and running a fetch
 
-We are now ready to declare and run fetches. We need to provide Fetch with a target
-monad when we want to execute a fetch. We'll be using `Id` for now, make sure to import
-`fetch.implicits._` since Fetch needs an instance of `MonadError[Id, Throwable]` for running
+We are now ready to declare and run fetches. Note the distinction between Fetch declaration and execution.
+When we are creating and combinining `Fetch` values, we are just constructing a recipe of our data
+dependencies. A `Fetch` is just a value, and in order to get something out of it, we must execute it.
+We can execute a `Fetch` value as many times as we want, even to different target monads, since it is just
+an immutable value.
+
+We need to provide Fetch with a target monad when we want to execute a fetch. We'll be using `Id` for now,
+make sure to import `fetch.implicits._` since Fetch needs an instance of `MonadError[Id, Throwable]` for running
 a fetch in the `Id` monad.
 
 Note that Fetch provides `MonadError` instances for a variety of different monads like `Eval` or
@@ -391,7 +396,7 @@ val result: List[User] = Fetch.run[Id](fch, cache)
 //=> result: List[User] = List(User(1,@egg_1), User(2,@two), User(3,@egg_3))
 ```
 
-## Replaying a fetch
+## Replaying a fetch without querying any data source
 
 When running a fetch we are generally interested in its final result. However, we also have access to the cache
 and information about the executed rounds once we run a fetch. Fetch's interpreter keeps its state in an environment
