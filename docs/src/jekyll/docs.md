@@ -49,7 +49,7 @@ It takes two type parameters:
  - `Identity`: the identity we want to fetch (a `UserId` if we were fetching users)
  - `Result`: the type of the data we retrieve (a `User` if we were fetching users)
 
-The `fetch` method takes a non empty list of identities and must return an `Eval` that will result
+The `fetch` method takes a non empty list of identities and must return an [`Eval`](https://github.com/typelevel/cats/blob/master/core/src/main/scala/cats/Eval.scala) that will result
 in a map from identities to results. Accepting a list of identities gives Fetch the ability to batch requests to
 the same data source, and returning a mapping from identities to results Fetch can detect whenever an identity
 couldn't be fetched or no longer exists.
