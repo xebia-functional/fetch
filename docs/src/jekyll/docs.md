@@ -586,7 +586,14 @@ Fetch is built using cats' Free monad construction and thus works out of the box
 cats syntax. Using cats' syntax we can make fetch declarations more concise, without
 the need to use the combinators in the `Fetch` companion object.
 
-### Apply
+Fetch provides its own instance of `Applicative[Fetch]`. Whenever we use applicative
+operations on more than one `Fetch` we know that the fetches are independent, thus
+we can perform optimizations such as batching and concurrent requests.
+
+If we were to use the default `Applicative[Fetch]` operations, which are implemented in terms of `flatMap`,
+we wouldn't have information about the independency of multiple fetches.
+
+### Applicative
 
 The `|@|` operator allow us to combine multiple independent fetches, even when they
 are from different types, and apply a pure function to their results. We can use it
