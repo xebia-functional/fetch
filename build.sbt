@@ -77,4 +77,3 @@ lazy val docs = (project in file("docs"))
 
 
 addCommandAlias("makeDocs", ";fetchJVM/publishLocal;docs/tut;docs/makeSite")
-addCommandAlias("publishDocs", ";makeDocs/ghpagesPushSite")
