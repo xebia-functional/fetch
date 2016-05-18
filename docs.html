@@ -56,6 +56,11 @@
       <!--Heading-->
       <div id="content"><h1>Introduction</h1>
 
+<p>Fetch is a library that allows your data fetches to be written in a concise,
+composable way while executing efficiently. You don&#39;t need to use any explicit
+concurrency construct but existing idioms: applicative for concurrency and
+monad for sequencing.</p>
+
 <p>Oftentimes, our applications read and manipulate data from a variety of
 different sources such as databases, web services or file systems. These data
 sources are subject to latency, and we&#39;d prefer to query them efficiently.</p>
@@ -73,15 +78,10 @@ we may end up trading clarity for performance. Furthermore, we are
 mixing low-level (optimization) and high-level (business logic with the data
 we read) concerns.</p>
 
-<p>Fetch is a library that allows your data fetches to be written in a concise,
-composable way while executing efficiently. You don&#39;t need to use any explicit
-concurrency construct but existing idioms: applicative for concurrency and
-monad for sequencing.</p>
-
 <h1>Installation</h1>
 
 <p>First of all, add the following dependency to your SBT build file:</p>
-<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="s">"org.fortysevendeg"</span> <span class="o">%%%</span> <span class="s">"fetch"</span> <span class="o">%</span> <span class="s">"0.1.0"</span>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="s">"com.fortysevendeg"</span> <span class="o">%%%</span> <span class="s">"fetch"</span> <span class="o">%</span> <span class="s">"0.1.0"</span>
 </code></pre></div>
 <p>Now you&#39;ll have Fetch available both in Scala and Scala.js.</p>
 
@@ -99,50 +99,36 @@ monad for sequencing.</p>
 <li><code>Result</code>: the type of the data we retrieve (a <code>User</code> if we were fetching users)</li>
 </ul>
 
-<p>The <code>fetch</code> method takes a non empty list of identities and must return an <code>Eval</code> that will result
+<p>The <code>fetch</code> method takes a non empty list of identities and must return an <a href="https://github.com/typelevel/cats/blob/master/core/src/main/scala/cats/Eval.scala">Eval</a> that will result
 in a map from identities to results. Accepting a list of identities gives Fetch the ability to batch requests to
 the same data source, and returning a mapping from identities to results Fetch can detect whenever an identity
 couldn&#39;t be fetched or no longer exists.</p>
 
-<p>Returning <code>Eval</code> makes it possible to defer evaluation with a concurrency monad when running a fetch. For example
-when using <code>Future</code> as your target monad when running a fetch the data source fetches will possibly run in a thread pool,
-depending on the implicit execution context you use.</p>
+<p>Returning <code>Eval</code> makes it possible to defer evaluation with a monad when running a fetch.</p>
 
 <h2>Writing your first data source</h2>
 
-<p>Now that we know about the <code>DataSource</code> typeclass, let&#39;s write our first data source! We&#39;ll be using Scala&#39;s
-<code>Future</code> as our concurrency monad for the examples. We&#39;ll write a little function for simulating latency and
-another for blocking on futures to get their results. Note that the <code>Future</code> API differs in Scala and Scala.js,
-since there are no threads in JavaScript and you cannot block for a <code>Future</code>&#39;s result.</p>
-<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">import</span> <span class="nn">scala.util.Random</span>
-<span class="k">import</span> <span class="nn">scala.concurrent._</span>
-<span class="k">import</span> <span class="nn">scala.concurrent.duration._</span>
-<span class="k">import</span> <span class="nn">scala.concurrent.ExecutionContext.Implicits.global</span>
-
-<span class="k">import</span> <span class="nn">cats.Eval</span>
-
-<span class="k">def</span> <span class="n">latency</span><span class="o">[</span><span class="kt">A</span><span class="o">](</span><span class="n">result</span><span class="k">:</span> <span class="kt">A</span><span class="o">,</span> <span class="n">msg</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">wait</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="nc">Random</span><span class="o">.</span><span class="n">nextInt</span><span class="o">(</span><span class="mi">100</span><span class="o">))</span><span class="k">:</span> <span class="kt">Eval</span><span class="o">[</span><span class="kt">A</span><span class="o">]</span> <span class="k">=</span>
-  <span class="nc">Eval</span><span class="o">.</span><span class="n">later</span><span class="o">({</span>
-    <span class="k">val</span> <span class="n">threadId</span> <span class="k">=</span> <span class="nc">Thread</span><span class="o">.</span><span class="n">currentThread</span><span class="o">().</span><span class="n">getId</span><span class="o">()</span>
-    <span class="n">println</span><span class="o">(</span><span class="n">s</span><span class="s">"~~~&gt;[thread: $threadId] $msg"</span><span class="o">)</span>
-    <span class="nc">Thread</span><span class="o">.</span><span class="n">sleep</span><span class="o">(</span><span class="n">wait</span><span class="o">)</span>
-    <span class="n">println</span><span class="o">(</span><span class="n">s</span><span class="s">"&lt;~~~[thread: $threadId] $msg"</span><span class="o">)</span>
-    <span class="n">result</span>
-  <span class="o">})</span>
-
-<span class="k">def</span> <span class="n">await</span><span class="o">[</span><span class="kt">A</span><span class="o">](</span><span class="n">f</span><span class="k">:</span> <span class="kt">Future</span><span class="o">[</span><span class="kt">A</span><span class="o">])</span><span class="k">:</span> <span class="kt">A</span> <span class="o">=</span> <span class="nc">Await</span><span class="o">.</span><span class="n">result</span><span class="o">(</span><span class="n">f</span><span class="o">,</span> <span class="mi">5</span> <span class="n">seconds</span><span class="o">)</span>
-</code></pre></div>
-<p>We&#39;ll start implementing a data source for fetching users given their id. The identity type will be a user&#39;s
-id and the result type a user.</p>
-<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">import</span> <span class="nn">fetch._</span>
-
-<span class="k">type</span> <span class="kt">UserId</span> <span class="o">=</span> <span class="nc">Int</span>
+<p>Now that we know about the <code>DataSource</code> typeclass, let&#39;s write our first data source! We&#39;ll start implementing a data
+source for fetching users given their id. The first thing we&#39;ll do is define the types for user ids and users.</p>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">type</span> <span class="kt">UserId</span> <span class="o">=</span> <span class="nc">Int</span>
 <span class="k">case</span> <span class="k">class</span> <span class="nc">User</span><span class="o">(</span><span class="n">id</span><span class="k">:</span> <span class="kt">UserId</span><span class="o">,</span> <span class="n">username</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span>
+</code></pre></div>
+<p>And now we&#39;re ready to write our user data source, we&#39;ll emulate a database with an in-memory map.</p>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">import</span> <span class="nn">cats.Eval</span>
+<span class="k">import</span> <span class="nn">fetch._</span>
+
+<span class="k">val</span> <span class="n">userDatabase</span><span class="k">:</span> <span class="kt">Map</span><span class="o">[</span><span class="kt">UserId</span>, <span class="kt">User</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Map</span><span class="o">(</span>
+  <span class="mi">1</span> <span class="o">-&gt;</span> <span class="nc">User</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="s">"@one"</span><span class="o">),</span>
+  <span class="mi">2</span> <span class="o">-&gt;</span> <span class="nc">User</span><span class="o">(</span><span class="mi">2</span><span class="o">,</span> <span class="s">"@two"</span><span class="o">),</span>
+  <span class="mi">3</span> <span class="o">-&gt;</span> <span class="nc">User</span><span class="o">(</span><span class="mi">3</span><span class="o">,</span> <span class="s">"@three"</span><span class="o">)</span>
+<span class="o">)</span>
 
 <span class="k">implicit</span> <span class="k">object</span> <span class="nc">UserSource</span> <span class="k">extends</span> <span class="nc">DataSource</span><span class="o">[</span><span class="kt">UserId</span>, <span class="kt">User</span><span class="o">]{</span>
   <span class="k">override</span> <span class="k">def</span> <span class="n">fetch</span><span class="o">(</span><span class="n">ids</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">UserId</span><span class="o">])</span><span class="k">:</span> <span class="kt">Eval</span><span class="o">[</span><span class="kt">Map</span><span class="o">[</span><span class="kt">UserId</span>, <span class="kt">User</span><span class="o">]]</span> <span class="k">=</span> <span class="o">{</span>
-    <span class="k">val</span> <span class="n">result</span> <span class="k">=</span> <span class="n">ids</span><span class="o">.</span><span class="n">map</span><span class="o">(</span><span class="n">i</span> <span class="k">=&gt;</span> <span class="o">(</span><span class="n">i</span><span class="o">,</span> <span class="nc">User</span><span class="o">(</span><span class="n">i</span><span class="o">,</span> <span class="n">s</span><span class="s">"@egg_$i"</span><span class="o">))).</span><span class="n">toMap</span>
-    <span class="n">latency</span><span class="o">(</span><span class="n">result</span><span class="o">,</span> <span class="n">s</span><span class="s">"Fetching users $ids"</span><span class="o">)</span>
+    <span class="nc">Eval</span><span class="o">.</span><span class="n">later</span><span class="o">({</span>
+      <span class="n">println</span><span class="o">(</span><span class="n">s</span><span class="s">"Fetching users $ids"</span><span class="o">)</span>
+      <span class="n">userDatabase</span><span class="o">.</span><span class="n">filterKeys</span><span class="o">(</span><span class="n">ids</span><span class="o">.</span><span class="n">contains</span><span class="o">)</span>
+    <span class="o">})</span>
   <span class="o">}</span>
 <span class="o">}</span>
 </code></pre></div>
@@ -150,96 +136,94 @@ id and the result type a user.</p>
 given an id, we just have to pass a <code>UserId</code> as an argument to <code>Fetch</code>.</p>
 <div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">def</span> <span class="n">getUser</span><span class="o">(</span><span class="n">id</span><span class="k">:</span> <span class="kt">UserId</span><span class="o">)</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">User</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">(</span><span class="n">id</span><span class="o">)</span> <span class="c1">// or, more explicitly: Fetch(id)(UserSource)
 </span></code></pre></div>
-<h2>Declaring and running a fetch</h2>
+<h2>Creating and running a fetch</h2>
 
-<p>We are now ready to declare and run fetches, the only thing missing is an instance
-of <code>MonadError[M, Throwable]</code> for our target monad (<code>scala.concurrent.Future</code>), which
-the <code>cats</code> library already provides.</p>
-<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">import</span> <span class="nn">cats.std.future._</span>
+<p>We are now ready to creating and run fetches. Note the distinction between Fetch creation and execution.
+When we are creating and combinining <code>Fetch</code> values, we are just constructing a recipe of our data
+dependencies.</p>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">import</span> <span class="nn">cats.Id</span>
+<span class="k">import</span> <span class="nn">fetch.implicits._</span>
 
-<span class="k">val</span> <span class="n">fch</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">User</span><span class="o">]</span> <span class="k">=</span> <span class="n">getUser</span><span class="o">(</span><span class="mi">1</span><span class="o">)</span>
-<span class="k">val</span> <span class="n">fut</span><span class="k">:</span> <span class="kt">Future</span><span class="o">[</span><span class="kt">User</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">(</span><span class="n">fch</span><span class="o">)</span>
+<span class="k">val</span> <span class="n">fetchUser</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">User</span><span class="o">]</span> <span class="k">=</span> <span class="n">getUser</span><span class="o">(</span><span class="mi">1</span><span class="o">)</span>
+</code></pre></div>
+<p>A <code>Fetch</code> is just a value, and in order to get something out of it, we must execute it. We can execute a <code>Fetch</code> value as many times as we want, even to different target monads, since it is just
+an immutable value.</p>
 
-<span class="n">await</span><span class="o">(</span><span class="n">fut</span><span class="o">)</span>
-<span class="c1">// ~~~&gt;[thread: 43] Fetching users List(1)
-// &lt;~~~[thread: 43] Fetching users List(1)
-</span>
-<span class="c1">//=&gt; User(1,@egg_1)
+<p>We need to provide a target monad when we want to execute a fetch. We&#39;ll be using <code>Id</code> for now,
+make sure to import <code>fetch.implicits._</code> since Fetch needs an instance of <code>MonadError[Id, Throwable]</code> for running
+a fetch in the <code>Id</code> monad.</p>
+
+<p>Note that Fetch provides <code>MonadError</code> instances for a variety of different monads like <code>Eval</code> or
+<code>Future</code> so is likely that you don&#39;t have to write your own.</p>
+
+<p>Let&#39;s run our first fetch!</p>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">result</span><span class="k">:</span> <span class="kt">User</span> <span class="o">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">[</span><span class="kt">Id</span><span class="o">](</span><span class="n">fetchUser</span><span class="o">)</span>
+<span class="c1">// Fetching users List(1)
+// result: User = User(1,@one)
 </span></code></pre></div>
-<p>In the previous example, we:</p>
+<p>In the previous examples, we:</p>
 
 <ul>
-<li>brought the implicit instance of <code>MonadError[Future, Throwable]</code> into scope importing <code>cats.std.future._</code></li>
+<li>brought the implicit instance of <code>MonadError[Id, Throwable]</code> into scope importing <code>fetch.implicits._</code></li>
 <li>created a fetch for a <code>User</code> using the <code>getUser</code> function</li>
-<li>interpreted the fetch to a <code>Future</code> using <code>Fetch.run</code></li>
+<li>interpreted the fetch to a <code>Id[User]</code> (which is just a <code>User</code>) using <code>Fetch.run</code></li>
 </ul>
 
 <p>As you can see, the fetch was executed only in one round to fetch the user and was finished after that.</p>
 
 <h3>Sequencing</h3>
 
-<p>When we have two fetches that depend on each other, we can use <code>flatMap</code> to combine them. When composing fetches with <code>flatMap</code> we are telling Fetch that the second one depends on the previous one, so it isn&#39;t able to make any optimizations.</p>
-<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">fch</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[(</span><span class="kt">User</span>, <span class="kt">User</span><span class="o">)]</span> <span class="k">=</span> <span class="k">for</span> <span class="o">{</span>
+<p>When we have two fetches that depend on each other, we can use <code>flatMap</code> to combine them. The most straightforward way is to use a for comprehension:</p>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">fetchTwoUsers</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[(</span><span class="kt">User</span>, <span class="kt">User</span><span class="o">)]</span> <span class="k">=</span> <span class="k">for</span> <span class="o">{</span>
   <span class="n">aUser</span> <span class="k">&lt;-</span> <span class="n">getUser</span><span class="o">(</span><span class="mi">1</span><span class="o">)</span>
   <span class="n">anotherUser</span> <span class="k">&lt;-</span> <span class="n">getUser</span><span class="o">(</span><span class="n">aUser</span><span class="o">.</span><span class="n">id</span> <span class="o">+</span> <span class="mi">1</span><span class="o">)</span>
 <span class="o">}</span> <span class="k">yield</span> <span class="o">(</span><span class="n">aUser</span><span class="o">,</span> <span class="n">anotherUser</span><span class="o">)</span>
-
-<span class="k">val</span> <span class="n">fut</span><span class="k">:</span> <span class="kt">Future</span><span class="o">[(</span><span class="kt">User</span>, <span class="kt">User</span><span class="o">)]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">(</span><span class="n">fch</span><span class="o">)</span>
-
-<span class="n">await</span><span class="o">(</span><span class="n">fut</span><span class="o">)</span>
-<span class="c1">// ~~~&gt;[thread: 44] Fetching users List(1)
-// &lt;~~~[thread: 44] Fetching users List(1)
-// ~~~&gt;[thread: 42] Fetching users List(2)
-// &lt;~~~[thread: 42] Fetching users List(2)
-</span>
-<span class="c1">//=&gt; (User(1,@egg_1),User(2,@egg_2))
+</code></pre></div>
+<p>When composing fetches with <code>flatMap</code> we are telling Fetch that the second one depends on the previous one, so it isn&#39;t able to make any optimizations. When running the above fetch, we will query the user data source in two rounds: one for the user with id 1 and another for the user with id 2.</p>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">result</span><span class="k">:</span> <span class="o">(</span><span class="kt">User</span><span class="o">,</span> <span class="kt">User</span><span class="o">)</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">[</span><span class="kt">Id</span><span class="o">](</span><span class="n">fetchTwoUsers</span><span class="o">)</span>
+<span class="c1">// Fetching users List(1)
+// Fetching users List(2)
+// result: (User, User) = (User(1,@one),User(2,@two))
 </span></code></pre></div>
 <h3>Batching</h3>
 
-<p>If we combine two independent requests to the same data source, Fetch will
-automatically batch them together into a single request. Fetch&#39;s <code>join</code> operator
-help us tell the library that two fetches are independent, and thus can be batched
-if they use the same data source:</p>
-<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">fch</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[(</span><span class="kt">User</span>, <span class="kt">User</span><span class="o">)]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">join</span><span class="o">(</span><span class="n">getUser</span><span class="o">(</span><span class="mi">1</span><span class="o">),</span> <span class="n">getUser</span><span class="o">(</span><span class="mi">2</span><span class="o">))</span>
-<span class="k">val</span> <span class="n">fut</span><span class="k">:</span> <span class="kt">Future</span><span class="o">[(</span><span class="kt">User</span>, <span class="kt">User</span><span class="o">)]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">(</span><span class="n">fch</span><span class="o">)</span>
+<p>If we combine two independent requests to the same data source, Fetch will 
+automatically batch them together into a single request. Applicative operations like the product of two fetches
+help us tell the library that those fetches are independent, and thus can be batched if they use the same data source:</p>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">import</span> <span class="nn">cats.syntax.cartesian._</span>
 
-<span class="n">await</span><span class="o">(</span><span class="n">fut</span><span class="o">)</span>
-<span class="c1">// ~~~&gt;[thread: 47] Fetching users List(1, 2)
-// &lt;~~~[thread: 47] Fetching users List(1, 2)
-</span>
-<span class="c1">//=&gt; (User(1,@egg_1),User(2,@egg_2))
+<span class="k">val</span> <span class="n">fetchProduct</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[(</span><span class="kt">User</span>, <span class="kt">User</span><span class="o">)]</span> <span class="k">=</span> <span class="n">getUser</span><span class="o">(</span><span class="mi">1</span><span class="o">).</span><span class="n">product</span><span class="o">(</span><span class="n">getUser</span><span class="o">(</span><span class="mi">2</span><span class="o">))</span>
+</code></pre></div>
+<p>Note how both ids (1 and 2) are requested in a single query to the data source when executing the fetch.</p>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">result</span><span class="k">:</span> <span class="o">(</span><span class="kt">User</span><span class="o">,</span> <span class="kt">User</span><span class="o">)</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">[</span><span class="kt">Id</span><span class="o">](</span><span class="n">fetchProduct</span><span class="o">)</span>
+<span class="c1">// Fetching users List(1, 2)
+// result: (User, User) = (User(1,@one),User(2,@two))
 </span></code></pre></div>
 <h3>Deduplication</h3>
 
-<p>If two independent requests ask for the same identity, Fetch will detect that and
-deduplicate such id.</p>
-<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">fch</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[(</span><span class="kt">User</span>, <span class="kt">User</span><span class="o">)]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">join</span><span class="o">(</span><span class="n">getUser</span><span class="o">(</span><span class="mi">1</span><span class="o">),</span> <span class="n">getUser</span><span class="o">(</span><span class="mi">1</span><span class="o">))</span>
-<span class="k">val</span> <span class="n">fut</span><span class="k">:</span> <span class="kt">Future</span><span class="o">[(</span><span class="kt">User</span>, <span class="kt">User</span><span class="o">)]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">(</span><span class="n">fch</span><span class="o">)</span>
-
-<span class="n">await</span><span class="o">(</span><span class="n">fut</span><span class="o">)</span>
-<span class="c1">// ~~~&gt;[thread: 47] Fetching users List(1)
-// &lt;~~~[thread: 47] Fetching users List(1)
-</span>
-<span class="c1">//=&gt; (User(1,@egg_1),User(1,@egg_1))
+<p>If two independent requests ask for the same identity, Fetch will detect it and deduplicate such id.</p>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">fetchDuped</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[(</span><span class="kt">User</span>, <span class="kt">User</span><span class="o">)]</span> <span class="k">=</span> <span class="n">getUser</span><span class="o">(</span><span class="mi">1</span><span class="o">).</span><span class="n">product</span><span class="o">(</span><span class="n">getUser</span><span class="o">(</span><span class="mi">1</span><span class="o">))</span>
+</code></pre></div>
+<p>Note that when running the fetch, the identity 1 is only requested once even when it is needed by both fetches.</p>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">result</span><span class="k">:</span> <span class="o">(</span><span class="kt">User</span><span class="o">,</span> <span class="kt">User</span><span class="o">)</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">[</span><span class="kt">Id</span><span class="o">](</span><span class="n">fetchDuped</span><span class="o">)</span>
+<span class="c1">// Fetching users List(1)
+// result: (User, User) = (User(1,@one),User(1,@one))
 </span></code></pre></div>
 <h3>Caching</h3>
 
-<p>During a fetch, previously requested results are implicitly cached. This allows us to write
+<p>During the execution of a fetch, previously requested results are implicitly cached. This allows us to write
 fetches in a very modular way, asking for all the data they need as if it
 was in memory; furthermore, it also avoids refetching an identity that may have changed
 during the course of a fetch execution, which can lead to inconsistencies in the data.</p>
-<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">fch</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[(</span><span class="kt">User</span>, <span class="kt">User</span><span class="o">)]</span> <span class="k">=</span> <span class="k">for</span> <span class="o">{</span>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">fetchCached</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[(</span><span class="kt">User</span>, <span class="kt">User</span><span class="o">)]</span> <span class="k">=</span> <span class="k">for</span> <span class="o">{</span>
   <span class="n">aUser</span> <span class="k">&lt;-</span> <span class="n">getUser</span><span class="o">(</span><span class="mi">1</span><span class="o">)</span>
   <span class="n">anotherUser</span> <span class="k">&lt;-</span> <span class="n">getUser</span><span class="o">(</span><span class="mi">1</span><span class="o">)</span>
 <span class="o">}</span> <span class="k">yield</span> <span class="o">(</span><span class="n">aUser</span><span class="o">,</span> <span class="n">anotherUser</span><span class="o">)</span>
-
-<span class="k">val</span> <span class="n">fut</span><span class="k">:</span> <span class="kt">Future</span><span class="o">[(</span><span class="kt">User</span>, <span class="kt">User</span><span class="o">)]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">(</span><span class="n">fch</span><span class="o">)</span>
-
-<span class="n">await</span><span class="o">(</span><span class="n">fut</span><span class="o">)</span>
-<span class="c1">// ~~~&gt;[thread: 53] Fetching users List(1)
-// &lt;~~~[thread: 53] Fetching users List(1)
-</span>
-<span class="c1">//=&gt; (User(1,@egg_1),User(1,@egg_1))
+</code></pre></div>
+<p>The above fetch asks multiple times for the same identity, let&#39;s see what happens when executing it.</p>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">result</span><span class="k">:</span> <span class="o">(</span><span class="kt">User</span><span class="o">,</span> <span class="kt">User</span><span class="o">)</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">[</span><span class="kt">Id</span><span class="o">](</span><span class="n">fetchCached</span><span class="o">)</span>
+<span class="c1">// Fetching users List(1)
+// result: (User, User) = (User(1,@one),User(1,@one))
 </span></code></pre></div>
 <p>As you can see, the <code>User</code> with id 1 was fetched only once in a single round-trip. The next
 time it was needed we used the cached versions, thus avoiding another request to the user data
@@ -260,19 +244,35 @@ and have the following types for posts and post information:</p>
 <li>one for retrieving a post given a post id</li>
 <li>another for retrieveng post metadata given a post id</li>
 </ul>
-<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">implicit</span> <span class="k">object</span> <span class="nc">PostSource</span> <span class="k">extends</span> <span class="nc">DataSource</span><span class="o">[</span><span class="kt">PostId</span>, <span class="kt">Post</span><span class="o">]{</span>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">postDatabase</span><span class="k">:</span> <span class="kt">Map</span><span class="o">[</span><span class="kt">PostId</span>, <span class="kt">Post</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Map</span><span class="o">(</span>
+  <span class="mi">1</span> <span class="o">-&gt;</span> <span class="nc">Post</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="s">"An article"</span><span class="o">),</span>
+  <span class="mi">2</span> <span class="o">-&gt;</span> <span class="nc">Post</span><span class="o">(</span><span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">,</span> <span class="s">"Another article"</span><span class="o">),</span>
+  <span class="mi">3</span> <span class="o">-&gt;</span> <span class="nc">Post</span><span class="o">(</span><span class="mi">3</span><span class="o">,</span> <span class="mi">4</span><span class="o">,</span> <span class="s">"Yet another article"</span><span class="o">)</span>
+<span class="o">)</span>
+
+<span class="k">implicit</span> <span class="k">object</span> <span class="nc">PostSource</span> <span class="k">extends</span> <span class="nc">DataSource</span><span class="o">[</span><span class="kt">PostId</span>, <span class="kt">Post</span><span class="o">]{</span>
   <span class="k">override</span> <span class="k">def</span> <span class="n">fetch</span><span class="o">(</span><span class="n">ids</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">PostId</span><span class="o">])</span><span class="k">:</span> <span class="kt">Eval</span><span class="o">[</span><span class="kt">Map</span><span class="o">[</span><span class="kt">PostId</span>, <span class="kt">Post</span><span class="o">]]</span> <span class="k">=</span> <span class="o">{</span>
-    <span class="k">val</span> <span class="n">result</span> <span class="k">=</span> <span class="n">ids</span><span class="o">.</span><span class="n">map</span><span class="o">(</span><span class="n">i</span> <span class="k">=&gt;</span> <span class="o">(</span><span class="n">i</span><span class="o">,</span> <span class="nc">Post</span><span class="o">(</span><span class="n">i</span><span class="o">,</span> <span class="n">i</span> <span class="o">%</span> <span class="mi">3</span> <span class="o">+</span> <span class="mi">1</span><span class="o">,</span> <span class="n">s</span><span class="s">"An article with id $i"</span><span class="o">))).</span><span class="n">toMap</span>
-    <span class="n">latency</span><span class="o">(</span><span class="n">result</span><span class="o">,</span> <span class="n">s</span><span class="s">"Fetching posts $ids"</span><span class="o">)</span>
+    <span class="nc">Eval</span><span class="o">.</span><span class="n">later</span><span class="o">({</span>
+      <span class="n">println</span><span class="o">(</span><span class="n">s</span><span class="s">"Fetching posts $ids"</span><span class="o">)</span>
+      <span class="n">postDatabase</span><span class="o">.</span><span class="n">filterKeys</span><span class="o">(</span><span class="n">ids</span><span class="o">.</span><span class="n">contains</span><span class="o">)</span>
+    <span class="o">})</span>
   <span class="o">}</span>
 <span class="o">}</span>
 
 <span class="k">def</span> <span class="n">getPost</span><span class="o">(</span><span class="n">id</span><span class="k">:</span> <span class="kt">PostId</span><span class="o">)</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">Post</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">(</span><span class="n">id</span><span class="o">)</span>
 
+<span class="k">val</span> <span class="n">postInfoDatabase</span><span class="k">:</span> <span class="kt">Map</span><span class="o">[</span><span class="kt">PostId</span>, <span class="kt">PostInfo</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Map</span><span class="o">(</span>
+  <span class="mi">1</span> <span class="o">-&gt;</span> <span class="nc">PostInfo</span><span class="o">(</span><span class="s">"monad"</span><span class="o">),</span>
+  <span class="mi">2</span> <span class="o">-&gt;</span> <span class="nc">PostInfo</span><span class="o">(</span><span class="s">"applicative"</span><span class="o">),</span>
+  <span class="mi">3</span> <span class="o">-&gt;</span> <span class="nc">PostInfo</span><span class="o">(</span><span class="s">"monad"</span><span class="o">)</span>
+<span class="o">)</span>
+
 <span class="k">implicit</span> <span class="k">object</span> <span class="nc">PostInfoSource</span> <span class="k">extends</span> <span class="nc">DataSource</span><span class="o">[</span><span class="kt">PostId</span>, <span class="kt">PostInfo</span><span class="o">]{</span>
   <span class="k">override</span> <span class="k">def</span> <span class="n">fetch</span><span class="o">(</span><span class="n">ids</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">PostId</span><span class="o">])</span><span class="k">:</span> <span class="kt">Eval</span><span class="o">[</span><span class="kt">Map</span><span class="o">[</span><span class="kt">PostId</span>, <span class="kt">PostInfo</span><span class="o">]]</span> <span class="k">=</span> <span class="o">{</span>
-    <span class="k">val</span> <span class="n">result</span> <span class="k">=</span> <span class="n">ids</span><span class="o">.</span><span class="n">map</span><span class="o">(</span><span class="n">i</span> <span class="k">=&gt;</span> <span class="o">(</span><span class="n">i</span><span class="o">,</span> <span class="nc">PostInfo</span><span class="o">(</span><span class="k">if</span> <span class="o">(</span><span class="n">i</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span><span class="o">)</span> <span class="s">"applicative"</span> <span class="k">else</span> <span class="s">"monad"</span><span class="o">))).</span><span class="n">toMap</span>
-    <span class="n">latency</span><span class="o">(</span><span class="n">result</span><span class="o">,</span> <span class="n">s</span><span class="s">"Fetching post info $ids"</span><span class="o">)</span>
+    <span class="nc">Eval</span><span class="o">.</span><span class="n">later</span><span class="o">({</span>
+      <span class="n">println</span><span class="o">(</span><span class="n">s</span><span class="s">"Fetching post info $ids"</span><span class="o">)</span>
+      <span class="n">postInfoDatabase</span><span class="o">.</span><span class="n">filterKeys</span><span class="o">(</span><span class="n">ids</span><span class="o">.</span><span class="n">contains</span><span class="o">)</span>
+    <span class="o">})</span>
   <span class="o">}</span>
 <span class="o">}</span>
 
@@ -282,82 +282,110 @@ and have the following types for posts and post information:</p>
 <div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">def</span> <span class="n">getAuthor</span><span class="o">(</span><span class="n">p</span><span class="k">:</span> <span class="kt">Post</span><span class="o">)</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">User</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">(</span><span class="n">p</span><span class="o">.</span><span class="n">author</span><span class="o">)</span>
 </code></pre></div>
 <p>Now that we have multiple sources, let&#39;s mix them in the same fetch.</p>
-<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">fch</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[(</span><span class="kt">Post</span>, <span class="kt">User</span><span class="o">)]</span> <span class="k">=</span> <span class="k">for</span> <span class="o">{</span>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">fetchMulti</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[(</span><span class="kt">Post</span>, <span class="kt">User</span><span class="o">)]</span> <span class="k">=</span> <span class="k">for</span> <span class="o">{</span>
   <span class="n">post</span> <span class="k">&lt;-</span> <span class="n">getPost</span><span class="o">(</span><span class="mi">1</span><span class="o">)</span>
   <span class="n">user</span> <span class="k">&lt;-</span> <span class="n">getAuthor</span><span class="o">(</span><span class="n">post</span><span class="o">)</span>
 <span class="o">}</span> <span class="k">yield</span> <span class="o">(</span><span class="n">post</span><span class="o">,</span> <span class="n">user</span><span class="o">)</span>
-
-<span class="k">val</span> <span class="n">fut</span><span class="k">:</span> <span class="kt">Future</span><span class="o">[(</span><span class="kt">Post</span>, <span class="kt">User</span><span class="o">)]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">(</span><span class="n">fch</span><span class="o">)</span>
-
-<span class="n">await</span><span class="o">(</span><span class="n">fut</span><span class="o">)</span>
-<span class="c1">// ~~~&gt;[thread: 81] Fetching posts List(1)
-// &lt;~~~[thread: 81] Fetching posts List(1)
-// ~~~&gt;[thread: 82] Fetching users List(2)
-// &lt;~~~[thread: 82] Fetching users List(2)
-</span>
-<span class="c1">//=&gt; (Post(1,2,An article with id 1),User(2,@egg_2))
+</code></pre></div>
+<p>We can now run the previous fetch, querying the posts data source first and the user data source afterwards.</p>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">result</span><span class="k">:</span> <span class="o">(</span><span class="kt">Post</span><span class="o">,</span> <span class="kt">User</span><span class="o">)</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">[</span><span class="kt">Id</span><span class="o">](</span><span class="n">fetchMulti</span><span class="o">)</span>
+<span class="c1">// Fetching posts List(1)
+// Fetching users List(2)
+// result: (Post, User) = (Post(1,2,An article),User(2,@two))
 </span></code></pre></div>
 <p>In the previous example we fetched a post given its id, and then fetched its author. These
 data could come from entirely different places but Fetch makes working with heterogeneous sources
 of data very easy.</p>
 
-<h3>Parallelism</h3>
+<h3>Concurrency</h3>
 
-<p>Combining multiple independent requests to the same data source results in batching but what happens
-when combining independent requests to <em>different</em> data sources? We have the oportunity to query the
-different data sources at the same time.</p>
+<p>Combining multiple independent requests to the same data source can have two outcomes:</p>
 
-<p>Since we are using <code>Future</code> as our concurrency monad, the requests will effectively run in parallel,
-each in its own thread.</p>
-<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">fch</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[(</span><span class="kt">Post</span>, <span class="kt">User</span><span class="o">)]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">join</span><span class="o">(</span><span class="n">getPost</span><span class="o">(</span><span class="mi">1</span><span class="o">),</span> <span class="n">getUser</span><span class="o">(</span><span class="mi">2</span><span class="o">))</span>
-<span class="k">val</span> <span class="n">fut</span><span class="k">:</span> <span class="kt">Future</span><span class="o">[(</span><span class="kt">Post</span>, <span class="kt">User</span><span class="o">)]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">(</span><span class="n">fch</span><span class="o">)</span>
+<ul>
+<li>if the data sources are the same, the request is batched</li>
+<li>otherwise, both data sources are queried at the same time</li>
+</ul>
 
-<span class="n">await</span><span class="o">(</span><span class="n">fut</span><span class="o">)</span>
-<span class="c1">// ~~~&gt;[thread: 83] Fetching posts List(1)
-// ~~~&gt;[thread: 84] Fetching users List(2)
-// &lt;~~~[thread: 84] Fetching users List(2)
-// &lt;~~~[thread: 83] Fetching posts List(1)
-</span>
-<span class="c1">//=&gt; (Post(1,2,An article with id 1),User(2,@egg_2))
+<p>In the following example we are fetching from different data sources so both requests will be
+evaluated together.</p>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">fetchConcurrent</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[(</span><span class="kt">Post</span>, <span class="kt">User</span><span class="o">)]</span> <span class="k">=</span> <span class="n">getPost</span><span class="o">(</span><span class="mi">1</span><span class="o">).</span><span class="n">product</span><span class="o">(</span><span class="n">getUser</span><span class="o">(</span><span class="mi">2</span><span class="o">))</span>
+</code></pre></div>
+<p>The above example combines data from two different sources, and the library knows they are independent.</p>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">result</span><span class="k">:</span> <span class="o">(</span><span class="kt">Post</span><span class="o">,</span> <span class="kt">User</span><span class="o">)</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">[</span><span class="kt">Id</span><span class="o">](</span><span class="n">fetchConcurrent</span><span class="o">)</span>
+<span class="c1">// Fetching posts List(1)
+// Fetching users List(2)
+// result: (Post, User) = (Post(1,2,An article),User(2,@two))
 </span></code></pre></div>
-<p>As you can notice, both requests are started at the same time in different threads (with ids 83 and 84) and
-the fetch finishes as soon as both results are available.</p>
+<p>Since we are interpreting the fetch to the <code>Id</code> monad, that doesn&#39;t give us any parallelism, the fetches
+will be run sequentially. However, if we interpret it to a <code>Future</code> each request will run in its own logical
+thread.</p>
 
 <h2>Combinators</h2>
 
-<p>Besides <code>flatMap</code> for sequencing fetches and <code>join</code> for running them concurrently, Fetch provides a number of
-other combinators that you can use.</p>
+<p>Besides <code>flatMap</code> for sequencing fetches and <code>product</code> for running them concurrently, Fetch provides a number of
+other combinators.</p>
 
-<h3>Collect</h3>
+<h3>Sequence</h3>
 
-<p>Whenever we have a list of fetches of the same type and want to run them concurrently we can use the <code>collect</code>
+<p>Whenever we have a list of fetches of the same type and want to run them concurrently we can use the <code>sequence</code>
 combinator. It takes a <code>List[Fetch[A]]</code> and gives you back a <code>Fetch[List[A]]</code>, batching the fetches to the same
-data source and running fetches to different sources in parallel.</p>
-<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">fch</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">List</span><span class="o">[</span><span class="kt">User</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">collect</span><span class="o">(</span><span class="nc">List</span><span class="o">(</span><span class="n">getUser</span><span class="o">(</span><span class="mi">1</span><span class="o">),</span> <span class="n">getUser</span><span class="o">(</span><span class="mi">2</span><span class="o">),</span> <span class="n">getUser</span><span class="o">(</span><span class="mi">3</span><span class="o">)))</span>
+data source and running fetches to different sources in parallel. Note that the <code>sequence</code> combinator is more general and not only works on lists but any type that has a <a href="http://typelevel.org/cats/tut/traverse.html">Traverse</a> instance.</p>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">import</span> <span class="nn">cats.std.list._</span>
+<span class="k">import</span> <span class="nn">cats.syntax.traverse._</span>
 
-<span class="k">val</span> <span class="n">fut</span><span class="k">:</span> <span class="kt">Future</span><span class="o">[</span><span class="kt">List</span><span class="o">[</span><span class="kt">User</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">(</span><span class="n">fch</span><span class="o">)</span>
-
-<span class="n">await</span><span class="o">(</span><span class="n">fut</span><span class="o">)</span>
-<span class="c1">// ~~~&gt;[thread: 86] Fetching users List(1, 2, 3)
-// &lt;~~~[thread: 86] Fetching users List(1, 2, 3)
-</span>
-<span class="c1">//=&gt; List(User(1,@egg_1), User(2,@egg_2), User(3,@egg_3))
+<span class="k">val</span> <span class="n">fetchSequence</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">List</span><span class="o">[</span><span class="kt">User</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">List</span><span class="o">(</span><span class="n">getUser</span><span class="o">(</span><span class="mi">1</span><span class="o">),</span> <span class="n">getUser</span><span class="o">(</span><span class="mi">2</span><span class="o">),</span> <span class="n">getUser</span><span class="o">(</span><span class="mi">3</span><span class="o">)).</span><span class="n">sequence</span>
+</code></pre></div>
+<p>Since <code>sequence</code> uses applicative operations internally, the library is able to perform optimizations across all the sequenced fetches.</p>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">result</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">User</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">[</span><span class="kt">Id</span><span class="o">](</span><span class="n">fetchSequence</span><span class="o">)</span>
+<span class="c1">// Fetching users List(1, 2, 3)
+// result: List[User] = List(User(1,@one), User(2,@two), User(3,@three))
 </span></code></pre></div>
 <p>As you can see, requests to the user data source were batched, thus fetching all the data in one round.</p>
 
 <h3>Traverse</h3>
 
-<p>Another interesing combinator is <code>traverse</code>, which is the composition of <code>map</code> and <code>collect</code>.a</p>
-<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">fch</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">List</span><span class="o">[</span><span class="kt">User</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">traverse</span><span class="o">(</span><span class="nc">List</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">))(</span><span class="n">getUser</span><span class="o">)</span>
-
-<span class="k">val</span> <span class="n">fut</span><span class="k">:</span> <span class="kt">Future</span><span class="o">[</span><span class="kt">List</span><span class="o">[</span><span class="kt">User</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">(</span><span class="n">fch</span><span class="o">)</span>
-
-<span class="n">await</span><span class="o">(</span><span class="n">fut</span><span class="o">)</span>
-<span class="c1">// ~~~&gt;[thread: 86] Fetching users List(1, 2, 3)
-// &lt;~~~[thread: 86] Fetching users List(1, 2, 3)
-</span>
-<span class="c1">//=&gt; List(User(1,@egg_1), User(2,@egg_2), User(3,@egg_3))
+<p>Another interesing combinator is <code>traverse</code>, which is the composition of <code>map</code> and <code>sequence</code>.</p>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">fetchTraverse</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">List</span><span class="o">[</span><span class="kt">User</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">List</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">).</span><span class="n">traverse</span><span class="o">(</span><span class="n">getUser</span><span class="o">)</span>
+</code></pre></div>
+<p>As you may have guessed, all the optimizations made by <code>sequence</code> still apply when using <code>traverse</code>.</p>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">result</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">User</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">[</span><span class="kt">Id</span><span class="o">](</span><span class="n">fetchTraverse</span><span class="o">)</span>
+<span class="c1">// Fetching users List(1, 2, 3)
+// result: List[User] = List(User(1,@one), User(2,@two), User(3,@three))
 </span></code></pre></div>
+<h1>Interpreting a fetch to an async capable monad</h1>
+
+<p>Albeit the examples use <code>Id</code> as the target Monad, <code>Fetch</code> is not limited to just <code>Id</code>, any monad <code>M</code> that
+implements <code>MonadError[M, Throwable]</code> will do. Fetch provides <code>MonadError</code> instances for some existing monads like
+<code>Future</code>, <code>cats.Id</code> and <code>cats.Eval</code> and is easy to write your own.</p>
+
+<p>In practice you&#39;ll be interpreting a fetch to an async capable monad like <code>Future</code> or <code>scalaz.concurrent.Task</code> to exploit
+parallelism whenever we can make requests to multiple independent data sources at the same time.</p>
+
+<h2>Future</h2>
+
+<p>For interpreting a fetch into a <code>Future</code> we must first import the <code>MonadError[Future, Throwable]</code> available in cats.</p>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">import</span> <span class="nn">cats.std.future._</span>
+
+<span class="k">import</span> <span class="nn">scala.concurrent._</span>
+<span class="k">import</span> <span class="nn">scala.concurrent.duration._</span>
+<span class="k">import</span> <span class="nn">scala.concurrent.ExecutionContext.Implicits.global</span>
+
+
+<span class="k">val</span> <span class="n">fetchParallel</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[(</span><span class="kt">User</span>, <span class="kt">Post</span><span class="o">)]</span> <span class="k">=</span> <span class="o">(</span><span class="n">getUser</span><span class="o">(</span><span class="mi">1</span><span class="o">)</span> <span class="o">|@|</span> <span class="n">getPost</span><span class="o">(</span><span class="mi">1</span><span class="o">)).</span><span class="n">tupled</span>
+</code></pre></div>
+<p>We can now interpret a fetch into a future:</p>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">fut</span><span class="k">:</span> <span class="kt">Future</span><span class="o">[(</span><span class="kt">User</span>, <span class="kt">Post</span><span class="o">)]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">[</span><span class="kt">Future</span><span class="o">](</span><span class="n">fetchParallel</span><span class="o">)</span>
+<span class="c1">// fut: scala.concurrent.Future[(User, Post)] = List()
+// Fetching users List(1)
+</span><span class="nc">Fetching</span> <span class="n">posts</span> <span class="nc">List</span><span class="o">(</span><span class="mi">1</span><span class="o">)</span>
+
+<span class="nc">Await</span><span class="o">.</span><span class="n">result</span><span class="o">(</span><span class="n">fut</span><span class="o">,</span> <span class="mi">1</span> <span class="n">seconds</span><span class="o">)</span> <span class="c1">// this call blocks the current thread, don't do this at home!
+// warning: there was one feature warning; re-run with -feature for details
+// res13: (User, Post) = (User(1,@one),Post(1,2,An article))
+</span></code></pre></div>
+<p>Since futures run in a thread pool, we need to explicitly set println output to the standard output. Note how both requests
+to the data sources run in parallel, each in its own logical thread.</p>
+
 <h1>Caching</h1>
 
 <p>As we have learned, Fetch caches intermediate results implicitly using a cache. You can
@@ -367,30 +395,23 @@ one and even implement a custom cache.</p>
 <h2>Prepopulating a cache</h2>
 
 <p>We&#39;ll be using the default in-memory cache, prepopulated with some data. The cache key of an identity
-is calculated with the <code>DataSource</code>&#39;s <code>identity</code> method; we can pass a cache as the second argument when
-running a fetch with <code>Fetch.run</code>.</p>
-<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">fch</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">User</span><span class="o">]</span> <span class="k">=</span> <span class="n">getUser</span><span class="o">(</span><span class="mi">1</span><span class="o">)</span>
-<span class="k">val</span> <span class="n">cache</span> <span class="k">=</span> <span class="nc">InMemoryCache</span><span class="o">(</span><span class="nc">UserSource</span><span class="o">.</span><span class="n">identity</span><span class="o">(</span><span class="mi">1</span><span class="o">)</span> <span class="o">-&gt;</span> <span class="nc">User</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="s">"@dialelo"</span><span class="o">))</span>
-<span class="k">val</span> <span class="n">fut</span><span class="k">:</span> <span class="kt">Future</span><span class="o">[</span><span class="kt">User</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">(</span><span class="n">fch</span><span class="o">,</span> <span class="n">cache</span><span class="o">)</span>
-
-<span class="n">await</span><span class="o">(</span><span class="n">fut</span><span class="o">)</span>
-<span class="c1">//=&gt; User(1,@dialelo)
+is calculated with the <code>DataSource</code>&#39;s <code>identity</code> method.</p>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">cache</span> <span class="k">=</span> <span class="nc">InMemoryCache</span><span class="o">(</span><span class="nc">UserSource</span><span class="o">.</span><span class="n">identity</span><span class="o">(</span><span class="mi">1</span><span class="o">)</span> <span class="o">-&gt;</span> <span class="nc">User</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="s">"@dialelo"</span><span class="o">))</span>
+</code></pre></div>
+<p>We can pass a cache as the second argument when running a fetch with <code>Fetch.run</code>.</p>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">result</span><span class="k">:</span> <span class="kt">User</span> <span class="o">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">[</span><span class="kt">Id</span><span class="o">](</span><span class="n">fetchUser</span><span class="o">,</span> <span class="n">cache</span><span class="o">)</span>
+<span class="c1">// result: User = User(1,@dialelo)
 </span></code></pre></div>
-<p>As you can see, when all the data is cached no fetch is executed at all since the results are available
+<p>As you can see, when all the data is cached no query to the data sources is executed at all since the results are available
 in the cache.</p>
-
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">fetchManyUsers</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">List</span><span class="o">[</span><span class="kt">User</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">List</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">).</span><span class="n">traverse</span><span class="o">(</span><span class="n">getUser</span><span class="o">)</span>
+</code></pre></div>
 <p>If only part of the data is cached, the cached data won&#39;t be asked for:</p>
-<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">fch</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">List</span><span class="o">[</span><span class="kt">User</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">traverse</span><span class="o">(</span><span class="nc">List</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">))(</span><span class="n">getUser</span><span class="o">)</span>
-<span class="k">val</span> <span class="n">cache</span> <span class="k">=</span> <span class="nc">InMemoryCache</span><span class="o">(</span><span class="nc">UserSource</span><span class="o">.</span><span class="n">identity</span><span class="o">(</span><span class="mi">2</span><span class="o">)</span> <span class="o">-&gt;</span> <span class="nc">User</span><span class="o">(</span><span class="mi">2</span><span class="o">,</span> <span class="s">"@two"</span><span class="o">))</span>
-<span class="k">val</span> <span class="n">fut</span><span class="k">:</span> <span class="kt">Future</span><span class="o">[</span><span class="kt">List</span><span class="o">[</span><span class="kt">User</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">(</span><span class="n">fch</span><span class="o">,</span> <span class="n">cache</span><span class="o">)</span>
-
-<span class="n">await</span><span class="o">(</span><span class="n">fut</span><span class="o">)</span>
-<span class="c1">// ~~~&gt;[thread: 180] Fetching users List(1, 3)
-// &lt;~~~[thread: 180] Fetching users List(1, 3)
-</span>
-<span class="c1">//=&gt; List(User(1,@egg_1), User(2,@two), User(3,@egg_3))
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">result</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">User</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">[</span><span class="kt">Id</span><span class="o">](</span><span class="n">fetchManyUsers</span><span class="o">,</span> <span class="n">cache</span><span class="o">)</span>
+<span class="c1">// Fetching users List(2, 3)
+// result: List[User] = List(User(1,@dialelo), User(2,@two), User(3,@three))
 </span></code></pre></div>
-<h2>Replaying a fetch</h2>
+<h2>Replaying a fetch without querying any data source</h2>
 
 <p>When running a fetch we are generally interested in its final result. However, we also have access to the cache
 and information about the executed rounds once we run a fetch. Fetch&#39;s interpreter keeps its state in an environment
@@ -399,128 +420,180 @@ instead of <code>Fetch.run</code>.</p>
 
 <p>Knowing this, we can replay a fetch reusing the cache of a previous one. The replayed fetch won&#39;t have to call any of the
 data sources.</p>
-<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">fch</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">List</span><span class="o">[</span><span class="kt">User</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">traverse</span><span class="o">(</span><span class="nc">List</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">))(</span><span class="n">getUser</span><span class="o">)</span>
-<span class="k">val</span> <span class="n">env</span> <span class="k">=</span> <span class="n">await</span><span class="o">(</span><span class="nc">Fetch</span><span class="o">.</span><span class="n">runEnv</span><span class="o">[</span><span class="kt">Future</span><span class="o">](</span><span class="n">fch</span><span class="o">))</span>
-<span class="c1">// ~~~&gt;[thread: 261] Fetching users List(1, 2, 3)
-// &lt;~~~[thread: 261] Fetching users List(1, 2, 3)
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">populatedCache</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">runEnv</span><span class="o">[</span><span class="kt">Id</span><span class="o">](</span><span class="n">fetchManyUsers</span><span class="o">).</span><span class="n">cache</span>
+<span class="c1">// Fetching users List(1, 2, 3)
+// populatedCache: fetch.DataSourceCache = InMemoryCache(Map((UserSource$@67f6f7c1,1) -&gt; User(1,@one), (UserSource$@67f6f7c1,2) -&gt; User(2,@two), (UserSource$@67f6f7c1,3) -&gt; User(3,@three)))
 </span>
-<span class="c1">//=&gt; List(User(1,@egg_1), User(2,@egg_2), User(3,@egg_3))
-</span>
-<span class="k">val</span> <span class="n">fut</span><span class="k">:</span> <span class="kt">Future</span><span class="o">[</span><span class="kt">List</span><span class="o">[</span><span class="kt">User</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">(</span><span class="n">fch</span><span class="o">,</span> <span class="n">env</span><span class="o">.</span><span class="n">cache</span><span class="o">)</span>
-
-<span class="n">await</span><span class="o">(</span><span class="n">fut</span><span class="o">)</span>
-<span class="c1">//=&gt; List(User(1,@egg_1), User(2,@egg_2), User(3,@egg_3))
+<span class="k">val</span> <span class="n">result</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">User</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">[</span><span class="kt">Id</span><span class="o">](</span><span class="n">fetchManyUsers</span><span class="o">,</span> <span class="n">populatedCache</span><span class="o">)</span>
+<span class="c1">// result: List[User] = List(User(1,@one), User(2,@two), User(3,@three))
 </span></code></pre></div>
 <h2>Implementing a custom cache</h2>
 
-<p>The default cache is implemented as an in-memory map, but users are free to use their own caches when running a fetch. Your cache should implement the <code>DataSourceCache</code> trait, and after that you can pass it to Fetch&#39;s <code>run</code> methods.</p>
+<p>The default cache is implemented as an immutable in-memory map, but users are free to use their own caches when running a fetch. Your cache should implement the <code>DataSourceCache</code> trait, and after that you can pass it to Fetch&#39;s <code>run</code> methods.</p>
+
+<p>There is no need for the cache to be mutable, since fetch executions run in an interpreter that uses the state monad. Note that the <code>update</code> method in the <code>DataSourceCache</code> trait yields a new, updated cache.</p>
 <div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">trait</span> <span class="nc">DataSourceCache</span> <span class="o">{</span>
-  <span class="k">def</span> <span class="n">update</span><span class="o">[</span><span class="kt">I</span>, <span class="kt">A</span><span class="o">](</span><span class="n">k</span><span class="k">:</span> <span class="kt">DataSourceIdentity</span><span class="o">,</span> <span class="n">v</span><span class="k">:</span> <span class="kt">A</span><span class="o">)</span><span class="k">:</span> <span class="kt">DataSourceCache</span>
-  <span class="k">def</span> <span class="n">get</span><span class="o">[</span><span class="kt">I</span><span class="o">](</span><span class="n">k</span><span class="k">:</span> <span class="kt">DataSourceIdentity</span><span class="o">)</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">Any</span><span class="o">]</span>
+  <span class="k">def</span> <span class="n">update</span><span class="o">[</span><span class="kt">A</span><span class="o">](</span><span class="n">k</span><span class="k">:</span> <span class="kt">DataSourceIdentity</span><span class="o">,</span> <span class="n">v</span><span class="k">:</span> <span class="kt">A</span><span class="o">)</span><span class="k">:</span> <span class="kt">DataSourceCache</span>
+  <span class="k">def</span> <span class="n">get</span><span class="o">(</span><span class="n">k</span><span class="k">:</span> <span class="kt">DataSourceIdentity</span><span class="o">)</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">Any</span><span class="o">]</span>
 <span class="o">}</span>
 </code></pre></div>
 <p>Let&#39;s reimplement the in memory cache found in Fetch, we&#39;ll write a case class that&#39;ll store the cache contents in an in-memory immutable map and implement <code>DataSourceCache</code>.</p>
 <div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">case</span> <span class="k">class</span> <span class="nc">MyInMemoryCache</span><span class="o">(</span><span class="n">state</span><span class="k">:</span> <span class="kt">Map</span><span class="o">[</span><span class="kt">DataSourceIdentity</span>, <span class="kt">Any</span><span class="o">])</span> <span class="k">extends</span> <span class="nc">DataSourceCache</span> <span class="o">{</span>
-  <span class="k">override</span> <span class="k">def</span> <span class="n">get</span><span class="o">[</span><span class="kt">I</span><span class="o">](</span><span class="n">k</span><span class="k">:</span> <span class="kt">DataSourceIdentity</span><span class="o">)</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">Any</span><span class="o">]</span> <span class="k">=</span>
+  <span class="k">override</span> <span class="k">def</span> <span class="n">get</span><span class="o">(</span><span class="n">k</span><span class="k">:</span> <span class="kt">DataSourceIdentity</span><span class="o">)</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">Any</span><span class="o">]</span> <span class="k">=</span>
     <span class="n">state</span><span class="o">.</span><span class="n">get</span><span class="o">(</span><span class="n">k</span><span class="o">)</span>
 
-  <span class="k">override</span> <span class="k">def</span> <span class="n">update</span><span class="o">[</span><span class="kt">I</span>, <span class="kt">A</span><span class="o">](</span><span class="n">k</span><span class="k">:</span> <span class="kt">DataSourceIdentity</span><span class="o">,</span> <span class="n">v</span><span class="k">:</span> <span class="kt">A</span><span class="o">)</span><span class="k">:</span> <span class="kt">MyInMemoryCache</span> <span class="o">=</span>
+  <span class="k">override</span> <span class="k">def</span> <span class="n">update</span><span class="o">[</span><span class="kt">A</span><span class="o">](</span><span class="n">k</span><span class="k">:</span> <span class="kt">DataSourceIdentity</span><span class="o">,</span> <span class="n">v</span><span class="k">:</span> <span class="kt">A</span><span class="o">)</span><span class="k">:</span> <span class="kt">MyInMemoryCache</span> <span class="o">=</span>
     <span class="n">copy</span><span class="o">(</span><span class="n">state</span> <span class="k">=</span> <span class="n">state</span><span class="o">.</span><span class="n">updated</span><span class="o">(</span><span class="n">k</span><span class="o">,</span> <span class="n">v</span><span class="o">))</span>
 <span class="o">}</span>
 </code></pre></div>
-<p>Now that we have a data type, we can use it when running a fetch:</p>
-<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">cache</span> <span class="k">=</span> <span class="nc">MyInMemoryCache</span><span class="o">(</span><span class="nc">Map</span><span class="o">(</span><span class="nc">UserSource</span><span class="o">.</span><span class="n">identity</span><span class="o">(</span><span class="mi">1</span><span class="o">)</span> <span class="o">-&gt;</span> <span class="nc">User</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="s">"dialelo"</span><span class="o">)))</span>
-<span class="k">val</span> <span class="n">fch</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">User</span><span class="o">]</span> <span class="k">=</span> <span class="n">getUser</span><span class="o">(</span><span class="mi">1</span><span class="o">)</span>
-<span class="k">val</span> <span class="n">fut</span><span class="k">:</span> <span class="kt">Future</span><span class="o">[</span><span class="kt">User</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">(</span><span class="n">fch</span><span class="o">,</span> <span class="n">cache</span><span class="o">)</span>
-
-<span class="n">await</span><span class="o">(</span><span class="n">fut</span><span class="o">)</span>
-<span class="c1">//=&gt; User(1,dialelo)
+<p>Now that we have our cache implementation, we can populate it. Note how keys for the cache are tuples are derived using the data source&#39;s <code>identity</code> method on identities.</p>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">myCache</span> <span class="k">=</span> <span class="nc">MyInMemoryCache</span><span class="o">(</span><span class="nc">Map</span><span class="o">(</span><span class="nc">UserSource</span><span class="o">.</span><span class="n">identity</span><span class="o">(</span><span class="mi">1</span><span class="o">)</span> <span class="o">-&gt;</span> <span class="nc">User</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="s">"dialelo"</span><span class="o">)))</span>
+</code></pre></div>
+<p>We can now use our implementation of the cache when running a fetch.</p>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">result</span><span class="k">:</span> <span class="kt">User</span> <span class="o">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">[</span><span class="kt">Id</span><span class="o">](</span><span class="n">fetchUser</span><span class="o">,</span> <span class="n">myCache</span><span class="o">)</span>
+<span class="c1">// result: User = User(1,dialelo)
 </span></code></pre></div>
 <h1>Error handling</h1>
+
+<p>As we mentioned before, when interpreting a fetch to a target monad <code>M</code>, an implicit instance of <code>MonadError[M, Throwable]</code> has to be
+available. <a href="https://github.com/typelevel/cats/blob/master/core/src/main/scala/cats/MonadError.scala">MonadError</a> gives us a few combinators
+for working with errors, like <code>MonadError#raiseError</code> and <code>MonadError#attempt</code>.</p>
+
+<p>One of the most interesting combinators is <code>attempt</code>, which given a <code>M[A]</code> yields a <code>M[Throwable Xor A]</code>. Knowing this, we can run fetches
+in the <code>Eval</code> monad to an <code>Xor</code> and not worry about exceptions. Let&#39;s create a fetch that always fails when executed:</p>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">import</span> <span class="nn">cats.data.Xor</span>
+<span class="k">import</span> <span class="nn">fetch.implicits.evalMonadError</span>
+
+<span class="k">val</span> <span class="n">fetchError</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">User</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">error</span><span class="o">(</span><span class="k">new</span> <span class="nc">Exception</span><span class="o">(</span><span class="s">"Oh noes"</span><span class="o">))</span>
+</code></pre></div>
+<p>We can now use the Eval MonadError&#39;s <code>attempt</code> to convert a fetch result into a disjuntion and avoid throwing exceptions.</p>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">result</span><span class="k">:</span> <span class="kt">Eval</span><span class="o">[</span><span class="kt">User</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">[</span><span class="kt">Eval</span><span class="o">](</span><span class="n">fetchError</span><span class="o">)</span>
+<span class="c1">// result: cats.Eval[User] = cats.Eval$$anon$5@19efcb5c
+</span>
+<span class="k">val</span> <span class="n">safeResult</span><span class="k">:</span> <span class="kt">Eval</span><span class="o">[</span><span class="kt">Throwable</span> <span class="kt">Xor</span> <span class="kt">User</span><span class="o">]</span> <span class="k">=</span> <span class="n">evalMonadError</span><span class="o">.</span><span class="n">attempt</span><span class="o">(</span><span class="n">result</span><span class="o">)</span>
+<span class="c1">// safeResult: cats.Eval[cats.data.Xor[Throwable,User]] = cats.Later@38def830
+</span>
+<span class="k">val</span> <span class="n">finalValue</span><span class="k">:</span> <span class="kt">Throwable</span> <span class="kt">Xor</span> <span class="kt">User</span> <span class="o">=</span> <span class="n">safeResult</span><span class="o">.</span><span class="n">value</span>
+<span class="c1">// finalValue: cats.data.Xor[Throwable,User] = Left(java.lang.Exception: Oh noes)
+</span></code></pre></div>
+<p>In the above example we didn&#39;t use <code>Id</code> since interpreting a fetch to <code>Id</code> throws the exception and we can&#39;t capture it with the
+combinators in <code>MonadError</code>.</p>
+
+<h2>Missing identities</h2>
 
 <p>You probably have noticed that <code>DataSource.fetch</code> takes a list of identities and returns a map of identities to their result, taking
 into account the possibility of some identities not being found. Whenever an identity isn&#39;t found, the fetch execution will
 fail.</p>
 
-<h2>Diagnosing fetch failures</h2>
-
-<p>Whenever a fetch fails, a <code>FetchFailure</code> exception is thrown. The <code>FetchFailure</code> will have the environment, which gives you information about the execution of a fetch.</p>
-
-<p>We plan to make error handling more flexible in the future, as well as providing combinators for retrying fetches, timeouts and so on.</p>
+<p>Whenever a fetch fails, a <code>FetchFailure</code> exception is thrown. The <code>FetchFailure</code> will have the environment, which gives you information
+about the execution of the fetch.</p>
 
 <h1>Syntax</h1>
 
+<h2>Companion object</h2>
+
+<p>We&#39;ve been using cats&#39; syntax throughout the examples since its more concise and general than the
+methods in the <code>Fetch</code> companion object. However, you can use the methods in the companion object
+directly.</p>
+
+<p>Note that using cats syntax gives you a plethora of combinators, much richer that what the companion object provides.</p>
+
+<h3>pure</h3>
+
+<p>Plain values can be lifted to the Fetch monad with <code>Fetch#pure</code>:</p>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">fetchPure</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">pure</span><span class="o">(</span><span class="mi">42</span><span class="o">)</span>
+</code></pre></div>
+<p>Executing a pure fetch doesn&#39;t query any data source, as expected.</p>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">result</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">[</span><span class="kt">Id</span><span class="o">](</span><span class="n">fetchPure</span><span class="o">)</span>
+<span class="c1">// result: Int = 42
+</span></code></pre></div>
+<h3>error</h3>
+
+<p>Errors can also be lifted to the Fetch monad, in this case with <code>Fetch#error</code>. Note that interpreting
+a errorful fetch to <code>Id</code> will throw the exception so we won&#39;t do that:</p>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">fetchFail</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">error</span><span class="o">(</span><span class="k">new</span> <span class="nc">Exception</span><span class="o">(</span><span class="s">"Something went terribly wrong"</span><span class="o">))</span>
+</code></pre></div>
+<h3>join</h3>
+
+<p>We can compose two independent fetches with <code>Fetch#join</code>.</p>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">fetchJoined</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[(</span><span class="kt">Post</span>, <span class="kt">User</span><span class="o">)]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">join</span><span class="o">(</span><span class="n">getPost</span><span class="o">(</span><span class="mi">1</span><span class="o">),</span> <span class="n">getUser</span><span class="o">(</span><span class="mi">2</span><span class="o">))</span>
+</code></pre></div>
+<p>If the fetches are to the same data source they will be batched; if they aren&#39;t, they will be evaluated at the same time.</p>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">result</span><span class="k">:</span> <span class="o">(</span><span class="kt">Post</span><span class="o">,</span> <span class="kt">User</span><span class="o">)</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">[</span><span class="kt">Id</span><span class="o">](</span><span class="n">fetchJoined</span><span class="o">)</span>
+<span class="c1">// Fetching posts List(1)
+// Fetching users List(2)
+// result: (Post, User) = (Post(1,2,An article),User(2,@two))
+</span></code></pre></div>
+<h3>sequence</h3>
+
+<p>The <code>Fetch#sequence</code> combinator turns a <code>List[Fetch[A]]</code> into a <code>Fetch[List[A]]</code>, running all the fetches concurrently
+and batching when possible.</p>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">fetchSequence</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">List</span><span class="o">[</span><span class="kt">User</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">sequence</span><span class="o">(</span><span class="nc">List</span><span class="o">(</span><span class="n">getUser</span><span class="o">(</span><span class="mi">1</span><span class="o">),</span> <span class="n">getUser</span><span class="o">(</span><span class="mi">2</span><span class="o">),</span> <span class="n">getUser</span><span class="o">(</span><span class="mi">3</span><span class="o">)))</span>
+</code></pre></div>
+<p>Note that <code>Fetch#sequence</code> is not as general as the <code>sequence</code> method from <code>Traverse</code>, but performs the same optimizations.</p>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">result</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">User</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">[</span><span class="kt">Id</span><span class="o">](</span><span class="n">fetchSequence</span><span class="o">)</span>
+<span class="c1">// Fetching users List(1, 2, 3)
+// result: List[User] = List(User(1,@one), User(2,@two), User(3,@three))
+</span></code></pre></div>
+<h3>traverse</h3>
+
+<p>The <code>Fetch#traverse</code> combinator is a combination of <code>map</code> and <code>sequence</code>.</p>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">fetchTraverse</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">List</span><span class="o">[</span><span class="kt">User</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">traverse</span><span class="o">(</span><span class="nc">List</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">))(</span><span class="n">getUser</span><span class="o">)</span>
+</code></pre></div>
+<p>Note that <code>Fetch#traverse</code> is not as general as the <code>traverse</code> method from <code>Traverse</code>, but performs the same optimizations.</p>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">result</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">User</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">[</span><span class="kt">Id</span><span class="o">](</span><span class="n">fetchTraverse</span><span class="o">)</span>
+<span class="c1">// Fetching users List(1, 2, 3)
+// result: List[User] = List(User(1,@one), User(2,@two), User(3,@three))
+</span></code></pre></div>
 <h2>cats</h2>
 
 <p>Fetch is built using cats&#39; Free monad construction and thus works out of the box with
 cats syntax. Using cats&#39; syntax we can make fetch declarations more concise, without
 the need to use the combinators in the <code>Fetch</code> companion object.</p>
 
-<h3>Apply</h3>
+<p>Fetch provides its own instance of <code>Applicative[Fetch]</code>. Whenever we use applicative
+operations on more than one <code>Fetch</code> we know that the fetches are independent, thus
+we can perform optimizations such as batching and concurrent requests.</p>
+
+<p>If we were to use the default <code>Applicative[Fetch]</code> operations, which are implemented in terms of <code>flatMap</code>,
+we wouldn&#39;t have information about the independency of multiple fetches.</p>
+
+<h3>Applicative</h3>
 
 <p>The <code>|@|</code> operator allow us to combine multiple independent fetches, even when they
 are from different types, and apply a pure function to their results. We can use it
-as a more powerful alternative to <code>Fetch.join</code>:</p>
+as a more powerful alternative to the <code>product</code> method or <code>Fetch#join</code>:</p>
 <div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">import</span> <span class="nn">cats.syntax.cartesian._</span>
 
-<span class="k">val</span> <span class="n">fch</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[(</span><span class="kt">Post</span>, <span class="kt">User</span><span class="o">)]</span> <span class="k">=</span> <span class="o">(</span><span class="n">getPost</span><span class="o">(</span><span class="mi">1</span><span class="o">)</span> <span class="o">|@|</span> <span class="n">getUser</span><span class="o">(</span><span class="mi">2</span><span class="o">)).</span><span class="n">tupled</span>
-<span class="k">val</span> <span class="n">fut</span><span class="k">:</span> <span class="kt">Future</span><span class="o">[(</span><span class="kt">Post</span>, <span class="kt">User</span><span class="o">)]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">(</span><span class="n">fch</span><span class="o">)</span>
-
-<span class="n">await</span><span class="o">(</span><span class="n">fut</span><span class="o">)</span>
-<span class="c1">// ~~~&gt;[thread: 92] Fetching posts List(1)
-// ~~~&gt;[thread: 93] Fetching users List(2)
-// &lt;~~~[thread: 92] Fetching posts List(1)
-// &lt;~~~[thread: 93] Fetching users List(2)
-</span>
-<span class="c1">//=&gt; (Post(1,2,An article with id 1),User(2,@egg_2))
+<span class="k">val</span> <span class="n">fetchThree</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[(</span><span class="kt">Post</span>, <span class="kt">User</span>, <span class="kt">Post</span><span class="o">)]</span> <span class="k">=</span> <span class="o">(</span><span class="n">getPost</span><span class="o">(</span><span class="mi">1</span><span class="o">)</span> <span class="o">|@|</span> <span class="n">getUser</span><span class="o">(</span><span class="mi">2</span><span class="o">)</span> <span class="o">|@|</span> <span class="n">getPost</span><span class="o">(</span><span class="mi">2</span><span class="o">)).</span><span class="n">tupled</span>
+</code></pre></div>
+<p>Notice how the queries to posts are batched.</p>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">result</span><span class="k">:</span> <span class="o">(</span><span class="kt">Post</span><span class="o">,</span> <span class="kt">User</span><span class="o">,</span> <span class="nc">Post</span><span class="o">)</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">[</span><span class="kt">Id</span><span class="o">](</span><span class="n">fetchThree</span><span class="o">)</span>
+<span class="c1">// Fetching posts List(1, 2)
+// Fetching users List(2)
+// result: (Post, User, Post) = (Post(1,2,An article),User(2,@two),Post(2,3,Another article))
 </span></code></pre></div>
 <p>More interestingly, we can use it to apply a pure function to the results of various
 fetches.</p>
-<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">import</span> <span class="nn">cats.syntax.cartesian._</span>
-
-<span class="k">val</span> <span class="n">fch</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span> <span class="k">=</span> <span class="o">(</span><span class="n">getUser</span><span class="o">(</span><span class="mi">1</span><span class="o">)</span> <span class="o">|@|</span> <span class="n">getUser</span><span class="o">(</span><span class="mi">2</span><span class="o">)).</span><span class="n">map</span><span class="o">({</span> <span class="o">(</span><span class="n">one</span><span class="o">,</span> <span class="n">other</span><span class="o">)</span> <span class="k">=&gt;</span>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">fetchFriends</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span> <span class="k">=</span> <span class="o">(</span><span class="n">getUser</span><span class="o">(</span><span class="mi">1</span><span class="o">)</span> <span class="o">|@|</span> <span class="n">getUser</span><span class="o">(</span><span class="mi">2</span><span class="o">)).</span><span class="n">map</span><span class="o">({</span> <span class="o">(</span><span class="n">one</span><span class="o">,</span> <span class="n">other</span><span class="o">)</span> <span class="k">=&gt;</span>
   <span class="n">s</span><span class="s">"${one.username} is friends with ${other.username}"</span>
 <span class="o">})</span>
-<span class="k">val</span> <span class="n">fut</span><span class="k">:</span> <span class="kt">Future</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">(</span><span class="n">fch</span><span class="o">)</span>
-
-<span class="n">await</span><span class="o">(</span><span class="n">fut</span><span class="o">)</span>
-<span class="c1">// ~~~&gt;[thread: 56] Fetching users List(1, 2)
-// &lt;~~~[thread: 56] Fetching users List(1, 2)
+<span class="c1">// fetchFriends: fetch.Fetch[String] = Gosub(Gosub(Suspend(Concurrent(List(FetchMany(List(1, 2),UserSource$@67f6f7c1)))),&lt;function1&gt;),&lt;function1&gt;)
 </span>
-<span class="c1">//=&gt; @egg_1 is friends with @egg_2
+<span class="k">val</span> <span class="n">result</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">[</span><span class="kt">Id</span><span class="o">](</span><span class="n">fetchFriends</span><span class="o">)</span>
+<span class="c1">// Fetching users List(1, 2)
+// result: String = @one is friends with @two
 </span></code></pre></div>
-<h3>Traverse</h3>
-
-<p>Apart from using Fetch with cartesian syntax and performing all fetches in a product concurrently, we can treat Fetch as an applicative and get implicit concurrency and batching as well.</p>
-
-<p>For the next example, we&#39;ll import cats&#39; extensions to the <code>List</code> type and traverse syntax. This will allow us to use both <code>sequence</code> and <code>traverse</code> methods on lists, which are equivalent to <code>Fetch#collect</code> and <code>Fetch#traverse</code>.</p>
-<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">import</span> <span class="nn">cats.std.list._</span>
-<span class="k">import</span> <span class="nn">cats.syntax.traverse._</span>
-</code></pre></div>
-<p>We&#39;ll start by using <code>sequence</code>, which can transform <code>List[Fetch[A]]</code> to a <code>Fetch[List[A]]</code>.</p>
-<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">fch</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">List</span><span class="o">[</span><span class="kt">User</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">List</span><span class="o">(</span><span class="n">getUser</span><span class="o">(</span><span class="mi">1</span><span class="o">),</span> <span class="n">getUser</span><span class="o">(</span><span class="mi">2</span><span class="o">),</span> <span class="n">getUser</span><span class="o">(</span><span class="mi">3</span><span class="o">)).</span><span class="n">sequence</span>
-<span class="k">val</span> <span class="n">fut</span><span class="k">:</span> <span class="kt">Future</span><span class="o">[</span><span class="kt">List</span><span class="o">[</span><span class="kt">User</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">(</span><span class="n">fch</span><span class="o">)</span>
-
-<span class="n">await</span><span class="o">(</span><span class="n">fut</span><span class="o">)</span>
-<span class="c1">// ~~~&gt;[thread: 65] Fetching users List(1, 2, 3)
-// &lt;~~~[thread: 65] Fetching users List(1, 2, 3)
+<p>The avove example is equivalent to the following using the <code>Fetch#join</code> method:</p>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">fetchFriends</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">join</span><span class="o">(</span><span class="n">getUser</span><span class="o">(</span><span class="mi">1</span><span class="o">),</span> <span class="n">getUser</span><span class="o">(</span><span class="mi">2</span><span class="o">)).</span><span class="n">map</span><span class="o">({</span> <span class="k">case</span> <span class="o">(</span><span class="n">one</span><span class="o">,</span> <span class="n">other</span><span class="o">)</span> <span class="k">=&gt;</span>
+  <span class="n">s</span><span class="s">"${one.username} is friends with ${other.username}"</span>
+<span class="o">})</span>
+<span class="c1">// fetchFriends: fetch.Fetch[String] = Gosub(Gosub(Suspend(Concurrent(List(FetchMany(List(1, 2),UserSource$@67f6f7c1)))),&lt;function1&gt;),&lt;function1&gt;)
 </span>
-<span class="c1">//=&gt; List(User(1,@egg_1), User(2,@egg_2), User(3,@egg_3))
-</span></code></pre></div>
-<p>Next is <code>traverse</code>, which traverses a collection with a fetch-returning function and collapses the result into a fetch of a collection.</p>
-<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">fch</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">List</span><span class="o">[</span><span class="kt">User</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">List</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">).</span><span class="n">traverse</span><span class="o">(</span><span class="n">getUser</span><span class="o">)</span>
-<span class="k">val</span> <span class="n">fut</span><span class="k">:</span> <span class="kt">Future</span><span class="o">[</span><span class="kt">List</span><span class="o">[</span><span class="kt">User</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">(</span><span class="n">fch</span><span class="o">)</span>
-
-<span class="n">await</span><span class="o">(</span><span class="n">fut</span><span class="o">)</span>
-<span class="c1">// ~~~&gt;[thread: 62] Fetching users List(1, 2, 3)
-// &lt;~~~[thread: 62] Fetching users List(1, 2, 3)
-</span>
-<span class="c1">//=&gt;  List(User(1,@egg_1), User(2,@egg_2), User(3,@egg_3))
-</span></code></pre></div>
-<h2>scalaz</h2>
-
-<p>There is still no integration with Scalaz, but soon will be.</p>
-</div>
+<span class="k">val</span> <span class="n">result</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">[</span><span class="kt">Id</span><span class="o">](</span><span class="n">fetchFriends</span><span class="o">)</span>
+<span class="c1">// Fetching users List(1, 2)
+// result: String = @one is friends with @two
+</span></code></pre></div></div>
 
 
     </div>
@@ -652,12 +725,12 @@ fetches.</p>
     var baseURL = window.location.href;
 
     function shareSiteFacebook() {
-      var title = 'Fetch: Simple & Efficient data access for Scala(.js)';
+      var title = 'Fetch: Simple & Efficient data access for Scala and Scala.js';
       launchPopup('http://www.facebook.com/sharer/sharer.php?u='+baseURL+'&t=' + title);
     }
 
     function shareSiteTwitter() {
-      var text = 'Fetch: Simple & Efficient data access for Scala(.js) '+baseURL;
+      var text = 'Fetch: Simple & Efficient data access for Scala and Scala.js '+baseURL;
       launchPopup('https://twitter.com/home?status=' + text);
       return false;
     }
