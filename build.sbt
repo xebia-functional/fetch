@@ -61,8 +61,12 @@ lazy val docsSettings = Seq(
   publish := {},
   publishLocal := {},
   publishArtifact := false,
-  git.remoteRepo := "git@github.com:47deg/fetch.git"
-) ++ ghpages.settings ++ buildSettings
+  libraryDependencies += "com.fortysevendeg" %%% "fetch" % "0.1.0-SNAPSHOT"
+) ++ ghpages.settings ++ buildSettings ++ tutSettings ++ Seq(
+  git.remoteRepo := "git@github.com:47deg/fetch.git",
+  tutSourceDirectory := sourceDirectory.value / "tut",
+  tutTargetDirectory := sourceDirectory.value / "jekyll"
+)
 
 lazy val docs = (project in file("docs"))
   .settings(
@@ -70,3 +74,7 @@ lazy val docs = (project in file("docs"))
   )
   .settings(docsSettings: _*)
   .enablePlugins(JekyllPlugin)
+
+
+addCommandAlias("makeDocs", ";fetchJVM/publishLocal;docs/tut;docs/makeSite")
+addCommandAlias("publishDocs", ";makeDocs/ghpagesPushSite")

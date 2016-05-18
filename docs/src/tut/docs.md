@@ -34,6 +34,16 @@ First of all, add the following dependency to your SBT build file:
 
 Now you'll have Fetch available both in Scala and Scala.js.
 
+```tut:invisible
+val out = Console.out
+
+def println(msg: String): Unit = {
+  Console.withOut(out) {
+    Console.println(msg)
+  }
+}
+```
+
 # Usage
 
 In order to tell Fetch how to retrieve data, we must implement the `DataSource` typeclass.
@@ -49,7 +59,7 @@ It takes two type parameters:
  - `Identity`: the identity we want to fetch (a `UserId` if we were fetching users)
  - `Result`: the type of the data we retrieve (a `User` if we were fetching users)
 
-The `fetch` method takes a non empty list of identities and must return an [`Eval`](https://github.com/typelevel/cats/blob/master/core/src/main/scala/cats/Eval.scala) that will result
+The `fetch` method takes a non empty list of identities and must return an [Eval](https://github.com/typelevel/cats/blob/master/core/src/main/scala/cats/Eval.scala) that will result
 in a map from identities to results. Accepting a list of identities gives Fetch the ability to batch requests to
 the same data source, and returning a mapping from identities to results Fetch can detect whenever an identity
 couldn't be fetched or no longer exists.
@@ -61,16 +71,15 @@ Returning `Eval` makes it possible to defer evaluation with a monad when running
 Now that we know about the `DataSource` typeclass, let's write our first data source! We'll start implementing a data
 source for fetching users given their id. The first thing we'll do is define the types for user ids and users.
 
-```scala
+```tut:silent
 type UserId = Int
 case class User(id: UserId, username: String)
 ```
 
 And now we're ready to write our user data source, we'll emulate a database with an in-memory map.
 
-```scala
+```tut:silent
 import cats.Eval
-
 import fetch._
 
 val userDatabase: Map[UserId, User] = Map(
@@ -92,7 +101,7 @@ implicit object UserSource extends DataSource[UserId, User]{
 Now that we have a data source we can write a function for fetching users
 given an id, we just have to pass a `UserId` as an argument to `Fetch`.
 
-```scala
+```tut:silent
 def getUser(id: UserId): Fetch[User] = Fetch(id) // or, more explicitly: Fetch(id)(UserSource)
 ```
 
@@ -100,11 +109,19 @@ def getUser(id: UserId): Fetch[User] = Fetch(id) // or, more explicitly: Fetch(i
 
 We are now ready to creating and run fetches. Note the distinction between Fetch creation and execution.
 When we are creating and combinining `Fetch` values, we are just constructing a recipe of our data
-dependencies. A `Fetch` is just a value, and in order to get something out of it, we must execute it.
-We can execute a `Fetch` value as many times as we want, even to different target monads, since it is just
+dependencies.
+
+```tut:silent
+import cats.Id
+import fetch.implicits._
+
+val fetchUser: Fetch[User] = getUser(1)
+```
+
+A `Fetch` is just a value, and in order to get something out of it, we must execute it. We can execute a `Fetch` value as many times as we want, even to different target monads, since it is just
 an immutable value.
 
-We need to provide Fetch with a target monad when we want to execute a fetch. We'll be using `Id` for now,
+We need to provide a target monad when we want to execute a fetch. We'll be using `Id` for now,
 make sure to import `fetch.implicits._` since Fetch needs an instance of `MonadError[Id, Throwable]` for running
 a fetch in the `Id` monad.
 
@@ -113,19 +130,11 @@ Note that Fetch provides `MonadError` instances for a variety of different monad
 
 Let's run our first fetch!
 
-```scala
-import cats.Id
-import fetch.implicits._
-
-val fch: Fetch[User] = getUser(1)
-
-val result: User = Fetch.run[Id](fch)
-// Fetching users List(1)
-
-//=> result: User = User(1,@one)
+```tut:book
+val result: User = Fetch.run[Id](fetchUser)
 ```
 
-In the previous example, we:
+In the previous examples, we:
 
 - brought the implicit instance of `MonadError[Id, Throwable]` into scope importing `fetch.implicits._`
 - created a fetch for a `User` using the `getUser` function
@@ -135,51 +144,51 @@ As you can see, the fetch was executed only in one round to fetch the user and w
 
 ### Sequencing
 
-When we have two fetches that depend on each other, we can use `flatMap` to combine them. When composing fetches with `flatMap` we are telling Fetch that the second one depends on the previous one, so it isn't able to make any optimizations.
+When we have two fetches that depend on each other, we can use `flatMap` to combine them. The most straightforward way is to use a for comprehension:
 
-```scala
-val fch: Fetch[(User, User)] = for {
+```tut:silent
+val fetchTwoUsers: Fetch[(User, User)] = for {
   aUser <- getUser(1)
   anotherUser <- getUser(aUser.id + 1)
 } yield (aUser, anotherUser)
+```
 
-val result: (User, User) = Fetch.run[Id](fch)
-// Fetching users List(1)
-// Fetching users List(2)
+When composing fetches with `flatMap` we are telling Fetch that the second one depends on the previous one, so it isn't able to make any optimizations. When running the above fetch, we will query the user data source in two rounds: one for the user with id 1 and another for the user with id 2.
 
-//=> result: (User, User) = (User(1,@one),User(2,@two))
+```tut:book
+val result: (User, User) = Fetch.run[Id](fetchTwoUsers)
 ```
 
 ### Batching
 
-If we combine two independent requests to the same data source, Fetch will
-automatically batch them together into a single request. Fetch's `join` operator
-help us tell the library that two fetches are independent, and thus can be batched
-if they use the same data source:
+If we combine two independent requests to the same data source, Fetch will 
+automatically batch them together into a single request. Applicative operations like the product of two fetches
+help us tell the library that those fetches are independent, and thus can be batched if they use the same data source:
 
-```scala
+```tut:silent
 import cats.syntax.cartesian._
 
-val fch: Fetch[(User, User)] = getUser(1).product(getUser(2))
+val fetchProduct: Fetch[(User, User)] = getUser(1).product(getUser(2))
+```
 
-val result: (User, User) = Fetch.run[Id](fch)
-// Fetching users List(1, 2)
+Note how both ids (1 and 2) are requested in a single query to the data source when executing the fetch.
 
-//=> result: (User, User) = (User(1,@one),User(2,@two))
+```tut:book
+val result: (User, User) = Fetch.run[Id](fetchProduct)
 ```
 
 ### Deduplication
 
-If two independent requests ask for the same identity, Fetch will detect that and
-deduplicate such id.
+If two independent requests ask for the same identity, Fetch will detect it and deduplicate such id.
 
-```scala
-val fch: Fetch[(User, User)] = getUser(1).product(getUser(1))
+```tut:silent
+val fetchDuped: Fetch[(User, User)] = getUser(1).product(getUser(1))
+```
 
-val result: (User, User) = Fetch.run[Id](fch)
-// Fetching users List(1)
+Note that when running the fetch, the identity 1 is only requested once even when it is needed by both fetches.
 
-//=> result: (User, User) = (User(1,@one),User(1,@one))
+```tut:book
+val result: (User, User) = Fetch.run[Id](fetchDuped)
 ```
 
 ### Caching
@@ -189,16 +198,17 @@ fetches in a very modular way, asking for all the data they need as if it
 was in memory; furthermore, it also avoids refetching an identity that may have changed
 during the course of a fetch execution, which can lead to inconsistencies in the data.
 
-```scala
-val fch: Fetch[(User, User)] = for {
+```tut:silent
+val fetchCached: Fetch[(User, User)] = for {
   aUser <- getUser(1)
   anotherUser <- getUser(1)
 } yield (aUser, anotherUser)
+```
 
-val result: (User, User) = Fetch.run[Id](fch)
-// Fetching users List(1)
+The above fetch asks multiple times for the same identity, let's see what happens when executing it.
 
-//=> result: (User, User) = (User(1,@one),User(1,@one))
+```tut:book
+val result: (User, User) = Fetch.run[Id](fetchCached)
 ```
 
 As you can see, the `User` with id 1 was fetched only once in a single round-trip. The next
@@ -211,7 +221,7 @@ Now that we know about some of the optimizations that Fetch can make to read dat
 let's look at how we can combine more than one data source. Imagine that we are rendering a blog
 and have the following types for posts and post information:
 
-```scala
+```tut:silent
 type PostId = Int
 case class Post(id: PostId, author: UserId, content: String)
 case class PostInfo(topic: String)
@@ -222,7 +232,7 @@ As you can see, every `Post` has an author, but it refers to it by its id. We'll
 - one for retrieving a post given a post id
 - another for retrieveng post metadata given a post id
 
-```scala
+```tut:silent
 val postDatabase: Map[PostId, Post] = Map(
   1 -> Post(1, 2, "An article"),
   2 -> Post(2, 3, "Another article"),
@@ -260,23 +270,23 @@ def getPostInfo(id: PostId): Fetch[PostInfo] = Fetch(id)
 
 We can also implement a function for fetching a post's author given a post:
 
-```scala
+```tut:silent
 def getAuthor(p: Post): Fetch[User] = Fetch(p.author)
 ```
 
 Now that we have multiple sources, let's mix them in the same fetch.
 
-```scala
-val fch: Fetch[(Post, User)] = for {
+```tut:silent
+val fetchMulti: Fetch[(Post, User)] = for {
   post <- getPost(1)
   user <- getAuthor(post)
 } yield (post, user)
+```
 
-val result: (Post, User) = Fetch.run[Id](fch)
-// Fetching posts List(1)
-// Fetching users List(2)
+We can now run the previous fetch, querying the posts data source first and the user data source afterwards.
 
-//=> result: (Post, User) = (Post(1,2,An article),User(2,@two))
+```tut:book
+val result: (Post, User) = Fetch.run[Id](fetchMulti)
 ```
 
 In the previous example we fetched a post given its id, and then fetched its author. These
@@ -293,14 +303,14 @@ Combining multiple independent requests to the same data source can have two out
 In the following example we are fetching from different data sources so both requests will be
 evaluated together.
 
-```scala
-val fch: Fetch[(Post, User)] = getPost(1).product(getUser(2))
+```tut:silent
+val fetchConcurrent: Fetch[(Post, User)] = getPost(1).product(getUser(2))
+```
 
-val result: (Post, User) = Fetch.run[Id](fch)
-// Fetching posts List(1)
-// Fetching users List(2)
+The above example combines data from two different sources, and the library knows they are independent.
 
-//=> result: (Post, User) = (Post(1,2,An article),User(2,@two))
+```tut:book
+val result: (Post, User) = Fetch.run[Id](fetchConcurrent)
 ```
 
 Since we are interpreting the fetch to the `Id` monad, that doesn't give us any parallelism, the fetches
@@ -316,20 +326,19 @@ other combinators.
 
 Whenever we have a list of fetches of the same type and want to run them concurrently we can use the `sequence`
 combinator. It takes a `List[Fetch[A]]` and gives you back a `Fetch[List[A]]`, batching the fetches to the same
-data source and running fetches to different sources in parallel.
+data source and running fetches to different sources in parallel. Note that the `sequence` combinator is more general and not only works on lists but any type that has a [Traverse](http://typelevel.org/cats/tut/traverse.html) instance.
 
-Note that the `sequence` combinator is more general and not only works on lists but any type that has a [`Traverse`](http://typelevel.org/cats/tut/traverse.html) instance.
-
-```scala
+```tut:silent
 import cats.std.list._
 import cats.syntax.traverse._
 
-val fch: Fetch[List[User]] = List(getUser(1), getUser(2), getUser(3)).sequence
+val fetchSequence: Fetch[List[User]] = List(getUser(1), getUser(2), getUser(3)).sequence
+```
 
-val result: List[User] = Fetch.run[Id](fch)
-// Fetching users List(1, 2, 3)
+Since `sequence` uses applicative operations internally, the library is able to perform optimizations across all the sequenced fetches.
 
-//=> result: List[User] = List(User(1,@one), User(2,@two), User(3,@three)
+```tut:book
+val result: List[User] = Fetch.run[Id](fetchSequence)
 ```
 
 As you can see, requests to the user data source were batched, thus fetching all the data in one round.
@@ -338,13 +347,14 @@ As you can see, requests to the user data source were batched, thus fetching all
 
 Another interesing combinator is `traverse`, which is the composition of `map` and `sequence`.
 
-```scala
-val fch: Fetch[List[User]] = List(1, 2, 3).traverse(getUser)
+```tut:silent
+val fetchTraverse: Fetch[List[User]] = List(1, 2, 3).traverse(getUser)
+```
 
-val result: List[User] = Fetch.run[Id](fch)
-// Fetching users List(1, 2, 3)
+As you may have guessed, all the optimizations made by `sequence` still apply when using `traverse`.
 
-//=> result: List[User] = List(User(1,@one), User(2,@two), User(3,@three))
+```tut:book
+val result: List[User] = Fetch.run[Id](fetchTraverse)
 ```
 
 # Interpreting a fetch to an async capable monad
@@ -360,28 +370,26 @@ parallelism whenever we can make requests to multiple independent data sources a
 
 For interpreting a fetch into a `Future` we must first import the `MonadError[Future, Throwable]` available in cats.
 
-```scala
-import cats.std.future._
-```
-
-We can now interpret a fetch into a future:
-
-```scala
+```tut:silent
 import cats.std.future._
 
 import scala.concurrent._
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 
-val fch: Fetch[(User, Post)] = (getUser(1) |@| getPost(1)).tupled
 
-val fut: Future[(User, Post)] = Fetch.run[Future](fch)
-// Fetching users List(1)
-// Fetching posts List(1)
-
-Await.result(fut, 1 seconds) // this call blocks the current thread, don't do this at home!
-//=> res0: (User, Post) = (User(1,@one),Post(1,2,An article))
+val fetchParallel: Fetch[(User, Post)] = (getUser(1) |@| getPost(1)).tupled
 ```
+
+We can now interpret a fetch into a future:
+
+```tut:book
+val fut: Future[(User, Post)] = Fetch.run[Future](fetchParallel)
+Await.result(fut, 1 seconds) // this call blocks the current thread, don't do this at home!
+```
+
+Since futures run in a thread pool, we need to explicitly set println output to the standard output. Note how both requests
+to the data sources run in parallel, each in its own logical thread.
 
 # Caching
 
@@ -392,30 +400,29 @@ one and even implement a custom cache.
 ## Prepopulating a cache
 
 We'll be using the default in-memory cache, prepopulated with some data. The cache key of an identity
-is calculated with the `DataSource`'s `identity` method; we can pass a cache as the second argument when
-running a fetch with `Fetch.run`.
+is calculated with the `DataSource`'s `identity` method.
 
-```scala
-val fch: Fetch[User] = getUser(1)
-
-
-val result: User = Fetch.run[Id](fch, cache)
-//=> result: User = User(1,@dialelo)
+```tut:silent
+val cache = InMemoryCache(UserSource.identity(1) -> User(1, "@dialelo"))
 ```
 
-As you can see, when all the data is cached no fetch is executed at all since the results are available
+We can pass a cache as the second argument when running a fetch with `Fetch.run`.
+
+```tut:book
+val result: User = Fetch.run[Id](fetchUser, cache)
+```
+
+As you can see, when all the data is cached no query to the data sources is executed at all since the results are available
 in the cache.
+
+```tut:silent
+val fetchManyUsers: Fetch[List[User]] = List(1, 2, 3).traverse(getUser)
+```
 
 If only part of the data is cached, the cached data won't be asked for:
 
-```scala
-val fch: Fetch[List[User]] = List(1, 2, 3).traverse(getUser)
-val cache = InMemoryCache(UserSource.identity(1) -> User(1, "@dialelo"))
-
-val result: List[User] = Fetch.run[Id](fch, cache)
-// Fetching users List(2, 3)
-
-//=> result: List[User] = List(User(1,@dialelo), User(2,@two), User(3,@three))
+```tut:book
+val result: List[User] = Fetch.run[Id](fetchManyUsers, cache)
 ```
 
 ## Replaying a fetch without querying any data source
@@ -428,14 +435,10 @@ instead of `Fetch.run`.
 Knowing this, we can replay a fetch reusing the cache of a previous one. The replayed fetch won't have to call any of the
 data sources.
 
-```scala
-val fch: Fetch[List[User]] = List(1, 2, 3).traverse(getUser)
+```tut:book
+val populatedCache = Fetch.runEnv[Id](fetchManyUsers).cache
 
-val env: Env = Fetch.runEnv[Id](fch)
-// Fetching users List(1, 2, 3)
-
-val result: List[User] = Fetch.run[Id](fch, env.cache)
-//=> result: List[User] = List(User(1,@one), User(2,@two), User(3,@three))
+val result: List[User] = Fetch.run[Id](fetchManyUsers, populatedCache)
 ```
 
 ## Implementing a custom cache
@@ -453,7 +456,7 @@ trait DataSourceCache {
 
 Let's reimplement the in memory cache found in Fetch, we'll write a case class that'll store the cache contents in an in-memory immutable map and implement `DataSourceCache`.
 
-```scala
+```tut:silent
 case class MyInMemoryCache(state: Map[DataSourceIdentity, Any]) extends DataSourceCache {
   override def get(k: DataSourceIdentity): Option[Any] =
     state.get(k)
@@ -463,40 +466,43 @@ case class MyInMemoryCache(state: Map[DataSourceIdentity, Any]) extends DataSour
 }
 ```
 
-Now that we have a data type, we can use it when running a fetch:
+Now that we have our cache implementation, we can populate it. Note how keys for the cache are tuples are derived using the data source's `identity` method on identities.
 
-```scala
-val cache = MyInMemoryCache(Map(UserSource.identity(1) -> User(1, "dialelo")))
-val fch: Fetch[User] = getUser(1)
+```tut:silent
+val myCache = MyInMemoryCache(Map(UserSource.identity(1) -> User(1, "dialelo")))
+```
 
-val result: User = Fetch.run[Id](fch, cache)
-//=> result: User = User(1,dialelo)
+We can now use our implementation of the cache when running a fetch.
+
+```tut:book
+val result: User = Fetch.run[Id](fetchUser, myCache)
 ```
 
 # Error handling
 
 As we mentioned before, when interpreting a fetch to a target monad `M`, an implicit instance of `MonadError[M, Throwable]` has to be
-available. [`MonadError`](https://github.com/typelevel/cats/blob/master/core/src/main/scala/cats/MonadError.scala) gives us a few combinators
+available. [MonadError](https://github.com/typelevel/cats/blob/master/core/src/main/scala/cats/MonadError.scala) gives us a few combinators
 for working with errors, like `MonadError#raiseError` and `MonadError#attempt`.
 
 One of the most interesting combinators is `attempt`, which given a `M[A]` yields a `M[Throwable Xor A]`. Knowing this, we can run fetches
-in the `Eval` monad to an `Xor` and not worry about exceptions:
+in the `Eval` monad to an `Xor` and not worry about exceptions. Let's create a fetch that always fails when executed:
 
-```scala
+```tut:silent
 import cats.data.Xor
 import fetch.implicits.evalMonadError
 
-val fch: Fetch[User] = Fetch.error(new Exception("Oh noes"))
-
-val result: Eval[User] = Fetch.run[Eval](fch)
-
-val safeResult: Eval[Throwable Xor User] = evalMonadError.attempt(result)
-
-val finalValue: Throwable Xor User = safeResult.value
-//=> finalValue: cats.data.Xor[Throwable,User] = Left(java.lang.Exception: Oh noes)
+val fetchError: Fetch[User] = Fetch.error(new Exception("Oh noes"))
 ```
 
-In the above example we didn't use `Id` since interpreting a fetch to `Id` throws the exceptions and we can't capture it with the
+We can now use the Eval MonadError's `attempt` to convert a fetch result into a disjuntion and avoid throwing exceptions.
+
+```tut:book
+val result: Eval[User] = Fetch.run[Eval](fetchError)
+val safeResult: Eval[Throwable Xor User] = evalMonadError.attempt(result)
+val finalValue: Throwable Xor User = safeResult.value
+```
+
+In the above example we didn't use `Id` since interpreting a fetch to `Id` throws the exception and we can't capture it with the
 combinators in `MonadError`.
 
 ## Missing identities
@@ -522,11 +528,14 @@ Note that using cats syntax gives you a plethora of combinators, much richer tha
 
 Plain values can be lifted to the Fetch monad with `Fetch#pure`:
 
-```scala
-val fch: Fetch[Int] = Fetch.pure(42)
+```tut:silent
+val fetchPure: Fetch[Int] = Fetch.pure(42)
+```
 
-val result: Int = Fetch.run[Id](fch)
-//=> result: Int = 42
+Executing a pure fetch doesn't query any data source, as expected.
+
+```tut:book
+val result: Int = Fetch.run[Id](fetchPure)
 ```
 
 ### error
@@ -534,23 +543,22 @@ val result: Int = Fetch.run[Id](fch)
 Errors can also be lifted to the Fetch monad, in this case with `Fetch#error`. Note that interpreting
 a errorful fetch to `Id` will throw the exception so we won't do that:
 
-```scala
-val fch: Fetch[Int] = Fetch.error(new Exception("Something went terribly wrong"))
+```tut:silent
+val fetchFail: Fetch[Int] = Fetch.error(new Exception("Something went terribly wrong"))
 ```
 
 ### join
 
-We can compose two independent fetches with `Fetch#join`. If the fetches are to the same data source they will
-be batched; if they aren't, they will be evaluated at the same time.
+We can compose two independent fetches with `Fetch#join`.
 
-```scala
-val fch: Fetch[(Post, User)] = Fetch.join(getPost(1), getUser(2))
+```tut:silent
+val fetchJoined: Fetch[(Post, User)] = Fetch.join(getPost(1), getUser(2))
+```
 
-val result: (Post, User) = Fetch.run[Id](fch)
-// Fetching posts List(1)
-// Fetching users List(2)
+If the fetches are to the same data source they will be batched; if they aren't, they will be evaluated at the same time.
 
-//=> result: (Post, User) = (Post(1,2,An article),User(2,@two))
+```tut:book
+val result: (Post, User) = Fetch.run[Id](fetchJoined)
 ```
 
 ### sequence
@@ -558,26 +566,28 @@ val result: (Post, User) = Fetch.run[Id](fch)
 The `Fetch#sequence` combinator turns a `List[Fetch[A]]` into a `Fetch[List[A]]`, running all the fetches concurrently
 and batching when possible.
 
-```scala
-val fch: Fetch[List[User]] = Fetch.sequence(List(getUser(1), getUser(2), getUser(3)))
+```tut:silent
+val fetchSequence: Fetch[List[User]] = Fetch.sequence(List(getUser(1), getUser(2), getUser(3)))
+```
 
-val result: List[User] = Fetch.run[Id](fch)
-// Fetching users List(1, 2, 3)
+Note that `Fetch#sequence` is not as general as the `sequence` method from `Traverse`, but performs the same optimizations.
 
-//=> result: List[User] = List(User(1,@one), User(2,@two), User(3,@three))
+```tut:book
+val result: List[User] = Fetch.run[Id](fetchSequence)
 ```
 
 ### traverse
 
 The `Fetch#traverse` combinator is a combination of `map` and `sequence`.
 
-```scala
-val fch: Fetch[List[User]] = Fetch.traverse(List(1, 2, 3))(getUser)
+```tut:silent
+val fetchTraverse: Fetch[List[User]] = Fetch.traverse(List(1, 2, 3))(getUser)
+```
 
-val result: List[User] = Fetch.run[Id](fch)
-// Fetching users List(1, 2, 3)
+Note that `Fetch#traverse` is not as general as the `traverse` method from `Traverse`, but performs the same optimizations.
 
-//=> result: List[User] = List(User(1,@one), User(2,@two), User(3,@three))
+```tut:book
+val result: List[User] = Fetch.run[Id](fetchTraverse)
 ```
 
 ## cats
@@ -599,45 +609,35 @@ The `|@|` operator allow us to combine multiple independent fetches, even when t
 are from different types, and apply a pure function to their results. We can use it
 as a more powerful alternative to the `product` method or `Fetch#join`:
 
-```scala
+```tut:silent
 import cats.syntax.cartesian._
 
-val fch: Fetch[(Post, User, Post)] = (getPost(1) |@| getUser(2) |@| getPost(2)).tupled
+val fetchThree: Fetch[(Post, User, Post)] = (getPost(1) |@| getUser(2) |@| getPost(2)).tupled
+```
 
-val result: (Post, User, Post) = Fetch.run[Id](fch)
-// Fetching posts List(1, 2)
-// Fetching users List(2)
+Notice how the queries to posts are batched.
 
-//=> result: (Post, User, Post) = (Post(1,2,An article),User(2,@two),Post(2,3,Another article))
+```tut:book
+val result: (Post, User, Post) = Fetch.run[Id](fetchThree)
 ```
 
 More interestingly, we can use it to apply a pure function to the results of various
 fetches.
 
-```scala
-import cats.syntax.cartesian._
-
-val fch: Fetch[String] = (getUser(1) |@| getUser(2)).map({ (one, other) =>
+```tut:book
+val fetchFriends: Fetch[String] = (getUser(1) |@| getUser(2)).map({ (one, other) =>
   s"${one.username} is friends with ${other.username}"
 })
 
-val result: String = Fetch.run[Id](fch)
-// Fetching users List(1, 2)
-
-//=> result: String = @one is friends with @two
+val result: String = Fetch.run[Id](fetchFriends)
 ```
 
 The avove example is equivalent to the following using the `Fetch#join` method:
 
-```scala
-import cats.syntax.cartesian._
-
-val fch: Fetch[String] = Fetch.join(getUser(1), getUser(2)).map({ case (one, other) =>
+```tut:book
+val fetchFriends: Fetch[String] = Fetch.join(getUser(1), getUser(2)).map({ case (one, other) =>
   s"${one.username} is friends with ${other.username}"
 })
 
-val result: String = Fetch.run[Id](fch)
-// Fetching users List(1, 2)
-
-//=> result: String = @one is friends with @two
+val result: String = Fetch.run[Id](fetchFriends)
 ```
