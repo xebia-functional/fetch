@@ -16,16 +16,16 @@
 
 package fetch
 
-
 /**
- * A `Cache` trait so the users of the library can provide their own cache.
- */
+  * A `Cache` trait so the users of the library can provide their own cache.
+  */
 trait DataSourceCache {
   def update[A](k: DataSourceIdentity, v: A): DataSourceCache
 
   def get(k: DataSourceIdentity): Option[Any]
 
-  def cacheResults[I, A](results: Map[I, A], ds: DataSource[I, A]): DataSourceCache = {
+  def cacheResults[I, A](
+      results: Map[I, A], ds: DataSource[I, A]): DataSourceCache = {
     results.foldLeft(this)({
       case (acc, (i, a)) => acc.update(ds.identity(i), a)
     })
