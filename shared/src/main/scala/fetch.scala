@@ -76,7 +76,7 @@ object `package` {
     ): Fetch[A] =
       Free.liftF(FetchOne[I, A](i, DS))
 
-    def deps[A](f: Fetch[_]): List[FetchOp[_]] = {
+    private[this] def deps[A](f: Fetch[_]): List[FetchOp[_]] = {
       type FM = List[FetchOp[_]]
 
       f.foldMap[Const[FM, ?]](new (FetchOp ~> Const[FM, ?]) {
@@ -97,7 +97,7 @@ object `package` {
       }).getConst
     }
 
-    def combineDeps(ds: List[FetchOp[_]]): List[FetchMany[_, _]] = {
+    private[this] def combineDeps(ds: List[FetchOp[_]]): List[FetchMany[_, _]] = {
       ds.foldLeft(Map.empty[Any, List[_]])((acc, op) => op match {
         case one @ FetchOne(id, ds) => acc.updated(ds, acc.get(ds).fold(List(id))(accids => accids :+ id))
         case many @ FetchMany(ids, ds) => acc.updated(ds, acc.get(ds).fold(ids)(accids => accids ++ ids))
