@@ -641,3 +641,9 @@ val fetchFriends: Fetch[String] = Fetch.join(getUser(1), getUser(2)).map({ case 
 
 val result: String = Fetch.run[Id](fetchFriends)
 ```
+
+# Resources
+
+- [Code](https://github.com/47deg/fetch) on GitHub.
+- [Documentation site](http://47deg.github.io/fetch/)
+- [Fetch: Simple & Efficient data access](https://www.youtube.com/watch?v=45fcKYFb0EU) talk at [Typelevel Summit in Oslo](http://typelevel.org/event/2016-05-summit-oslo/)
