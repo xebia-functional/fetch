@@ -28,8 +28,9 @@ lazy val commonSettings = Seq(
     "-language:higherKinds",
     "-language:existentials",
     "-language:postfixOps"
-  )
-)
+  ),
+  scalafmtConfig := Some(file(".scalafmt"))
+) ++ reformatOnCompileSettings
 
 lazy val allSettings = buildSettings ++ commonSettings
 
@@ -54,3 +55,4 @@ lazy val root = project.in(file("."))
     publish := {},
     publishLocal := {}
   )
+
