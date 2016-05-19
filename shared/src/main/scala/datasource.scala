@@ -24,7 +24,7 @@ import cats.Eval
   * `M`.
   */
 trait DataSource[I, A] {
-  def name: DataSourceName = this.toString
+  def name: DataSourceName               = this.toString
   def identity(i: I): DataSourceIdentity = (name, i)
   def fetch(ids: List[I]): Eval[Map[I, A]]
 }

@@ -212,11 +212,11 @@ val result = Await.result(fut, 1 seconds)
 #+END_SRC
 
 This works fine for one article and author, but when we have more than one we should start using
-the combinators that ~Fetch~ offers. The most simple one is ~collect~, given a list of fetches
+the combinators that ~Fetch~ offers. The most simple one is ~sequence~, given a list of fetches
 of the same type it will run them concurrently, batching whatever it can:
 
 #+BEGIN_SRC scala
-val fetch: Fetch[List[Article]] = Fetch.collect(List(getArticle(1), getArticle(2)))
+val fetch: Fetch[List[Article]] = Fetch.sequence(List(getArticle(1), getArticle(2)))
 
 val fut: Future[List[Article]] = Fetch.run(fetch)
 
@@ -226,7 +226,7 @@ val result = Await.result(fut, 1 seconds)
 // result: List[Article] = List(Article(1,An article with id 1,11), Article(2,An article with id 2,12))
 #+END_SRC
 
-A similar combinator is ~traverse~, which is the combination of ~map~ and ~collect~:
+A similar combinator is ~traverse~, which is the combination of ~map~ and ~sequence~:
 
 #+BEGIN_SRC scala
 val fetch: Fetch[List[Article]] = Fetch.traverse(List(1, 2))(getArticle)

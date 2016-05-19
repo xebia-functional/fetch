@@ -54,13 +54,13 @@ case class Round(
 
   def isConcurrent: Boolean = kind match {
     case ConcurrentRound(_) => true
-    case _ => false
+    case _                  => false
   }
 }
 
 sealed trait RoundKind
-final case class OneRound(id: Any) extends RoundKind
-final case class ManyRound(ids: List[Any]) extends RoundKind
+final case class OneRound(id: Any)                            extends RoundKind
+final case class ManyRound(ids: List[Any])                    extends RoundKind
 final case class ConcurrentRound(ids: Map[String, List[Any]]) extends RoundKind
 
 /**

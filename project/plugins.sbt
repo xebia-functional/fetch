@@ -1,3 +1,7 @@
 addSbtPlugin("org.scala-js"  % "sbt-scalajs" % "0.6.8")
 addSbtPlugin("de.heikoseeberger" % "sbt-header" % "1.5.1")
+addSbtPlugin("com.typesafe.sbt" % "sbt-site" % "1.0.0")
+addSbtPlugin("com.typesafe.sbt" % "sbt-ghpages" % "0.5.4" exclude("com.typesafe.sbt", "sbt-git"))
+addSbtPlugin("com.typesafe.sbt" % "sbt-git" % "0.8.5")
+addSbtPlugin("org.tpolecat" % "tut-plugin" % "0.4.2")
 addSbtPlugin("com.geirsson" % "sbt-scalafmt" % "0.2.5")

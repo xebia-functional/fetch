@@ -24,8 +24,7 @@ trait DataSourceCache {
 
   def get(k: DataSourceIdentity): Option[Any]
 
-  def cacheResults[I, A](
-      results: Map[I, A], ds: DataSource[I, A]): DataSourceCache = {
+  def cacheResults[I, A](results: Map[I, A], ds: DataSource[I, A]): DataSourceCache = {
     results.foldLeft(this)({
       case (acc, (i, a)) => acc.update(ds.identity(i), a)
     })

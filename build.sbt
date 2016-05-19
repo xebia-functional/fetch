@@ -3,6 +3,8 @@ import de.heikoseeberger.sbtheader.license.Apache2_0
 
 lazy val buildSettings = Seq(
   organization := "com.fortysevendeg",
+  organizationName := "47 Degrees",
+  organizationHomepage := Option(new URL("http://47deg.com")),
   scalaVersion := "2.11.8",
   crossScalaVersions := Seq("2.10.6", "2.11.8"),
   headers := Map(
@@ -54,5 +56,23 @@ lazy val root = project.in(file("."))
   .settings(
     publish := {},
     publishLocal := {}
-  )
+)
 
+lazy val docsSettings = ghpages.settings ++ buildSettings ++ tutSettings ++ Seq(
+  git.remoteRepo := "git@github.com:47deg/fetch.git",
+  tutSourceDirectory := sourceDirectory.value / "tut",
+  tutTargetDirectory := sourceDirectory.value / "jekyll",
+  siteSubdirName in Jekyll := "jeje",
+  siteSubdirName in SiteScaladoc := "api",
+  aggregate in doc := true
+)
+
+lazy val docs = (project in file("docs"))
+  .settings(
+    moduleName := "fetch-docs"
+   )
+  .dependsOn(fetchJVM)
+  .enablePlugins(JekyllPlugin)
+  .settings(docsSettings: _*)
+
+addCommandAlias("makeDocs", ";docs/tut;docs/makeSite")

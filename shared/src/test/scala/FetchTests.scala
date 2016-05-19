@@ -307,21 +307,21 @@ class FetchTests extends FreeSpec with Matchers {
     totalFetched(rounds) shouldEqual 6
   }
 
-  "Every level of collected concurrent of concurrent fetches is batched" in {
+  "Every level of sequenced concurrent of concurrent fetches is batched" in {
     val fetch = Fetch.join(
       Fetch.join(
         for {
-          a <- Fetch.collect(List(one(2), one(3), one(4)))
-          b <- Fetch.collect(List(many(0), many(1)))
-          c <- Fetch.collect(List(one(9), one(10), one(11)))
+          a <- Fetch.sequence(List(one(2), one(3), one(4)))
+          b <- Fetch.sequence(List(many(0), many(1)))
+          c <- Fetch.sequence(List(one(9), one(10), one(11)))
         } yield c,
         for {
-          a <- Fetch.collect(List(one(5), one(6), one(7)))
-          b <- Fetch.collect(List(many(2), many(3)))
-          c <- Fetch.collect(List(one(12), one(13), one(14)))
+          a <- Fetch.sequence(List(one(5), one(6), one(7)))
+          b <- Fetch.sequence(List(many(2), many(3)))
+          c <- Fetch.sequence(List(one(12), one(13), one(14)))
         } yield c
       ),
-      Fetch.collect(List(one(15), one(16), one(17)))
+      Fetch.sequence(List(one(15), one(16), one(17)))
     )
 
     val env = Fetch.runEnv[Eval](fetch).value
@@ -376,19 +376,19 @@ class FetchTests extends FreeSpec with Matchers {
 
   "We can collect a list of Fetch into one" in {
     val sources: List[Fetch[Int]] = List(one(1), one(2), one(3))
-    val fetch: Fetch[List[Int]] = Fetch.collect(sources)
+    val fetch: Fetch[List[Int]] = Fetch.sequence(sources)
     Fetch.run[Eval](fetch).value shouldEqual List(1, 2, 3)
   }
 
   "We can collect a list of Fetches with heterogeneous sources" in {
     val sources: List[Fetch[Int]] = List(one(1), one(2), one(3), anotherOne(4), anotherOne(5))
-    val fetch: Fetch[List[Int]] = Fetch.collect(sources)
+    val fetch: Fetch[List[Int]] = Fetch.sequence(sources)
     Fetch.run[Eval](fetch).value shouldEqual List(1, 2, 3, 4, 5)
   }
 
-  "Collected fetches are run concurrently" in {
+  "Sequenced fetches are run concurrently" in {
     val sources: List[Fetch[Int]] = List(one(1), one(2), one(3), anotherOne(4), anotherOne(5))
-    val fetch: Fetch[List[Int]] = Fetch.collect(sources)
+    val fetch: Fetch[List[Int]] = Fetch.sequence(sources)
 
     val rounds = Fetch.runEnv[Eval](fetch).value.rounds
 
@@ -396,9 +396,9 @@ class FetchTests extends FreeSpec with Matchers {
     totalBatches(rounds) shouldEqual 2
   }
 
-  "Collected fetches are deduped" in {
+  "Sequenced fetches are deduped" in {
     val sources: List[Fetch[Int]] = List(one(1), one(2), one(1))
-    val fetch: Fetch[List[Int]] = Fetch.collect(sources)
+    val fetch: Fetch[List[Int]] = Fetch.sequence(sources)
 
     val rounds = Fetch.runEnv[Eval](fetch).value.rounds
 
@@ -406,9 +406,9 @@ class FetchTests extends FreeSpec with Matchers {
     concurrent(rounds).size shouldEqual 1
   }
 
-  "Collected fetches are not asked for when cached" in {
+  "Sequenced fetches are not asked for when cached" in {
     val sources: List[Fetch[Int]] = List(one(1), one(2), one(3), one(4))
-    val fetch: Fetch[List[Int]] = Fetch.collect(sources)
+    val fetch: Fetch[List[Int]] = Fetch.sequence(sources)
 
     val rounds = Fetch.runEnv[Eval](fetch, InMemoryCache(
       OneSource.identity(One(1)) -> 1,

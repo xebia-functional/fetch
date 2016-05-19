@@ -36,8 +36,7 @@ trait FetchInterpreters {
   def interpreter[I, M[_]](
       implicit MM: MonadError[M, Throwable]
   ): FetchOp ~> FetchInterpreter[M]#f = {
-    def dedupeIds[I, A, M[_]](
-        ids: List[I], ds: DataSource[I, A], cache: DataSourceCache) = {
+    def dedupeIds[I, A, M[_]](ids: List[I], ds: DataSource[I, A], cache: DataSourceCache) = {
       ids.distinct.filterNot(i => cache.get(ds.identity(i)).isDefined)
     }
 
@@ -46,12 +45,12 @@ trait FetchInterpreters {
         StateT[M, FetchEnv, A] { env: FetchEnv =>
           fa match {
             case FetchError(e) => MM.raiseError(e)
-            case Cached(a) => MM.pure((env, a))
+            case Cached(a)     => MM.pure((env, a))
             case Concurrent(manies) => {
                 val startRound = System.nanoTime()
-                val cache = env.cache
-                val sources = manies.map(_.ds)
-                val ids = manies.map(_.as)
+                val cache      = env.cache
+                val sources    = manies.map(_.ds)
+                val ids        = manies.map(_.as)
 
                 val sourcesAndIds = (sources zip ids)
                   .map({
@@ -74,17 +73,15 @@ trait FetchInterpreters {
                       sourcesAndIds
                         .map({
                       case (ds, as) =>
-                        MM.pureEval(ds
-                              .asInstanceOf[DataSource[I, A]]
-                              .fetch(as.asInstanceOf[List[I]]))
+                        MM.pureEval(
+                            ds.asInstanceOf[DataSource[I, A]].fetch(as.asInstanceOf[List[I]]))
                     })
                         .sequence)((results: List[Map[_, _]]) => {
                     val endRound = System.nanoTime()
-                    val newCache = (sources zip results).foldLeft(cache)(
-                        (accache, resultset) => {
+                    val newCache = (sources zip results).foldLeft(cache)((accache, resultset) => {
                       val (ds, resultmap) = resultset
-                      val tresults = resultmap.asInstanceOf[Map[I, A]]
-                      val tds = ds.asInstanceOf[DataSource[I, A]]
+                      val tresults        = resultmap.asInstanceOf[Map[I, A]]
+                      val tds             = ds.asInstanceOf[DataSource[I, A]]
                       accache.cacheResults[I, A](tresults, tds)
                     })
                     val newEnv = env.next(
@@ -109,13 +106,12 @@ trait FetchInterpreters {
               }
             case FetchOne(id, ds) => {
                 val startRound = System.nanoTime()
-                val cache = env.cache
+                val cache      = env.cache
                 cache
                   .get(ds.identity(id))
                   .fold[M[(FetchEnv, A)]](
-                      MM.flatMap(MM
-                            .pureEval(ds.fetch(List(id)))
-                            .asInstanceOf[M[Map[I, A]]])((res: Map[I, A]) => {
+                      MM.flatMap(MM.pureEval(ds.fetch(List(id))).asInstanceOf[M[Map[I, A]]])(
+                          (res: Map[I, A]) => {
                         val endRound = System.nanoTime()
                         res
                           .get(id.asInstanceOf[I])
@@ -135,8 +131,7 @@ trait FetchInterpreters {
                               )
                           )(result => {
                             val endRound = System.nanoTime()
-                            val newCache =
-                              cache.update(ds.identity(id), result)
+                            val newCache = cache.update(ds.identity(id), result)
                             MM.pure(
                                 (env.next(
                                      newCache,
@@ -170,9 +165,9 @@ trait FetchInterpreters {
               }
             case FetchMany(ids, ds) => {
                 val startRound = System.nanoTime()
-                val cache = env.cache
-                val oldIds = ids.distinct
-                val newIds = dedupeIds[Any, Any, Any](ids, ds, cache)
+                val cache      = env.cache
+                val oldIds     = ids.distinct
+                val newIds     = dedupeIds[Any, Any, Any](ids, ds, cache)
                 if (newIds.isEmpty)
                   MM.pure(
                       (env.next(
@@ -188,9 +183,8 @@ trait FetchInterpreters {
                        ids.flatMap(id => cache.get(ds.identity(id))))
                   )
                 else {
-                  MM.flatMap(MM
-                        .pureEval(ds.fetch(newIds))
-                        .asInstanceOf[M[Map[I, A]]])((res: Map[I, A]) => {
+                  MM.flatMap(MM.pureEval(ds.fetch(newIds)).asInstanceOf[M[Map[I, A]]])(
+                      (res: Map[I, A]) => {
                     val endRound = System.nanoTime()
                     ids
                       .map(i => res.get(i.asInstanceOf[I]))
@@ -211,8 +205,8 @@ trait FetchInterpreters {
                           )
                       )(results => {
                         val endRound = System.nanoTime()
-                        val newCache = cache.cacheResults[I, A](
-                            res, ds.asInstanceOf[DataSource[I, A]])
+                        val newCache =
+                          cache.cacheResults[I, A](res, ds.asInstanceOf[DataSource[I, A]])
                         val someCached = oldIds.size == newIds.size
                         MM.pure(
                             (env.next(

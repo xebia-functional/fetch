@@ -1,0 +1,138 @@
+---
+layout: home
+technologies:
+ - scala: ["Scala", "Fetch is written in Scala and supports both Scala (JVM) and Scala.js (JavaScript environments)"]
+ - cats: ["Cats", "Fetch uses cats' Free Monad implementation as well as some of its data types."]
+ - fp: ["Functional Programming", "Fetch is implemented using the Free Monad and Interpreter pattern."]
+---
+
+## Installation
+
+Add the following dependency to your project's build file.
+
+```scala
+"com.fortysevendeg" %%% "fetch" %% "0.1.0"
+```
+
+## Remote data
+
+Fetch is a library for making access to data both simple & efficient. Fetch is specially useful when querying data that
+has a latency cost, such as databases or web services.
+
+## Define your data sources
+
+For telling `Fetch` how to get the data you want, you must implement the `DataSource` typeclass. Data sources have a `fetch` method that
+defines how to fetch such a piece of data.
+
+Data Sources take two type parameters:
+
+<ol>
+<li><code>Identity</code> is a type that has enough information to fetch the data</li>
+<li><code>Result</code> is the type of data we want to fetch</li>
+</ol>
+
+```scala
+trait DataSource[Identity, Result]{
+  def fetch(ids: List[Identity]): Eval[Map[Identity, Result]]
+}
+```
+
+We'll implement a dummy data source that can convert integers to strings. For convenience we define a `fetchString` function that lifts identities (`Int` in our dummy data source) to a `Fetch`. 
+
+```tut:silent
+import cats.Eval
+import fetch._
+
+implicit object ToStringSource extends DataSource[Int, String]{
+  override def fetch(ids: List[Int]): Eval[Map[Int, String]] = {
+    Eval.later({
+      println(s"ToStringSource $ids")
+      ids.map(i => (i, i.toString)).toMap
+    })
+  }
+}
+
+def fetchString(n: Int): Fetch[String] = Fetch(n) // or, more explicitly: Fetch(n)(ToStringSource)
+```
+
+## Creating and run fetches
+
+Now that we can convert `Int` values to `Fetch[String]`, let's try creating a fetch.
+
+```tut:silent
+import cats.Id
+import fetch.implicits._
+
+val fetchOne: Fetch[String] = fetchString(1)
+```
+
+Now that we have created a fetch, we can run it to a target monad. Note that the target monad (`Id` in our example) needs to implement `MonadError[M, Throwable]`, we provide an instance for `Id` in `fetch.implicits._`, that's why we imported it.
+
+```tut:book
+val result: String = Fetch.run[Id](fetchOne)
+```
+
+As you can see in the previous example, the `ToStringSource` is queried once to get the value of 1.
+
+## Batching
+
+Multiple fetches to the same data source are automatically batched. For ilustrating it, we are going to compose three indepent fetch results as a tuple.
+
+```tut:silent
+import cats.syntax.cartesian._
+
+val fetchThree: Fetch[(String, String, String)] = (fetchString(1) |@| fetchString(2) |@| fetchString(3)).tupled
+```
+
+When executing the above fetch, note how the three identities get batched and the data source is only queried once.
+
+```tut:book
+val result: (String, String, String) = Fetch.run[Id](fetchThree)
+```
+
+## Concurrency
+
+If we combine two independent fetches from different data sources, the fetches will be run concurrently. Let's first add a data source that fetches a string's size.
+
+```tut:silent
+implicit object LengthSource extends DataSource[String, Int]{
+  override def fetch(ids: List[String]): Eval[Map[String, Int]] = {
+    Eval.later({
+      println(s"LengthSource $ids")
+      ids.map(i => (i, i.size)).toMap
+    })
+  }
+}
+
+def fetchLength(s: String): Fetch[Int] = Fetch(s)
+```
+
+And now we can easily data from the two sources in a single fetch. 
+
+```tut:silent
+val fetchMulti: Fetch[(String, Int)] = (fetchString(1) |@| fetchLength("one")).tupled
+```
+
+Note how the two independent data fetches are run concurrently, minimizing the latency cost of querying the two data sources. If our target monad was a concurrency monad like `Future`, they'd run in parallel, each in its own logical thread.
+
+```tut:book
+val result: (String, Int) = Fetch.run[Id](fetchMulti)
+```
+
+## Caching
+
+When fetching an identity, subsequents fetches for the same identity are cached. Let's try creating a fetch that asks for the same identity twice.
+
+```tut:silent
+val fetchTwice: Fetch[(String, String)] = for {
+  one <- fetchString(1)
+  two <- fetchString(1)
+} yield (one, two)
+```
+
+When running it, notice that the data source is only queried once. The next time the identity is requested it's served from the cache.
+
+```tut:book
+val result: (String, String) = Fetch.run[Id](fetchTwice)
+```
+
