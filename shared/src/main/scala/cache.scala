@@ -16,10 +16,9 @@
 
 package fetch
 
-
 /**
- * A `Cache` trait so the users of the library can provide their own cache.
- */
+  * A `Cache` trait so the users of the library can provide their own cache.
+  */
 trait DataSourceCache {
   def update[A](k: DataSourceIdentity, v: A): DataSourceCache
 
