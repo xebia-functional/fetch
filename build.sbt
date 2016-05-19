@@ -61,8 +61,6 @@ lazy val docsSettings = ghpages.settings ++ buildSettings ++ tutSettings ++ Seq(
   git.remoteRepo := "git@github.com:47deg/fetch.git",
   tutSourceDirectory := sourceDirectory.value / "tut",
   tutTargetDirectory := sourceDirectory.value / "jekyll",
-  siteSubdirName in Jekyll := "jeje",
-  siteSubdirName in SiteScaladoc := "api",
   aggregate in doc := true
 )
 
