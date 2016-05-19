@@ -57,23 +57,21 @@ lazy val root = project.in(file("."))
     publishLocal := {}
 )
 
-lazy val docsSettings = Seq(
-  publish := {},
-  publishLocal := {},
-  publishArtifact := false,
-  libraryDependencies += "com.fortysevendeg" %%% "fetch" % "0.1.0-SNAPSHOT"
-) ++ ghpages.settings ++ buildSettings ++ tutSettings ++ Seq(
+lazy val docsSettings = ghpages.settings ++ buildSettings ++ tutSettings ++ Seq(
   git.remoteRepo := "git@github.com:47deg/fetch.git",
   tutSourceDirectory := sourceDirectory.value / "tut",
-  tutTargetDirectory := sourceDirectory.value / "jekyll"
+  tutTargetDirectory := sourceDirectory.value / "jekyll",
+  siteSubdirName in Jekyll := "jeje",
+  siteSubdirName in SiteScaladoc := "api",
+  aggregate in doc := true
 )
 
 lazy val docs = (project in file("docs"))
   .settings(
     moduleName := "fetch-docs"
-  )
-  .settings(docsSettings: _*)
+   )
+  .dependsOn(fetchJVM)
   .enablePlugins(JekyllPlugin)
+  .settings(docsSettings: _*)
 
-
-addCommandAlias("makeDocs", ";fetchJVM/publishLocal;docs/tut;docs/makeSite")
+addCommandAlias("makeDocs", ";docs/tut;docs/makeSite")
