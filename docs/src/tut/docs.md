@@ -26,13 +26,13 @@ we read) concerns.
 
 # Installation
 
-First of all, add the following dependency to your SBT build file:
+To begin, add the following dependency to your SBT build file:
 
 ```scala
 "com.fortysevendeg" %%% "fetch" % "0.1.0"
 ```
 
-Now you'll have Fetch available both in Scala and Scala.js.
+Now you'll have Fetch available in both Scala and Scala.js.
 
 ```tut:invisible
 val out = Console.out
@@ -59,16 +59,16 @@ It takes two type parameters:
  - `Identity`: the identity we want to fetch (a `UserId` if we were fetching users)
  - `Result`: the type of the data we retrieve (a `User` if we were fetching users)
 
-The `fetch` method takes a non empty list of identities and must return an [Eval](https://github.com/typelevel/cats/blob/master/core/src/main/scala/cats/Eval.scala) that will result
+The `fetch` method takes a non-empty list of identities and must return an [Eval](https://github.com/typelevel/cats/blob/master/core/src/main/scala/cats/Eval.scala) that will result
 in a map from identities to results. Accepting a list of identities gives Fetch the ability to batch requests to
-the same data source, and returning a mapping from identities to results Fetch can detect whenever an identity
+the same data source, and returning a mapping from identities to results, Fetch can detect whenever an identity
 couldn't be fetched or no longer exists.
 
 Returning `Eval` makes it possible to defer evaluation with a monad when running a fetch.
 
 ## Writing your first data source
 
-Now that we know about the `DataSource` typeclass, let's write our first data source! We'll start implementing a data
+Now that we know about the `DataSource` typeclass, let's write our first data source! We'll start by implementing a data
 source for fetching users given their id. The first thing we'll do is define the types for user ids and users.
 
 ```tut:silent
@@ -76,7 +76,7 @@ type UserId = Int
 case class User(id: UserId, username: String)
 ```
 
-And now we're ready to write our user data source, we'll emulate a database with an in-memory map.
+And now we're ready to write our user data source; we'll emulate a database with an in-memory map.
 
 ```tut:silent
 import cats.Eval
@@ -107,8 +107,8 @@ def getUser(id: UserId): Fetch[User] = Fetch(id) // or, more explicitly: Fetch(i
 
 ## Creating and running a fetch
 
-We are now ready to creating and run fetches. Note the distinction between Fetch creation and execution.
-When we are creating and combinining `Fetch` values, we are just constructing a recipe of our data
+We are now ready to create and run fetches. Note the distinction between Fetch creation and execution.
+When we are creating and combining `Fetch` values, we are just constructing a recipe of our data
 dependencies.
 
 ```tut:silent
@@ -121,12 +121,12 @@ val fetchUser: Fetch[User] = getUser(1)
 A `Fetch` is just a value, and in order to get something out of it, we must execute it. We can execute a `Fetch` value as many times as we want, even to different target monads, since it is just
 an immutable value.
 
-We need to provide a target monad when we want to execute a fetch. We'll be using `Id` for now,
-make sure to import `fetch.implicits._` since Fetch needs an instance of `MonadError[Id, Throwable]` for running
+We need to provide a target monad when we want to execute a fetch. We'll be using `Id` for now.
+Make sure to import `fetch.implicits._` since Fetch needs an instance of `MonadError[Id, Throwable]` for running
 a fetch in the `Id` monad.
 
 Note that Fetch provides `MonadError` instances for a variety of different monads like `Eval` or
-`Future` so is likely that you don't have to write your own.
+`Future` so it's likely that you won't have to write your own.
 
 Let's run our first fetch!
 
@@ -140,7 +140,7 @@ In the previous examples, we:
 - created a fetch for a `User` using the `getUser` function
 - interpreted the fetch to a `Id[User]` (which is just a `User`) using `Fetch.run`
 
-As you can see, the fetch was executed only in one round to fetch the user and was finished after that.
+As you can see, the fetch was executed in one round to fetch the user and was finished after that.
 
 ### Sequencing
 
@@ -179,7 +179,7 @@ val result: (User, User) = Fetch.run[Id](fetchProduct)
 
 ### Deduplication
 
-If two independent requests ask for the same identity, Fetch will detect it and deduplicate such id.
+If two independent requests ask for the same identity, Fetch will detect it and deduplicate the id.
 
 ```tut:silent
 val fetchDuped: Fetch[(User, User)] = getUser(1).product(getUser(1))
@@ -195,7 +195,7 @@ val result: (User, User) = Fetch.run[Id](fetchDuped)
 
 During the execution of a fetch, previously requested results are implicitly cached. This allows us to write
 fetches in a very modular way, asking for all the data they need as if it
-was in memory; furthermore, it also avoids refetching an identity that may have changed
+was in memory; furthermore, it also avoids re-fetching an identity that may have changed
 during the course of a fetch execution, which can lead to inconsistencies in the data.
 
 ```tut:silent
@@ -205,7 +205,7 @@ val fetchCached: Fetch[(User, User)] = for {
 } yield (aUser, anotherUser)
 ```
 
-The above fetch asks multiple times for the same identity, let's see what happens when executing it.
+The above fetch asks for the same identity multiple times. Let's see what happens when executing it.
 
 ```tut:book
 val result: (User, User) = Fetch.run[Id](fetchCached)
@@ -217,7 +217,7 @@ source.
 
 ## Combining data from multiple sources
 
-Now that we know about some of the optimizations that Fetch can make to read data efficiently,
+Now that we know about some of the optimizations that Fetch can create to read data efficiently,
 let's look at how we can combine more than one data source. Imagine that we are rendering a blog
 and have the following types for posts and post information:
 
@@ -227,10 +227,10 @@ case class Post(id: PostId, author: UserId, content: String)
 case class PostInfo(topic: String)
 ```
 
-As you can see, every `Post` has an author, but it refers to it by its id. We'll implement two data sources:
+As you can see, every `Post` has an author, but it refers to the author by its id. We'll implement two data sources:
 
 - one for retrieving a post given a post id
-- another for retrieveng post metadata given a post id
+- another for retrieving post metadata given a post id
 
 ```tut:silent
 val postDatabase: Map[PostId, Post] = Map(
@@ -274,7 +274,7 @@ We can also implement a function for fetching a post's author given a post:
 def getAuthor(p: Post): Fetch[User] = Fetch(p.author)
 ```
 
-Now that we have multiple sources, let's mix them in the same fetch.
+Now that we have multiple sources let's mix them in the same fetch.
 
 ```tut:silent
 val fetchMulti: Fetch[(Post, User)] = for {
@@ -289,8 +289,8 @@ We can now run the previous fetch, querying the posts data source first and the 
 val result: (Post, User) = Fetch.run[Id](fetchMulti)
 ```
 
-In the previous example we fetched a post given its id, and then fetched its author. These
-data could come from entirely different places but Fetch makes working with heterogeneous sources
+In the previous example, we fetched a post given its id and then fetched its author. This
+data could come from entirely different places, but Fetch makes working with heterogeneous sources
 of data very easy.
 
 ### Concurrency
@@ -313,7 +313,7 @@ The above example combines data from two different sources, and the library know
 val result: (Post, User) = Fetch.run[Id](fetchConcurrent)
 ```
 
-Since we are interpreting the fetch to the `Id` monad, that doesn't give us any parallelism, the fetches
+Since we are interpreting the fetch to the `Id` monad, that doesn't give us any parallelism; the fetches
 will be run sequentially. However, if we interpret it to a `Future` each request will run in its own logical
 thread.
 
@@ -324,9 +324,9 @@ other combinators.
 
 ### Sequence
 
-Whenever we have a list of fetches of the same type and want to run them concurrently we can use the `sequence`
+Whenever we have a list of fetches of the same type and want to run them concurrently, we can use the `sequence`
 combinator. It takes a `List[Fetch[A]]` and gives you back a `Fetch[List[A]]`, batching the fetches to the same
-data source and running fetches to different sources in parallel. Note that the `sequence` combinator is more general and not only works on lists but any type that has a [Traverse](http://typelevel.org/cats/tut/traverse.html) instance.
+data source and running fetches to different sources in parallel. Note that the `sequence` combinator is more general and works not only on lists but on any type that has a [Traverse](http://typelevel.org/cats/tut/traverse.html) instance.
 
 ```tut:silent
 import cats.std.list._
@@ -359,11 +359,11 @@ val result: List[User] = Fetch.run[Id](fetchTraverse)
 
 # Interpreting a fetch to an async capable monad
 
-Albeit the examples use `Id` as the target Monad, `Fetch` is not limited to just `Id`, any monad `M` that
+Although the examples use `Id` as the target Monad, `Fetch` is not limited to just `Id`, any monad `M` that
 implements `MonadError[M, Throwable]` will do. Fetch provides `MonadError` instances for some existing monads like
-`Future`, `cats.Id` and `cats.Eval` and is easy to write your own.
+`Future`, `cats.Id` and `cats.Eval` and it's easy to write your own.
 
-In practice you'll be interpreting a fetch to an async capable monad like `Future` or `scalaz.concurrent.Task` to exploit
+For practice, you'll be interpreting a fetch to an async capable monad like `Future` or `scalaz.concurrent.Task` to exploit
 parallelism whenever we can make requests to multiple independent data sources at the same time.
 
 ## Future
@@ -395,7 +395,7 @@ to the data sources run in parallel, each in its own logical thread.
 
 As we have learned, Fetch caches intermediate results implicitly using a cache. You can
 provide a prepopulated cache for running a fetch, replay a fetch with the cache of a previous
-one and even implement a custom cache.
+one, and even implement a custom cache.
 
 ## Prepopulating a cache
 
@@ -412,7 +412,7 @@ We can pass a cache as the second argument when running a fetch with `Fetch.run`
 val result: User = Fetch.run[Id](fetchUser, cache)
 ```
 
-As you can see, when all the data is cached no query to the data sources is executed at all since the results are available
+As you can see, when all the data is cached, no query to the data sources is executed since the results are available
 in the cache.
 
 ```tut:silent
@@ -427,9 +427,9 @@ val result: List[User] = Fetch.run[Id](fetchManyUsers, cache)
 
 ## Replaying a fetch without querying any data source
 
-When running a fetch we are generally interested in its final result. However, we also have access to the cache
+When running a fetch, we are generally interested in its final result. However, we also have access to the cache
 and information about the executed rounds once we run a fetch. Fetch's interpreter keeps its state in an environment
-(implementing the `Env` trait) and we can get both the environment and result after running a fetch using `Fetch.runFetch`
+(implementing the `Env` trait), and we can get both the environment and result after running a fetch using `Fetch.runFetch`
 instead of `Fetch.run`.
 
 Knowing this, we can replay a fetch reusing the cache of a previous one. The replayed fetch won't have to call any of the
@@ -445,7 +445,7 @@ val result: List[User] = Fetch.run[Id](fetchManyUsers, populatedCache)
 
 The default cache is implemented as an immutable in-memory map, but users are free to use their own caches when running a fetch. Your cache should implement the `DataSourceCache` trait, and after that you can pass it to Fetch's `run` methods.
 
-There is no need for the cache to be mutable, since fetch executions run in an interpreter that uses the state monad. Note that the `update` method in the `DataSourceCache` trait yields a new, updated cache.
+There is no need for the cache to be mutable since fetch executions run in an interpreter that uses the state monad. Note that the `update` method in the `DataSourceCache` trait yields a new, updated cache.
 
 ```scala
 trait DataSourceCache {
@@ -454,7 +454,7 @@ trait DataSourceCache {
 }
 ```
 
-Let's reimplement the in memory cache found in Fetch, we'll write a case class that'll store the cache contents in an in-memory immutable map and implement `DataSourceCache`.
+Let's reimplement the in-memory cache found in Fetch; we'll write a case class that'll store the cache contents in an in-memory immutable map and implement `DataSourceCache`.
 
 ```tut:silent
 case class MyInMemoryCache(state: Map[DataSourceIdentity, Any]) extends DataSourceCache {
@@ -466,7 +466,7 @@ case class MyInMemoryCache(state: Map[DataSourceIdentity, Any]) extends DataSour
 }
 ```
 
-Now that we have our cache implementation, we can populate it. Note how keys for the cache are tuples are derived using the data source's `identity` method on identities.
+Now that we have our cache implementation, we can populate it. Note how keys for the cache are tuples and are derived using the data source's `identity` method on identities.
 
 ```tut:silent
 val myCache = MyInMemoryCache(Map(UserSource.identity(1) -> User(1, "dialelo")))
@@ -502,13 +502,13 @@ val safeResult: Eval[Throwable Xor User] = evalMonadError.attempt(result)
 val finalValue: Throwable Xor User = safeResult.value
 ```
 
-In the above example we didn't use `Id` since interpreting a fetch to `Id` throws the exception and we can't capture it with the
+In the above example, we didn't use `Id` since interpreting a fetch to `Id` throws the exception, and we can't capture it with the
 combinators in `MonadError`.
 
 ## Missing identities
 
-You probably have noticed that `DataSource.fetch` takes a list of identities and returns a map of identities to their result, taking
-into account the possibility of some identities not being found. Whenever an identity isn't found, the fetch execution will
+You've probably noticed that `DataSource.fetch` takes a list of identities and returns a map of identities to their result, taking
+into account the possibility of some identities not being found. Whenever an identity cannot be found, the fetch execution will
 fail.
 
 Whenever a fetch fails, a `FetchFailure` exception is thrown. The `FetchFailure` will have the environment, which gives you information
@@ -518,7 +518,7 @@ about the execution of the fetch.
 
 ## Companion object
 
-We've been using cats' syntax throughout the examples since its more concise and general than the
+We've been using cats' syntax throughout the examples since it's more concise and general than the
 methods in the `Fetch` companion object. However, you can use the methods in the companion object
 directly.
 
@@ -541,7 +541,7 @@ val result: Int = Fetch.run[Id](fetchPure)
 ### error
 
 Errors can also be lifted to the Fetch monad, in this case with `Fetch#error`. Note that interpreting
-a errorful fetch to `Id` will throw the exception so we won't do that:
+an errorful fetch to `Id` will throw the exception so we won't do that:
 
 ```tut:silent
 val fetchFail: Fetch[Int] = Fetch.error(new Exception("Something went terribly wrong"))
@@ -593,11 +593,11 @@ val result: List[User] = Fetch.run[Id](fetchTraverse)
 ## cats
 
 Fetch is built using cats' Free monad construction and thus works out of the box with
-cats syntax. Using cats' syntax we can make fetch declarations more concise, without
+cats syntax. Using cats' syntax, we can make fetch declarations more concise, without
 the need to use the combinators in the `Fetch` companion object.
 
 Fetch provides its own instance of `Applicative[Fetch]`. Whenever we use applicative
-operations on more than one `Fetch` we know that the fetches are independent, thus
+operations on more than one `Fetch`, we know that the fetches are independent meaning
 we can perform optimizations such as batching and concurrent requests.
 
 If we were to use the default `Applicative[Fetch]` operations, which are implemented in terms of `flatMap`,
@@ -605,7 +605,7 @@ we wouldn't have information about the independency of multiple fetches.
 
 ### Applicative
 
-The `|@|` operator allow us to combine multiple independent fetches, even when they
+The `|@|` operator allows us to combine multiple independent fetches, even when they
 are from different types, and apply a pure function to their results. We can use it
 as a more powerful alternative to the `product` method or `Fetch#join`:
 
@@ -632,7 +632,7 @@ val fetchFriends: Fetch[String] = (getUser(1) |@| getUser(2)).map({ (one, other)
 val result: String = Fetch.run[Id](fetchFriends)
 ```
 
-The avove example is equivalent to the following using the `Fetch#join` method:
+The above example is equivalent to the following using the `Fetch#join` method:
 
 ```tut:book
 val fetchFriends: Fetch[String] = Fetch.join(getUser(1), getUser(2)).map({ case (one, other) =>
