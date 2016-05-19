@@ -217,7 +217,7 @@ source.
 
 ## Combining data from multiple sources
 
-Now that we know about some of the optimizations that Fetch can create to read data efficiently,
+Now that we know about some of the optimizations that Fetch can perform to read data efficiently,
 let's look at how we can combine more than one data source. Imagine that we are rendering a blog
 and have the following types for posts and post information:
 
