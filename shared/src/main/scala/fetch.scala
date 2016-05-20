@@ -220,10 +220,7 @@ object `package` {
 
     class FetchRunnerEnv[M[_]] {
 
-      def apply[A](
-          fa: Fetch[A],
-          cache: DataSourceCache = InMemoryCache.empty
-      )(
+      def apply[A](fa: Fetch[A], cache: DataSourceCache = InMemoryCache.empty)(
           implicit MM: MonadError[M, Throwable]
       ): M[FetchEnv] =
         fa.foldMap[FetchInterpreter[M]#f](interpreter).runS(FetchEnv(cache))
@@ -231,10 +228,7 @@ object `package` {
 
     class FetchRunnerA[M[_]] {
 
-      def apply[A](
-          fa: Fetch[A],
-          cache: DataSourceCache = InMemoryCache.empty
-      )(
+      def apply[A](fa: Fetch[A], cache: DataSourceCache = InMemoryCache.empty)(
           implicit MM: MonadError[M, Throwable]
       ): M[A] =
         fa.foldMap[FetchInterpreter[M]#f](interpreter).runA(FetchEnv(cache))

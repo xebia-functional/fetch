@@ -61,21 +61,4 @@ object implicits {
         }
       })
   }
-
-  implicit val idMonadError: MonadError[Id, Throwable] = new MonadError[Id, Throwable] {
-    override def pure[A](x: A): Id[A] = x
-
-    override def map[A, B](fa: Id[A])(f: A ⇒ B): Id[B] = f(fa)
-
-    override def flatMap[A, B](fa: Id[A])(ff: A => Id[B]): Id[B] = ff(fa)
-
-    override def raiseError[A](e: Throwable): Id[A] = throw e
-
-    override def handleErrorWith[A](fa: Id[A])(f: Throwable ⇒ Id[A]): Id[A] =
-      try {
-        fa
-      } catch {
-        case e: Throwable => f(e)
-      }
-  }
 }
