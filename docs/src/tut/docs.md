@@ -566,6 +566,30 @@ If the fetches are to the same data source they will be batched; if they aren't,
 val result: (Post, User) = fetchJoined.runA[Eval].value
 ```
 
+### runA
+
+Run directly any fetch to a target any target `Monad` with a `MonadError` instance in scope `fetch1.runA[Eval]`.
+
+```tut:silent
+val post: Eval[Post] = getPost(1).runA[Eval]
+```
+
+### runE
+
+Extract a fetch an get it's runtime environment `fetch1.runE[Eval]`.
+
+```tut:silent
+val env: Eval[FetchEnv] = getPost(1).runE[Eval]
+```
+
+### runF
+
+Run a fetch obtaining the environment and final value `fetch1.runF[Eval]`.
+
+```tut:silent
+val env: Eval[(FetchEnv, Post)] = getPost(1).runF[Eval]
+```
+
 ## Companion object
 
 We've been using `cats.syntax' and `fetch.syntax` throughout the examples since it's more concise and general than the
