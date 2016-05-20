@@ -101,7 +101,17 @@ trait FetchInterpreters {
                         ),
                         Nil
                     )
-                    MM.pure((newEnv, newEnv.asInstanceOf[A]))
+
+                    val allFetched = (sourcesAndIds zip results).forall({
+                      case ((_, theIds), results) => theIds.size == results.size
+                      case _                      => false
+                    })
+
+                    if (allFetched) {
+                      MM.pure((newEnv, newEnv.asInstanceOf[A]))
+                    } else {
+                      MM.raiseError(FetchFailure(newEnv))
+                    }
                   })
               }
             case FetchOne(id, ds) => {

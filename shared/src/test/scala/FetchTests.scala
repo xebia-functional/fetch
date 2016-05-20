@@ -107,6 +107,14 @@ class FetchTests extends FreeSpec with Matchers {
     }
   }
 
+  "Concurrent data sources with errors throw fetch failures" in {
+    val fetch: Fetch[(Int, Int)] = Fetch.join(one(1), Fetch(Never()))
+
+    intercept[FetchFailure[InMemoryCache]] {
+      Fetch.runEnv[Eval](fetch).value
+    }
+  }
+
   "Data sources with errors throw fetch failures that can be handled" in {
     val fetch: Fetch[Int] = Fetch(Never())
 
