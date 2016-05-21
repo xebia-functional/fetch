@@ -66,8 +66,8 @@ def fetchString(n: Int): Fetch[String] = Fetch(n) // or, more explicitly: Fetch(
 Now that we can convert `Int` values to `Fetch[String]`, let's try creating a fetch.
 
 ```tut:silent
-import cats.Id
 import fetch.implicits._
+import fetch.syntax._
 
 val fetchOne: Fetch[String] = fetchString(1)
 ```
@@ -75,7 +75,7 @@ val fetchOne: Fetch[String] = fetchString(1)
 Now that we have created a fetch, we can run it to a target monad. Note that the target monad (`Id` in our example) needs to implement `MonadError[M, Throwable]`, we provide an instance for `Id` in `fetch.implicits._`, that's why we imported it.
 
 ```tut:book
-val result: String = Fetch.run[Id](fetchOne)
+val result: String = fetchOne.runA[Eval].value
 ```
 
 As you can see in the previous example, the `ToStringSource` is queried once to get the value of 1.
@@ -93,7 +93,7 @@ val fetchThree: Fetch[(String, String, String)] = (fetchString(1) |@| fetchStrin
 When executing the above fetch, note how the three identities get batched and the data source is only queried once.
 
 ```tut:book
-val result: (String, String, String) = Fetch.run[Id](fetchThree)
+val result: (String, String, String) = fetchThree.runA[Eval].value
 ```
 
 ## Concurrency
@@ -122,7 +122,7 @@ val fetchMulti: Fetch[(String, Int)] = (fetchString(1) |@| fetchLength("one")).t
 Note how the two independent data fetches are run concurrently, minimizing the latency cost of querying the two data sources. If our target monad was a concurrency monad like `Future`, they'd run in parallel, each in its own logical thread.
 
 ```tut:book
-val result: (String, Int) = Fetch.run[Id](fetchMulti)
+val result: (String, Int) = fetchMulti.runA[Eval].value
 ```
 
 ## Caching
@@ -139,6 +139,6 @@ val fetchTwice: Fetch[(String, String)] = for {
 When running it, notice that the data source is only queried once. The next time the identity is requested it's served from the cache.
 
 ```tut:book
-val result: (String, String) = Fetch.run[Id](fetchTwice)
+val result: (String, String) = fetchTwice.runA[Eval].value
 ```
 

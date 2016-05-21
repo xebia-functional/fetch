@@ -118,8 +118,8 @@ When we are creating and combining `Fetch` values, we are just constructing a re
 dependencies.
 
 ```tut:silent
-import cats.Id
 import fetch.implicits._
+import fetch.syntax._
 
 val fetchUser: Fetch[User] = getUser(1)
 ```
@@ -137,14 +137,14 @@ Note that Fetch provides `MonadError` instances for a variety of different monad
 Let's run our first fetch!
 
 ```tut:book
-val result: User = Fetch.run[Id](fetchUser)
+val result: User = fetchUser.runA[Eval].value
 ```
 
 In the previous examples, we:
 
-- brought the implicit instance of `MonadError[Id, Throwable]` into scope importing `fetch.implicits._`
+- brought the implicit instance of `MonadError[Eval, Throwable]` into scope importing `fetch.implicits._`
 - created a fetch for a `User` using the `getUser` function
-- interpreted the fetch to a `Id[User]` (which is just a `User`) using `Fetch.run`
+- interpreted the fetch to a `Eval[User]` using the syntax `runA` that delegate to `Fetch.run`
 
 As you can see, the fetch was executed in one round to fetch the user and was finished after that.
 
@@ -162,7 +162,7 @@ val fetchTwoUsers: Fetch[(User, User)] = for {
 When composing fetches with `flatMap` we are telling Fetch that the second one depends on the previous one, so it isn't able to make any optimizations. When running the above fetch, we will query the user data source in two rounds: one for the user with id 1 and another for the user with id 2.
 
 ```tut:book
-val result: (User, User) = Fetch.run[Id](fetchTwoUsers)
+val result: (User, User) = fetchTwoUsers.runA[Eval].value
 ```
 
 ### Batching
@@ -180,7 +180,7 @@ val fetchProduct: Fetch[(User, User)] = getUser(1).product(getUser(2))
 Note how both ids (1 and 2) are requested in a single query to the data source when executing the fetch.
 
 ```tut:book
-val result: (User, User) = Fetch.run[Id](fetchProduct)
+val result: (User, User) = fetchProduct.runA[Eval].value
 ```
 
 ### Deduplication
@@ -194,7 +194,7 @@ val fetchDuped: Fetch[(User, User)] = getUser(1).product(getUser(1))
 Note that when running the fetch, the identity 1 is only requested once even when it is needed by both fetches.
 
 ```tut:book
-val result: (User, User) = Fetch.run[Id](fetchDuped)
+val result: (User, User) = fetchDuped.runA[Eval].value
 ```
 
 ### Caching
@@ -214,7 +214,7 @@ val fetchCached: Fetch[(User, User)] = for {
 The above fetch asks for the same identity multiple times. Let's see what happens when executing it.
 
 ```tut:book
-val result: (User, User) = Fetch.run[Id](fetchCached)
+val result: (User, User) = fetchCached.runA[Eval].value
 ```
 
 As you can see, the `User` with id 1 was fetched only once in a single round-trip. The next
@@ -257,9 +257,9 @@ implicit object PostSource extends DataSource[PostId, Post]{
 def getPost(id: PostId): Fetch[Post] = Fetch(id)
 
 val postInfoDatabase: Map[PostId, PostInfo] = Map(
-  1 -> PostInfo("monad"),
-  2 -> PostInfo("applicative"),
-  3 -> PostInfo("monad")
+  1 -> PostInfo("Run Wild, Run Free"),
+  2 -> PostInfo("American Psycho"),
+  3 -> PostInfo("Torrente 3")
 )
 
 implicit object PostInfoSource extends DataSource[PostId, PostInfo]{
@@ -292,7 +292,7 @@ val fetchMulti: Fetch[(Post, User)] = for {
 We can now run the previous fetch, querying the posts data source first and the user data source afterwards.
 
 ```tut:book
-val result: (Post, User) = Fetch.run[Id](fetchMulti)
+val result: (Post, User) = fetchMulti.runA[Eval].value
 ```
 
 In the previous example, we fetched a post given its id and then fetched its author. This
@@ -316,7 +316,7 @@ val fetchConcurrent: Fetch[(Post, User)] = getPost(1).product(getUser(2))
 The above example combines data from two different sources, and the library knows they are independent.
 
 ```tut:book
-val result: (Post, User) = Fetch.run[Id](fetchConcurrent)
+val result: (Post, User) = fetchConcurrent.runA[Eval].value
 ```
 
 Since we are interpreting the fetch to the `Id` monad, that doesn't give us any parallelism; the fetches
@@ -344,7 +344,7 @@ val fetchSequence: Fetch[List[User]] = List(getUser(1), getUser(2), getUser(3)).
 Since `sequence` uses applicative operations internally, the library is able to perform optimizations across all the sequenced fetches.
 
 ```tut:book
-val result: List[User] = Fetch.run[Id](fetchSequence)
+val result: List[User] = fetchSequence.runA[Eval].value
 ```
 
 As you can see, requests to the user data source were batched, thus fetching all the data in one round.
@@ -360,7 +360,7 @@ val fetchTraverse: Fetch[List[User]] = List(1, 2, 3).traverse(getUser)
 As you may have guessed, all the optimizations made by `sequence` still apply when using `traverse`.
 
 ```tut:book
-val result: List[User] = Fetch.run[Id](fetchTraverse)
+val result: List[User] = fetchTraverse.runA[Eval].value
 ```
 
 # Interpreting a fetch to an async capable monad
@@ -390,12 +390,11 @@ val fetchParallel: Fetch[(User, Post)] = (getUser(1) |@| getPost(1)).tupled
 We can now interpret a fetch into a future:
 
 ```tut:book
-val fut: Future[(User, Post)] = Fetch.run[Future](fetchParallel)
+val fut: Future[(User, Post)] = fetchParallel.runA[Future]
 Await.result(fut, 1 seconds) // this call blocks the current thread, don't do this at home!
 ```
 
-Since futures run in a thread pool, we need to explicitly set println output to the standard output. Note how both requests
-to the data sources run in parallel, each in its own logical thread.
+Since futures run in a thread pool, both requests to the data sources run in parallel, each in its own logical thread.
 
 # Caching
 
@@ -415,7 +414,7 @@ val cache = InMemoryCache(UserSource.identity(1) -> User(1, "@dialelo"))
 We can pass a cache as the second argument when running a fetch with `Fetch.run`.
 
 ```tut:book
-val result: User = Fetch.run[Id](fetchUser, cache)
+val result: User = fetchUser.runA[Eval](cache).value
 ```
 
 As you can see, when all the data is cached, no query to the data sources is executed since the results are available
@@ -428,7 +427,7 @@ val fetchManyUsers: Fetch[List[User]] = List(1, 2, 3).traverse(getUser)
 If only part of the data is cached, the cached data won't be asked for:
 
 ```tut:book
-val result: List[User] = Fetch.run[Id](fetchManyUsers, cache)
+val result: List[User] = fetchManyUsers.runA[Eval](cache).value
 ```
 
 ## Replaying a fetch without querying any data source
@@ -436,15 +435,15 @@ val result: List[User] = Fetch.run[Id](fetchManyUsers, cache)
 When running a fetch, we are generally interested in its final result. However, we also have access to the cache
 and information about the executed rounds once we run a fetch. Fetch's interpreter keeps its state in an environment
 (implementing the `Env` trait), and we can get both the environment and result after running a fetch using `Fetch.runFetch`
-instead of `Fetch.run`.
+instead of `Fetch.run` or `value.runF` via it's implicit syntax.
 
 Knowing this, we can replay a fetch reusing the cache of a previous one. The replayed fetch won't have to call any of the
 data sources.
 
 ```tut:book
-val populatedCache = Fetch.runEnv[Id](fetchManyUsers).cache
+val populatedCache = fetchManyUsers.runE[Eval].value.cache
 
-val result: List[User] = Fetch.run[Id](fetchManyUsers, populatedCache)
+val result: List[User] =  fetchManyUsers.runA[Eval](populatedCache).value 
 ```
 
 ## Implementing a custom cache
@@ -481,7 +480,7 @@ val myCache = MyInMemoryCache(Map(UserSource.identity(1) -> User(1, "dialelo")))
 We can now use our implementation of the cache when running a fetch.
 
 ```tut:book
-val result: User = Fetch.run[Id](fetchUser, myCache)
+val result: User = fetchUser.runA[Eval](myCache).value
 ```
 
 # Error handling
@@ -494,17 +493,19 @@ One of the most interesting combinators is `attempt`, which given a `M[A]` yield
 in the `Eval` monad to an `Xor` and not worry about exceptions. Let's create a fetch that always fails when executed:
 
 ```tut:silent
-import cats.data.Xor
-import fetch.implicits.evalMonadError
-
-val fetchError: Fetch[User] = Fetch.error(new Exception("Oh noes"))
+val fetchError: Fetch[User] = (new Exception("Oh noes")).fetch
 ```
 
 We can now use the Eval MonadError's `attempt` to convert a fetch result into a disjuntion and avoid throwing exceptions.
 
 ```tut:book
-val result: Eval[User] = Fetch.run[Eval](fetchError)
-val safeResult: Eval[Throwable Xor User] = evalMonadError.attempt(result)
+import cats.data.Xor
+import cats.MonadError
+
+val ME = implicitly[MonadError[Eval, Throwable]]
+
+val result: Eval[User] = fetchError.runA[Eval]
+val safeResult: Eval[Throwable Xor User] = ME.attempt(result)
 val finalValue: Throwable Xor User = safeResult.value
 ```
 
@@ -522,9 +523,82 @@ about the execution of the fetch.
 
 # Syntax
 
+## Implicit syntax
+
+Fetch provides implicit syntax to lift any value to the context of a `Fetch` in addition to the most common used
+combinators active within `Fetch` instances.
+
+### pure
+
+Plain values can be lifted to the Fetch monad with `value.fetch`:
+
+```tut:silent
+val fetchPure: Fetch[Int] = 42.fetch
+```
+
+Executing a pure fetch doesn't query any data source, as expected.
+
+```tut:book
+val result: Int = fetchPure.runA[Eval].value
+```
+
+### error
+
+Errors can also be lifted to the Fetch monad via `exception.fetch`. Note that interpreting
+an errorful fetch to `Eval` won't throw the exception unless we access the value with the `.value` method.
+
+A safer way to deal with errors is to use MonadError's `attempt` to turn the exception into a `Xor.Left` value:
+
+```tut:silent
+val ME = implicitly[MonadError[Eval, Throwable]]
+
+val fetchFail: Fetch[Int] = (new Exception("Something went terribly wrong")).fetch[Int]
+val result: Eval[Int] = fetchFail.runA[Eval]
+val safeResult: Eval[Throwable Xor Int] = ME.attempt(result)
+val finalValue: Throwable Xor Int = safeResult.value
+```
+
+### join
+
+We can compose two independent fetches with `fetch1.join(fetch2)`.
+
+```tut:silent
+val fetchJoined: Fetch[(Post, User)] = getPost(1).join(getUser(2))
+```
+
+If the fetches are to the same data source they will be batched; if they aren't, they will be evaluated at the same time.
+
+```tut:book
+val result: (Post, User) = fetchJoined.runA[Eval].value
+```
+
+### runA
+
+Run directly any fetch to a target any target `Monad` with a `MonadError` instance in scope `fetch1.runA[Eval]`.
+
+```tut:silent
+val post: Eval[Post] = getPost(1).runA[Eval]
+```
+
+### runE
+
+Extract a fetch an get it's runtime environment `fetch1.runE[Eval]`.
+
+```tut:silent
+val env: Eval[FetchEnv] = getPost(1).runE[Eval]
+```
+
+### runF
+
+Run a fetch obtaining the environment and final value `fetch1.runF[Eval]`.
+
+```tut:silent
+val env: Eval[(FetchEnv, Post)] = getPost(1).runF[Eval]
+```
+
 ## Companion object
 
-We've been using cats' syntax throughout the examples since it's more concise and general than the
+We've been using `cats.syntax' and `fetch.syntax` throughout the examples since it's more concise and general than the
 methods in the `Fetch` companion object. However, you can use the methods in the companion object
 directly.
 
@@ -541,16 +615,23 @@ val fetchPure: Fetch[Int] = Fetch.pure(42)
 Executing a pure fetch doesn't query any data source, as expected.
 
 ```tut:book
-val result: Int = Fetch.run[Id](fetchPure)
+val result: Int = Fetch.run[Eval](fetchPure).value
 ```
 
 ### error
 
 Errors can also be lifted to the Fetch monad, in this case with `Fetch#error`. Note that interpreting
-an errorful fetch to `Id` will throw the exception so we won't do that:
+an errorful fetch to `Eval` won't throw the exception unless we access the value with the `.value` method.
 
-```tut:silent
+A safer way to deal with errors is to use MonadError's `attempt` to turn the exception into a `Xor.Left` value:
+
+```tut:book
+val ME = implicitly[MonadError[Eval, Throwable]]
+
 val fetchFail: Fetch[Int] = Fetch.error(new Exception("Something went terribly wrong"))
+val result: Eval[Int] = fetchFail.runA[Eval]
+val safeResult: Eval[Throwable Xor Int] = ME.attempt(result)
+val finalValue: Throwable Xor Int = safeResult.value
 ```
 
 ### join
@@ -564,7 +645,7 @@ val fetchJoined: Fetch[(Post, User)] = Fetch.join(getPost(1), getUser(2))
 If the fetches are to the same data source they will be batched; if they aren't, they will be evaluated at the same time.
 
 ```tut:book
-val result: (Post, User) = Fetch.run[Id](fetchJoined)
+val result: (Post, User) = Fetch.run[Eval](fetchJoined).value
 ```
 
 ### sequence
@@ -579,7 +660,7 @@ val fetchSequence: Fetch[List[User]] = Fetch.sequence(List(getUser(1), getUser(2
 Note that `Fetch#sequence` is not as general as the `sequence` method from `Traverse`, but performs the same optimizations.
 
 ```tut:book
-val result: List[User] = Fetch.run[Id](fetchSequence)
+val result: List[User] = Fetch.run[Eval](fetchSequence).value
 ```
 
 ### traverse
@@ -593,7 +674,7 @@ val fetchTraverse: Fetch[List[User]] = Fetch.traverse(List(1, 2, 3))(getUser)
 Note that `Fetch#traverse` is not as general as the `traverse` method from `Traverse`, but performs the same optimizations.
 
 ```tut:book
-val result: List[User] = Fetch.run[Id](fetchTraverse)
+val result: List[User] = Fetch.run[Eval](fetchTraverse).value
 ```
 
 ## cats
@@ -624,7 +705,7 @@ val fetchThree: Fetch[(Post, User, Post)] = (getPost(1) |@| getUser(2) |@| getPo
 Notice how the queries to posts are batched.
 
 ```tut:book
-val result: (Post, User, Post) = Fetch.run[Id](fetchThree)
+val result: (Post, User, Post) = fetchThree.runA[Eval].value
 ```
 
 More interestingly, we can use it to apply a pure function to the results of various
@@ -635,7 +716,7 @@ val fetchFriends: Fetch[String] = (getUser(1) |@| getUser(2)).map({ (one, other)
   s"${one.username} is friends with ${other.username}"
 })
 
-val result: String = Fetch.run[Id](fetchFriends)
+val result: String = fetchFriends.runA[Eval].value
 ```
 
 The above example is equivalent to the following using the `Fetch#join` method:
@@ -645,7 +726,7 @@ val fetchFriends: Fetch[String] = Fetch.join(getUser(1), getUser(2)).map({ case 
   s"${one.username} is friends with ${other.username}"
 })
 
-val result: String = Fetch.run[Id](fetchFriends)
+val result: String = fetchFriends.runA[Eval].value
 ```
 
 # Resources
