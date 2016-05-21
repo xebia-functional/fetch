@@ -17,7 +17,7 @@
 package fetch
 
 import cats.{MonadError, ~>}
-import cats.data.StateT
+import cats.data.{StateT, NonEmptyList}
 
 import scala.collection.immutable._
 
@@ -36,8 +36,8 @@ trait FetchInterpreters {
   def interpreter[I, M[_]](
       implicit MM: MonadError[M, Throwable]
   ): FetchOp ~> FetchInterpreter[M]#f = {
-    def dedupeIds[I, A, M[_]](ids: List[I], ds: DataSource[I, A], cache: DataSourceCache) = {
-      ids.distinct.filterNot(i => cache.get(ds.identity(i)).isDefined)
+    def dedupeIds[I, A, M[_]](ids: NonEmptyList[I], ds: DataSource[I, A], cache: DataSourceCache) = {
+      ids.unwrap.distinct.filterNot(i => cache.get(ds.identity(i)).isDefined)
     }
 
     new (FetchOp ~> FetchInterpreter[M]#f) {
@@ -57,13 +57,13 @@ trait FetchInterpreters {
                     case (ds, ids) =>
                       (
                           ds,
-                          dedupeIds[I, A, M](ids.asInstanceOf[List[I]],
+                          dedupeIds[I, A, M](ids.asInstanceOf[NonEmptyList[I]],
                                              ds.asInstanceOf[DataSource[I, A]],
                                              cache)
                       )
                   })
-                  .filterNot({
-                    case (_, ids) => ids.isEmpty
+                  .collect({
+                    case (ds, ids) if !ids.isEmpty => (ds, NonEmptyList(ids(0), ids.tail))
                   })
 
                 if (sourcesAndIds.isEmpty)
@@ -73,8 +73,9 @@ trait FetchInterpreters {
                       sourcesAndIds
                         .map({
                       case (ds, as) =>
-                        MM.pureEval(
-                            ds.asInstanceOf[DataSource[I, A]].fetch(as.asInstanceOf[List[I]]))
+                        MM.pureEval(ds
+                              .asInstanceOf[DataSource[I, A]]
+                              .fetch(as.asInstanceOf[NonEmptyList[I]]))
                     })
                         .sequence)((results: List[Map[_, _]]) => {
                     val endRound = System.nanoTime()
@@ -92,7 +93,7 @@ trait FetchInterpreters {
                             ConcurrentRound(
                                 sourcesAndIds
                                   .map({
-                                    case (ds, as) => (ds.name, as)
+                                    case (ds, as) => (ds.name, as.unwrap)
                                   })
                                   .toMap
                             ),
@@ -103,7 +104,7 @@ trait FetchInterpreters {
                     )
 
                     val allFetched = (sourcesAndIds zip results).forall({
-                      case ((_, theIds), results) => theIds.size == results.size
+                      case ((_, theIds), results) => theIds.unwrap.size == results.size
                       case _                      => false
                     })
 
@@ -120,7 +121,8 @@ trait FetchInterpreters {
                 cache
                   .get(ds.identity(id))
                   .fold[M[(FetchEnv, A)]](
-                      MM.flatMap(MM.pureEval(ds.fetch(List(id))).asInstanceOf[M[Map[I, A]]])(
+                      MM.flatMap(
+                          MM.pureEval(ds.fetch(NonEmptyList(id))).asInstanceOf[M[Map[I, A]]])(
                           (res: Map[I, A]) => {
                         val endRound = System.nanoTime()
                         res
@@ -176,7 +178,7 @@ trait FetchInterpreters {
             case FetchMany(ids, ds) => {
                 val startRound = System.nanoTime()
                 val cache      = env.cache
-                val oldIds     = ids.distinct
+                val oldIds     = ids.unwrap.distinct
                 val newIds     = dedupeIds[Any, Any, Any](ids, ds, cache)
                 if (newIds.isEmpty)
                   MM.pure(
@@ -184,19 +186,20 @@ trait FetchInterpreters {
                            cache,
                            Round(cache,
                                  ds.name,
-                                 ManyRound(ids),
+                                 ManyRound(ids.unwrap),
                                  startRound,
                                  System.nanoTime(),
                                  true),
                            newIds
                        ),
-                       ids.flatMap(id => cache.get(ds.identity(id))))
+                       ids.unwrap.flatMap(id => cache.get(ds.identity(id))))
                   )
                 else {
-                  MM.flatMap(MM.pureEval(ds.fetch(newIds)).asInstanceOf[M[Map[I, A]]])(
-                      (res: Map[I, A]) => {
+                  MM.flatMap(MM
+                        .pureEval(ds.fetch(NonEmptyList(newIds(0), newIds.tail)))
+                        .asInstanceOf[M[Map[I, A]]])((res: Map[I, A]) => {
                     val endRound = System.nanoTime()
-                    ids
+                    ids.unwrap
                       .map(i => res.get(i.asInstanceOf[I]))
                       .sequence
                       .fold[M[(FetchEnv, A)]](
@@ -206,7 +209,7 @@ trait FetchInterpreters {
                                       cache,
                                       Round(cache,
                                             ds.name,
-                                            ManyRound(ids),
+                                            ManyRound(ids.unwrap),
                                             startRound,
                                             endRound),
                                       newIds
@@ -223,7 +226,7 @@ trait FetchInterpreters {
                                  newCache,
                                  Round(cache,
                                        ds.name,
-                                       ManyRound(ids),
+                                       ManyRound(ids.unwrap),
                                        startRound,
                                        endRound,
                                        someCached),

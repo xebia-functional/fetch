@@ -17,6 +17,8 @@
 import org.scalatest._
 
 import cats.{Eval, Id, MonadError}
+import cats.data.NonEmptyList
+import cats.std.list._
 
 import fetch._
 
@@ -32,8 +34,8 @@ object TestHelper {
   case class One(id: Int)
   implicit object OneSource extends DataSource[One, Int] {
     override def name = "OneSource"
-    override def fetch(ids: List[One]): Eval[Map[One, Int]] =
-      M.pure(ids.map(one => (one, one.id)).toMap)
+    override def fetch(ids: NonEmptyList[One]): Eval[Map[One, Int]] =
+      M.pure(ids.unwrap.map(one => (one, one.id)).toMap)
   }
   def one(id: Int): Fetch[Int] = Fetch(One(id))
 
@@ -41,22 +43,22 @@ object TestHelper {
   implicit object AnotheroneSource extends DataSource[AnotherOne, Int] {
     override def name = "AnotherOneSource"
 
-    override def fetch(ids: List[AnotherOne]): Eval[Map[AnotherOne, Int]] =
-      M.pure(ids.map(anotherone => (anotherone, anotherone.id)).toMap)
+    override def fetch(ids: NonEmptyList[AnotherOne]): Eval[Map[AnotherOne, Int]] =
+      M.pure(ids.unwrap.map(anotherone => (anotherone, anotherone.id)).toMap)
   }
   def anotherOne(id: Int): Fetch[Int] = Fetch(AnotherOne(id))
 
   case class Many(n: Int)
   implicit object ManySource extends DataSource[Many, List[Int]] {
     override def name = "ManySource"
-    override def fetch(ids: List[Many]): Eval[Map[Many, List[Int]]] =
-      M.pure(ids.map(m => (m, 0 until m.n toList)).toMap)
+    override def fetch(ids: NonEmptyList[Many]): Eval[Map[Many, List[Int]]] =
+      M.pure(ids.unwrap.map(m => (m, 0 until m.n toList)).toMap)
   }
 
   case class Never()
   implicit object NeverSource extends DataSource[Never, Int] {
     override def name = "NeverSource"
-    override def fetch(ids: List[Never]): Eval[Map[Never, Int]] =
+    override def fetch(ids: NonEmptyList[Never]): Eval[Map[Never, Int]] =
       M.pure(Map.empty[Never, Int])
   }
   def many(id: Int): Fetch[List[Int]] = Fetch(Many(id))
@@ -654,9 +656,9 @@ class FetchFutureTests extends AsyncFreeSpec with Matchers {
 
   implicit object ArticleFuture extends DataSource[ArticleId, Article] {
     override def name = "ArticleFuture"
-    override def fetch(ids: List[ArticleId]): Eval[Map[ArticleId, Article]] = {
+    override def fetch(ids: NonEmptyList[ArticleId]): Eval[Map[ArticleId, Article]] = {
       Eval.later({
-        ids.map(tid => (tid, Article(tid.id, "An article with id " + tid.id))).toMap
+        ids.unwrap.map(tid => (tid, Article(tid.id, "An article with id " + tid.id))).toMap
       })
     }
   }
@@ -668,9 +670,9 @@ class FetchFutureTests extends AsyncFreeSpec with Matchers {
 
   implicit object AuthorFuture extends DataSource[AuthorId, Author] {
     override def name = "AuthorFuture"
-    override def fetch(ids: List[AuthorId]): Eval[Map[AuthorId, Author]] = {
+    override def fetch(ids: NonEmptyList[AuthorId]): Eval[Map[AuthorId, Author]] = {
       Eval.later({
-        ids.map(tid => (tid, Author(tid.id, "@egg" + tid.id))).toMap
+        ids.unwrap.map(tid => (tid, Author(tid.id, "@egg" + tid.id))).toMap
       })
     }
   }

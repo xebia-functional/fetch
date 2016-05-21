@@ -19,19 +19,23 @@ package fetch
 import scala.collection.immutable.Map
 
 import cats.{Applicative, Monad, MonadError, ~>}
-import cats.data.{StateT, Const}
+import cats.data.{StateT, Const, NonEmptyList}
 import cats.free.{Free}
+import cats.std.list._
+import cats.std.option._
+import cats.syntax.traverse._
 
 /**
   * Primitive operations in the Fetch Free monad.
   */
 sealed abstract class FetchOp[A] extends Product with Serializable
 
-final case class Cached[A](a: A)                                    extends FetchOp[A]
-final case class FetchOne[I, A](a: I, ds: DataSource[I, A])         extends FetchOp[A]
-final case class FetchMany[I, A](as: List[I], ds: DataSource[I, A]) extends FetchOp[List[A]]
-final case class Concurrent(as: List[FetchMany[_, _]])              extends FetchOp[Env]
-final case class FetchError[A, E <: Throwable](err: E)              extends FetchOp[A]
+final case class Cached[A](a: A)                            extends FetchOp[A]
+final case class FetchOne[I, A](a: I, ds: DataSource[I, A]) extends FetchOp[A]
+final case class FetchMany[I, A](as: NonEmptyList[I], ds: DataSource[I, A])
+    extends FetchOp[List[A]]
+final case class Concurrent(as: List[FetchMany[_, _]]) extends FetchOp[Env]
+final case class FetchError[A, E <: Throwable](err: E) extends FetchOp[A]
 
 object `package` {
 
@@ -84,7 +88,7 @@ object `package` {
       f.foldMap[Const[FM, ?]](new (FetchOp ~> Const[FM, ?]) {
           def apply[X](x: FetchOp[X]): Const[FM, X] = x match {
             case one @ FetchOne(id, ds) =>
-              Const(List(FetchMany(List(id), ds.asInstanceOf[DataSource[Any, A]])))
+              Const(List(FetchMany(NonEmptyList(id), ds.asInstanceOf[DataSource[Any, A]])))
             case conc @ Concurrent(as) => Const(as.asInstanceOf[FM])
             case cach @ Cached(a)      => Const(List(cach))
             case _                     => Const(List())
@@ -101,12 +105,14 @@ object `package` {
     }
 
     private[this] def combineDeps(ds: List[FetchOp[_]]): List[FetchMany[_, _]] = {
-      ds.foldLeft(Map.empty[Any, List[_]])((acc, op) =>
+      ds.foldLeft(Map.empty[DataSource[_, _], NonEmptyList[Any]])((acc, op) =>
               op match {
             case one @ FetchOne(id, ds) =>
-              acc.updated(ds, acc.get(ds).fold(List(id))(accids => accids :+ id))
+              acc.updated(
+                  ds,
+                  acc.get(ds).fold(NonEmptyList(id))(accids => accids.combine(NonEmptyList(id))))
             case many @ FetchMany(ids, ds) =>
-              acc.updated(ds, acc.get(ds).fold(ids)(accids => accids ++ ids))
+              acc.updated(ds, acc.get(ds).fold(ids)(accids => accids.combine(ids)))
             case _ => acc
         })
         .toList
@@ -160,25 +166,21 @@ object `package` {
                     .fold(one: FetchOp[B])(b => Cached(b).asInstanceOf[FetchOp[B]])
                 }
               case many @ FetchMany(ids, ds) => {
-                  val results = ids.flatMap(id => env.cache.get(ds.identity(id)))
-
-                  if (results.size == ids.size) {
-                    Cached(results)
-                  } else {
-                    many
-                  }
+                  val fetched = ids.map(id => env.cache.get(ds.identity(id))).unwrap.sequence
+                  fetched.fold(many: FetchOp[B])(results => Cached(results))
                 }
               case conc @ Concurrent(manies) => {
                   val newManies = manies
                     .filterNot({ fm =>
-                      val ids: List[Any]         = fm.as
+                      val ids: NonEmptyList[Any] = fm.as.asInstanceOf[NonEmptyList[Any]]
                       val ds: DataSource[Any, _] = fm.ds.asInstanceOf[DataSource[Any, _]]
 
-                      val results = ids.flatMap(id => {
-                        env.cache.get(ds.identity(id))
-                      })
-
-                      results.size == ids.size
+                      ids
+                        .map(id => {
+                          env.cache.get(ds.identity(id))
+                        })
+                        .unwrap
+                        .forall(_.isDefined)
                     })
                     .asInstanceOf[List[FetchMany[_, _]]]
 
