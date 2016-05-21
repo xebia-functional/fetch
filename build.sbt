@@ -110,3 +110,18 @@ lazy val publishSettings = Seq(
       </developer>
     </developers>
 )
+
+lazy val readmeSettings = buildSettings ++ tutSettings ++ Seq(
+  tutSourceDirectory := baseDirectory.value,
+  tutTargetDirectory := baseDirectory.value.getParentFile,
+  tutNameFilter := """README.md""".r
+)
+
+lazy val readme = (project in file("tut"))
+  .settings(
+    moduleName := "fetch-readme"
+  )
+  .dependsOn(fetchJVM)
+  .settings(readmeSettings: _*)
+  .settings(noPublishSettings)
+

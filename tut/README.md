@@ -46,7 +46,7 @@ trait DataSource[Identity, Result]{
 
 We'll implement a dummy data source that can convert integers to strings. For convenience we define a `fetchString` function that lifts identities (`Int` in our dummy data source) to a `Fetch`. 
 
-```scala
+```tut:silent
 import cats.Eval
 import cats.data.NonEmptyList
 import cats.std.list._
@@ -69,7 +69,7 @@ def fetchString(n: Int): Fetch[String] = Fetch(n) // or, more explicitly: Fetch(
 
 Now that we can convert `Int` values to `Fetch[String]`, let's try creating a fetch.
 
-```scala
+```tut:silent
 import fetch.implicits._
 import fetch.syntax._
 
@@ -78,10 +78,8 @@ val fetchOne: Fetch[String] = fetchString(1)
 
 Now that we have created a fetch, we can run it to a target monad. Note that the target monad (`Id` in our example) needs to implement `MonadError[M, Throwable]`, we provide an instance for `Id` in `fetch.implicits._`, that's why we imported it.
 
-```scala
+```tut:book
 val result: String = fetchOne.runA[Eval].value
-// ToStringSource OneAnd(1,List())
-// result: String = 1
 ```
 
 As you can see in the previous example, the `ToStringSource` is queried once to get the value of 1.
@@ -90,7 +88,7 @@ As you can see in the previous example, the `ToStringSource` is queried once to 
 
 Multiple fetches to the same data source are automatically batched. For ilustrating it, we are going to compose three indepent fetch results as a tuple.
 
-```scala
+```tut:silent
 import cats.syntax.cartesian._
 
 val fetchThree: Fetch[(String, String, String)] = (fetchString(1) |@| fetchString(2) |@| fetchString(3)).tupled
@@ -98,17 +96,15 @@ val fetchThree: Fetch[(String, String, String)] = (fetchString(1) |@| fetchStrin
 
 When executing the above fetch, note how the three identities get batched and the data source is only queried once.
 
-```scala
+```tut:book
 val result: (String, String, String) = fetchThree.runA[Eval].value
-// ToStringSource OneAnd(1,List(2, 3))
-// result: (String, String, String) = (1,2,3)
 ```
 
 ## Concurrency
 
 If we combine two independent fetches from different data sources, the fetches will be run concurrently. Let's first add a data source that fetches a string's size.
 
-```scala
+```tut:silent
 implicit object LengthSource extends DataSource[String, Int]{
   override def fetch(ids: NonEmptyList[String]): Eval[Map[String, Int]] = {
     Eval.later({
@@ -123,24 +119,21 @@ def fetchLength(s: String): Fetch[Int] = Fetch(s)
 
 And now we can easily data from the two sources in a single fetch. 
 
-```scala
+```tut:silent
 val fetchMulti: Fetch[(String, Int)] = (fetchString(1) |@| fetchLength("one")).tupled
 ```
 
 Note how the two independent data fetches are run concurrently, minimizing the latency cost of querying the two data sources. If our target monad was a concurrency monad like `Future`, they'd run in parallel, each in its own logical thread.
 
-```scala
+```tut:book
 val result: (String, Int) = fetchMulti.runA[Eval].value
-// ToStringSource OneAnd(1,List())
-// LengthSource OneAnd(one,List())
-// result: (String, Int) = (1,3)
 ```
 
 ## Caching
 
 When fetching an identity, subsequents fetches for the same identity are cached. Let's try creating a fetch that asks for the same identity twice.
 
-```scala
+```tut:silent
 val fetchTwice: Fetch[(String, String)] = for {
   one <- fetchString(1)
   two <- fetchString(1)
@@ -149,9 +142,7 @@ val fetchTwice: Fetch[(String, String)] = for {
 
 When running it, notice that the data source is only queried once. The next time the identity is requested it's served from the cache.
 
-```scala
+```tut:book
 val result: (String, String) = fetchTwice.runA[Eval].value
-// ToStringSource OneAnd(1,List())
-// result: (String, String) = (1,1)
 ```
 
