@@ -338,6 +338,22 @@ class FetchTests extends FreeSpec with Matchers {
     }
   }
 
+  "If there is a missing identity in the left hand of a product the product will fail" in {
+    val fetch: Fetch[(Int, List[Int])] = Fetch.join(Fetch(Never()), many(3))
+
+    intercept[FetchFailure[InMemoryCache]] {
+      Fetch.run[Eval](fetch).value
+    }
+  }
+
+  "If there is a missing identity in the right hand of a product the product will fail" in {
+    val fetch: Fetch[(List[Int], Int)] = Fetch.join(many(3), Fetch(Never()))
+
+    intercept[FetchFailure[InMemoryCache]] {
+      Fetch.run[Eval](fetch).value
+    }
+  }
+
   "The product of concurrent fetches implies everything fetched concurrently" in {
     val fetch = Fetch.join(
         Fetch.join(
