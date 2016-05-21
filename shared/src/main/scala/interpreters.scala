@@ -29,7 +29,7 @@ import cats.syntax.traverse._
 /**
   * An exception thrown from the interpreter when failing to perform a data fetch.
   */
-case class FetchFailure[C <: DataSourceCache](env: Env) extends Throwable
+case class FetchFailure(env: Env) extends Throwable
 
 trait FetchInterpreters {
 

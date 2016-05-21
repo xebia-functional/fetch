@@ -179,7 +179,7 @@ class FetchTests extends FreeSpec with Matchers {
   "Data sources with errors throw fetch failures" in {
     val fetch: Fetch[Int] = Fetch(Never())
 
-    intercept[FetchFailure[InMemoryCache]] {
+    intercept[FetchFailure] {
       Fetch.runEnv[Eval](fetch).value
     } match {
       case FetchFailure(env) => {
@@ -206,7 +206,7 @@ class FetchTests extends FreeSpec with Matchers {
         OneSource.identity(One(1)) -> 1
     )
 
-    intercept[FetchFailure[InMemoryCache]] {
+    intercept[FetchFailure] {
       Fetch.run[Eval](fetch, cache).value
     } match {
       case FetchFailure(env) => env.cache shouldEqual cache
@@ -341,7 +341,7 @@ class FetchTests extends FreeSpec with Matchers {
   "If there is a missing identity in the left hand of a product the product will fail" in {
     val fetch: Fetch[(Int, List[Int])] = Fetch.join(Fetch(Never()), many(3))
 
-    intercept[FetchFailure[InMemoryCache]] {
+    intercept[FetchFailure] {
       Fetch.run[Eval](fetch).value
     }
   }
@@ -349,7 +349,7 @@ class FetchTests extends FreeSpec with Matchers {
   "If there is a missing identity in the right hand of a product the product will fail" in {
     val fetch: Fetch[(List[Int], Int)] = Fetch.join(many(3), Fetch(Never()))
 
-    intercept[FetchFailure[InMemoryCache]] {
+    intercept[FetchFailure] {
       Fetch.run[Eval](fetch).value
     }
   }
