@@ -144,7 +144,7 @@ In the previous examples, we:
 
 - brought the implicit instance of `MonadError[Eval, Throwable]` into scope importing `fetch.implicits._`
 - created a fetch for a `User` using the `getUser` function
-- interpreted the fetch to a `Eval[User]` (which is just a `User`) using the syntax `runA` that delegate to `Fetch.run` 
+- interpreted the fetch to a `Eval[User]` using the syntax `runA` that delegate to `Fetch.run`
 
 As you can see, the fetch was executed in one round to fetch the user and was finished after that.
 
@@ -394,8 +394,7 @@ val fut: Future[(User, Post)] = fetchParallel.runA[Future]
 Await.result(fut, 1 seconds) // this call blocks the current thread, don't do this at home!
 ```
 
-Since futures run in a thread pool, we need to explicitly set println output to the standard output. Note how both requests
-to the data sources run in parallel, each in its own logical thread.
+Since futures run in a thread pool, both requests to the data sources run in parallel, each in its own logical thread.
 
 # Caching
 
