@@ -179,7 +179,6 @@ object `package` {
                         .map(id => {
                           env.cache.get(ds.identity(id))
                         })
-                        .unwrap
                         .forall(_.isDefined)
                     })
                     .asInstanceOf[List[FetchMany[_, _]]]
