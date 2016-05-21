@@ -615,10 +615,17 @@ val result: Int = Fetch.run[Eval](fetchPure).value
 ### error
 
 Errors can also be lifted to the Fetch monad, in this case with `Fetch#error`. Note that interpreting
-an errorful fetch to `Eval` will throw the exception so we won't do that:
+an errorful fetch to `Eval` won't throw the exception unless we access the value with the `.value` method.
 
-```tut:silent
+A safer way to deal with errors is to use MonadError's `attempt` to turn the exception into a `Xor.Left` value:
+
+```tut:book
+val ME = implicitly[MonadError[Eval, Throwable]]
+
 val fetchFail: Fetch[Int] = Fetch.error(new Exception("Something went terribly wrong"))
+val result: Eval[Int] = fetchFail.runA[Eval]
+val safeResult: Eval[Throwable Xor Int] = ME.attempt(result)
+val finalValue: Throwable Xor Int = safeResult.value
 ```
 
 ### join
