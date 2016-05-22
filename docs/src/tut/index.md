@@ -64,7 +64,7 @@ implicit object ToStringSource extends DataSource[Int, String]{
 def fetchString(n: Int): Fetch[String] = Fetch(n) // or, more explicitly: Fetch(n)(ToStringSource)
 ```
 
-## Creating and run fetches
+## Creating and running a fetch
 
 Now that we can convert `Int` values to `Fetch[String]`, let's try creating a fetch.
 
