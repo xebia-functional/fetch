@@ -5,7 +5,7 @@
 
 A library for Simple & Efficient data access in Scala and Scala.js
 
-- [Documentation](http://47deg.github.io/fetch/)
+- [Documentation](http://47deg.github.io/fetch/docs)
 
 ## Installation
 
