@@ -57,11 +57,18 @@
         <div id="content" class="row"> <h2>Installation</h2>
 
 <p>Add the following dependency to your project&#39;s build file.</p>
-<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="s">"com.fortysevendeg"</span> <span class="o">%%</span> <span class="s">"fetch"</span> <span class="o">%%</span> <span class="s">"0.1.1"</span>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="s">"com.fortysevendeg"</span> <span class="o">%%</span> <span class="s">"fetch"</span> <span class="o">%%</span> <span class="s">"0.2.0"</span>
 </code></pre></div>
 <p>Or, if using Scala.js:</p>
-<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="s">"com.fortysevendeg"</span> <span class="o">%%%</span> <span class="s">"fetch"</span> <span class="o">%%</span> <span class="s">"0.1.1"</span>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="s">"com.fortysevendeg"</span> <span class="o">%%%</span> <span class="s">"fetch"</span> <span class="o">%%</span> <span class="s">"0.2.0"</span>
 </code></pre></div>
+<h3>Supported versions</h3>
+
+<ul>
+<li>Scala: 2.11.x</li>
+<li>Scala.js: 0.6.x</li>
+</ul>
+
 <h2>Remote data</h2>
 
 <p>Fetch is a library for making access to data both simple &amp; efficient. Fetch is specially useful when querying data that
@@ -79,35 +86,38 @@ defines how to fetch such a piece of data.</p>
 <li><code>Result</code> is the type of data we want to fetch</li>
 </ol>
 <div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">trait</span> <span class="nc">DataSource</span><span class="o">[</span><span class="kt">Identity</span>, <span class="kt">Result</span><span class="o">]{</span>
-  <span class="k">def</span> <span class="n">fetch</span><span class="o">(</span><span class="n">ids</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">Identity</span><span class="o">])</span><span class="k">:</span> <span class="kt">Eval</span><span class="o">[</span><span class="kt">Map</span><span class="o">[</span><span class="kt">Identity</span>, <span class="kt">Result</span><span class="o">]]</span>
+  <span class="k">def</span> <span class="n">fetch</span><span class="o">(</span><span class="n">ids</span><span class="k">:</span> <span class="kt">NonEmptyList</span><span class="o">[</span><span class="kt">Identity</span><span class="o">])</span><span class="k">:</span> <span class="kt">Eval</span><span class="o">[</span><span class="kt">Map</span><span class="o">[</span><span class="kt">Identity</span>, <span class="kt">Result</span><span class="o">]]</span>
 <span class="o">}</span>
 </code></pre></div>
 <p>We&#39;ll implement a dummy data source that can convert integers to strings. For convenience we define a <code>fetchString</code> function that lifts identities (<code>Int</code> in our dummy data source) to a <code>Fetch</code>. </p>
 <div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">import</span> <span class="nn">cats.Eval</span>
+<span class="k">import</span> <span class="nn">cats.data.NonEmptyList</span>
+<span class="k">import</span> <span class="nn">cats.std.list._</span>
+
 <span class="k">import</span> <span class="nn">fetch._</span>
 
 <span class="k">implicit</span> <span class="k">object</span> <span class="nc">ToStringSource</span> <span class="k">extends</span> <span class="nc">DataSource</span><span class="o">[</span><span class="kt">Int</span>, <span class="kt">String</span><span class="o">]{</span>
-  <span class="k">override</span> <span class="k">def</span> <span class="n">fetch</span><span class="o">(</span><span class="n">ids</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">Int</span><span class="o">])</span><span class="k">:</span> <span class="kt">Eval</span><span class="o">[</span><span class="kt">Map</span><span class="o">[</span><span class="kt">Int</span>, <span class="kt">String</span><span class="o">]]</span> <span class="k">=</span> <span class="o">{</span>
+  <span class="k">override</span> <span class="k">def</span> <span class="n">fetch</span><span class="o">(</span><span class="n">ids</span><span class="k">:</span> <span class="kt">NonEmptyList</span><span class="o">[</span><span class="kt">Int</span><span class="o">])</span><span class="k">:</span> <span class="kt">Eval</span><span class="o">[</span><span class="kt">Map</span><span class="o">[</span><span class="kt">Int</span>, <span class="kt">String</span><span class="o">]]</span> <span class="k">=</span> <span class="o">{</span>
     <span class="nc">Eval</span><span class="o">.</span><span class="n">later</span><span class="o">({</span>
       <span class="n">println</span><span class="o">(</span><span class="n">s</span><span class="s">"ToStringSource $ids"</span><span class="o">)</span>
-      <span class="n">ids</span><span class="o">.</span><span class="n">map</span><span class="o">(</span><span class="n">i</span> <span class="k">=&gt;</span> <span class="o">(</span><span class="n">i</span><span class="o">,</span> <span class="n">i</span><span class="o">.</span><span class="n">toString</span><span class="o">)).</span><span class="n">toMap</span>
+      <span class="n">ids</span><span class="o">.</span><span class="n">unwrap</span><span class="o">.</span><span class="n">map</span><span class="o">(</span><span class="n">i</span> <span class="k">=&gt;</span> <span class="o">(</span><span class="n">i</span><span class="o">,</span> <span class="n">i</span><span class="o">.</span><span class="n">toString</span><span class="o">)).</span><span class="n">toMap</span>
     <span class="o">})</span>
   <span class="o">}</span>
 <span class="o">}</span>
 
 <span class="k">def</span> <span class="n">fetchString</span><span class="o">(</span><span class="n">n</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">(</span><span class="n">n</span><span class="o">)</span> <span class="c1">// or, more explicitly: Fetch(n)(ToStringSource)
 </span></code></pre></div>
-<h2>Creating and run fetches</h2>
+<h2>Creating and running a fetch</h2>
 
 <p>Now that we can convert <code>Int</code> values to <code>Fetch[String]</code>, let&#39;s try creating a fetch.</p>
-<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">import</span> <span class="nn">cats.Id</span>
-<span class="k">import</span> <span class="nn">fetch.implicits._</span>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">import</span> <span class="nn">fetch.implicits._</span>
+<span class="k">import</span> <span class="nn">fetch.syntax._</span>
 
 <span class="k">val</span> <span class="n">fetchOne</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span> <span class="k">=</span> <span class="n">fetchString</span><span class="o">(</span><span class="mi">1</span><span class="o">)</span>
 </code></pre></div>
-<p>Now that we have created a fetch, we can run it to a target monad. Note that the target monad (<code>Id</code> in our example) needs to implement <code>MonadError[M, Throwable]</code>, we provide an instance for <code>Id</code> in <code>fetch.implicits._</code>, that&#39;s why we imported it.</p>
-<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">result</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">[</span><span class="kt">Id</span><span class="o">](</span><span class="n">fetchOne</span><span class="o">)</span>
-<span class="c1">// ToStringSource List(1)
+<p>Now that we have created a fetch, we can run it to a target monad. Note that the target monad (<code>Eval</code> in our example) needs to implement <code>MonadError[M, Throwable]</code>, we provide an instance for <code>Eval</code> in <code>fetch.implicits._</code>, that&#39;s why we imported it.</p>
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">result</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="n">fetchOne</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Eval</span><span class="o">].</span><span class="n">value</span>
+<span class="c1">// ToStringSource OneAnd(1,List())
 // result: String = 1
 </span></code></pre></div>
 <p>As you can see in the previous example, the <code>ToStringSource</code> is queried once to get the value of 1.</p>
@@ -120,18 +130,18 @@ defines how to fetch such a piece of data.</p>
 <span class="k">val</span> <span class="n">fetchThree</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[(</span><span class="kt">String</span>, <span class="kt">String</span>, <span class="kt">String</span><span class="o">)]</span> <span class="k">=</span> <span class="o">(</span><span class="n">fetchString</span><span class="o">(</span><span class="mi">1</span><span class="o">)</span> <span class="o">|@|</span> <span class="n">fetchString</span><span class="o">(</span><span class="mi">2</span><span class="o">)</span> <span class="o">|@|</span> <span class="n">fetchString</span><span class="o">(</span><span class="mi">3</span><span class="o">)).</span><span class="n">tupled</span>
 </code></pre></div>
 <p>When executing the above fetch, note how the three identities get batched and the data source is only queried once.</p>
-<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">result</span><span class="k">:</span> <span class="o">(</span><span class="kt">String</span><span class="o">,</span> <span class="kt">String</span><span class="o">,</span> <span class="nc">String</span><span class="o">)</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">[</span><span class="kt">Id</span><span class="o">](</span><span class="n">fetchThree</span><span class="o">)</span>
-<span class="c1">// ToStringSource List(1, 2, 3)
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">result</span><span class="k">:</span> <span class="o">(</span><span class="kt">String</span><span class="o">,</span> <span class="kt">String</span><span class="o">,</span> <span class="nc">String</span><span class="o">)</span> <span class="k">=</span> <span class="n">fetchThree</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Eval</span><span class="o">].</span><span class="n">value</span>
+<span class="c1">// ToStringSource OneAnd(1,List(2, 3))
 // result: (String, String, String) = (1,2,3)
 </span></code></pre></div>
 <h2>Concurrency</h2>
 
 <p>If we combine two independent fetches from different data sources, the fetches will be run concurrently. Let&#39;s first add a data source that fetches a string&#39;s size.</p>
 <div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">implicit</span> <span class="k">object</span> <span class="nc">LengthSource</span> <span class="k">extends</span> <span class="nc">DataSource</span><span class="o">[</span><span class="kt">String</span>, <span class="kt">Int</span><span class="o">]{</span>
-  <span class="k">override</span> <span class="k">def</span> <span class="n">fetch</span><span class="o">(</span><span class="n">ids</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">String</span><span class="o">])</span><span class="k">:</span> <span class="kt">Eval</span><span class="o">[</span><span class="kt">Map</span><span class="o">[</span><span class="kt">String</span>, <span class="kt">Int</span><span class="o">]]</span> <span class="k">=</span> <span class="o">{</span>
+  <span class="k">override</span> <span class="k">def</span> <span class="n">fetch</span><span class="o">(</span><span class="n">ids</span><span class="k">:</span> <span class="kt">NonEmptyList</span><span class="o">[</span><span class="kt">String</span><span class="o">])</span><span class="k">:</span> <span class="kt">Eval</span><span class="o">[</span><span class="kt">Map</span><span class="o">[</span><span class="kt">String</span>, <span class="kt">Int</span><span class="o">]]</span> <span class="k">=</span> <span class="o">{</span>
     <span class="nc">Eval</span><span class="o">.</span><span class="n">later</span><span class="o">({</span>
       <span class="n">println</span><span class="o">(</span><span class="n">s</span><span class="s">"LengthSource $ids"</span><span class="o">)</span>
-      <span class="n">ids</span><span class="o">.</span><span class="n">map</span><span class="o">(</span><span class="n">i</span> <span class="k">=&gt;</span> <span class="o">(</span><span class="n">i</span><span class="o">,</span> <span class="n">i</span><span class="o">.</span><span class="n">size</span><span class="o">)).</span><span class="n">toMap</span>
+      <span class="n">ids</span><span class="o">.</span><span class="n">unwrap</span><span class="o">.</span><span class="n">map</span><span class="o">(</span><span class="n">i</span> <span class="k">=&gt;</span> <span class="o">(</span><span class="n">i</span><span class="o">,</span> <span class="n">i</span><span class="o">.</span><span class="n">size</span><span class="o">)).</span><span class="n">toMap</span>
     <span class="o">})</span>
   <span class="o">}</span>
 <span class="o">}</span>
@@ -142,9 +152,9 @@ defines how to fetch such a piece of data.</p>
 <div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">fetchMulti</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[(</span><span class="kt">String</span>, <span class="kt">Int</span><span class="o">)]</span> <span class="k">=</span> <span class="o">(</span><span class="n">fetchString</span><span class="o">(</span><span class="mi">1</span><span class="o">)</span> <span class="o">|@|</span> <span class="n">fetchLength</span><span class="o">(</span><span class="s">"one"</span><span class="o">)).</span><span class="n">tupled</span>
 </code></pre></div>
 <p>Note how the two independent data fetches are run concurrently, minimizing the latency cost of querying the two data sources. If our target monad was a concurrency monad like <code>Future</code>, they&#39;d run in parallel, each in its own logical thread.</p>
-<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">result</span><span class="k">:</span> <span class="o">(</span><span class="kt">String</span><span class="o">,</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">[</span><span class="kt">Id</span><span class="o">](</span><span class="n">fetchMulti</span><span class="o">)</span>
-<span class="c1">// ToStringSource List(1)
-// LengthSource List(one)
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">result</span><span class="k">:</span> <span class="o">(</span><span class="kt">String</span><span class="o">,</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">=</span> <span class="n">fetchMulti</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Eval</span><span class="o">].</span><span class="n">value</span>
+<span class="c1">// ToStringSource OneAnd(1,List())
+// LengthSource OneAnd(one,List())
 // result: (String, Int) = (1,3)
 </span></code></pre></div>
 <h2>Caching</h2>
@@ -156,8 +166,8 @@ defines how to fetch such a piece of data.</p>
 <span class="o">}</span> <span class="k">yield</span> <span class="o">(</span><span class="n">one</span><span class="o">,</span> <span class="n">two</span><span class="o">)</span>
 </code></pre></div>
 <p>When running it, notice that the data source is only queried once. The next time the identity is requested it&#39;s served from the cache.</p>
-<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">result</span><span class="k">:</span> <span class="o">(</span><span class="kt">String</span><span class="o">,</span> <span class="kt">String</span><span class="o">)</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">[</span><span class="kt">Id</span><span class="o">](</span><span class="n">fetchTwice</span><span class="o">)</span>
-<span class="c1">// ToStringSource List(1)
+<div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">result</span><span class="k">:</span> <span class="o">(</span><span class="kt">String</span><span class="o">,</span> <span class="kt">String</span><span class="o">)</span> <span class="k">=</span> <span class="n">fetchTwice</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Eval</span><span class="o">].</span><span class="n">value</span>
+<span class="c1">// ToStringSource OneAnd(1,List())
 // result: (String, String) = (1,1)
 </span></code></pre></div> </div>
       </div>
