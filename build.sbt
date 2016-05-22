@@ -60,6 +60,7 @@ lazy val docsSettings = ghpages.settings ++ buildSettings ++ tutSettings ++ Seq(
   git.remoteRepo := "git@github.com:47deg/fetch.git",
   tutSourceDirectory := sourceDirectory.value / "tut",
   tutTargetDirectory := sourceDirectory.value / "jekyll",
+  tutScalacOptions ~= (_.filterNot(Set("-Ywarn-unused-import", "-Ywarn-dead-code"))),
   aggregate in doc := true
 )
 
@@ -114,6 +115,7 @@ lazy val publishSettings = Seq(
 lazy val readmeSettings = buildSettings ++ tutSettings ++ Seq(
   tutSourceDirectory := baseDirectory.value,
   tutTargetDirectory := baseDirectory.value.getParentFile,
+  tutScalacOptions ~= (_.filterNot(Set("-Ywarn-unused-import", "-Ywarn-dead-code"))),
   tutNameFilter := """README.md""".r
 )
 
