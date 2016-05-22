@@ -382,11 +382,11 @@ parallelism whenever we can make requests to multiple independent data sources a
 <p>We can now interpret a fetch into a future:</p>
 <div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">fut</span><span class="k">:</span> <span class="kt">Future</span><span class="o">[(</span><span class="kt">User</span>, <span class="kt">Post</span><span class="o">)]</span> <span class="k">=</span> <span class="n">fetchParallel</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Future</span><span class="o">]</span>
 <span class="c1">// fut: scala.concurrent.Future[(User, Post)] = List()
-// Fetching posts OneAnd(1,List())
 </span>
 <span class="nc">Await</span><span class="o">.</span><span class="n">result</span><span class="o">(</span><span class="n">fut</span><span class="o">,</span> <span class="mi">1</span> <span class="n">seconds</span><span class="o">)</span> <span class="c1">// this call blocks the current thread, don't do this at home!
-</span><span class="nc">Fetching</span> <span class="n">users</span> <span class="nc">OneAnd</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span><span class="nc">List</span><span class="o">())</span>
-<span class="c1">// warning: there was one feature warning; re-run with -feature for details
+// Fetching posts OneAnd(1,List())
+// Fetching users OneAnd(1,List())
+// warning: there was one feature warning; re-run with -feature for details
 // res14: (User, Post) = (User(1,@one),Post(1,2,An article))
 </span></code></pre></div>
 <p>Since futures run in a thread pool, both requests to the data sources run in parallel, each in its own logical thread.</p>
@@ -427,7 +427,7 @@ instead of <code>Fetch.run</code> or <code>value.runF</code> via it&#39;s implic
 data sources.</p>
 <div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">populatedCache</span> <span class="k">=</span> <span class="n">fetchManyUsers</span><span class="o">.</span><span class="n">runE</span><span class="o">[</span><span class="kt">Eval</span><span class="o">].</span><span class="n">value</span><span class="o">.</span><span class="n">cache</span>
 <span class="c1">// Fetching users OneAnd(1,List(2, 3))
-// populatedCache: fetch.DataSourceCache = InMemoryCache(Map((UserSource$@9a24aa,1) -&gt; User(1,@one), (UserSource$@9a24aa,2) -&gt; User(2,@two), (UserSource$@9a24aa,3) -&gt; User(3,@three)))
+// populatedCache: fetch.DataSourceCache = InMemoryCache(Map((UserSource$@9eb4a22,1) -&gt; User(1,@one), (UserSource$@9eb4a22,2) -&gt; User(2,@two), (UserSource$@9eb4a22,3) -&gt; User(3,@three)))
 </span>
 <span class="k">val</span> <span class="n">result</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">User</span><span class="o">]</span> <span class="k">=</span>  <span class="n">fetchManyUsers</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Eval</span><span class="o">](</span><span class="n">populatedCache</span><span class="o">).</span><span class="n">value</span> 
 <span class="c1">// result: List[User] = List(User(1,@one), User(2,@two), User(3,@three))
@@ -476,13 +476,13 @@ in the <code>Eval</code> monad to an <code>Xor</code> and not worry about except
 <span class="c1">// import cats.MonadError
 </span>
 <span class="k">val</span> <span class="nc">ME</span> <span class="k">=</span> <span class="n">implicitly</span><span class="o">[</span><span class="kt">MonadError</span><span class="o">[</span><span class="kt">Eval</span>, <span class="kt">Throwable</span><span class="o">]]</span>
-<span class="c1">// ME: cats.MonadError[cats.Eval,Throwable] = fetch.implicits$$anon$1@456d070d
+<span class="c1">// ME: cats.MonadError[cats.Eval,Throwable] = fetch.implicits$$anon$1@42f2a855
 </span>
 <span class="k">val</span> <span class="n">result</span><span class="k">:</span> <span class="kt">Eval</span><span class="o">[</span><span class="kt">User</span><span class="o">]</span> <span class="k">=</span> <span class="n">fetchError</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Eval</span><span class="o">]</span>
-<span class="c1">// result: cats.Eval[User] = cats.Eval$$anon$5@4312e486
+<span class="c1">// result: cats.Eval[User] = cats.Eval$$anon$5@35dc0c62
 </span>
 <span class="k">val</span> <span class="n">safeResult</span><span class="k">:</span> <span class="kt">Eval</span><span class="o">[</span><span class="kt">Throwable</span> <span class="kt">Xor</span> <span class="kt">User</span><span class="o">]</span> <span class="k">=</span> <span class="nc">ME</span><span class="o">.</span><span class="n">attempt</span><span class="o">(</span><span class="n">result</span><span class="o">)</span>
-<span class="c1">// safeResult: cats.Eval[cats.data.Xor[Throwable,User]] = cats.Later@591570a3
+<span class="c1">// safeResult: cats.Eval[cats.data.Xor[Throwable,User]] = cats.Later@758ed67e
 </span>
 <span class="k">val</span> <span class="n">finalValue</span><span class="k">:</span> <span class="kt">Throwable</span> <span class="kt">Xor</span> <span class="kt">User</span> <span class="o">=</span> <span class="n">safeResult</span><span class="o">.</span><span class="n">value</span>
 <span class="c1">// finalValue: cats.data.Xor[Throwable,User] = Left(java.lang.Exception: Oh noes)
@@ -578,16 +578,16 @@ an errorful fetch to <code>Eval</code> won&#39;t throw the exception unless we a
 
 <p>A safer way to deal with errors is to use MonadError&#39;s <code>attempt</code> to turn the exception into a <code>Xor.Left</code> value:</p>
 <div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="nc">ME</span> <span class="k">=</span> <span class="n">implicitly</span><span class="o">[</span><span class="kt">MonadError</span><span class="o">[</span><span class="kt">Eval</span>, <span class="kt">Throwable</span><span class="o">]]</span>
-<span class="c1">// ME: cats.MonadError[cats.Eval,Throwable] = fetch.implicits$$anon$1@456d070d
+<span class="c1">// ME: cats.MonadError[cats.Eval,Throwable] = fetch.implicits$$anon$1@42f2a855
 </span>
 <span class="k">val</span> <span class="n">fetchFail</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">error</span><span class="o">(</span><span class="k">new</span> <span class="nc">Exception</span><span class="o">(</span><span class="s">"Something went terribly wrong"</span><span class="o">))</span>
 <span class="c1">// fetchFail: fetch.Fetch[Int] = Suspend(FetchError(java.lang.Exception: Something went terribly wrong))
 </span>
 <span class="k">val</span> <span class="n">result</span><span class="k">:</span> <span class="kt">Eval</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="n">fetchFail</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Eval</span><span class="o">]</span>
-<span class="c1">// result: cats.Eval[Int] = cats.Eval$$anon$5@2b90bbd6
+<span class="c1">// result: cats.Eval[Int] = cats.Eval$$anon$5@460cf05f
 </span>
 <span class="k">val</span> <span class="n">safeResult</span><span class="k">:</span> <span class="kt">Eval</span><span class="o">[</span><span class="kt">Throwable</span> <span class="kt">Xor</span> <span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="nc">ME</span><span class="o">.</span><span class="n">attempt</span><span class="o">(</span><span class="n">result</span><span class="o">)</span>
-<span class="c1">// safeResult: cats.Eval[cats.data.Xor[Throwable,Int]] = cats.Later@729bf900
+<span class="c1">// safeResult: cats.Eval[cats.data.Xor[Throwable,Int]] = cats.Later@6badebee
 </span>
 <span class="k">val</span> <span class="n">finalValue</span><span class="k">:</span> <span class="kt">Throwable</span> <span class="kt">Xor</span> <span class="kt">Int</span> <span class="o">=</span> <span class="n">safeResult</span><span class="o">.</span><span class="n">value</span>
 <span class="c1">// finalValue: cats.data.Xor[Throwable,Int] = Left(java.lang.Exception: Something went terribly wrong)
@@ -657,7 +657,7 @@ fetches.</p>
 <div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">fetchFriends</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span> <span class="k">=</span> <span class="o">(</span><span class="n">getUser</span><span class="o">(</span><span class="mi">1</span><span class="o">)</span> <span class="o">|@|</span> <span class="n">getUser</span><span class="o">(</span><span class="mi">2</span><span class="o">)).</span><span class="n">map</span><span class="o">({</span> <span class="o">(</span><span class="n">one</span><span class="o">,</span> <span class="n">other</span><span class="o">)</span> <span class="k">=&gt;</span>
   <span class="n">s</span><span class="s">"${one.username} is friends with ${other.username}"</span>
 <span class="o">})</span>
-<span class="c1">// fetchFriends: fetch.Fetch[String] = Gosub(Gosub(Suspend(Concurrent(List(FetchMany(OneAnd(1,List(2)),UserSource$@9a24aa)))),&lt;function1&gt;),&lt;function1&gt;)
+<span class="c1">// fetchFriends: fetch.Fetch[String] = Gosub(Gosub(Suspend(Concurrent(List(FetchMany(OneAnd(1,List(2)),UserSource$@9eb4a22)))),&lt;function1&gt;),&lt;function1&gt;)
 </span>
 <span class="k">val</span> <span class="n">result</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="n">fetchFriends</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Eval</span><span class="o">].</span><span class="n">value</span>
 <span class="c1">// Fetching users OneAnd(1,List(2))
@@ -667,7 +667,7 @@ fetches.</p>
 <div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">fetchFriends</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">join</span><span class="o">(</span><span class="n">getUser</span><span class="o">(</span><span class="mi">1</span><span class="o">),</span> <span class="n">getUser</span><span class="o">(</span><span class="mi">2</span><span class="o">)).</span><span class="n">map</span><span class="o">({</span> <span class="k">case</span> <span class="o">(</span><span class="n">one</span><span class="o">,</span> <span class="n">other</span><span class="o">)</span> <span class="k">=&gt;</span>
   <span class="n">s</span><span class="s">"${one.username} is friends with ${other.username}"</span>
 <span class="o">})</span>
-<span class="c1">// fetchFriends: fetch.Fetch[String] = Gosub(Gosub(Suspend(Concurrent(List(FetchMany(OneAnd(1,List(2)),UserSource$@9a24aa)))),&lt;function1&gt;),&lt;function1&gt;)
+<span class="c1">// fetchFriends: fetch.Fetch[String] = Gosub(Gosub(Suspend(Concurrent(List(FetchMany(OneAnd(1,List(2)),UserSource$@9eb4a22)))),&lt;function1&gt;),&lt;function1&gt;)
 </span>
 <span class="k">val</span> <span class="n">result</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="n">fetchFriends</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Eval</span><span class="o">].</span><span class="n">value</span>
 <span class="c1">// Fetching users OneAnd(1,List(2))
