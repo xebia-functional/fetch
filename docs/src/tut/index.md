@@ -39,7 +39,7 @@ Data Sources take two type parameters:
 
 ```scala
 trait DataSource[Identity, Result]{
-  def fetch(ids: List[Identity]): Eval[Map[Identity, Result]]
+  def fetch(ids: NonEmptyList[Identity]): Eval[Map[Identity, Result]]
 }
 ```
 
@@ -47,13 +47,16 @@ We'll implement a dummy data source that can convert integers to strings. For co
 
 ```tut:silent
 import cats.Eval
+import cats.data.NonEmptyList
+import cats.std.list._
+
 import fetch._
 
 implicit object ToStringSource extends DataSource[Int, String]{
-  override def fetch(ids: List[Int]): Eval[Map[Int, String]] = {
+  override def fetch(ids: NonEmptyList[Int]): Eval[Map[Int, String]] = {
     Eval.later({
       println(s"ToStringSource $ids")
-      ids.map(i => (i, i.toString)).toMap
+      ids.unwrap.map(i => (i, i.toString)).toMap
     })
   }
 }
@@ -102,10 +105,10 @@ If we combine two independent fetches from different data sources, the fetches w
 
 ```tut:silent
 implicit object LengthSource extends DataSource[String, Int]{
-  override def fetch(ids: List[String]): Eval[Map[String, Int]] = {
+  override def fetch(ids: NonEmptyList[String]): Eval[Map[String, Int]] = {
     Eval.later({
       println(s"LengthSource $ids")
-      ids.map(i => (i, i.size)).toMap
+      ids.unwrap.map(i => (i, i.size)).toMap
     })
   }
 }

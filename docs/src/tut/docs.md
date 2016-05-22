@@ -56,7 +56,7 @@ In order to tell Fetch how to retrieve data, we must implement the `DataSource` 
 
 ```scala
 trait DataSource[Identity, Result]{
-  def fetch(ids: List[Identity]): Eval[Map[Identity, Result]]
+  def fetch(ids: NonEmptyList[Identity]): Eval[Map[Identity, Result]]
 }
 ```
 
@@ -86,6 +86,9 @@ And now we're ready to write our user data source; we'll emulate a database with
 
 ```tut:silent
 import cats.Eval
+import cats.data.NonEmptyList
+import cats.std.list._
+
 import fetch._
 
 val userDatabase: Map[UserId, User] = Map(
@@ -95,10 +98,10 @@ val userDatabase: Map[UserId, User] = Map(
 )
 
 implicit object UserSource extends DataSource[UserId, User]{
-  override def fetch(ids: List[UserId]): Eval[Map[UserId, User]] = {
+  override def fetch(ids: NonEmptyList[UserId]): Eval[Map[UserId, User]] = {
     Eval.later({
       println(s"Fetching users $ids")
-	  userDatabase.filterKeys(ids.contains)
+	  userDatabase.filterKeys(ids.unwrap.contains)
     })
   }
 }
@@ -246,10 +249,10 @@ val postDatabase: Map[PostId, Post] = Map(
 )
 
 implicit object PostSource extends DataSource[PostId, Post]{
-  override def fetch(ids: List[PostId]): Eval[Map[PostId, Post]] = {
+  override def fetch(ids: NonEmptyList[PostId]): Eval[Map[PostId, Post]] = {
     Eval.later({
       println(s"Fetching posts $ids")
-      postDatabase.filterKeys(ids.contains)
+      postDatabase.filterKeys(ids.unwrap.contains)
     })
   }
 }
@@ -263,10 +266,10 @@ val postInfoDatabase: Map[PostId, PostInfo] = Map(
 )
 
 implicit object PostInfoSource extends DataSource[PostId, PostInfo]{
-  override def fetch(ids: List[PostId]): Eval[Map[PostId, PostInfo]] = {
+  override def fetch(ids: NonEmptyList[PostId]): Eval[Map[PostId, PostInfo]] = {
     Eval.later({
       println(s"Fetching post info $ids")
-      postInfoDatabase.filterKeys(ids.contains)
+      postInfoDatabase.filterKeys(ids.unwrap.contains)
     })
   }
 }
