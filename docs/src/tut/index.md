@@ -11,14 +11,19 @@ technologies:
 Add the following dependency to your project's build file.
 
 ```scala
-"com.fortysevendeg" %% "fetch" %% "0.1.1"
+"com.fortysevendeg" %% "fetch" %% "0.2.0"
 ```
 
 Or, if using Scala.js:
 
 ```scala
-"com.fortysevendeg" %%% "fetch" %% "0.1.1"
+"com.fortysevendeg" %%% "fetch" %% "0.2.0"
 ```
+
+### Supported versions
+
+- Scala: 2.11.x
+- Scala.js: 0.6.x
 
 ## Remote data
 
