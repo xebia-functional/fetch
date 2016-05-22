@@ -17,7 +17,7 @@ lazy val buildSettings = Seq(
 lazy val commonSettings = Seq(
   resolvers += Resolver.sonatypeRepo("releases"),
   libraryDependencies ++= Seq(
-    "org.typelevel" %%% "cats" % "0.5.0",
+    "org.typelevel" %%% "cats" % "0.6.0",
     "org.scalatest" %%% "scalatest" % "3.0.0-M7" % "test",
     compilerPlugin(
       "org.spire-math" %% "kind-projector" % "0.7.1"
