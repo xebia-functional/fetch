@@ -76,7 +76,7 @@ import fetch.syntax._
 val fetchOne: Fetch[String] = fetchString(1)
 ```
 
-Now that we have created a fetch, we can run it to a target monad. Note that the target monad (`Id` in our example) needs to implement `MonadError[M, Throwable]`, we provide an instance for `Id` in `fetch.implicits._`, that's why we imported it.
+Now that we have created a fetch, we can run it to a target monad. Note that the target monad (`Eval` in our example) needs to implement `MonadError[M, Throwable]`, we provide an instance for `Eval` in `fetch.implicits._`, that's why we imported it.
 
 ```scala
 val result: String = fetchOne.runA[Eval].value
