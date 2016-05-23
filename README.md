@@ -28,12 +28,12 @@ Or, if using Scala.js:
 
 ## Remote data
 
-Fetch is a library for making access to data both simple & efficient. Fetch is specially useful when querying data that
+Fetch is a library for making access to data both simple & efficient. Fetch is especially useful when querying data that
 has a latency cost, such as databases or web services.
 
 ## Define your data sources
 
-For telling `Fetch` how to get the data you want, you must implement the `DataSource` typeclass. Data sources have a `fetch` method that
+To tell `Fetch` how to get the data you want, you must implement the `DataSource` typeclass. Data sources have a `fetch` method that
 defines how to fetch such a piece of data.
 
 Data Sources take two type parameters:
@@ -49,7 +49,7 @@ trait DataSource[Identity, Result]{
 }
 ```
 
-We'll implement a dummy data source that can convert integers to strings. For convenience we define a `fetchString` function that lifts identities (`Int` in our dummy data source) to a `Fetch`. 
+We'll implement a dummy data source that can convert integers to strings. For convenience, we define a `fetchString` function that lifts identities (`Int` in our dummy data source) to a `Fetch`. 
 
 ```scala
 import cats.Eval
@@ -93,7 +93,7 @@ As you can see in the previous example, the `ToStringSource` is queried once to 
 
 ## Batching
 
-Multiple fetches to the same data source are automatically batched. For ilustrating it, we are going to compose three indepent fetch results as a tuple.
+Multiple fetches to the same data source are automatically batched. For illustrating it, we are going to compose three independent fetch results as a tuple.
 
 ```scala
 import cats.syntax.cartesian._
@@ -111,7 +111,7 @@ val result: (String, String, String) = fetchThree.runA[Eval].value
 
 ## Concurrency
 
-If we combine two independent fetches from different data sources, the fetches will be run concurrently. Let's first add a data source that fetches a string's size.
+If we combine two independent fetches from different data sources, the fetches will be run concurrently. First, let's add a data source that fetches a string's size.
 
 ```scala
 implicit object LengthSource extends DataSource[String, Int]{
@@ -126,7 +126,7 @@ implicit object LengthSource extends DataSource[String, Int]{
 def fetchLength(s: String): Fetch[Int] = Fetch(s)
 ```
 
-And now we can easily data from the two sources in a single fetch. 
+And now we can easily recieve data from the two sources in a single fetch. 
 
 ```scala
 val fetchMulti: Fetch[(String, Int)] = (fetchString(1) |@| fetchLength("one")).tupled
@@ -143,7 +143,7 @@ val result: (String, Int) = fetchMulti.runA[Eval].value
 
 ## Caching
 
-When fetching an identity, subsequents fetches for the same identity are cached. Let's try creating a fetch that asks for the same identity twice.
+When fetching an identity, subsequent fetches for the same identity are cached. Let's try creating a fetch that asks for the same identity twice.
 
 ```scala
 val fetchTwice: Fetch[(String, String)] = for {
@@ -152,7 +152,7 @@ val fetchTwice: Fetch[(String, String)] = for {
 } yield (one, two)
 ```
 
-When running it, notice that the data source is only queried once. The next time the identity is requested it's served from the cache.
+While running it, notice that the data source is only queried once. The next time the identity is requested, it's served from the cache.
 
 ```scala
 val result: (String, String) = fetchTwice.runA[Eval].value
