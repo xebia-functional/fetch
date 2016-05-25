@@ -16,8 +16,7 @@
 
 package fetch
 
-import cats.{Eval, Id}
-import cats.{MonadError}
+import cats.{Eval, MonadError}
 
 /**
   * A cache that stores its elements in memory.
