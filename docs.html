@@ -97,6 +97,17 @@ we read) concerns.</p>
 </code></pre></div>
 <p>Now you&#39;ll have Fetch available in both Scala and Scala.js.</p>
 
+<h2>Alternatives</h2>
+
+<p>There are other libraries in Scala that implement the same optimizations as Fetch does and have different design decisions. If Fetch is not suitable for you these alternatives may be a better fit:</p>
+
+<ul>
+<li><a href="http://getclump.io/">Clump</a> it&#39;s been around for a long time and is used in production systems at SoundCloud and LinkedIn. You can use it with Scala&#39;s or Twitter&#39;s Futures.</li>
+<li><a href="https://github.com/resolvable/resolvable">Resolvable</a> can be used with Scala Futures.</li>
+</ul>
+
+<p>If something is missing in Fetch that stops you from using it we&#39;d appreciate if you <a href="https://github.com/47deg/fetch/issues">open an issue in our repository</a>.</p>
+
 <h1>Usage</h1>
 
 <p>In order to tell Fetch how to retrieve data, we must implement the <code>DataSource</code> typeclass.</p>
@@ -202,7 +213,7 @@ a fetch in the <code>Id</code> monad.</p>
 </span></code></pre></div>
 <h3>Batching</h3>
 
-<p>If we combine two independent requests to the same data source, Fetch will 
+<p>If we combine two independent requests to the same data source, Fetch will
 automatically batch them together into a single request. Applicative operations like the product of two fetches
 help us tell the library that those fetches are independent, and thus can be batched if they use the same data source:</p>
 <div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">import</span> <span class="nn">cats.syntax.cartesian._</span>
@@ -436,9 +447,9 @@ instead of <code>Fetch.run</code> or <code>value.runF</code> via it&#39;s implic
 data sources.</p>
 <div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">populatedCache</span> <span class="k">=</span> <span class="n">fetchManyUsers</span><span class="o">.</span><span class="n">runE</span><span class="o">[</span><span class="kt">Eval</span><span class="o">].</span><span class="n">value</span><span class="o">.</span><span class="n">cache</span>
 <span class="c1">// Fetching users OneAnd(1,List(2, 3))
-// populatedCache: fetch.DataSourceCache = InMemoryCache(Map((UserSource$@1bc85f5c,1) -&gt; User(1,@one), (UserSource$@1bc85f5c,2) -&gt; User(2,@two), (UserSource$@1bc85f5c,3) -&gt; User(3,@three)))
+// populatedCache: fetch.DataSourceCache = InMemoryCache(Map((UserSource$@4018dd86,1) -&gt; User(1,@one), (UserSource$@4018dd86,2) -&gt; User(2,@two), (UserSource$@4018dd86,3) -&gt; User(3,@three)))
 </span>
-<span class="k">val</span> <span class="n">result</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">User</span><span class="o">]</span> <span class="k">=</span>  <span class="n">fetchManyUsers</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Eval</span><span class="o">](</span><span class="n">populatedCache</span><span class="o">).</span><span class="n">value</span> 
+<span class="k">val</span> <span class="n">result</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">User</span><span class="o">]</span> <span class="k">=</span>  <span class="n">fetchManyUsers</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Eval</span><span class="o">](</span><span class="n">populatedCache</span><span class="o">).</span><span class="n">value</span>
 <span class="c1">// result: List[User] = List(User(1,@one), User(2,@two), User(3,@three))
 </span></code></pre></div>
 <h2>Implementing a custom cache</h2>
@@ -485,13 +496,13 @@ in the <code>Eval</code> monad to an <code>Xor</code> and not worry about except
 <span class="c1">// import cats.MonadError
 </span>
 <span class="k">val</span> <span class="nc">ME</span> <span class="k">=</span> <span class="n">implicitly</span><span class="o">[</span><span class="kt">MonadError</span><span class="o">[</span><span class="kt">Eval</span>, <span class="kt">Throwable</span><span class="o">]]</span>
-<span class="c1">// ME: cats.MonadError[cats.Eval,Throwable] = fetch.implicits$$anon$1@1a559f40
+<span class="c1">// ME: cats.MonadError[cats.Eval,Throwable] = fetch.implicits$$anon$1@23e5edb1
 </span>
 <span class="k">val</span> <span class="n">result</span><span class="k">:</span> <span class="kt">Eval</span><span class="o">[</span><span class="kt">User</span><span class="o">]</span> <span class="k">=</span> <span class="n">fetchError</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Eval</span><span class="o">]</span>
-<span class="c1">// result: cats.Eval[User] = cats.Eval$$anon$5@381044bf
+<span class="c1">// result: cats.Eval[User] = cats.Eval$$anon$5@3296c8f4
 </span>
 <span class="k">val</span> <span class="n">safeResult</span><span class="k">:</span> <span class="kt">Eval</span><span class="o">[</span><span class="kt">Throwable</span> <span class="kt">Xor</span> <span class="kt">User</span><span class="o">]</span> <span class="k">=</span> <span class="nc">ME</span><span class="o">.</span><span class="n">attempt</span><span class="o">(</span><span class="n">result</span><span class="o">)</span>
-<span class="c1">// safeResult: cats.Eval[cats.data.Xor[Throwable,User]] = cats.Later@4d8f5744
+<span class="c1">// safeResult: cats.Eval[cats.data.Xor[Throwable,User]] = cats.Later@1f4a4fca
 </span>
 <span class="k">val</span> <span class="n">finalValue</span><span class="k">:</span> <span class="kt">Throwable</span> <span class="kt">Xor</span> <span class="kt">User</span> <span class="o">=</span> <span class="n">safeResult</span><span class="o">.</span><span class="n">value</span>
 <span class="c1">// finalValue: cats.data.Xor[Throwable,User] = Left(java.lang.Exception: Oh noes)
@@ -587,16 +598,16 @@ an errorful fetch to <code>Eval</code> won&#39;t throw the exception unless we a
 
 <p>A safer way to deal with errors is to use MonadError&#39;s <code>attempt</code> to turn the exception into a <code>Xor.Left</code> value:</p>
 <div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="nc">ME</span> <span class="k">=</span> <span class="n">implicitly</span><span class="o">[</span><span class="kt">MonadError</span><span class="o">[</span><span class="kt">Eval</span>, <span class="kt">Throwable</span><span class="o">]]</span>
-<span class="c1">// ME: cats.MonadError[cats.Eval,Throwable] = fetch.implicits$$anon$1@1a559f40
+<span class="c1">// ME: cats.MonadError[cats.Eval,Throwable] = fetch.implicits$$anon$1@23e5edb1
 </span>
 <span class="k">val</span> <span class="n">fetchFail</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">error</span><span class="o">(</span><span class="k">new</span> <span class="nc">Exception</span><span class="o">(</span><span class="s">"Something went terribly wrong"</span><span class="o">))</span>
 <span class="c1">// fetchFail: fetch.Fetch[Int] = Suspend(FetchError(java.lang.Exception: Something went terribly wrong))
 </span>
 <span class="k">val</span> <span class="n">result</span><span class="k">:</span> <span class="kt">Eval</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="n">fetchFail</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Eval</span><span class="o">]</span>
-<span class="c1">// result: cats.Eval[Int] = cats.Eval$$anon$5@79738e85
+<span class="c1">// result: cats.Eval[Int] = cats.Eval$$anon$5@5cf8eefa
 </span>
 <span class="k">val</span> <span class="n">safeResult</span><span class="k">:</span> <span class="kt">Eval</span><span class="o">[</span><span class="kt">Throwable</span> <span class="kt">Xor</span> <span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="nc">ME</span><span class="o">.</span><span class="n">attempt</span><span class="o">(</span><span class="n">result</span><span class="o">)</span>
-<span class="c1">// safeResult: cats.Eval[cats.data.Xor[Throwable,Int]] = cats.Later@62133a31
+<span class="c1">// safeResult: cats.Eval[cats.data.Xor[Throwable,Int]] = cats.Later@4c62790d
 </span>
 <span class="k">val</span> <span class="n">finalValue</span><span class="k">:</span> <span class="kt">Throwable</span> <span class="kt">Xor</span> <span class="kt">Int</span> <span class="o">=</span> <span class="n">safeResult</span><span class="o">.</span><span class="n">value</span>
 <span class="c1">// finalValue: cats.data.Xor[Throwable,Int] = Left(java.lang.Exception: Something went terribly wrong)
@@ -666,7 +677,7 @@ fetches.</p>
 <div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">fetchFriends</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span> <span class="k">=</span> <span class="o">(</span><span class="n">getUser</span><span class="o">(</span><span class="mi">1</span><span class="o">)</span> <span class="o">|@|</span> <span class="n">getUser</span><span class="o">(</span><span class="mi">2</span><span class="o">)).</span><span class="n">map</span><span class="o">({</span> <span class="o">(</span><span class="n">one</span><span class="o">,</span> <span class="n">other</span><span class="o">)</span> <span class="k">=&gt;</span>
   <span class="n">s</span><span class="s">"${one.username} is friends with ${other.username}"</span>
 <span class="o">})</span>
-<span class="c1">// fetchFriends: fetch.Fetch[String] = Gosub(Gosub(Suspend(Concurrent(List(FetchMany(OneAnd(1,List(2)),UserSource$@1bc85f5c)))),&lt;function1&gt;),&lt;function1&gt;)
+<span class="c1">// fetchFriends: fetch.Fetch[String] = Gosub(Gosub(Suspend(Concurrent(List(FetchMany(OneAnd(1,List(2)),UserSource$@4018dd86)))),&lt;function1&gt;),&lt;function1&gt;)
 </span>
 <span class="k">val</span> <span class="n">result</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="n">fetchFriends</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Eval</span><span class="o">].</span><span class="n">value</span>
 <span class="c1">// Fetching users OneAnd(1,List(2))
@@ -676,7 +687,7 @@ fetches.</p>
 <div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">fetchFriends</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">join</span><span class="o">(</span><span class="n">getUser</span><span class="o">(</span><span class="mi">1</span><span class="o">),</span> <span class="n">getUser</span><span class="o">(</span><span class="mi">2</span><span class="o">)).</span><span class="n">map</span><span class="o">({</span> <span class="k">case</span> <span class="o">(</span><span class="n">one</span><span class="o">,</span> <span class="n">other</span><span class="o">)</span> <span class="k">=&gt;</span>
   <span class="n">s</span><span class="s">"${one.username} is friends with ${other.username}"</span>
 <span class="o">})</span>
-<span class="c1">// fetchFriends: fetch.Fetch[String] = Gosub(Gosub(Suspend(Concurrent(List(FetchMany(OneAnd(1,List(2)),UserSource$@1bc85f5c)))),&lt;function1&gt;),&lt;function1&gt;)
+<span class="c1">// fetchFriends: fetch.Fetch[String] = Gosub(Gosub(Suspend(Concurrent(List(FetchMany(OneAnd(1,List(2)),UserSource$@4018dd86)))),&lt;function1&gt;),&lt;function1&gt;)
 </span>
 <span class="k">val</span> <span class="n">result</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="n">fetchFriends</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Eval</span><span class="o">].</span><span class="n">value</span>
 <span class="c1">// Fetching users OneAnd(1,List(2))
@@ -688,6 +699,16 @@ fetches.</p>
 <li><a href="https://github.com/47deg/fetch">Code</a> on GitHub.</li>
 <li><a href="http://47deg.github.io/fetch/">Documentation site</a></li>
 <li><a href="https://www.youtube.com/watch?v=45fcKYFb0EU">Fetch: Simple &amp; Efficient data access</a> talk at <a href="http://typelevel.org/event/2016-05-summit-oslo/">Typelevel Summit in Oslo</a></li>
+</ul>
+
+<h1>Acknowledgements</h1>
+
+<p>Fetch stands on the shoulders of giants:</p>
+
+<ul>
+<li><a href="https://github.com/facebook/haxl">Haxl</a> is Facebook&#39;s implementation (Haskell) of the <a href="http://community.haskell.org/%7Esimonmar/papers/haxl-icfp14.pdf">original paper Fetch is based on</a>.</li>
+<li><a href="http://getclump.io">Clump</a> has inspired the signature of the <code>DataSource#fetch</code> method.</li>
+<li><a href="https://engineering.twitter.com/university/videos/introducing-stitch">Stitch</a> is an in-house Twitter library that is not open source but has inspired Fetch&#39;s high-level API.</li>
 </ul>
 </div>
 
@@ -722,7 +743,7 @@ fetches.</p>
       $("<link/>", {
         rel: "stylesheet",
         type: "text/css",
-        href: "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.4.0/styles/tomorrow.min.css"
+        href: "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.4.0/styles/.min.css"
       }).appendTo("head");
     }
 
