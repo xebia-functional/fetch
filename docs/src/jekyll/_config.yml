@@ -3,6 +3,7 @@ description: "Simple & Efficient data access for Scala and Scala.js"
 github_owner: 47deg
 baseurl: /fetch
 style: fetch
+highlight_theme: tomorrow
 docs: true
 markdown: redcarpet
 collections:
