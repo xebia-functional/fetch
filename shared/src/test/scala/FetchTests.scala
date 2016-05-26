@@ -638,6 +638,44 @@ class FetchTests extends FreeSpec with Matchers {
 
     totalFetched(rounds) shouldEqual 0
   }
+
+  case class ForgetfulCache() extends DataSourceCache {
+    override def get(k: DataSourceIdentity): Option[Any]                = None
+    override def update[A](k: DataSourceIdentity, v: A): ForgetfulCache = this
+  }
+
+  "We can use a custom cache that discards elements" in {
+    val fetch = for {
+      aOne       <- one(1)
+      anotherOne <- one(1)
+      _          <- one(1)
+      _          <- one(2)
+      _          <- one(3)
+      _          <- one(1)
+      _          <- one(1)
+    } yield aOne + anotherOne
+
+    val rounds = Fetch.runEnv[Eval](fetch, ForgetfulCache()).value.rounds
+
+    totalFetched(rounds) shouldEqual 7
+  }
+
+  "We can use a custom cache that discards elements together with concurrent fetches" in {
+    val fetch = for {
+      aOne       <- one(1)
+      anotherOne <- one(1)
+      _          <- one(1)
+      _          <- one(2)
+      _          <- Fetch.traverse(List(1, 2, 3))(one)
+      _          <- one(3)
+      _          <- one(1)
+      _          <- one(1)
+    } yield aOne + anotherOne
+
+    val rounds = Fetch.runEnv[Eval](fetch, ForgetfulCache()).value.rounds
+
+    totalFetched(rounds) shouldEqual 10
+  }
 }
 
 class FetchFutureTests extends AsyncFreeSpec with Matchers {
