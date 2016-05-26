@@ -82,6 +82,16 @@ object `package` {
     ): Fetch[A] =
       Free.liftF(FetchOne[I, A](i, DS))
 
+    type FM = List[FetchOp[_]]
+    private[this] val DM: Monad[Const[FM, ?]] = new Monad[Const[FM, ?]] {
+      def pure[A](x: A): Const[FM, A] = Const(List())
+
+      def flatMap[A, B](fa: Const[FM, A])(f: A => Const[FM, B]): Const[FM, B] = fa match {
+        case Const(List(Cached(a))) => f(a.asInstanceOf[A])
+        case other                  => fa.asInstanceOf[Const[FM, B]]
+      }
+    }
+
     private[this] def deps[A](f: Fetch[_]): List[FetchOp[_]] = {
       type FM = List[FetchOp[_]]
 
@@ -93,14 +103,7 @@ object `package` {
             case cach @ Cached(a)      => Const(List(cach))
             case _                     => Const(List())
           }
-        })(new Monad[Const[FM, ?]] {
-          def pure[A](x: A): Const[FM, A] = Const(List())
-
-          def flatMap[A, B](fa: Const[FM, A])(f: A => Const[FM, B]): Const[FM, B] = fa match {
-            case Const(List(Cached(a))) => f(a.asInstanceOf[A])
-            case other                  => fa.asInstanceOf[Const[FM, B]]
-          }
-        })
+        })(DM)
         .getConst
     }
 
