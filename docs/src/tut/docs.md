@@ -50,6 +50,15 @@ def println(msg: String): Unit = {
 }
 ```
 
+## Alternatives
+
+There are other libraries in Scala that implement the same optimizations as Fetch does and have different design decisions. If Fetch is not suitable for you these alternatives may be a better fit:
+
+- [Clump](http://getclump.io/) it's been around for a long time and is used in production systems at SoundCloud and LinkedIn. You can use it with Scala's or Twitter's Futures.
+- [Resolvable](https://github.com/resolvable/resolvable) can be used with Scala Futures.
+
+If something is missing in Fetch that stops you from using it we'd appreciate if you [open an issue in our repository](https://github.com/47deg/fetch/issues).
+
 # Usage
 
 In order to tell Fetch how to retrieve data, we must implement the `DataSource` typeclass.
@@ -170,7 +179,7 @@ val result: (User, User) = fetchTwoUsers.runA[Eval].value
 
 ### Batching
 
-If we combine two independent requests to the same data source, Fetch will 
+If we combine two independent requests to the same data source, Fetch will
 automatically batch them together into a single request. Applicative operations like the product of two fetches
 help us tell the library that those fetches are independent, and thus can be batched if they use the same data source:
 
@@ -446,7 +455,7 @@ data sources.
 ```tut:book
 val populatedCache = fetchManyUsers.runE[Eval].value.cache
 
-val result: List[User] =  fetchManyUsers.runA[Eval](populatedCache).value 
+val result: List[User] =  fetchManyUsers.runA[Eval](populatedCache).value
 ```
 
 ## Implementing a custom cache
@@ -737,3 +746,12 @@ val result: String = fetchFriends.runA[Eval].value
 - [Code](https://github.com/47deg/fetch) on GitHub.
 - [Documentation site](http://47deg.github.io/fetch/)
 - [Fetch: Simple & Efficient data access](https://www.youtube.com/watch?v=45fcKYFb0EU) talk at [Typelevel Summit in Oslo](http://typelevel.org/event/2016-05-summit-oslo/)
+
+# Acknowledgements
+
+Fetch stands on the shoulders of giants:
+
+- [Haxl](https://github.com/facebook/haxl) is Facebook's implementation (Haskell) of the [original paper Fetch is based on](http://community.haskell.org/~simonmar/papers/haxl-icfp14.pdf).
+- [Clump](http://getclump.io) has inspired the signature of the `DataSource#fetch` method.
+- [Stitch](https://engineering.twitter.com/university/videos/introducing-stitch) is an in-house Twitter library that is not open source but has inspired Fetch's high-level API.
+
