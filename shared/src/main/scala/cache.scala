@@ -30,3 +30,24 @@ trait DataSourceCache {
     })
   }
 }
+
+/**
+  * A cache that stores its elements in memory.
+  */
+case class InMemoryCache(state: Map[DataSourceIdentity, Any]) extends DataSourceCache {
+  override def get(k: DataSourceIdentity): Option[Any] =
+    state.get(k)
+
+  override def update[A](k: DataSourceIdentity, v: A): InMemoryCache =
+    copy(state = state.updated(k, v))
+}
+
+object InMemoryCache {
+  def empty: InMemoryCache = InMemoryCache(Map.empty[DataSourceIdentity, Any])
+
+  def apply(results: (DataSourceIdentity, Any)*): InMemoryCache =
+    InMemoryCache(
+        results.foldLeft(Map.empty[DataSourceIdentity, Any])({
+      case (c, (k, v)) => c.updated(k, v)
+    }))
+}

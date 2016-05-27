@@ -18,6 +18,8 @@ package fetch
 
 import scala.collection.immutable.Map
 
+import monix.eval.Task
+
 import cats.{Applicative, Monad, MonadError, ~>}
 import cats.data.{StateT, Const, NonEmptyList}
 import cats.free.{Free}
@@ -38,7 +40,6 @@ final case class Concurrent(as: List[FetchMany[_, _]]) extends FetchOp[DataSourc
 final case class FetchError[A, E <: Throwable](err: E) extends FetchOp[A]
 
 object `package` {
-
   type DataSourceName = String
 
   type DataSourceIdentity = (DataSourceName, Any)
@@ -47,10 +48,16 @@ object `package` {
 
   type FetchMonadError[M[_]] = MonadError[M, Throwable]
 
-  type FetchInterpreter[M[_]] = {
-    type f[x] = StateT[M, FetchEnv, x]
-  }
+  type FetchInterpreter[A] = StateT[Task, FetchEnv, A]
 
+  implicit val taskMonad: Monad[Task] = new Monad[Task] with Applicative[Task] {
+    def pure[A](x: A): Task[A] = Task.pure(x)
+
+    override def ap[A, B](ff: Task[A => B])(fa: Task[A]): Task[B] =
+      Task.mapBoth(ff, fa)((f, a) => f(a))
+
+    def flatMap[A, B](fa: Task[A])(f: A => Task[B]): Task[B] = fa.flatMap(f)
+  }
   implicit val fetchApplicative: Applicative[Fetch] = new Applicative[Fetch] {
     def pure[A](a: A): Fetch[A] = Fetch.pure(a)
 
@@ -212,47 +219,24 @@ object `package` {
       } yield result
     }
 
-    class FetchRunner[M[_]] {
-
-      def apply[A](
-          fa: Fetch[A],
-          cache: DataSourceCache = InMemoryCache.empty
-      )(
-          implicit MM: MonadError[M, Throwable]
-      ): M[(FetchEnv, A)] =
-        fa.foldMap[FetchInterpreter[M]#f](interpreter).run(FetchEnv(cache))
-    }
-
-    class FetchRunnerEnv[M[_]] {
-
-      def apply[A](fa: Fetch[A], cache: DataSourceCache = InMemoryCache.empty)(
-          implicit MM: MonadError[M, Throwable]
-      ): M[FetchEnv] =
-        fa.foldMap[FetchInterpreter[M]#f](interpreter).runS(FetchEnv(cache))
-    }
-
-    class FetchRunnerA[M[_]] {
-
-      def apply[A](fa: Fetch[A], cache: DataSourceCache = InMemoryCache.empty)(
-          implicit MM: MonadError[M, Throwable]
-      ): M[A] =
-        fa.foldMap[FetchInterpreter[M]#f](interpreter).runA(FetchEnv(cache))
-    }
-
     /**
       * Run a `Fetch` with the given cache, returning a pair of the final environment and result
       * in the monad `M`.
       */
-    def runFetch[M[_]]: FetchRunner[M] = new FetchRunner[M]
+    def runFetch[A](
+        fa: Fetch[A], cache: DataSourceCache = InMemoryCache.empty): Task[(FetchEnv, A)] =
+      fa.foldMap(interpreter).run(FetchEnv(cache))
 
     /**
       * Run a `Fetch` with the given cache, returning the final environment in the monad `M`.
       */
-    def runEnv[M[_]]: FetchRunnerEnv[M] = new FetchRunnerEnv[M]
+    def runEnv[A](fa: Fetch[A], cache: DataSourceCache = InMemoryCache.empty): Task[FetchEnv] =
+      runFetch(fa, cache).map(_._1)
 
     /**
       * Run a `Fetch` with the given cache, the result in the monad `M`.
       */
-    def run[M[_]]: FetchRunnerA[M] = new FetchRunnerA[M]
+    def run[A](fa: Fetch[A], cache: DataSourceCache = InMemoryCache.empty): Task[A] =
+      runFetch(fa, cache).map(_._2)
   }
 }
