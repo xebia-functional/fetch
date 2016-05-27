@@ -76,16 +76,15 @@ It takes two type parameters:
  - `Result`: the type of the data we retrieve (a `User` if we were fetching users)
 
 There are two methods: `fetchOne` and `fetchMany`. `fetchOne` receives one identity and must return
-an [Eval](https://github.com/typelevel/cats/blob/master/core/src/main/scala/cats/Eval.scala) that will result
-in an optional result. Returning an `Option` Fetch can detect whether an identity couldn't be fetched or no longer exists.
+an [Eval](https://github.com/typelevel/cats/blob/master/core/src/main/scala/cats/Eval.scala) containing
+an optional result. Returning an `Option` Fetch can detect whether an identity couldn't be fetched or no longer exists.
 
-`fetchMany` method takes a non-empty list of identities and must return an `Eval`  that will result
-in a map from identities to results. Accepting a list of identities gives Fetch the ability to batch requests to
+`fetchMany` method takes a non-empty list of identities and must return an `Eval`  that containing
+a map from identities to results. Accepting a list of identities gives Fetch the ability to batch requests to
 the same data source, and returning a mapping from identities to results, Fetch can detect whenever an identity
 couldn't be fetched or no longer exists.
 
 Returning `Eval` makes it possible to defer evaluation with a monad when running a fetch.
-
 
 ## Writing your first data source
 
