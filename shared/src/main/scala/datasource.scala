@@ -47,10 +47,10 @@ trait DataSource[I, A] {
     */
   def fetchMany(ids: NonEmptyList[I]): Eval[Map[I, A]]
 
-  /** Use `fetchOne` as the implementation of `fetchMany`. Use only when the data
+  /** Use `fetchOne` for implementing of `fetchMany`. Use only when the data
     * source doesn't support batching.
     */
-  def oneToMany(ids: NonEmptyList[I]): Eval[Map[I, A]] = {
+  def batchingNotSupported(ids: NonEmptyList[I]): Eval[Map[I, A]] = {
     val idsList = ids.unwrap
     idsList
       .map(fetchOne)
