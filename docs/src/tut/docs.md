@@ -110,7 +110,7 @@ implicit object UserSource extends DataSource[UserId, User]{
   override def fetch(ids: NonEmptyList[UserId]): Eval[Map[UserId, User]] = {
     Eval.later({
       println(s"Fetching users $ids")
-	  userDatabase.filterKeys(ids.unwrap.contains)
+      userDatabase.filterKeys(ids.unwrap.contains)
     })
   }
 }
@@ -363,7 +363,7 @@ As you can see, requests to the user data source were batched, thus fetching all
 
 ### Traverse
 
-Another interesing combinator is `traverse`, which is the composition of `map` and `sequence`.
+Another interesting combinator is `traverse`, which is the composition of `map` and `sequence`.
 
 ```tut:silent
 val fetchTraverse: Fetch[List[User]] = List(1, 2, 3).traverse(getUser)
@@ -403,7 +403,7 @@ We can now interpret a fetch into a future:
 
 ```tut:book
 val fut: Future[(User, Post)] = fetchParallel.runA[Future]
-Await.result(fut, 1 seconds) // this call blocks the current thread, don't do this at home!
+Await.result(fut, 1.second) // this call blocks the current thread, don't do this at home!
 ```
 
 Since futures run in a thread pool, both requests to the data sources run in parallel, each in its own logical thread.
