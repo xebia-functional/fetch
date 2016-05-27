@@ -34,7 +34,10 @@ object TestHelper {
   case class One(id: Int)
   implicit object OneSource extends DataSource[One, Int] {
     override def name = "OneSource"
-    override def fetch(ids: NonEmptyList[One]): Eval[Map[One, Int]] =
+    override def fetchOne(id: One): Eval[Option[Int]] = {
+      M.pure(Option(id.id))
+    }
+    override def fetchMany(ids: NonEmptyList[One]): Eval[Map[One, Int]] =
       M.pure(ids.unwrap.map(one => (one, one.id)).toMap)
   }
   def one(id: Int): Fetch[Int] = Fetch(One(id))
@@ -42,8 +45,9 @@ object TestHelper {
   case class AnotherOne(id: Int)
   implicit object AnotheroneSource extends DataSource[AnotherOne, Int] {
     override def name = "AnotherOneSource"
-
-    override def fetch(ids: NonEmptyList[AnotherOne]): Eval[Map[AnotherOne, Int]] =
+    override def fetchOne(id: AnotherOne): Eval[Option[Int]] =
+      M.pure(Option(id.id))
+    override def fetchMany(ids: NonEmptyList[AnotherOne]): Eval[Map[AnotherOne, Int]] =
       M.pure(ids.unwrap.map(anotherone => (anotherone, anotherone.id)).toMap)
   }
   def anotherOne(id: Int): Fetch[Int] = Fetch(AnotherOne(id))
@@ -51,14 +55,18 @@ object TestHelper {
   case class Many(n: Int)
   implicit object ManySource extends DataSource[Many, List[Int]] {
     override def name = "ManySource"
-    override def fetch(ids: NonEmptyList[Many]): Eval[Map[Many, List[Int]]] =
+    override def fetchOne(id: Many): Eval[Option[List[Int]]] =
+      M.pure(Option(0 until id.n toList))
+    override def fetchMany(ids: NonEmptyList[Many]): Eval[Map[Many, List[Int]]] =
       M.pure(ids.unwrap.map(m => (m, 0 until m.n toList)).toMap)
   }
 
   case class Never()
   implicit object NeverSource extends DataSource[Never, Int] {
     override def name = "NeverSource"
-    override def fetch(ids: NonEmptyList[Never]): Eval[Map[Never, Int]] =
+    override def fetchOne(id: Never): Eval[Option[Int]] =
+      M.pure(None)
+    override def fetchMany(ids: NonEmptyList[Never]): Eval[Map[Never, Int]] =
       M.pure(Map.empty[Never, Int])
   }
   def many(id: Int): Fetch[List[Int]] = Fetch(Many(id))
@@ -656,7 +664,9 @@ class FetchFutureTests extends AsyncFreeSpec with Matchers {
 
   implicit object ArticleFuture extends DataSource[ArticleId, Article] {
     override def name = "ArticleFuture"
-    override def fetch(ids: NonEmptyList[ArticleId]): Eval[Map[ArticleId, Article]] = {
+    override def fetchOne(id: ArticleId): Eval[Option[Article]] =
+      Eval.later(Option(Article(id.id, "An article with id " + id.id)))
+    override def fetchMany(ids: NonEmptyList[ArticleId]): Eval[Map[ArticleId, Article]] = {
       Eval.later({
         ids.unwrap.map(tid => (tid, Article(tid.id, "An article with id " + tid.id))).toMap
       })
@@ -670,7 +680,9 @@ class FetchFutureTests extends AsyncFreeSpec with Matchers {
 
   implicit object AuthorFuture extends DataSource[AuthorId, Author] {
     override def name = "AuthorFuture"
-    override def fetch(ids: NonEmptyList[AuthorId]): Eval[Map[AuthorId, Author]] = {
+    override def fetchOne(id: AuthorId): Eval[Option[Author]] =
+      Eval.later(Option(Author(id.id, "@egg" + id.id)))
+    override def fetchMany(ids: NonEmptyList[AuthorId]): Eval[Map[AuthorId, Author]] = {
       Eval.later({
         ids.unwrap.map(tid => (tid, Author(tid.id, "@egg" + tid.id))).toMap
       })

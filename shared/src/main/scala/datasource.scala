@@ -19,12 +19,48 @@ package fetch
 import cats.Eval
 import cats.data.NonEmptyList
 
+import cats.std.list._
+import cats.syntax.traverse._
+
 /**
   * A `DataSource` is the recipe for fetching a certain identity `I`, which yields
   * results of type `A`.
   */
 trait DataSource[I, A] {
-  def name: DataSourceName               = this.toString
+
+  /** The name of the data source.
+    */
+  def name: DataSourceName = this.toString
+
+  /**
+    * Derive a `DataSourceIdentity` from an identity, suitable for storing the result
+    * of such identity in a `DataSourceCache`.
+    */
   def identity(i: I): DataSourceIdentity = (name, i)
-  def fetch(ids: NonEmptyList[I]): Eval[Map[I, A]]
+
+  /** Fetch one identity, returning a None if it wasn't found.
+    */
+  def fetchOne(id: I): Eval[Option[A]]
+
+  /** Fetch many identities, returning a mapping from identities to results. If an
+    * identity wasn't found won't appear in the keys.
+    */
+  def fetchMany(ids: NonEmptyList[I]): Eval[Map[I, A]]
+
+  /** Use `fetchOne` as the implementation of `fetchMany`. Use only when the data
+    * source doesn't support batching.
+    */
+  def oneToMany(ids: NonEmptyList[I]): Eval[Map[I, A]] = {
+    val idsList = ids.unwrap
+    idsList
+      .map(fetchOne)
+      .sequence
+      .map(results => {
+        (idsList zip results)
+          .collect({
+            case (id, Some(result)) => (id, result)
+          })
+          .toMap
+      })
+  }
 }
