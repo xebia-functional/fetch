@@ -29,9 +29,9 @@ object TestHelper {
 
   val M: MonadError[Eval, Throwable] = implicits.evalMonadError
 
-  case class NotFound() extends Throwable
+  final case class NotFound() extends Throwable
 
-  case class One(id: Int)
+  final case class One(id: Int)
   implicit object OneSource extends DataSource[One, Int] {
     override def name = "OneSource"
     override def fetchOne(id: One): Eval[Option[Int]] = {
@@ -42,7 +42,7 @@ object TestHelper {
   }
   def one(id: Int): Fetch[Int] = Fetch(One(id))
 
-  case class AnotherOne(id: Int)
+  final case class AnotherOne(id: Int)
   implicit object AnotheroneSource extends DataSource[AnotherOne, Int] {
     override def name = "AnotherOneSource"
     override def fetchOne(id: AnotherOne): Eval[Option[Int]] =
@@ -52,7 +52,7 @@ object TestHelper {
   }
   def anotherOne(id: Int): Fetch[Int] = Fetch(AnotherOne(id))
 
-  case class Many(n: Int)
+  final case class Many(n: Int)
   implicit object ManySource extends DataSource[Many, List[Int]] {
     override def name = "ManySource"
     override def fetchOne(id: Many): Eval[Option[List[Int]]] =
@@ -61,7 +61,7 @@ object TestHelper {
       M.pure(ids.unwrap.map(m => (m, 0 until m.n toList)).toMap)
   }
 
-  case class Never()
+  final case class Never()
   implicit object NeverSource extends DataSource[Never, Int] {
     override def name = "NeverSource"
     override def fetchOne(id: Never): Eval[Option[Int]] =
@@ -603,7 +603,7 @@ class FetchTests extends FreeSpec with Matchers {
     totalFetched(rounds) shouldEqual 0
   }
 
-  case class MyCache(state: Map[Any, Any] = Map.empty[Any, Any]) extends DataSourceCache {
+  final case class MyCache(state: Map[Any, Any] = Map.empty[Any, Any]) extends DataSourceCache {
     override def get(k: DataSourceIdentity): Option[Any] = state.get(k)
     override def update[A](k: DataSourceIdentity, v: A): MyCache =
       copy(state = state.updated(k, v))
@@ -657,8 +657,8 @@ class FetchFutureTests extends AsyncFreeSpec with Matchers {
   implicit def executionContext = global
   override def newInstance      = new FetchFutureTests
 
-  case class ArticleId(id: Int)
-  case class Article(id: Int, content: String) {
+  final case class ArticleId(id: Int)
+  final case class Article(id: Int, content: String) {
     def author: Int = id + 1
   }
 
@@ -675,8 +675,8 @@ class FetchFutureTests extends AsyncFreeSpec with Matchers {
 
   def article(id: Int): Fetch[Article] = Fetch(ArticleId(id))
 
-  case class AuthorId(id: Int)
-  case class Author(id: Int, name: String)
+  final case class AuthorId(id: Int)
+  final case class Author(id: Int, name: String)
 
   implicit object AuthorFuture extends DataSource[AuthorId, Author] {
     override def name = "AuthorFuture"
