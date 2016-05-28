@@ -135,7 +135,7 @@ def getUser(id: UserId): Fetch[User] = Fetch(id) // or, more explicitly: Fetch(i
 ```
 
 
-### Data sources that don't support batcihng
+### Data sources that don't support batching
 
 If your data source doesn't support batching, you can use the `DataSource#batchingNotSupported` method as the implementation
 of `fetchMany`. Note that it will use the `fetchOne` implementation for requesting identities one at a time.
