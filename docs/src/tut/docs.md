@@ -65,7 +65,8 @@ In order to tell Fetch how to retrieve data, we must implement the `DataSource` 
 
 ```scala
 trait DataSource[Identity, Result]{
-  def fetch(ids: NonEmptyList[Identity]): Eval[Map[Identity, Result]]
+  def fetchOne(id: Identity): Eval[Option[Result]]
+  def fetchMany(ids: NonEmptyList[Identity]): Eval[Map[Identity, Result]]
 }
 ```
 
@@ -74,8 +75,12 @@ It takes two type parameters:
  - `Identity`: the identity we want to fetch (a `UserId` if we were fetching users)
  - `Result`: the type of the data we retrieve (a `User` if we were fetching users)
 
-The `fetch` method takes a non-empty list of identities and must return an [Eval](https://github.com/typelevel/cats/blob/master/core/src/main/scala/cats/Eval.scala) that will result
-in a map from identities to results. Accepting a list of identities gives Fetch the ability to batch requests to
+There are two methods: `fetchOne` and `fetchMany`. `fetchOne` receives one identity and must return
+an [Eval](https://github.com/typelevel/cats/blob/master/core/src/main/scala/cats/Eval.scala) containing
+an optional result. Returning an `Option` Fetch can detect whether an identity couldn't be fetched or no longer exists.
+
+`fetchMany` method takes a non-empty list of identities and must return an `Eval`  that containing
+a map from identities to results. Accepting a list of identities gives Fetch the ability to batch requests to
 the same data source, and returning a mapping from identities to results, Fetch can detect whenever an identity
 couldn't be fetched or no longer exists.
 
@@ -107,7 +112,13 @@ val userDatabase: Map[UserId, User] = Map(
 )
 
 implicit object UserSource extends DataSource[UserId, User]{
-  override def fetch(ids: NonEmptyList[UserId]): Eval[Map[UserId, User]] = {
+  override def fetchOne(id: UserId): Eval[Option[User]] = {
+    Eval.later({
+      println(s"Fetching user $id")
+      userDatabase.get(id)
+    })
+  }
+  override def fetchMany(ids: NonEmptyList[UserId]): Eval[Map[UserId, User]] = {
     Eval.later({
       println(s"Fetching users $ids")
       userDatabase.filterKeys(ids.unwrap.contains)
@@ -121,6 +132,23 @@ given an id, we just have to pass a `UserId` as an argument to `Fetch`.
 
 ```tut:silent
 def getUser(id: UserId): Fetch[User] = Fetch(id) // or, more explicitly: Fetch(id)(UserSource)
+```
+
+
+### Data sources that don't support batching
+
+If your data source doesn't support batching, you can use the `DataSource#batchingNotSupported` method as the implementation
+of `fetchMany`. Note that it will use the `fetchOne` implementation for requesting identities one at a time.
+
+```tut:silent
+implicit object IntSource extends DataSource[Int, Int]{
+  override def fetchOne(id: Int): Eval[Option[Int]] = {
+    Eval.now(Option(id))
+  }
+  override def fetchMany(ids: NonEmptyList[Int]): Eval[Map[Int, Int]] = {
+    batchingNotSupported(ids)
+  }
+}
 ```
 
 ## Creating and running a fetch
@@ -258,7 +286,13 @@ val postDatabase: Map[PostId, Post] = Map(
 )
 
 implicit object PostSource extends DataSource[PostId, Post]{
-  override def fetch(ids: NonEmptyList[PostId]): Eval[Map[PostId, Post]] = {
+  override def fetchOne(id: PostId): Eval[Option[Post]] = {
+    Eval.later({
+      println(s"Fetching post $id")
+      postDatabase.get(id)
+    })
+  }
+  override def fetchMany(ids: NonEmptyList[PostId]): Eval[Map[PostId, Post]] = {
     Eval.later({
       println(s"Fetching posts $ids")
       postDatabase.filterKeys(ids.unwrap.contains)
@@ -275,7 +309,13 @@ val postInfoDatabase: Map[PostId, PostInfo] = Map(
 )
 
 implicit object PostInfoSource extends DataSource[PostId, PostInfo]{
-  override def fetch(ids: NonEmptyList[PostId]): Eval[Map[PostId, PostInfo]] = {
+  override def fetchOne(id: PostId): Eval[Option[PostInfo]] = {
+    Eval.later({
+      println(s"Fetching post info $id")
+      postInfoDatabase.get(id)
+    })
+  }
+  override def fetchMany(ids: NonEmptyList[PostId]): Eval[Map[PostId, PostInfo]] = {
     Eval.later({
       println(s"Fetching post info $ids")
       postInfoDatabase.filterKeys(ids.unwrap.contains)

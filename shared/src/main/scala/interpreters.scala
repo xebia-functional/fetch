@@ -75,7 +75,7 @@ trait FetchInterpreters {
                       case (ds, as) =>
                         MM.pureEval(ds
                               .asInstanceOf[DataSource[I, A]]
-                              .fetch(as.asInstanceOf[NonEmptyList[I]]))
+                              .fetchMany(as.asInstanceOf[NonEmptyList[I]]))
                     })
                         .sequence)((results: List[Map[_, _]]) => {
                     val endRound = System.nanoTime()
@@ -121,42 +121,39 @@ trait FetchInterpreters {
                 cache
                   .get(ds.identity(id))
                   .fold[M[(FetchEnv, A)]](
-                      MM.flatMap(
-                          MM.pureEval(ds.fetch(NonEmptyList(id))).asInstanceOf[M[Map[I, A]]])(
-                          (res: Map[I, A]) => {
+                      MM.flatMap(MM.pureEval(ds.fetchOne(id)).asInstanceOf[M[Option[A]]])(
+                          (res: Option[A]) => {
                         val endRound = System.nanoTime()
-                        res
-                          .get(id.asInstanceOf[I])
-                          .fold[M[(FetchEnv, A)]](
-                              MM.raiseError(
-                                  FetchFailure(
-                                      env.next(
-                                          cache,
-                                          Round(cache,
-                                                ds.name,
-                                                OneRound(id),
-                                                startRound,
-                                                endRound),
-                                          List(id)
-                                      )
-                                  )
-                              )
-                          )(result => {
-                            val endRound = System.nanoTime()
-                            val newCache = cache.update(ds.identity(id), result)
-                            MM.pure(
-                                (env.next(
-                                     newCache,
-                                     Round(cache,
-                                           ds.name,
-                                           OneRound(id),
-                                           startRound,
-                                           endRound),
-                                     List(id)
-                                 ),
-                                 result)
+                        res.fold[M[(FetchEnv, A)]](
+                            MM.raiseError(
+                                FetchFailure(
+                                    env.next(
+                                        cache,
+                                        Round(cache,
+                                              ds.name,
+                                              OneRound(id),
+                                              startRound,
+                                              endRound),
+                                        List(id)
+                                    )
+                                )
                             )
-                          })
+                        )(result => {
+                          val endRound = System.nanoTime()
+                          val newCache = cache.update(ds.identity(id), result)
+                          MM.pure(
+                              (env.next(
+                                   newCache,
+                                   Round(cache,
+                                         ds.name,
+                                         OneRound(id),
+                                         startRound,
+                                         endRound),
+                                   List(id)
+                               ),
+                               result)
+                          )
+                        })
                       })
                   )(cached => {
                     val endRound = System.nanoTime()
@@ -196,7 +193,7 @@ trait FetchInterpreters {
                   )
                 else {
                   MM.flatMap(MM
-                        .pureEval(ds.fetch(NonEmptyList(newIds(0), newIds.tail)))
+                        .pureEval(ds.fetchMany(NonEmptyList(newIds(0), newIds.tail)))
                         .asInstanceOf[M[Map[I, A]]])((res: Map[I, A]) => {
                     val endRound = System.nanoTime()
                     ids.unwrap
