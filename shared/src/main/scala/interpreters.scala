@@ -67,7 +67,7 @@ trait FetchInterpreters {
                   })
 
                 if (sourcesAndIds.isEmpty)
-                  MM.pure((env, env.asInstanceOf[A]))
+                  MM.pure((env, env.cache.asInstanceOf[A]))
                 else
                   MM.flatMap(
                       sourcesAndIds
@@ -109,7 +109,17 @@ trait FetchInterpreters {
                     })
 
                     if (allFetched) {
-                      MM.pure((newEnv, newEnv.asInstanceOf[A]))
+                      // since user-provided caches may discard elements, we use an in-memory
+                      // cache to gather these intermediate results that will be used for
+                      // concurrent optimizations.
+                      val cachedResults =
+                        (sources zip results).foldLeft(InMemoryCache.empty)((cach, resultSet) => {
+                          val (ds, resultmap) = resultSet
+                          val tresults        = resultmap.asInstanceOf[Map[I, A]]
+                          val tds             = ds.asInstanceOf[DataSource[I, A]]
+                          cach.cacheResults[I, A](tresults, tds).asInstanceOf[InMemoryCache]
+                        })
+                      MM.pure((newEnv, cachedResults.asInstanceOf[A]))
                     } else {
                       MM.raiseError(FetchFailure(newEnv))
                     }
