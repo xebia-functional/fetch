@@ -4,10 +4,9 @@ scala:
 jdk:
   - oraclejdk8
 script:
-  - sbt coverage 'fetchJVM/test'
+  - sbt coverage 'fetchJVM/test' 'fetchJVM/coverageReport'
   - sbt 'fetchJS/test'
   - sbt 'docs/tut'
   - sbt 'readme/tut'
 after_success:
-  - sbt 'fetchJVM/coverageReport'
   - bash <(curl -s https://codecov.io/bash) -t 47609994-e0cd-4f3b-a28d-eb558142c3bb
