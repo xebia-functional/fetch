@@ -36,8 +36,7 @@ has a latency cost, such as databases or web services.
 
 ## Define your data sources
 
-For telling `Fetch` how to get the data you want, you must implement the `DataSource` typeclass. Data sources have a `fetch` method that
-defines how to fetch such a piece of data.
+To tell `Fetch` how to get the data you want, you must implement the `DataSource` typeclass. Data sources have `fetchOne` and `fetchMany` methods that define how to fetch such a piece of data.
 
 Data Sources take two type parameters:
 
