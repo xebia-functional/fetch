@@ -103,8 +103,8 @@ object TestHelper {
     val promise: Promise[A] = Promise()
     task.runAsync(
         new Callback[A] {
-      def onSuccess(value: A): Unit    = { promise.success(value); () }
-      def onError(ex: Throwable): Unit = { promise.failure(ex); () }
+      def onSuccess(value: A): Unit    = { promise.trySuccess(value); () }
+      def onError(ex: Throwable): Unit = { promise.tryFailure(ex); () }
     })
     promise.future
   }

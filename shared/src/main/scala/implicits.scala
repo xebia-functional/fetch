@@ -16,4 +16,20 @@
 
 package fetch
 
-object implicits {}
+import cats.ApplicativeError
+import monix.eval.Task
+
+object implicits {
+  implicit val fetchTaskApplicativeError: ApplicativeError[Task, Throwable] =
+    new ApplicativeError[Task, Throwable] {
+      def pure[A](x: A): monix.eval.Task[A] =
+        Task.pure(x)
+      def ap[A, B](ff: monix.eval.Task[A => B])(fa: monix.eval.Task[A]): monix.eval.Task[B] =
+        Task.mapBoth(ff, fa)((f, x) => f(x))
+      def handleErrorWith[A](fa: monix.eval.Task[A])(
+          f: Throwable => monix.eval.Task[A]): monix.eval.Task[A] =
+        fa.onErrorHandleWith(f)
+      def raiseError[A](e: Throwable): monix.eval.Task[A] =
+        Task.raiseError(e)
+    }
+}

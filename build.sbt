@@ -62,7 +62,10 @@ lazy val docsSettings = ghpages.settings ++ buildSettings ++ tutSettings ++ Seq(
   tutSourceDirectory := sourceDirectory.value / "tut",
   tutTargetDirectory := sourceDirectory.value / "jekyll",
   tutScalacOptions ~= (_.filterNot(Set("-Ywarn-unused-import", "-Ywarn-dead-code"))),
-  aggregate in doc := true
+  aggregate in doc := true,
+  libraryDependencies ++= Seq(
+    "io.monix" %%% "monix-eval" % "2.0-RC3"
+  )
 )
 
 lazy val docs = (project in file("docs"))
@@ -117,7 +120,10 @@ lazy val readmeSettings = buildSettings ++ tutSettings ++ Seq(
   tutSourceDirectory := baseDirectory.value,
   tutTargetDirectory := baseDirectory.value.getParentFile,
   tutScalacOptions ~= (_.filterNot(Set("-Ywarn-unused-import", "-Ywarn-dead-code"))),
-  tutNameFilter := """README.md""".r
+  tutNameFilter := """README.md""".r,
+  libraryDependencies ++= Seq(
+    "io.monix" %%% "monix-eval" % "2.0-RC3"
+  )
 )
 
 lazy val readme = (project in file("tut"))
