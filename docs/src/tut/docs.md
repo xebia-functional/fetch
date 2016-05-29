@@ -549,8 +549,6 @@ fail.
 Whenever a fetch fails, a `FetchFailure` exception is thrown. The `FetchFailure` will have the environment, which gives you information
 about the execution of the fetch.
 
-TODO: show how to diagnose which identity was missing
-
 # Syntax
 
 ## Implicit syntax
