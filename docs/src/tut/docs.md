@@ -79,7 +79,7 @@ It takes two type parameters:
  - `Result`: the type of the data we retrieve (a `User` if we were fetching users)
 
 There are two methods: `fetchOne` and `fetchMany`. `fetchOne` receives one identity and must return
-a [Task](https://github.com/typelevel/cats/blob/master/core/src/main/scala/cats/Eval.scala) containing
+a [Task](https://github.com/monixio/monix/blob/dd6e47b7b870b38825d516f846f6e074d78d5c40/monix-eval/shared/src/main/scala/monix/eval/Task.scala) containing
 an optional result. Returning an `Option` Fetch can detect whether an identity couldn't be fetched or no longer exists.
 
 `fetchMany` method takes a non-empty list of identities and must return a `Task` containing
