@@ -85,7 +85,7 @@ object TestHelper {
             round.kind match {
           case OneRound(_)          => acc
           case ManyRound(ids)       => acc + 1
-          case ConcurrentRound(ids) => acc + ids.size
+          case ConcurrentRound(ids) => acc + ids.filter(_._2.size > 1).size
       })
 
   def concurrent(rs: Seq[Round]): Seq[Round] =
@@ -357,6 +357,16 @@ class FetchTests extends AsyncFreeSpec with Matchers {
     })
   }
 
+  "Concurrent fetching calls batches only wen it can" in {
+    val fetch: Fetch[(Int, List[Int])] = Fetch.join(one(1), many(3))
+
+    val task = Fetch.runEnv(fetch)
+
+    toFuture(task).map(env => {
+      totalBatches(env.rounds) shouldEqual 0
+    })
+  }
+
   "If a fetch fails in the left hand of a product the product will fail" in {
     val fetch: Fetch[(Int, List[Int])] = Fetch.join(Fetch.error(NotFound()), many(3))
     val task                           = Fetch.run(fetch)
@@ -435,7 +445,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
       val rounds = env.rounds
       val stats  = (concurrent(rounds).size, totalBatches(rounds), totalFetched(rounds))
 
-      stats shouldEqual (2, 2, 4)
+      stats shouldEqual (2, 1, 4)
     })
   }
 
