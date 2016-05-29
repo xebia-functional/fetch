@@ -50,7 +50,7 @@ object `package` {
 
   type FetchInterpreter[A] = StateT[Task, FetchEnv, A]
 
-  implicit val taskMonad: Monad[Task] = new Monad[Task] with Applicative[Task] {
+  implicit val fetchTaskMonad: Monad[Task] = new Monad[Task] with Applicative[Task] {
     def pure[A](x: A): Task[A] = Task.pure(x)
 
     override def ap[A, B](ff: Task[A => B])(fa: Task[A]): Task[B] =
