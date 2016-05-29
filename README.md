@@ -105,7 +105,7 @@ import monix.execution.Scheduler.Implicits.global
 // import monix.execution.Scheduler.Implicits.global
 
 result.coeval.value
-// [237] One ToString 1
+// [62] One ToString 1
 // res3: Either[monix.execution.CancelableFuture[String],String] = Right(1)
 ```
 
@@ -122,7 +122,7 @@ import cats.syntax.cartesian._
 // import cats.syntax.cartesian._
 
 val fetchThree: Fetch[(String, String, String)] = (fetchString(1) |@| fetchString(2) |@| fetchString(3)).tupled
-// fetchThree: fetch.Fetch[(String, String, String)] = Gosub(Gosub(Suspend(Concurrent(List(FetchMany(OneAnd(1,List(2, 3)),ToStringSource$@4afe2c89)))),<function1>),<function1>)
+// fetchThree: fetch.Fetch[(String, String, String)] = Gosub(Gosub(Suspend(Concurrent(List(FetchMany(OneAnd(1,List(2, 3)),ToStringSource$@5491cfd8)))),<function1>),<function1>)
 
 val result: Task[(String, String, String)] = fetchThree.runA
 // result: monix.eval.Task[(String, String, String)] = BindSuspend(<function0>,<function1>)
@@ -135,7 +135,7 @@ When executing the above fetch, note how the three identities get batched and th
 
 ```scala
 await(result)
-// [237] Many ToString OneAnd(1,List(2, 3))
+// [62] Many ToString OneAnd(1,List(2, 3))
 // res4: (String, String, String) = (1,2,3)
 ```
 
@@ -168,7 +168,7 @@ And now we can easily receive data from the two sources in a single fetch.
 
 ```scala
 val fetchMulti: Fetch[(String, Int)] = (fetchString(1) |@| fetchLength("one")).tupled
-// fetchMulti: fetch.Fetch[(String, Int)] = Gosub(Gosub(Suspend(Concurrent(List(FetchMany(OneAnd(1,List()),ToStringSource$@4afe2c89), FetchMany(OneAnd(one,List()),LengthSource$@671df379)))),<function1>),<function1>)
+// fetchMulti: fetch.Fetch[(String, Int)] = Gosub(Gosub(Suspend(Concurrent(List(FetchOne(1,ToStringSource$@5491cfd8), FetchOne(one,LengthSource$@36f594ec)))),<function1>),<function1>)
 
 val result = fetchMulti.runA
 // result: monix.eval.Task[(String, Int)] = BindSuspend(<function0>,<function1>)
@@ -178,8 +178,8 @@ Note how the two independent data fetches are run in parallel, minimizing the la
 
 ```scala
 await(result)
-// [237] Many ToString OneAnd(1,List())
-// [183] Many Length OneAnd(one,List())
+// [62] One ToString 1
+// [56] One Length one
 // res6: (String, Int) = (1,3)
 ```
 
@@ -192,13 +192,13 @@ val fetchTwice: Fetch[(String, String)] = for {
   one <- fetchString(1)
   two <- fetchString(1)
 } yield (one, two)
-// fetchTwice: fetch.Fetch[(String, String)] = Gosub(Suspend(FetchOne(1,ToStringSource$@4afe2c89)),<function1>)
+// fetchTwice: fetch.Fetch[(String, String)] = Gosub(Suspend(FetchOne(1,ToStringSource$@5491cfd8)),<function1>)
 ```
 
 While running it, notice that the data source is only queried once. The next time the identity is requested it's served from the cache.
 
 ```scala
 val result: (String, String) = await(fetchTwice.runA)
-// [237] One ToString 1
+// [62] One ToString 1
 // result: (String, String) = (1,1)
 ```
