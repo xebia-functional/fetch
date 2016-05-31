@@ -35,6 +35,7 @@ object Query {
   type Callback[A] = A => Unit
   type Errback     = Throwable => Unit
 
+  def apply[A](x: A): Query[A]     = Now(x)
   def now[A](x: A): Query[A]       = Now(x)
   def later[A](th: => A): Query[A] = Later(th _)
   def async[A](
