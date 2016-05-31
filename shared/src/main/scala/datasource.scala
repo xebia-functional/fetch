@@ -40,26 +40,28 @@ trait DataSource[I, A] {
 
   /** Fetch one identity, returning a None if it wasn't found.
     */
-  def fetchOne(id: I): Task[Option[A]]
+  def fetchOne(id: I): Query[Option[A]]
 
   /** Fetch many identities, returning a mapping from identities to results. If an
     * identity wasn't found won't appear in the keys.
     */
-  def fetchMany(ids: NonEmptyList[I]): Task[Map[I, A]]
+  def fetchMany(ids: NonEmptyList[I]): Query[Map[I, A]]
 
-  /** Use `fetchOne` for implementing of `fetchMany`. Use only when the data
-    * source doesn't support batching.
-    */
-  def batchingNotSupported(ids: NonEmptyList[I]): Task[Map[I, A]] = {
-    val idsList = ids.unwrap
-    Task
-      .sequence(idsList.map(fetchOne))
-      .map(results => {
-        (idsList zip results)
-          .collect({
-            case (id, Some(result)) => (id, result)
-          })
-          .toMap
-      })
-  }
+  // FIXME: query can be applicative?
+  // /** Use `fetchOne` for implementing of `fetchMany`. Use only when the data
+  //   * source doesn't support batching.
+  //   */
+  // def batchingNotSupported(ids: NonEmptyList[I]): Query[Map[I, A]] = {
+  //   val idsList = ids.unwrap
+  //   idsList
+  //     .map(fetchOne)
+  //     .sequence
+  //     .map(results => {
+  //       (idsList zip results)
+  //         .collect({
+  //           case (id, Some(result)) => (id, result)
+  //         })
+  //         .toMap
+  //     })
+  // }
 }

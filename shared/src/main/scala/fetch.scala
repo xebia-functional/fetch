@@ -18,14 +18,29 @@ package fetch
 
 import scala.collection.immutable.Map
 
-import monix.eval.Task
-
-import cats.{Applicative, Monad, MonadError, ~>}
+import cats.{Applicative, Monad, ApplicativeError, MonadError, ~>}
 import cats.data.{StateT, Const, NonEmptyList}
 import cats.free.{Free}
 import cats.std.list._
 import cats.std.option._
 import cats.syntax.traverse._
+import scala.concurrent.duration._
+
+sealed trait Query[A] extends Product with Serializable
+final case class Now[A](a: A)                                                 extends Query[A]
+final case class Later[A](a: () => A)                                         extends Query[A]
+final case class Async[A](action: (Query.Callback[A], Query.Errback) => Unit) extends Query[A] // todo: timeout
+
+object Query {
+  type Callback[A] = A => Unit
+  type Errback     = Throwable => Unit
+
+  def now[A](x: A): Query[A]       = Now(x)
+  def later[A](th: => A): Query[A] = Later(th _)
+  def async[A](
+      action: (Callback[A], Errback) => Unit //,      timeout: FiniteDuration
+  ): Query[A] = Async(action)
+}
 
 /** Requests in Fetch Free monad.
   */
@@ -76,18 +91,14 @@ object `package` {
 
   type Fetch[A] = Free[FetchOp, A]
 
-  type FetchMonadError[M[_]] = MonadError[M, Throwable]
-
-  type FetchInterpreter[A] = StateT[Task, FetchEnv, A]
-
-  implicit val fetchTaskMonad: Monad[Task] = new Monad[Task] with Applicative[Task] {
-    def pure[A](x: A): Task[A] = Task.pure(x)
-
-    override def ap[A, B](ff: Task[A => B])(fa: Task[A]): Task[B] =
-      Task.mapBoth(ff, fa)((f, a) => f(a))
-
-    def flatMap[A, B](fa: Task[A])(f: A => Task[B]): Task[B] = fa.flatMap(f)
+  trait FetchMonadError[M[_]] extends MonadError[M, Throwable] {
+    def runQuery[A](q: Query[A]): M[A]
   }
+
+  type FetchInterpreter[M[_]] = {
+    type f[x] = StateT[M, FetchEnv, x]
+  }
+
   implicit val fetchApplicative: Applicative[Fetch] = new Applicative[Fetch] {
     def pure[A](a: A): Fetch[A] = Fetch.pure(a)
 
@@ -247,24 +258,50 @@ object `package` {
       } yield result
     }
 
+    class FetchRunner[M[_]] {
+      def apply[A](
+          fa: Fetch[A],
+          cache: DataSourceCache = InMemoryCache.empty
+      )(
+          implicit MM: FetchMonadError[M]
+      ): M[(FetchEnv, A)] =
+        fa.foldMap[FetchInterpreter[M]#f](interpreter).run(FetchEnv(cache))
+    }
+
     /**
       * Run a `Fetch` with the given cache, returning a pair of the final environment and result
       * in the monad `M`.
       */
-    def runFetch[A](
-        fa: Fetch[A], cache: DataSourceCache = InMemoryCache.empty): Task[(FetchEnv, A)] =
-      fa.foldMap(interpreter).run(FetchEnv(cache))
+    def runFetch[M[_]]: FetchRunner[M] = new FetchRunner[M]
+
+    class FetchRunnerEnv[M[_]] {
+      def apply[A](
+          fa: Fetch[A],
+          cache: DataSourceCache = InMemoryCache.empty
+      )(
+          implicit MM: FetchMonadError[M]
+      ): M[FetchEnv] =
+        fa.foldMap[FetchInterpreter[M]#f](interpreter).runS(FetchEnv(cache))
+    }
 
     /**
       * Run a `Fetch` with the given cache, returning the final environment in the monad `M`.
       */
-    def runEnv[A](fa: Fetch[A], cache: DataSourceCache = InMemoryCache.empty): Task[FetchEnv] =
-      runFetch(fa, cache).map(_._1)
+    def runEnv[M[_]]: FetchRunnerEnv[M] = new FetchRunnerEnv[M]
+
+    class FetchRunnerA[M[_]] {
+      def apply[A](
+          fa: Fetch[A],
+          cache: DataSourceCache = InMemoryCache.empty
+      )(
+          implicit MM: FetchMonadError[M]
+      ): M[A] =
+        fa.foldMap[FetchInterpreter[M]#f](interpreter).runA(FetchEnv(cache))
+    }
 
     /**
       * Run a `Fetch` with the given cache, the result in the monad `M`.
       */
-    def run[A](fa: Fetch[A], cache: DataSourceCache = InMemoryCache.empty): Task[A] =
-      runFetch(fa, cache).map(_._2)
+    def run[M[_]]: FetchRunnerA[M] = new FetchRunnerA[M]
   }
 }

@@ -18,8 +18,6 @@ package fetch
 
 import scala.collection.immutable._
 
-import monix.eval.Task
-
 import cats.{MonadError, ~>}
 import cats.data.{StateT, NonEmptyList}
 import cats.std.option._
@@ -49,13 +47,15 @@ trait FetchInterpreters {
       })
   }
 
-  def interpreter[I]: FetchOp ~> FetchInterpreter = {
-    new (FetchOp ~> FetchInterpreter) {
-      def apply[A](fa: FetchOp[A]): FetchInterpreter[A] = {
-        StateT[Task, FetchEnv, A] { env: FetchEnv =>
+  def interpreter[I, M[_]](
+      implicit M: FetchMonadError[M]
+  ): FetchOp ~> FetchInterpreter[M]#f = {
+    new (FetchOp ~> FetchInterpreter[M]#f) {
+      def apply[A](fa: FetchOp[A]): FetchInterpreter[M]#f[A] = {
+        StateT[M, FetchEnv, A] { env: FetchEnv =>
           fa match {
-            case FetchError(e) => Task.raiseError(e)
-            case Cached(a)     => Task.pure((env, a))
+            case FetchError(e) => M.raiseError(e)
+            case Cached(a)     => M.pure((env, a))
             case Concurrent(concurrentRequests) => {
                 val startRound = System.nanoTime()
                 val cache      = env.cache
@@ -64,117 +64,115 @@ trait FetchInterpreters {
                   pendingRequests(concurrentRequests, cache)
 
                 if (requests.isEmpty)
-                  Task.pure((env, cache.asInstanceOf[A]))
-                else
-                  Task
-                    .sequence(requests.map({
-                      case FetchOne(a, ds) => {
-                          val ident = a.asInstanceOf[I]
-                          ds.asInstanceOf[DataSource[I, A]]
-                            .fetchOne(ident)
-                            .map((r: Option[A]) =>
-                                  r.fold(Map.empty[I, A])((result: A) => Map(ident -> result)))
-                        }
-                      case FetchMany(as, ds) =>
-                        ds.asInstanceOf[DataSource[I, A]]
-                          .fetchMany(as.asInstanceOf[NonEmptyList[I]])
-                    }))
-                    .flatMap((results: List[Map[_, _]]) => {
-                      val endRound = System.nanoTime()
-                      val newCache =
-                        (requests zip results).foldLeft(cache)((accache, resultset) => {
-                          val (req, resultmap) = resultset
-                          val ds               = req.dataSource
-                          val tresults         = resultmap.asInstanceOf[Map[I, A]]
-                          val tds              = ds.asInstanceOf[DataSource[I, A]]
-                          accache.cacheResults[I, A](tresults, tds)
-                        })
-                      val newEnv = env.next(
-                          newCache,
-                          Round(
-                              cache,
-                              "Concurrent",
-                              ConcurrentRound(
-                                  requests
-                                    .map({
-                                      case FetchOne(a, ds)   => (ds.name, List(a))
-                                      case FetchMany(as, ds) => (ds.name, as.unwrap)
-                                    })
-                                    .toMap
-                              ),
-                              startRound,
-                              endRound
-                          ),
-                          Nil
-                      )
+                  M.pure((env, cache.asInstanceOf[A]))
+                else {
+                  val sentRequests = M.sequence(requests.map({
+                    case FetchOne(a, ds) => {
+                        val ident = a.asInstanceOf[I]
+                        val task  = M.runQuery(ds.asInstanceOf[DataSource[I, A]].fetchOne(ident))
+                        M.map(task)((r: Option[A]) =>
+                              r.fold(Map.empty[I, A])((result: A) => Map(ident -> result)))
+                      }
+                    case FetchMany(as, ds) =>
+                      M.runQuery(ds
+                            .asInstanceOf[DataSource[I, A]]
+                            .fetchMany(as.asInstanceOf[NonEmptyList[I]]))
+                  }))
+                  M.flatMap(sentRequests)((results: List[Map[_, _]]) => {
+                    val endRound = System.nanoTime()
+                    val newCache = (requests zip results).foldLeft(cache)((accache, resultset) => {
+                      val (req, resultmap) = resultset
+                      val ds               = req.dataSource
+                      val tresults         = resultmap.asInstanceOf[Map[I, A]]
+                      val tds              = ds.asInstanceOf[DataSource[I, A]]
+                      accache.cacheResults[I, A](tresults, tds)
+                    })
+                    val newEnv = env.next(
+                        newCache,
+                        Round(
+                            cache,
+                            "Concurrent",
+                            ConcurrentRound(
+                                requests
+                                  .map({
+                                    case FetchOne(a, ds)   => (ds.name, List(a))
+                                    case FetchMany(as, ds) => (ds.name, as.unwrap)
+                                  })
+                                  .toMap
+                            ),
+                            startRound,
+                            endRound
+                        ),
+                        Nil
+                    )
 
-                      val allFullfilled = (requests zip results).forall({
-                        case (FetchOne(_, _), results)   => results.size == 1
-                        case (FetchMany(as, _), results) => as.unwrap.size == results.size
-                        case _                           => false
-                      })
+                    val allFullfilled = (requests zip results).forall({
+                      case (FetchOne(_, _), results)   => results.size == 1
+                      case (FetchMany(as, _), results) => as.unwrap.size == results.size
+                      case _                           => false
+                    })
 
-                      if (allFullfilled) {
-                        // since user-provided caches may discard elements, we use an in-memory
-                        // cache to gather these intermediate results that will be used for
-                        // concurrent optimizations.
-                        val cachedResults = (requests zip results).foldLeft(InMemoryCache.empty)(
-                            (cach, resultSet) => {
+                    if (allFullfilled) {
+                      // since user-provided caches may discard elements, we use an in-memory
+                      // cache to gather these intermediate results that will be used for
+                      // concurrent optimizations.
+                      val cachedResults =
+                        (requests zip results).foldLeft(InMemoryCache.empty)((cach, resultSet) => {
                           val (req, resultmap) = resultSet
                           val ds               = req.dataSource
                           val tresults         = resultmap.asInstanceOf[Map[I, A]]
                           val tds              = ds.asInstanceOf[DataSource[I, A]]
                           cach.cacheResults[I, A](tresults, tds).asInstanceOf[InMemoryCache]
                         })
-                        Task.pure((newEnv, cachedResults.asInstanceOf[A]))
-                      } else {
-                        Task.raiseError(FetchFailure(newEnv))
-                      }
-                    })
+                      M.pure((newEnv, cachedResults.asInstanceOf[A]))
+                    } else {
+                      M.raiseError(FetchFailure(newEnv))
+                    }
+                  })
+                }
               }
             case FetchOne(id, ds) => {
                 val startRound = System.nanoTime()
                 val cache      = env.cache
                 cache
                   .get(ds.identity(id))
-                  .fold[Task[(FetchEnv, A)]](
-                      ds.fetchOne(id)
-                        .flatMap((res: Option[A]) => {
-                          val endRound = System.nanoTime()
-                          res.fold[Task[(FetchEnv, A)]](
-                              Task.raiseError(
-                                  FetchFailure(
-                                      env.next(
-                                          cache,
-                                          Round(cache,
-                                                ds.name,
-                                                OneRound(id),
-                                                startRound,
-                                                endRound),
-                                          List(id)
-                                      )
-                                  )
-                              )
-                          )(result => {
-                            val endRound = System.nanoTime()
-                            val newCache = cache.update(ds.identity(id), result)
-                            Task.pure(
-                                (env.next(
-                                     newCache,
-                                     Round(cache,
-                                           ds.name,
-                                           OneRound(id),
-                                           startRound,
-                                           endRound),
-                                     List(id)
-                                 ),
-                                 result)
+                  .fold[M[(FetchEnv, A)]](
+                      M.flatMap(M.runQuery(ds.fetchOne(id)))((res: Option[A]) => {
+                        val endRound = System.nanoTime()
+                        res.fold[M[(FetchEnv, A)]](
+                            M.raiseError(
+                                FetchFailure(
+                                    env.next(
+                                        cache,
+                                        Round(cache,
+                                              ds.name,
+                                              OneRound(id),
+                                              startRound,
+                                              endRound),
+                                        List(id)
+                                    )
+                                )
                             )
-                          })
+                        )(result => {
+                          val endRound = System.nanoTime()
+                          val newCache = cache.update(ds.identity(id), result)
+                          M.pure(
+                              (env.next(
+                                   newCache,
+                                   Round(cache,
+                                         ds.name,
+                                         OneRound(id),
+                                         startRound,
+                                         endRound),
+                                   List(id)
+                               ),
+                               result)
+                          )
                         })
+                      })
                   )(cached => {
                     val endRound = System.nanoTime()
-                    Task.pure(
+                    M.pure(
                         (env.next(
                              cache,
                              Round(cache,
@@ -194,7 +192,7 @@ trait FetchInterpreters {
                 val cache      = env.cache
                 val newIds     = many.missingIdentities(cache)
                 if (newIds.isEmpty)
-                  Task.pure(
+                  M.pure(
                       (env.next(
                            cache,
                            Round(cache,
@@ -208,47 +206,48 @@ trait FetchInterpreters {
                        ids.unwrap.flatMap(id => cache.get(ds.identity(id))))
                   )
                 else {
-                  ds.asInstanceOf[DataSource[I, A]]
-                    .fetchMany(
-                        NonEmptyList(newIds(0).asInstanceOf[I], newIds.tail.asInstanceOf[List[I]]))
-                    .flatMap((res: Map[I, A]) => {
-                      val endRound = System.nanoTime()
-                      ids.unwrap
-                        .map(i => res.get(i.asInstanceOf[I]))
-                        .sequence
-                        .fold[Task[(FetchEnv, A)]](
-                            Task.raiseError(
-                                FetchFailure(
-                                    env.next(
-                                        cache,
-                                        Round(cache,
-                                              ds.name,
-                                              ManyRound(ids.unwrap),
-                                              startRound,
-                                              endRound),
-                                        newIds
-                                    )
-                                )
-                            )
-                        )(results => {
-                          val endRound = System.nanoTime()
-                          val newCache =
-                            cache.cacheResults[I, A](res, ds.asInstanceOf[DataSource[I, A]])
-                          Task.pure(
-                              (env.next(
-                                   newCache,
-                                   Round(cache,
-                                         ds.name,
-                                         ManyRound(ids.unwrap),
-                                         startRound,
-                                         endRound,
-                                         results.size < ids.unwrap.distinct.size),
-                                   newIds
-                               ),
-                               results)
+                  M.flatMap(M.runQuery(ds
+                            .asInstanceOf[DataSource[I, A]]
+                            .fetchMany(NonEmptyList(newIds(0).asInstanceOf[I],
+                                                    newIds.tail.asInstanceOf[List[I]]))))(
+                      (res: Map[I, A]) => {
+                    val endRound = System.nanoTime()
+                    ids.unwrap
+                      .map(i => res.get(i.asInstanceOf[I]))
+                      .sequence
+                      .fold[M[(FetchEnv, A)]](
+                          M.raiseError(
+                              FetchFailure(
+                                  env.next(
+                                      cache,
+                                      Round(cache,
+                                            ds.name,
+                                            ManyRound(ids.unwrap),
+                                            startRound,
+                                            endRound),
+                                      newIds
+                                  )
+                              )
                           )
-                        })
-                    })
+                      )(results => {
+                        val endRound = System.nanoTime()
+                        val newCache =
+                          cache.cacheResults[I, A](res, ds.asInstanceOf[DataSource[I, A]])
+                        M.pure(
+                            (env.next(
+                                 newCache,
+                                 Round(cache,
+                                       ds.name,
+                                       ManyRound(ids.unwrap),
+                                       startRound,
+                                       endRound,
+                                       results.size < ids.unwrap.distinct.size),
+                                 newIds
+                             ),
+                             results)
+                        )
+                      })
+                  })
                 }
               }
           }

@@ -28,7 +28,7 @@ object syntax {
   }
 
   /** Implicit syntax to lift exception to Fetch errors */
-  implicit class FetchErrorSyntax[A <: Throwable](val a: A) extends AnyVal {
+  implicit class FetchErrorSyntax(val a: Throwable) extends AnyVal {
 
     def fetch[B]: Fetch[B] =
       Fetch.error[B](a)
@@ -40,22 +40,13 @@ object syntax {
     def join[B](fb: Fetch[B]): Fetch[(A, B)] =
       Fetch.join(fa, fb)
 
-    def runF: Task[(FetchEnv, A)] =
-      Fetch.runFetch(fa, InMemoryCache.empty)
+    def runF[M[_]: FetchMonadError]: M[(FetchEnv, A)] =
+      Fetch.runFetch[M](fa, InMemoryCache.empty)
 
-    def runE: Task[FetchEnv] =
-      Fetch.runEnv(fa, InMemoryCache.empty)
+    def runE[M[_]: FetchMonadError]: M[FetchEnv] =
+      Fetch.runEnv[M](fa, InMemoryCache.empty)
 
-    def runA: Task[A] =
-      Fetch.run(fa, InMemoryCache.empty)
-
-    def runF(cache: DataSourceCache): Task[(FetchEnv, A)] =
-      Fetch.runFetch(fa, cache)
-
-    def runE(cache: DataSourceCache): Task[FetchEnv] =
-      Fetch.runEnv(fa, cache)
-
-    def runA(cache: DataSourceCache): Task[A] =
-      Fetch.run(fa, cache)
+    def runA[M[_]: FetchMonadError]: M[A] =
+      Fetch.run[M](fa, InMemoryCache.empty)
   }
 }

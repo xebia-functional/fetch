@@ -18,7 +18,8 @@ lazy val commonSettings = Seq(
   resolvers += Resolver.sonatypeRepo("releases"),
   libraryDependencies ++= Seq(
     "org.typelevel" %%% "cats" % "0.6.0",
-    "io.monix" %%% "monix-eval" % "2.0-RC3",
+    "io.monix" %%% "monix-eval" % "2.0-RC5",
+    "io.monix" %%% "monix-cats" % "2.0-RC5",
     "org.scalatest" %%% "scalatest" % "3.0.0-M7" % "test",
     compilerPlugin(
       "org.spire-math" %% "kind-projector" % "0.7.1"

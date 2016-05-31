@@ -19,15 +19,15 @@ import scala.concurrent.duration._
 
 import org.scalatest._
 
-import monix.eval._
 import monix.execution.Scheduler
 import cats.data.NonEmptyList
 import cats.std.list._
 import fetch._
+import fetch.implicits._
 
-class FetchFutureTests extends AsyncFreeSpec with Matchers {
+class FetchAsyncQueryTests extends AsyncFreeSpec with Matchers {
   implicit def executionContext = Scheduler.Implicits.global
-  override def newInstance      = new FetchFutureTests
+  override def newInstance      = new FetchAsyncQueryTests
 
   case class ArticleId(id: Int)
   case class Article(id: Int, content: String) {
@@ -36,11 +36,13 @@ class FetchFutureTests extends AsyncFreeSpec with Matchers {
 
   implicit object ArticleFuture extends DataSource[ArticleId, Article] {
     override def name = "ArticleFuture"
-    override def fetchOne(id: ArticleId): Task[Option[Article]] =
-      Task.pure(Option(Article(id.id, "An article with id " + id.id)))
-    override def fetchMany(ids: NonEmptyList[ArticleId]): Task[Map[ArticleId, Article]] = {
-      Task.now({
-        ids.unwrap.map(tid => (tid, Article(tid.id, "An article with id " + tid.id))).toMap
+    override def fetchOne(id: ArticleId): Query[Option[Article]] =
+      Query.async((ok, fail) => {
+        ok(Option(Article(id.id, "An article with id " + id.id)))
+      })
+    override def fetchMany(ids: NonEmptyList[ArticleId]): Query[Map[ArticleId, Article]] = {
+      Query.async((ok, fail) => {
+        ok(ids.unwrap.map(tid => (tid, Article(tid.id, "An article with id " + tid.id))).toMap)
       })
     }
   }
@@ -52,53 +54,42 @@ class FetchFutureTests extends AsyncFreeSpec with Matchers {
 
   implicit object AuthorFuture extends DataSource[AuthorId, Author] {
     override def name = "AuthorFuture"
-    override def fetchOne(id: AuthorId): Task[Option[Author]] =
-      Task.now(Option(Author(id.id, "@egg" + id.id)))
-    override def fetchMany(ids: NonEmptyList[AuthorId]): Task[Map[AuthorId, Author]] = {
-      Task.now({
-        ids.unwrap.map(tid => (tid, Author(tid.id, "@egg" + tid.id))).toMap
+    override def fetchOne(id: AuthorId): Query[Option[Author]] =
+      Query.async((ok, fail) => {
+        ok(Option(Author(id.id, "@egg" + id.id)))
+      })
+    override def fetchMany(ids: NonEmptyList[AuthorId]): Query[Map[AuthorId, Author]] = {
+      Query.async((ok, fail) => {
+        ok(ids.unwrap.map(tid => (tid, Author(tid.id, "@egg" + tid.id))).toMap)
       })
     }
   }
 
   def author(a: Article): Fetch[Author] = Fetch(AuthorId(a.author))
 
-  def toFuture[A](task: Task[A]): Future[A] = {
-    val promise: Promise[A] = Promise()
-    task.runAsync(
-        new Callback[A] {
-      def onSuccess(value: A): Unit    = { promise.success(value); () }
-      def onError(ex: Throwable): Unit = { promise.failure(ex); () }
-    })
-    promise.future
-  }
-
-  "We can interpret a fetch into a future" in {
+  "We can interpret an async fetch into a future" in {
     val fetch: Fetch[Article] = article(1)
-
-    val task: Task[Article]  = Fetch.run(fetch)
-    val fut: Future[Article] = toFuture(task)
-
+    val fut: Future[Article]  = Fetch.run[Future](fetch)
     fut.map(_ shouldEqual Article(1, "An article with id 1"))
   }
 
-  "We can combine several data sources and interpret a fetch into a future" in {
+  "We can combine several async data sources and interpret a fetch into a future" in {
     val fetch: Fetch[(Article, Author)] = for {
       art    <- article(1)
       author <- author(art)
     } yield (art, author)
 
-    val fut: Future[(Article, Author)] = toFuture(Fetch.run(fetch))
+    val fut: Future[(Article, Author)] = Fetch.run[Future](fetch)
 
     fut.map(_ shouldEqual (Article(1, "An article with id 1"), Author(2, "@egg2")))
   }
 
-  "We can use combinators in a for comprehension and interpret a fetch into a future" in {
+  "We can use combinators in a for comprehension and interpret a fetch from async sources into a future" in {
     val fetch: Fetch[List[Article]] = for {
       articles <- Fetch.traverse(List(1, 1, 2))(article)
     } yield articles
 
-    val fut: Future[List[Article]] = toFuture(Fetch.run(fetch))
+    val fut: Future[List[Article]] = Fetch.run[Future](fetch)
 
     fut.map(
         _ shouldEqual List(
@@ -109,14 +100,13 @@ class FetchFutureTests extends AsyncFreeSpec with Matchers {
     )
   }
 
-  "We can use combinators and multiple sources in a for comprehension and interpret a fetch into a future" in {
+  "We can use combinators and multiple sources in a for comprehension and interpret a fetch from async sources into a future" in {
     val fetch = for {
       articles <- Fetch.traverse(List(1, 1, 2))(article)
       authors  <- Fetch.traverse(articles)(author)
     } yield (articles, authors)
 
-    val fut: Future[(List[Article], List[Author])] =
-      toFuture(Fetch.run(fetch, InMemoryCache.empty))
+    val fut: Future[(List[Article], List[Author])] = Fetch.run[Future](fetch, InMemoryCache.empty)
 
     fut.map(
         _ shouldEqual (
