@@ -19,14 +19,13 @@ import scala.concurrent.duration._
 
 import org.scalatest._
 
-import monix.execution.Scheduler
 import cats.data.NonEmptyList
 import cats.std.list._
 import fetch._
 import fetch.implicits._
 
 class FetchAsyncQueryTests extends AsyncFreeSpec with Matchers {
-  implicit def executionContext = Scheduler.Implicits.global
+  implicit def executionContext = ExecutionContext.Implicits.global
   override def newInstance      = new FetchAsyncQueryTests
 
   case class ArticleId(id: Int)

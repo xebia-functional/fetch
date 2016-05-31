@@ -18,8 +18,6 @@ lazy val commonSettings = Seq(
   resolvers += Resolver.sonatypeRepo("releases"),
   libraryDependencies ++= Seq(
     "org.typelevel" %%% "cats" % "0.6.0",
-    "io.monix" %%% "monix-eval" % "2.0-RC5",
-    "io.monix" %%% "monix-cats" % "2.0-RC5",
     "org.scalatest" %%% "scalatest" % "3.0.0-M7" % "test",
     compilerPlugin(
       "org.spire-math" %% "kind-projector" % "0.7.1"
@@ -63,10 +61,7 @@ lazy val docsSettings = ghpages.settings ++ buildSettings ++ tutSettings ++ Seq(
   tutSourceDirectory := sourceDirectory.value / "tut",
   tutTargetDirectory := sourceDirectory.value / "jekyll",
   tutScalacOptions ~= (_.filterNot(Set("-Ywarn-unused-import", "-Ywarn-dead-code"))),
-  aggregate in doc := true,
-  libraryDependencies ++= Seq(
-    "io.monix" %%% "monix-eval" % "2.0-RC3"
-  )
+  aggregate in doc := true
 )
 
 lazy val docs = (project in file("docs"))
@@ -121,10 +116,7 @@ lazy val readmeSettings = buildSettings ++ tutSettings ++ Seq(
   tutSourceDirectory := baseDirectory.value,
   tutTargetDirectory := baseDirectory.value.getParentFile,
   tutScalacOptions ~= (_.filterNot(Set("-Ywarn-unused-import", "-Ywarn-dead-code"))),
-  tutNameFilter := """README.md""".r,
-  libraryDependencies ++= Seq(
-    "io.monix" %%% "monix-eval" % "2.0-RC3"
-  )
+  tutNameFilter := """README.md""".r
 )
 
 lazy val readme = (project in file("tut"))
@@ -134,4 +126,19 @@ lazy val readme = (project in file("tut"))
   .dependsOn(fetchJVM)
   .settings(readmeSettings: _*)
   .settings(noPublishSettings)
+
+lazy val monixSettings = (
+  libraryDependencies ++= Seq(
+    "io.monix" %%% "monix-eval" % "2.0-RC5",
+    "io.monix" %%% "monix-cats" % "2.0-RC5"
+  )
+)
+
+lazy val monix = crossProject.in(file("monix"))
+  .settings(moduleName := "fetch-monix")
+  .settings(allSettings:_*)
+  .jsSettings(fetchJSSettings:_*)
+  .settings(monixSettings: _*)
+  .enablePlugins(AutomateHeaderPlugin)
+
 

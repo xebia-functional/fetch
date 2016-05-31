@@ -16,7 +16,6 @@
 
 package fetch
 
-import monix.eval.Task
 import cats.data.NonEmptyList
 
 import cats.std.list._

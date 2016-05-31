@@ -16,8 +16,6 @@
 
 package fetch
 
-import monix.eval.Task
-
 object syntax {
 
   /** Implicit syntax to lift any value to the context of Fetch via pure */

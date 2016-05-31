@@ -19,8 +19,6 @@ import scala.concurrent.duration._
 
 import org.scalatest._
 
-import monix.eval._
-import monix.execution.Scheduler
 import cats.{MonadError}
 import cats.data.{NonEmptyList, Xor}
 import cats.std.list._
@@ -107,7 +105,7 @@ class FetchSyntaxTests extends AsyncFreeSpec with Matchers {
 
   val ME = implicitly[FetchMonadError[Future]]
 
-  implicit def executionContext = Scheduler.Implicits.global
+  implicit def executionContext = ExecutionContext.Implicits.global
   override def newInstance      = new FetchSyntaxTests
 
   "Cartesian syntax is implicitly concurrent" in {
@@ -191,7 +189,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
 
   val ME = implicitly[FetchMonadError[Future]]
 
-  implicit def executionContext = Scheduler.Implicits.global
+  implicit def executionContext = ExecutionContext.Implicits.global
   override def newInstance      = new FetchTests
 
   "We can lift plain values to Fetch" in {
@@ -228,11 +226,12 @@ class FetchTests extends AsyncFreeSpec with Matchers {
         OneSource.identity(One(1)) -> 1
     )
 
-    intercept[FetchFailure] {
-      Fetch.run[Task](fetch, cache).coeval.value
-    } match {
-      case FetchFailure(env) => env.cache shouldEqual cache
-    }
+    ME.attempt(Fetch.run[Future](fetch, cache))
+      .map(xor =>
+            xor match {
+          case Xor.Left(FetchFailure(env)) => env.cache shouldEqual cache
+          case _                           => fail("Cache should be populated")
+      })
   }
 
   "Data sources with errors won't fail if they're cached" in {
