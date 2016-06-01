@@ -109,7 +109,7 @@ Since we calculated the results eagerly using `Task#now`, we can run this fetch 
 
 ```scala
 import scala.concurrent.duration._
-// [198] One ToString 1
+// [152] One ToString 1
 // import scala.concurrent.duration._
 
 Await.result(result, Duration.Inf)
@@ -117,7 +117,6 @@ Await.result(result, Duration.Inf)
 ```
 
 As you can see in the previous example, the `ToStringSource` is queried once to get the value of 1.
-
 
 
 ```scala
@@ -140,7 +139,7 @@ import cats.syntax.cartesian._
 // import cats.syntax.cartesian._
 
 val fetchThree: Fetch[(String, String, String)] = (fetchString(1) |@| fetchString(2) |@| fetchString(3)).tupled
-// fetchThree: fetch.Fetch[(String, String, String)] = Gosub(Gosub(Suspend(Concurrent(List(FetchMany(OneAnd(1,List(2, 3)),ToStringSource$@3cd0bf6b)))),<function1>),<function1>)
+// fetchThree: fetch.Fetch[(String, String, String)] = Gosub(Gosub(Suspend(Concurrent(List(FetchMany(OneAnd(1,List(2, 3)),ToStringSource$@183bd58)))),<function1>),<function1>)
 
 val result: Future[(String, String, String)] = fetchThree.runA[Future]
 // result: scala.concurrent.Future[(String, String, String)] = List()
@@ -151,7 +150,7 @@ When executing the above fetch, note how the three identities get batched and th
 
 ```scala
 await(result)
-// [188] Many ToString OneAnd(1,List(2, 3))
+// [152] Many ToString OneAnd(1,List(2, 3))
 // res4: (String, String, String) = (1,2,3)
 ```
 
@@ -186,18 +185,18 @@ And now we can easily receive data from the two sources in a single fetch.
 
 ```scala
 scala> val fetchMulti: Fetch[(String, Int)] = (fetchString(1) |@| fetchLength("one")).tupled
-fetchMulti: fetch.Fetch[(String, Int)] = Gosub(Gosub(Suspend(Concurrent(List(FetchOne(1,ToStringSource$@3cd0bf6b), FetchOne(one,LengthSource$@cf8c35b)))),<function1>),<function1>)
+fetchMulti: fetch.Fetch[(String, Int)] = Gosub(Gosub(Suspend(Concurrent(List(FetchOne(1,ToStringSource$@183bd58), FetchOne(one,LengthSource$@1d6700b5)))),<function1>),<function1>)
 
 scala> val result = fetchMulti.runA[Future]
-[199] One ToString 1
 result: scala.concurrent.Future[(String, Int)] = List()
+[163] One ToString 1
 ```
 
 Note how the two independent data fetches are run in parallel, minimizing the latency cost of querying the two data sources.
 
 ```scala
 scala> await(result)
-[198] One Length one
+[152] One Length one
 res5: (String, Int) = (1,3)
 ```
 
@@ -210,13 +209,13 @@ scala> val fetchTwice: Fetch[(String, String)] = for {
      |   one <- fetchString(1)
      |   two <- fetchString(1)
      | } yield (one, two)
-fetchTwice: fetch.Fetch[(String, String)] = Gosub(Suspend(FetchOne(1,ToStringSource$@3cd0bf6b)),<function1>)
+fetchTwice: fetch.Fetch[(String, String)] = Gosub(Suspend(FetchOne(1,ToStringSource$@183bd58)),<function1>)
 ```
 
 While running it, notice that the data source is only queried once. The next time the identity is requested it's served from the cache.
 
 ```scala
 scala> val result: (String, String) = await(fetchTwice.runA[Future])
-[199] One ToString 1
+[152] One ToString 1
 result: (String, String) = (1,1)
 ```

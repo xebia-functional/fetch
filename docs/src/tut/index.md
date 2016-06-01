@@ -142,13 +142,13 @@ implicit object LengthSource extends DataSource[String, Int]{
   override def fetchOne(id: String): Query[Option[Int]] = {
     Query.async((ok, fail) => {
       println(s"[${Thread.currentThread.getId}] One Length $id")
-      ok(Option(id.size))
+      ok((Option(id.size)))
     })
   }
   override def fetchMany(ids: NonEmptyList[String]): Query[Map[String, Int]] = {
     Query.async((ok, fail) => {
       println(s"[${Thread.currentThread.getId}] Many Length $ids")
-	  ok(ids.unwrap.map(i => (i, i.size)).toMap)
+      ok(ids.unwrap.map(i => (i, i.size)).toMap)
     })
   }
 }
