@@ -14,19 +14,22 @@
  * limitations under the License.
  */
 
-import scala.concurrent._
-import scala.concurrent.duration._
+import monix.eval.Task
+import monix.execution.Scheduler
 
 import org.scalatest._
 
 import cats.data.NonEmptyList
 import cats.std.list._
-import fetch._
-import fetch.implicits._
 
-class FetchAsyncQueryTests extends AsyncFreeSpec with Matchers {
-  implicit def executionContext = ExecutionContext.Implicits.global
-  override def newInstance      = new FetchAsyncQueryTests
+import fetch._
+import fetch.monix.implicits._
+
+import scala.concurrent.Future
+
+class FetchTaskTests extends AsyncFreeSpec with Matchers {
+  implicit def executionContext = Scheduler.Implicits.global
+  override def newInstance      = new FetchTaskTests
 
   case class ArticleId(id: Int)
   case class Article(id: Int, content: String) {
@@ -40,9 +43,7 @@ class FetchAsyncQueryTests extends AsyncFreeSpec with Matchers {
         ok(Option(Article(id.id, "An article with id " + id.id)))
       })
     override def fetchMany(ids: NonEmptyList[ArticleId]): Query[Map[ArticleId, Article]] = {
-      Query.async((ok, fail) => {
-        ok(ids.unwrap.map(tid => (tid, Article(tid.id, "An article with id " + tid.id))).toMap)
-      })
+      batchingNotSupported(ids)
     }
   }
 
@@ -58,17 +59,16 @@ class FetchAsyncQueryTests extends AsyncFreeSpec with Matchers {
         ok(Option(Author(id.id, "@egg" + id.id)))
       })
     override def fetchMany(ids: NonEmptyList[AuthorId]): Query[Map[AuthorId, Author]] = {
-      Query.async((ok, fail) => {
-        ok(ids.unwrap.map(tid => (tid, Author(tid.id, "@egg" + tid.id))).toMap)
-      })
+      batchingNotSupported(ids)
     }
   }
 
   def author(a: Article): Fetch[Author] = Fetch(AuthorId(a.author))
 
-  "We can interpret an async fetch into a future" in {
+  "We can interpret an async fetch into a task" in {
     val fetch: Fetch[Article] = article(1)
-    val fut: Future[Article]  = Fetch.run[Future](fetch)
+    val task: Task[Article]   = Fetch.run(fetch)
+    val fut: Future[Article]  = task.runAsync
     fut.map(_ shouldEqual Article(1, "An article with id 1"))
   }
 
@@ -78,7 +78,8 @@ class FetchAsyncQueryTests extends AsyncFreeSpec with Matchers {
       author <- author(art)
     } yield (art, author)
 
-    val fut: Future[(Article, Author)] = Fetch.run[Future](fetch)
+    val task: Task[(Article, Author)]  = Fetch.run(fetch)
+    val fut: Future[(Article, Author)] = task.runAsync
 
     fut.map(_ shouldEqual (Article(1, "An article with id 1"), Author(2, "@egg2")))
   }
@@ -88,7 +89,8 @@ class FetchAsyncQueryTests extends AsyncFreeSpec with Matchers {
       articles <- Fetch.traverse(List(1, 1, 2))(article)
     } yield articles
 
-    val fut: Future[List[Article]] = Fetch.run[Future](fetch)
+    val task: Task[List[Article]]  = Fetch.run(fetch)
+    val fut: Future[List[Article]] = task.runAsync
 
     fut.map(
         _ shouldEqual List(
@@ -105,7 +107,8 @@ class FetchAsyncQueryTests extends AsyncFreeSpec with Matchers {
       authors  <- Fetch.traverse(articles)(author)
     } yield (articles, authors)
 
-    val fut: Future[(List[Article], List[Author])] = Fetch.run[Future](fetch, InMemoryCache.empty)
+    val task: Task[(List[Article], List[Author])]  = Fetch.run(fetch, InMemoryCache.empty)
+    val fut: Future[(List[Article], List[Author])] = task.runAsync
 
     fut.map(
         _ shouldEqual (

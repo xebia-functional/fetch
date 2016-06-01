@@ -19,34 +19,15 @@ package fetch
 import cats.Eval
 import cats.data.Xor
 
+import scala.concurrent._
+import scala.concurrent.duration._
+
 object unsafeImplicits {
   implicit val fetchEvalFetchMonadError: FetchMonadError[Eval] = new FetchMonadError[Eval] {
-    override def runQuery[A](j: Query[A]): Eval[A] = j match {
-      case Now(x)   => Eval.now(x)
-      case Later(x) => Eval.later({ x() })
-      case Async(ac) =>
-        Eval.later({
-          val latch = new java.util.concurrent.CountDownLatch(1)
-          @volatile var result: Xor[Throwable, A] = null
-          new Thread(new Runnable {
-            def run() = {
-              ac(a => {
-                result = Xor.Right(a);
-                latch.countDown
-              }, err => {
-                result = Xor.Left(err);
-                latch.countDown
-              })
-            }
-          }).start()
-          latch.await
-          result match {
-            case Xor.Left(err) => throw err
-            case Xor.Right(v)  => v
-          }
-        })
+    override def runQuery[A](j: Query[A]): Eval[A] = {
+      // TODO
+      ???
     }
-
     def pure[A](x: A): Eval[A] = Eval.now(x)
     def handleErrorWith[A](fa: Eval[A])(f: Throwable => Eval[A]): Eval[A] =
       Eval.later({

@@ -17,8 +17,8 @@
 package fetch
 
 import cats.data.NonEmptyList
-
 import cats.std.list._
+import cats.syntax.functor._
 import cats.syntax.traverse._
 
 /**
@@ -46,21 +46,20 @@ trait DataSource[I, A] {
     */
   def fetchMany(ids: NonEmptyList[I]): Query[Map[I, A]]
 
-  // FIXME: query can be applicative?
-  // /** Use `fetchOne` for implementing of `fetchMany`. Use only when the data
-  //   * source doesn't support batching.
-  //   */
-  // def batchingNotSupported(ids: NonEmptyList[I]): Query[Map[I, A]] = {
-  //   val idsList = ids.unwrap
-  //   idsList
-  //     .map(fetchOne)
-  //     .sequence
-  //     .map(results => {
-  //       (idsList zip results)
-  //         .collect({
-  //           case (id, Some(result)) => (id, result)
-  //         })
-  //         .toMap
-  //     })
-  // }
+  /** Use `fetchOne` for implementing of `fetchMany`. Use only when the data
+    * source doesn't support batching.
+    */
+  def batchingNotSupported(ids: NonEmptyList[I]): Query[Map[I, A]] = {
+    val idsList = ids.unwrap
+    idsList
+      .map(fetchOne)
+      .sequence
+      .map(results => {
+        (idsList zip results)
+          .collect({
+            case (id, Some(result)) => (id, result)
+          })
+          .toMap
+      })
+  }
 }

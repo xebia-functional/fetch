@@ -135,6 +135,7 @@ lazy val monixSettings = (
 )
 
 lazy val monix = crossProject.in(file("monix"))
+  .dependsOn(fetch)
   .settings(moduleName := "fetch-monix")
   .settings(allSettings:_*)
   .jsSettings(fetchJSSettings:_*)
@@ -142,3 +143,5 @@ lazy val monix = crossProject.in(file("monix"))
   .enablePlugins(AutomateHeaderPlugin)
 
 
+lazy val fetchMonixJVM = monix.jvm
+lazy val fetchMonixJS = monix.js

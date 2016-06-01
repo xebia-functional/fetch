@@ -46,5 +46,14 @@ object syntax {
 
     def runA[M[_]: FetchMonadError]: M[A] =
       Fetch.run[M](fa, InMemoryCache.empty)
+
+    def runF[M[_]: FetchMonadError](cache: DataSourceCache): M[(FetchEnv, A)] =
+      Fetch.runFetch[M](fa, cache)
+
+    def runE[M[_]: FetchMonadError](cache: DataSourceCache): M[FetchEnv] =
+      Fetch.runEnv[M](fa, cache)
+
+    def runA[M[_]: FetchMonadError](cache: DataSourceCache): M[A] =
+      Fetch.run[M](fa, cache)
   }
 }

@@ -24,9 +24,8 @@ object implicits {
       implicit ec: ExecutionContext
   ): FetchMonadError[Future] = new FetchMonadError[Future] {
     override def runQuery[A](j: Query[A]): Future[A] = j match {
-      case Now(x)   => Future.successful(x)
-      case Later(x) => Future({ x() })
-      case Async(ac) => {
+      case Sync(e) => pureEval(e)
+      case Async(ac, timeout) => {
           val p = Promise[A]()
 
           ec.execute(new Runnable {
@@ -35,6 +34,12 @@ object implicits {
 
           p.future
         }
+      case Ap(qf, qx) =>
+        runQuery(qf)
+          .zip(runQuery(qx))
+          .map({
+            case (f, x) => f(x)
+          })
     }
     def pure[A](x: A): Future[A] = Future.successful(x)
     def handleErrorWith[A](fa: Future[A])(f: Throwable => Future[A]): Future[A] =

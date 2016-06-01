@@ -18,29 +18,42 @@ package fetch
 
 import scala.collection.immutable.Map
 
-import cats.{Applicative, Monad, ApplicativeError, MonadError, ~>}
+import cats.{Applicative, Monad, ApplicativeError, MonadError, ~>, Eval}
 import cats.data.{StateT, Const, NonEmptyList}
 import cats.free.{Free}
 import cats.std.list._
 import cats.std.option._
 import cats.syntax.traverse._
-import scala.concurrent.duration._
+import scala.concurrent.duration.Duration
 
 sealed trait Query[A] extends Product with Serializable
-final case class Now[A](a: A)                                                 extends Query[A]
-final case class Later[A](a: () => A)                                         extends Query[A]
-final case class Async[A](action: (Query.Callback[A], Query.Errback) => Unit) extends Query[A] // todo: timeout
+
+/** A query that can be satisfied synchronously. **/
+final case class Sync[A](action: Eval[A]) extends Query[A]
+
+/** A query that can only be satisfied asynchronously. **/
+final case class Async[A](action: (Query.Callback[A], Query.Errback) => Unit, timeout: Duration)
+    extends Query[A]
+
+final case class Ap[A, B](ff: Query[A => B], fa: Query[A]) extends Query[B]
 
 object Query {
   type Callback[A] = A => Unit
   type Errback     = Throwable => Unit
 
-  def apply[A](x: A): Query[A]     = Now(x)
-  def now[A](x: A): Query[A]       = Now(x)
-  def later[A](th: => A): Query[A] = Later(th _)
+  def apply[A](x: A): Query[A]     = Sync(Eval.now(x))
+  def now[A](x: A): Query[A]       = Sync(Eval.now(x))
+  def later[A](th: => A): Query[A] = Sync(Eval.later(th))
   def async[A](
-      action: (Callback[A], Errback) => Unit //,      timeout: FiniteDuration
-  ): Query[A] = Async(action)
+      action: (Callback[A], Errback) => Unit,
+      timeout: Duration = Duration.Inf
+  ): Query[A] = Async(action, timeout)
+
+  implicit val fetchQueryApplicative: Applicative[Query] = new Applicative[Query] {
+    def pure[A](x: A): Query[A] = Sync(Eval.now(x))
+    def ap[A, B](ff: Query[A => B])(fa: Query[A]): Query[B] =
+      Ap(ff, fa)
+  }
 }
 
 /** Requests in Fetch Free monad.
@@ -86,14 +99,17 @@ final case class Concurrent(as: List[FetchRequest[_, _]]) extends FetchOp[DataSo
 final case class FetchError[A](err: Throwable)            extends FetchOp[A]
 
 object `package` {
-  type DataSourceName = String
-
+  type DataSourceName     = String
   type DataSourceIdentity = (DataSourceName, Any)
 
   type Fetch[A] = Free[FetchOp, A]
 
   trait FetchMonadError[M[_]] extends MonadError[M, Throwable] {
     def runQuery[A](q: Query[A]): M[A]
+  }
+
+  object FetchMonadError {
+    def apply[M[_]](implicit ME: FetchMonadError[M]): FetchMonadError[M] = ME
   }
 
   type FetchInterpreter[M[_]] = {
