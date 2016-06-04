@@ -115,7 +115,7 @@ fetchOne.runA[Id]
 
 Multiple fetches to the same data source are automatically batched. For illustrating it, we are going to compose three independent fetch results as a tuple.
 
-```tut:book
+```tut:silent
 import cats.syntax.cartesian._
 
 val fetchThree: Fetch[(String, String, String)] = (fetchString(1) |@| fetchString(2) |@| fetchString(3)).tupled

@@ -104,7 +104,7 @@ Let's run it and wait for the fetch to complete:
 
 ```scala
 fetchOne.runA[Id]
-// [102] One ToString 1
+// [111] One ToString 1
 // res3: cats.Id[String] = 1
 ```
 
@@ -114,18 +114,16 @@ Multiple fetches to the same data source are automatically batched. For illustra
 
 ```scala
 import cats.syntax.cartesian._
-// import cats.syntax.cartesian._
 
 val fetchThree: Fetch[(String, String, String)] = (fetchString(1) |@| fetchString(2) |@| fetchString(3)).tupled
-// fetchThree: fetch.Fetch[(String, String, String)] = Gosub(Gosub(Suspend(Concurrent(List(FetchMany(OneAnd(1,List(2, 3)),ToStringSource$@6fb256ea)))),<function1>),<function1>)
 ```
 
 When executing the above fetch, note how the three identities get batched and the data source is only queried once.
 
 ```scala
 fetchThree.runA[Id]
-// [102] Many ToString OneAnd(1,List(2, 3))
-// res4: cats.Id[(String, String, String)] = (1,2,3)
+// [111] Many ToString OneAnd(1,List(2, 3))
+// res5: cats.Id[(String, String, String)] = (1,2,3)
 ```
 
 ## Parallelism
@@ -163,9 +161,9 @@ Note how the two independent data fetches are run in parallel, minimizing the la
 
 ```scala
 fetchMulti.runA[Id]
-// [102] One ToString 1
-// [103] One Length one
-// res6: cats.Id[(String, Int)] = (1,3)
+// [111] One ToString 1
+// [112] One Length one
+// res7: cats.Id[(String, Int)] = (1,3)
 ```
 
 ## Caching
@@ -183,6 +181,6 @@ While running it, notice that the data source is only queried once. The next tim
 
 ```scala
 fetchTwice.runA[Id]
-// [102] One ToString 1
-// res7: cats.Id[(String, String)] = (1,1)
+// [111] One ToString 1
+// res8: cats.Id[(String, String)] = (1,1)
 ```
