@@ -94,33 +94,21 @@ import fetch.syntax._
 val fetchOne: Fetch[String] = fetchString(1)
 ```
 
-Now that we have created a fetch, we can run it to a `Task`. Note that when we create a task we are not computing any value yet. Having a `Task` instance allows us to try to run it synchronously or asynchronously, choosing a scheduler.
+We'll run our fetches to the ambiend `Id` monad in our examples, let's do some imports.
 
-```tut:book
-import fetch.implicits._
-
-import scala.concurrent._
-import ExecutionContext.Implicits.global
-
-val result: Future[String] = fetchOne.runA[Future]
+```tut:silent
+import cats.Id
+import fetch.unsafe.implicits._
+import fetch.syntax._
 ```
 
-Since we calculated the results eagerly using `Task#now`, we can run this fetch synchronously.
+Note that in real-life scenarios you'll want to run a fetch to a concurrency monad, synchronous execution of a fetch
+is only supported in Scala and not Scala.js and is meant for experimentation purposes.
+
+Let's run it and wait for the fetch to complete:
 
 ```tut:book
-import scala.concurrent.duration._
-
-Await.result(result, Duration.Inf)
-```
-
-As you can see in the previous example, the `ToStringSource` is queried once to get the value of 1.
-
-
-```tut:book
-import scala.concurrent._
-import scala.concurrent.duration._
-
-def await[A](t: Future[A]): A = Await.result(t, Duration.Inf)
+fetchOne.runA[Id]
 ```
 
 ## Batching
@@ -131,14 +119,12 @@ Multiple fetches to the same data source are automatically batched. For illustra
 import cats.syntax.cartesian._
 
 val fetchThree: Fetch[(String, String, String)] = (fetchString(1) |@| fetchString(2) |@| fetchString(3)).tupled
-val result: Future[(String, String, String)] = fetchThree.runA[Future]
 ```
 
-
-When executing the above fetch, note how the three identities get batched and the data source is only queried once. Let's pretend we have a function from `Future[A]` to `A` called `await`.
+When executing the above fetch, note how the three identities get batched and the data source is only queried once.
 
 ```tut:book
-await(result)
+fetchThree.runA[Id]
 ```
 
 ## Parallelism
@@ -147,7 +133,7 @@ If we combine two independent fetches from different data sources, the fetches c
 
 This time, instead of creating the results with `Query#later` we are going to do it with `Query#async` for emulating an asynchronous data source.
 
-```tuto:silent
+```tut:silent
 implicit object LengthSource extends DataSource[String, Int]{
   override def fetchOne(id: String): Query[Option[Int]] = {
     Query.async((ok, fail) => {
@@ -168,22 +154,21 @@ def fetchLength(s: String): Fetch[Int] = Fetch(s)
 
 And now we can easily receive data from the two sources in a single fetch. 
 
-```tuto:book
+```tut:silent
 val fetchMulti: Fetch[(String, Int)] = (fetchString(1) |@| fetchLength("one")).tupled
-val result = fetchMulti.runA[Future]
 ```
 
 Note how the two independent data fetches are run in parallel, minimizing the latency cost of querying the two data sources.
 
-```tuto:book
-await(result)
+```tut:book
+fetchMulti.runA[Id]
 ```
 
 ## Caching
 
 When fetching an identity, subsequent fetches for the same identity are cached. Let's try creating a fetch that asks for the same identity twice.
 
-```tuto:book
+```tut:silent
 val fetchTwice: Fetch[(String, String)] = for {
   one <- fetchString(1)
   two <- fetchString(1)
@@ -192,6 +177,6 @@ val fetchTwice: Fetch[(String, String)] = for {
 
 While running it, notice that the data source is only queried once. The next time the identity is requested it's served from the cache.
 
-```tuto:book
-val result: (String, String) = await(fetchTwice.runA[Future])
+```tut:book
+fetchTwice.runA[Id]
 ```

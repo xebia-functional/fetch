@@ -89,45 +89,23 @@ import fetch.syntax._
 val fetchOne: Fetch[String] = fetchString(1)
 ```
 
-Now that we have created a fetch, we can run it to a `Task`. Note that when we create a task we are not computing any value yet. Having a `Task` instance allows us to try to run it synchronously or asynchronously, choosing a scheduler.
+We'll run our fetches to the ambiend `Id` monad in our examples, let's do some imports.
 
 ```scala
-import fetch.implicits._
-// import fetch.implicits._
-
-import scala.concurrent._
-// import scala.concurrent._
-
-import ExecutionContext.Implicits.global
-// import ExecutionContext.Implicits.global
-
-val result: Future[String] = fetchOne.runA[Future]
-// result: scala.concurrent.Future[String] = List()
+import cats.Id
+import fetch.unsafe.implicits._
+import fetch.syntax._
 ```
 
-Since we calculated the results eagerly using `Task#now`, we can run this fetch synchronously.
+Note that in real-life scenarios you'll want to run a fetch to a concurrency monad, synchronous execution of a fetch
+is only supported in Scala and not Scala.js and is meant for experimentation purposes.
+
+Let's run it and wait for the fetch to complete:
 
 ```scala
-import scala.concurrent.duration._
-// [152] One ToString 1
-// import scala.concurrent.duration._
-
-Await.result(result, Duration.Inf)
-// res3: String = 1
-```
-
-As you can see in the previous example, the `ToStringSource` is queried once to get the value of 1.
-
-
-```scala
-import scala.concurrent._
-// import scala.concurrent._
-
-import scala.concurrent.duration._
-// import scala.concurrent.duration._
-
-def await[A](t: Future[A]): A = Await.result(t, Duration.Inf)
-// await: [A](t: scala.concurrent.Future[A])A
+fetchOne.runA[Id]
+// [102] One ToString 1
+// res3: cats.Id[String] = 1
 ```
 
 ## Batching
@@ -139,19 +117,15 @@ import cats.syntax.cartesian._
 // import cats.syntax.cartesian._
 
 val fetchThree: Fetch[(String, String, String)] = (fetchString(1) |@| fetchString(2) |@| fetchString(3)).tupled
-// fetchThree: fetch.Fetch[(String, String, String)] = Gosub(Gosub(Suspend(Concurrent(List(FetchMany(OneAnd(1,List(2, 3)),ToStringSource$@183bd58)))),<function1>),<function1>)
-
-val result: Future[(String, String, String)] = fetchThree.runA[Future]
-// result: scala.concurrent.Future[(String, String, String)] = List()
+// fetchThree: fetch.Fetch[(String, String, String)] = Gosub(Gosub(Suspend(Concurrent(List(FetchMany(OneAnd(1,List(2, 3)),ToStringSource$@6fb256ea)))),<function1>),<function1>)
 ```
 
-
-When executing the above fetch, note how the three identities get batched and the data source is only queried once. Let's pretend we have a function from `Future[A]` to `A` called `await`.
+When executing the above fetch, note how the three identities get batched and the data source is only queried once.
 
 ```scala
-await(result)
-// [152] Many ToString OneAnd(1,List(2, 3))
-// res4: (String, String, String) = (1,2,3)
+fetchThree.runA[Id]
+// [102] Many ToString OneAnd(1,List(2, 3))
+// res4: cats.Id[(String, String, String)] = (1,2,3)
 ```
 
 ## Parallelism
@@ -161,43 +135,37 @@ If we combine two independent fetches from different data sources, the fetches c
 This time, instead of creating the results with `Query#later` we are going to do it with `Query#async` for emulating an asynchronous data source.
 
 ```scala
-scala> implicit object LengthSource extends DataSource[String, Int]{
-     |   override def fetchOne(id: String): Query[Option[Int]] = {
-     |     Query.async((ok, fail) => {
-     |       println(s"[${Thread.currentThread.getId}] One Length $id")
-     |       ok(Option(id.size))
-     |     })
-     |   }
-     |   override def fetchMany(ids: NonEmptyList[String]): Query[Map[String, Int]] = {
-     |     Query.async((ok, fail) => {
-     |       println(s"[${Thread.currentThread.getId}] Many Length $ids")
-     |       ok(ids.unwrap.map(i => (i, i.size)).toMap)
-     |     })
-     |   }
-     | }
-defined object LengthSource
+implicit object LengthSource extends DataSource[String, Int]{
+  override def fetchOne(id: String): Query[Option[Int]] = {
+    Query.async((ok, fail) => {
+      println(s"[${Thread.currentThread.getId}] One Length $id")
+      ok(Option(id.size))
+    })
+  }
+  override def fetchMany(ids: NonEmptyList[String]): Query[Map[String, Int]] = {
+    Query.async((ok, fail) => {
+      println(s"[${Thread.currentThread.getId}] Many Length $ids")
+      ok(ids.unwrap.map(i => (i, i.size)).toMap)
+    })
+  }
+}
 
-scala> def fetchLength(s: String): Fetch[Int] = Fetch(s)
-fetchLength: (s: String)fetch.Fetch[Int]
+def fetchLength(s: String): Fetch[Int] = Fetch(s)
 ```
 
 And now we can easily receive data from the two sources in a single fetch. 
 
 ```scala
-scala> val fetchMulti: Fetch[(String, Int)] = (fetchString(1) |@| fetchLength("one")).tupled
-fetchMulti: fetch.Fetch[(String, Int)] = Gosub(Gosub(Suspend(Concurrent(List(FetchOne(1,ToStringSource$@183bd58), FetchOne(one,LengthSource$@1d6700b5)))),<function1>),<function1>)
-
-scala> val result = fetchMulti.runA[Future]
-result: scala.concurrent.Future[(String, Int)] = List()
-[163] One ToString 1
+val fetchMulti: Fetch[(String, Int)] = (fetchString(1) |@| fetchLength("one")).tupled
 ```
 
 Note how the two independent data fetches are run in parallel, minimizing the latency cost of querying the two data sources.
 
 ```scala
-scala> await(result)
-[152] One Length one
-res5: (String, Int) = (1,3)
+fetchMulti.runA[Id]
+// [102] One ToString 1
+// [103] One Length one
+// res6: cats.Id[(String, Int)] = (1,3)
 ```
 
 ## Caching
@@ -205,17 +173,16 @@ res5: (String, Int) = (1,3)
 When fetching an identity, subsequent fetches for the same identity are cached. Let's try creating a fetch that asks for the same identity twice.
 
 ```scala
-scala> val fetchTwice: Fetch[(String, String)] = for {
-     |   one <- fetchString(1)
-     |   two <- fetchString(1)
-     | } yield (one, two)
-fetchTwice: fetch.Fetch[(String, String)] = Gosub(Suspend(FetchOne(1,ToStringSource$@183bd58)),<function1>)
+val fetchTwice: Fetch[(String, String)] = for {
+  one <- fetchString(1)
+  two <- fetchString(1)
+} yield (one, two)
 ```
 
 While running it, notice that the data source is only queried once. The next time the identity is requested it's served from the cache.
 
 ```scala
-scala> val result: (String, String) = await(fetchTwice.runA[Future])
-[152] One ToString 1
-result: (String, String) = (1,1)
+fetchTwice.runA[Id]
+// [102] One ToString 1
+// res7: cats.Id[(String, String)] = (1,1)
 ```
