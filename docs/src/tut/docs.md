@@ -98,6 +98,18 @@ type UserId = Int
 case class User(id: UserId, username: String)
 ```
 
+We'll simulate unpredictable latency with this function.
+
+```tut:silent
+def latency[A](result: A, msg: String) = {
+  val id = Thread.currentThread.getId
+  println(s"~~> [$id] $msg")
+  Thread.sleep(100)
+  println(s"<~~ [$id] $msg")
+  result
+}
+```
+
 And now we're ready to write our user data source; we'll emulate a database with an in-memory map.
 
 ```tut:silent
@@ -109,20 +121,19 @@ import fetch._
 val userDatabase: Map[UserId, User] = Map(
   1 -> User(1, "@one"),
   2 -> User(2, "@two"),
-  3 -> User(3, "@three")
+  3 -> User(3, "@three"),
+  4 -> User(4, "@four")
 )
 
 implicit object UserSource extends DataSource[UserId, User]{
   override def fetchOne(id: UserId): Query[Option[User]] = {
     Query.later({
-      println(s"[${Thread.currentThread.getId}] One User $id")
-      userDatabase.get(id)
+	  latency(userDatabase.get(id), s"One User $id")
     })
   }
   override def fetchMany(ids: NonEmptyList[UserId]): Query[Map[UserId, User]] = {
     Query.later({
-      println(s"[${Thread.currentThread.getId}] Many Users $ids")
-      userDatabase.filterKeys(ids.unwrap.contains)
+	  latency(userDatabase.filterKeys(ids.unwrap.contains), s"Many Users $ids")
     })
   }
 }
@@ -151,47 +162,6 @@ implicit object UnbatchedSource extends DataSource[Int, Int]{
 }
 ```
 
-## Queries
-
-Queries are a way of separating the computation required to read a piece of data from the context in
-which is run. Let's look at the various ways we have of constructing queries.
-
-### Synchronous
-
-A query can be synchronous, and we may want to evaluate it when `fetchOne` and `fetchMany`
-are called. We can do so with `Query#now`:
-
-```tut:book
-Query.now(42)
-```
-
-You can also construct lazy queries that can evaluate synchronously with `Query#later`:
-
-```tut:book
-Query.later({ println("Computing 42"); 42 })
-```
-
-Synchronous queries simply wrap a Cats' `Eval` instance, which captures the notion of a lazy synchronous
-computation. You can lift an `Eval[A]` into a `Query[A]` too:
-
-```tut:book
-import cats.Eval
-
-Query.sync(Eval.always({ println("Computing 42"); 42 }))
-```
-
-### Asynchronous
-
-Asynchronous queries are constructed passing a function that accepts a callback (`A => Unit`) and an errback
-(`Throwable => Unit`) and performs the asynchronous computation. Note that you must ensure that either the
-callback or the errback are called.
-
-```tut:book
-Query.async((ok: (Int => Unit), fail) => {
-  Thread.sleep(100)
-  ok(42)
-})
-```
 
 ## Creating and running a fetch
 
@@ -300,6 +270,49 @@ As you can see, the `User` with id 1 was fetched only once in a single round-tri
 time it was needed we used the cached versions, thus avoiding another request to the user data
 source.
 
+
+## Queries
+
+Queries are a way of separating the computation required to read a piece of data from the context in
+which is run. Let's look at the various ways we have of constructing queries.
+
+### Synchronous
+
+A query can be synchronous, and we may want to evaluate it when `fetchOne` and `fetchMany`
+are called. We can do so with `Query#now`:
+
+```tut:book
+Query.now(42)
+```
+
+You can also construct lazy queries that can evaluate synchronously with `Query#later`:
+
+```tut:book
+Query.later({ println("Computing 42"); 42 })
+```
+
+Synchronous queries simply wrap a Cats' `Eval` instance, which captures the notion of a lazy synchronous
+computation. You can lift an `Eval[A]` into a `Query[A]` too:
+
+```tut:book
+import cats.Eval
+
+Query.sync(Eval.always({ println("Computing 42"); 42 }))
+```
+
+### Asynchronous
+
+Asynchronous queries are constructed passing a function that accepts a callback (`A => Unit`) and an errback
+(`Throwable => Unit`) and performs the asynchronous computation. Note that you must ensure that either the
+callback or the errback are called.
+
+```tut:book
+Query.async((ok: (Int => Unit), fail) => {
+  Thread.sleep(100)
+  ok(42)
+})
+```
+
 ## Combining data from multiple sources
 
 Now that we know about some of the optimizations that Fetch can perform to read data efficiently,
@@ -325,14 +338,12 @@ val postDatabase: Map[PostId, Post] = Map(
 implicit object PostSource extends DataSource[PostId, Post]{
   override def fetchOne(id: PostId): Query[Option[Post]] = {
     Query.later({
-      println(s"[${Thread.currentThread.getId}] One Posts $id")
-      postDatabase.get(id)
+	  latency(postDatabase.get(id), s"One Post $id")
     })
   }
   override def fetchMany(ids: NonEmptyList[PostId]): Query[Map[PostId, Post]] = {
     Query.later({
-      println(s"[${Thread.currentThread.getId}] Many Posts $ids")
-      postDatabase.filterKeys(ids.unwrap.contains)
+	  latency(postDatabase.filterKeys(ids.unwrap.contains), s"Many Posts $ids")
     })
   }
 }
@@ -346,13 +357,40 @@ We can also implement a function for fetching a post's author given a post:
 def getAuthor(p: Post): Fetch[User] = Fetch(p.author)
 ```
 
+Apart from posts, we are going to add another data source: one for post topics.
+
+```tut:silent
+type PostTopic = String
+```
+
+We'll implement a data source for retrieving a post topic given a post id.
+
+```tut:silent
+implicit object PostTopicSource extends DataSource[Post, PostTopic]{
+  override def fetchOne(id: Post): Query[Option[PostTopic]] = {
+    Query.later({
+      val topic = if (id.id % 2 == 0) "monad" else "applicative"
+	  latency(Option(topic), s"One Post Topic $id")
+    })
+  }
+  override def fetchMany(ids: NonEmptyList[Post]): Query[Map[Post, PostTopic]] = {
+    Query.later({
+	  val result = ids.unwrap.map(id => (id, if (id.id % 2 == 0) "monad" else "applicative")).toMap
+	  latency(result, s"Many Post Topics $ids")
+    })
+  }
+}
+
+def getPostTopic(post: Post): Fetch[PostTopic] = Fetch(post)
+```
+
 Now that we have multiple sources let's mix them in the same fetch.
 
 ```tut:silent
-val fetchMulti: Fetch[(Post, User)] = for {
+val fetchMulti: Fetch[(Post, PostTopic)] = for {
   post <- getPost(1)
-  user <- getAuthor(post)
-} yield (post, user)
+  topic <- getPostTopic(post)
+} yield (post, topic)
 ```
 
 We can now run the previous fetch, querying the posts data source first and the user data source afterwards.
@@ -361,7 +399,7 @@ We can now run the previous fetch, querying the posts data source first and the 
 fetchMulti.runA[Id]
 ```
 
-In the previous example, we fetched a post given its id and then fetched its author. This
+In the previous example, we fetched a post given its id and then fetched its topic. This
 data could come from entirely different places, but Fetch makes working with heterogeneous sources
 of data very easy.
 
@@ -531,7 +569,7 @@ val fetchSameTwice: Fetch[(User, User)] = for {
   one <- getUser(1)
   another <- getUser(1)
 } yield (one, another)
-  
+
 fetchSameTwice.runA[Id](ForgetfulCache())
 ```
 
@@ -609,7 +647,7 @@ fetchPure.runA[Id]
 
 ### error
 
-Errors can also be lifted to the Fetch monad via `exception.fetch`. 
+Errors can also be lifted to the Fetch monad via `exception.fetch`.
 
 ```tut:silent
 val fetchFail: Fetch[Int] = Fetch.error(new Exception("Something went terribly wrong"))
@@ -683,7 +721,7 @@ Fetch.run[Id](fetchPure)
 
 ### error
 
-Errors can also be lifted to the Fetch monad via `Fetch#error`. 
+Errors can also be lifted to the Fetch monad via `Fetch#error`.
 
 ```tut:silent
 val fetchFail: Fetch[Int] = Fetch.error(new Exception("Something went terribly wrong"))
@@ -790,40 +828,82 @@ val fetchFriends: Fetch[String] = Fetch.join(getUser(1), getUser(2)).map({ case 
 fetchFriends.runA[Id]
 ```
 
-# Concurrency
+# Concurrency monads
 
 Fetch lets you choose the concurrency monad you want for running fetches, supporting the Scala and Scala.js
 standard library concurrency primitives. However not everyone is using `Future` and Fetch acknowledges it,
 providing support for the most widespread concurrency monads and making it easy for users to run a fetch to a
 custom type.
 
+For supporting running a fetch to a monad `M[_]` an instance of `FetchMonadError[M]` must be available.
+
+We'll use the following fetches for the examples. They show how we can combine independent fetches both for
+batching and exploiting the concurrency of independent data.
+
+```tut:silent
+val postsByAuthor: Fetch[List[Post]] = for {
+  posts <- List(1, 2).traverse(getPost)
+  authors <- posts.traverse(getAuthor)
+  ordered = (posts zip authors).sortBy({ case (_, author) => author.username }).map(_._1)
+} yield ordered
+
+val postTopics: Fetch[Map[PostTopic, Int]] = for {
+  posts <- List(2, 3).traverse(getPost)
+  topics <- posts.traverse(getPostTopic)
+  countByTopic = (posts zip topics).groupBy(_._2).mapValues(_.size)
+} yield countByTopic
+
+val homePage = (postsByAuthor |@| postTopics).tupled
+```
+
 ## Future
 
-As you have learned through the examples, you can run a fetch into a `Future` simply by importing `fetch.implicits`. It
+You can run a fetch into a `Future` simply by importing `fetch.implicits`. It
 contains an instance of `FetchMonadError[Future]` given that you provide an implicit `ExecutionContext`.
 
+For the sake of the examples we'll use the global `ExecutionContext`.
 
-## Twitter Future
-
-TODO
-
-## Scalaz task
-
-TODO
+```tut:book
+Await.result(Fetch.run[Future](homePage),  Duration.Inf)
+```
 
 ## Monix Task
 
-Scala and Scala.js
+The [Monix](https://monix.io/) library provides an abstraction for lazy, asynchronous computations with its [Task](https://monix.io/docs/2x/eval/task.html) type.
+
+For using `Task` as the target concurrency monad of a fetch, add the following dependency to your build file:
+
+```scala
+"com.fortysevendeg" %% "fetch-monix" %% "0.2.0"
+```
+
+And do some standard imports, we'll need an Scheduler for running our tasks as well as the instance of `FetchMonadError[Task]` that `fetch-monix` provids:
+
+```tut:silent
+import monix.eval.Task
+import monix.execution.Scheduler
+
+import fetch.monixTask.implicits._
+```
+
+Note that running a fetch to a `Task` doesn't trigger execution. We can interpret a task to a `Future` with the `Task#runAsync` method. We'll use the global scheduler for now.
+
+```tut:book
+val scheduler = Scheduler.Implicits.global
+val task = Fetch.run[Task](homePage)
+
+Await.result(task.runAsync(scheduler), Duration.Inf)
+```
 
 ### JVM
 
-Scheduler for io in JVM
+In the JVM, you may want to choose a [scheduler tuned for IO workloads](https://monix.io/docs/2x/execution/scheduler.html#builders-on-the-jvm) to interpret fetches.
 
-### JS
+```tut:book
+val ioSched = Scheduler.io(name="io-scheduler")
 
-## Eval
-
-Unsafe, for testing purposes, jvm only
+Await.result(task.runAsync(ioSched), Duration.Inf)
+```
 
 # Resources
 

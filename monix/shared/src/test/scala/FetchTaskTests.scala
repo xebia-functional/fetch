@@ -23,7 +23,7 @@ import cats.data.NonEmptyList
 import cats.std.list._
 
 import fetch._
-import fetch.monix.implicits._
+import fetch.monixTask.implicits._
 
 import scala.concurrent.Future
 

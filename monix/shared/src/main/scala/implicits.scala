@@ -14,27 +14,55 @@
  * limitations under the License.
  */
 
-package fetch.monix
+package fetch.monixTask
 
 import fetch._
 
-import _root_.monix.eval.Task
-import _root_.monix.execution.{Scheduler, Cancelable}
+import cats.{Eval, Now, Later, Always, Traverse, Applicative}
+
+import monix.eval.Task
+import monix.execution.{Scheduler, Cancelable}
+
+import scala.concurrent.duration._
 
 object implicits {
-  implicit val fetchTaskFetchMonadError: FetchMonadError[Task] = new FetchMonadError[Task] {
-    override def runQuery[A](j: Query[A]): Task[A] = j match {
-      case Sync(x) => pureEval(x)
-      case Async(ac, timeout) =>
-        Task.create(
-            (scheduler, callback) => {
+  def evalToTask[A](e: Eval[A]): Task[A] = e match {
+    case Now(x)       => Task.now(x)
+    case l: Later[A]  => Task.evalOnce({ l.value })
+    case a: Always[A] => Task.evalAlways({ a.value })
+    case other        => Task.evalOnce({ other.value })
+  }
 
-          scheduler.execute(new Runnable {
-            def run() = ac(callback.onSuccess, callback.onError)
+  implicit val fetchTaskApplicative: Applicative[Task] = new Applicative[Task] {
+    override def pureEval[A](e: Eval[A]): Task[A] = evalToTask(e)
+    def pure[A](x: A): Task[A]                    = Task.now(x)
+    def ap[A, B](ff: Task[A => B])(fa: Task[A]): Task[B] =
+      Task.mapBoth(ff, fa)((f, x) => f(x))
+  }
+
+  implicit val fetchTaskFetchMonadError: FetchMonadError[Task] = new FetchMonadError[Task] {
+    override def pureEval[A](e: Eval[A]): Task[A] = evalToTask(e)
+    def pure[A](x: A): Task[A] =
+      Task.now(x)
+
+    override def runQuery[A](j: Query[A]): Task[A] = j match {
+      case Sync(x) => evalToTask(x)
+      case Async(ac, timeout) => {
+          val task: Task[A] = Task.create(
+              (scheduler, callback) => {
+
+            scheduler.execute(new Runnable {
+              def run() = ac(callback.onSuccess, callback.onError)
+            })
+
+            Cancelable.empty
           })
 
-          Cancelable.empty
-        })
+          timeout match {
+            case finite: FiniteDuration => task.timeout(finite)
+            case _                      => task
+          }
+        }
       case Ap(qf, qx) =>
         Task
           .zip2(runQuery(qf), runQuery(qx))
@@ -43,12 +71,18 @@ object implicits {
           })
     }
 
-    def pure[A](x: A): Task[A] = Task.now(x)
+    override def map[A, B](fa: Task[A])(f: A => B): Task[B] =
+      fa.map(f)
+
+    override def sequence[G[_], A](as: G[Task[A]])(implicit G: Traverse[G]): Task[G[A]] =
+      G.sequence(as)(fetchTaskApplicative)
+
     def handleErrorWith[A](fa: Task[A])(f: Throwable => Task[A]): Task[A] =
       fa.onErrorHandleWith(f)
-    override def ap[A, B](f: Task[A => B])(x: Task[A]): Task[B] =
-      Task.mapBoth(f, x)((f, x) => f(x))
-    def raiseError[A](e: Throwable): Task[A] = Task.raiseError(e)
+
+    def raiseError[A](e: Throwable): Task[A] =
+      Task.raiseError(e)
+
     def flatMap[A, B](fa: Task[A])(f: A => Task[B]): Task[B] =
       fa.flatMap(f)
   }
