@@ -89,28 +89,24 @@ def fetchString(n: Int): Fetch[String] = Fetch(n) // or, more explicitly: Fetch(
 Now that we can convert `Int` values to `Fetch[String]`, let's try creating a fetch.
 
 ```tut:silent
-import fetch.syntax._
-
 val fetchOne: Fetch[String] = fetchString(1)
 ```
 
-We'll run our fetches to the well-known `Future` type in our examples, let's do some standard imports.
+We'll run our fetches to the ambiend `Id` monad in our examples, let's do some imports.
 
 ```tut:silent
-import scala.concurrent._
-import ExecutionContext.Implicits.global
-import scala.concurrent.duration._
-
-// can only define this in Scala, not in Scala.js
-def await[A](t: Future[A]): A = Await.result(t, Duration.Inf)
+import cats.Id
+import fetch.unsafe.implicits._
+import fetch.syntax._
 ```
 
-And wait for the fetch to complete, note that you cannot block for a Future in Scala.js:
+Note that in real-life scenarios you'll want to run a fetch to a concurrency monad, synchronous execution of a fetch
+is only supported in Scala and not Scala.js and is meant for experimentation purposes.
+
+Let's run it and wait for the fetch to complete:
 
 ```tut:book
-import fetch.implicits._
-
-await(fetchOne.runA[Future])
+fetchOne.runA[Id]
 ```
 
 As you can see in the previous example, the `ToStringSource` is queried once to get the value of 1.
@@ -128,7 +124,7 @@ val fetchThree: Fetch[(String, String, String)] = (fetchString(1) |@| fetchStrin
 When executing the above fetch, note how the three identities get batched and the data source is only queried once.
 
 ```tut:book
-await(fetchThree.runA[Future])
+fetchThree.runA[Id]
 ```
 
 ## Parallelism
@@ -165,7 +161,7 @@ val fetchMulti: Fetch[(String, Int)] = (fetchString(1) |@| fetchLength("one")).t
 Note how the two independent data fetches are run in parallel, minimizing the latency cost of querying the two data sources.
 
 ```tut:book
-await(fetchMulti.runA[Future])
+fetchMulti.runA[Id]
 ```
 
 ## Caching
@@ -182,6 +178,6 @@ val fetchTwice: Fetch[(String, String)] = for {
 While running it, notice that the data source is only queried once. The next time the identity is requested it's served from the cache.
 
 ```tut:book
-await(fetchTwice.runA[Future])
+fetchTwice.runA[Id]
 ```
 
