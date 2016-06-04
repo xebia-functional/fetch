@@ -151,6 +151,48 @@ implicit object UnbatchedSource extends DataSource[Int, Int]{
 }
 ```
 
+## Queries
+
+Queries are a way of separating the computation required to read a piece of data from the context in
+which is run. Let's look at the various ways we have of constructing queries.
+
+### Synchronous
+
+A query can be synchronous, and we may want to evaluate it when `fetchOne` and `fetchMany`
+are called. We can do so with `Query#now`:
+
+```tut:book
+Query.now(42)
+```
+
+You can also construct lazy queries that can evaluate synchronously with `Query#later`:
+
+```tut:book
+Query.later({ println("Computing 42"); 42 })
+```
+
+Synchronous queries simply wrap a Cats' `Eval` instance, which captures the notion of a lazy synchronous
+computation. You can lift an `Eval[A]` into a `Query[A]` too:
+
+```tut:book
+import cats.Eval
+
+Query.sync(Eval.always({ println("Computing 42"); 42 }))
+```
+
+### Asynchronous
+
+Asynchronous queries are constructed passing a function that accepts a callback (`A => Unit`) and an errback
+(`Throwable => Unit`) and performs the asynchronous computation. Note that you must ensure that either the
+callback or the errback are called.
+
+```tut:book
+Query.async((ok: (Int => Unit), fail) => {
+  Thread.sleep(100)
+  ok(42)
+})
+```
+
 ## Creating and running a fetch
 
 We are now ready to create and run fetches. Note the distinction between Fetch creation and execution.
@@ -403,15 +445,6 @@ As you may have guessed, all the optimizations made by `sequence` still apply wh
 fetchTraverse.runA[Id]
 ```
 
-# Queries
-
-## Synchronous
-
-### Now
-
-### Later
-
-## Asynchronous
 
 # Caching
 

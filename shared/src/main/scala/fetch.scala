@@ -41,9 +41,10 @@ object Query {
   type Callback[A] = A => Unit
   type Errback     = Throwable => Unit
 
-  def apply[A](x: A): Query[A]     = Sync(Eval.now(x))
   def now[A](x: A): Query[A]       = Sync(Eval.now(x))
   def later[A](th: => A): Query[A] = Sync(Eval.later(th))
+
+  def sync[A](e: Eval[A]) = Sync(e)
   def async[A](
       action: (Callback[A], Errback) => Unit,
       timeout: Duration = Duration.Inf
