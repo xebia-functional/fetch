@@ -12,13 +12,13 @@ A library for Simple & Efficient data access in Scala and Scala.js
 Add the following dependency to your project's build file.
 
 ```scala
-"com.fortysevendeg" %% "fetch" %% "0.2.0"
+"com.fortysevendeg" %% "fetch" % "0.2.0"
 ```
 
 Or, if using Scala.js:
 
 ```scala
-"com.fortysevendeg" %%% "fetch" %% "0.2.0"
+"com.fortysevendeg" %%% "fetch" % "0.2.0"
 ```
 
 ### Supported versions
