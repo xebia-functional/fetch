@@ -907,7 +907,103 @@ Await.result(task.runAsync(ioSched), Duration.Inf)
 
 ## Custom types
 
-TODO
+If you want to run a fetch to a custom type `M[_]`, you need to implement the `FetchMonadError[M]` typeclass. `FetchMonadError[M]` is simply a `MonadError[M, Throwable]` from cats augmented
+with a method for running a `Query[A]` in the context of the monad `M[A]`.
+
+For ilustrating integration with an asynchronous concurrency monad we'll use the implementation of Monix Task.
+
+### Running queries
+
+First of all, we need to run queries in our target type. As we have learned, queries can be synchronous (simply wrapping an `Eval` from Cats) or asynchronous. Since we'll need to lift
+`Eval[A]` values to `Task[A]`, let's write a function for doing so first. Note that Monix's `Task` supports the same evaluation strategies of `Eval` in Cats, so the conversion is very
+direct:
+
+```tut:silent
+import cats.{Eval, Now, Later, Always}
+import monix.eval.Task
+
+def evalToTask[A](e: Eval[A]): Task[A] = e match {
+  case Now(x) => Task.now(x)
+  case l: Later[A]  => Task.evalOnce({ l.value })
+  case a: Always[A] => Task.evalAlways({ a.value })
+  case other => Task.evalOnce({ other.value })
+}
+```
+
+Now that we can run synchronous queries to `Task`, we'll use `Task#create` for running asynchronous computations. Queries also have a third option: `Ap`, which delegates the applicative combination of independent queries to the target monad.
+
+```tut:silent
+import monix.execution.Cancelable
+import scala.concurrent.duration._
+
+def queryToTask[A](q: Query[A]): Task[A] = q match {
+  case Sync(e) => evalToTask(e)
+  case Async(action, timeout) => {
+    val task: Task[A] = Task.create((scheduler, callback) => {
+	  scheduler.execute(new Runnable {
+        def run() = action(callback.onSuccess, callback.onError)
+      })
+
+      Cancelable.empty
+    })
+
+    timeout match {
+      case finite: FiniteDuration => task.timeout(finite)
+      case _                      => task
+    }
+  }
+  case Ap(qf, qx) => Task.zip2(queryToTask(qf), queryToTask(qx)).map({ case (f, x) => f(x) })	
+}
+```
+
+The asynchronous action was built using `Task#create`; it receives the used scheduler and a callback, runs
+the async action in the scheduler passing the success and error versions of the callback and returns an empty
+cancelable (it can not be canceled); if we encounter a finite duration timeout, we set it on the task.
+
+The applicative action used `Task#zip2` to combine two tasks and apply the function contained in one of them
+to the other. We used `Task#zip2` for expressing the independence between the two tasks, which can potentially
+be evaluated in parallel.
+
+### Writing the FetchMonadError instance
+
+Now we're ready for implementing the FetchMonadError instance for `Task`, we need to define it as an implicit. 
+Note that Cats' typeclass hierarchy is expressed with inheritance and methods from weaker typeclasses like `Functor` or `Applicative` in more powerful typeclasses like `Monad` are implemented in terms of the operations of the latter. In practice, this means that if you just implement `pure` and `flatMap` the rest of the combinators like `map` are going to be implemented in terms of them. Because of this we'll override `map` for not using `flatMap` and `product` for expressing the independence of two computations.
+
+
+```tut:silent
+implicit val taskFetchMonadError: FetchMonadError[Task] = new FetchMonadError[Task] {
+  override def map[A, B](fa: Task[A])(f: A => B): Task[B] =
+    fa.map(f)
+
+  override def product[A, B](fa: Task[A], fb: Task[B]): Task[(A, B)] =
+    Task.zip2(Task.fork(fa), Task.fork(fb)) // introduce parallelism with Task#fork
+
+  override def pureEval[A](e: Eval[A]): Task[A] = evalToTask(e)
+
+  def pure[A](x: A): Task[A] =
+    Task.now(x)
+
+  def handleErrorWith[A](fa: Task[A])(f: Throwable => Task[A]): Task[A] =
+    fa.onErrorHandleWith(f)
+
+  def raiseError[A](e: Throwable): Task[A] =
+    Task.raiseError(e)
+
+  def flatMap[A, B](fa: Task[A])(f: A => Task[B]): Task[B] =
+    fa.flatMap(f)
+
+  override def runQuery[A](q: Query[A]): Task[A] = queryToTask(q)
+}
+```
+
+We can now import the above implicit and run a fetch to our custom type, let's give it a go:
+
+```tut:book
+val task = Fetch.run(homePage)(taskFetchMonadError)
+
+Await.result(task.runAsync(scheduler), Duration.Inf)
+```
+
 
 # Resources
 

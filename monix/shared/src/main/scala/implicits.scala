@@ -54,7 +54,7 @@ object implicits {
     def flatMap[A, B](fa: Task[A])(f: A => Task[B]): Task[B] =
       fa.flatMap(f)
 
-    override def runQuery[A](j: Query[A]): Task[A] = j match {
+    override def runQuery[A](q: Query[A]): Task[A] = q match {
       case Sync(x) => evalToTask(x)
       case Async(ac, timeout) => {
           val task: Task[A] = Task.create(
