@@ -78,6 +78,7 @@ trait FetchInterpreters {
                             .asInstanceOf[DataSource[I, A]]
                             .fetchMany(as.asInstanceOf[NonEmptyList[I]]))
                   }))
+
                   M.flatMap(sentRequests)((results: List[Map[_, _]]) => {
                     val endRound = System.nanoTime()
                     val newCache = (requests zip results).foldLeft(cache)((accache, resultset) => {

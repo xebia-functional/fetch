@@ -33,17 +33,26 @@ object implicits {
     case other        => Task.evalOnce({ other.value })
   }
 
-  implicit val fetchTaskApplicative: Applicative[Task] = new Applicative[Task] {
-    override def pureEval[A](e: Eval[A]): Task[A] = evalToTask(e)
-    def pure[A](x: A): Task[A]                    = Task.now(x)
-    def ap[A, B](ff: Task[A => B])(fa: Task[A]): Task[B] =
-      Task.mapBoth(ff, fa)((f, x) => f(x))
-  }
-
   implicit val fetchTaskFetchMonadError: FetchMonadError[Task] = new FetchMonadError[Task] {
+    override def map[A, B](fa: Task[A])(f: A => B): Task[B] =
+      fa.map(f)
+
+    override def product[A, B](fa: Task[A], fb: Task[B]): Task[(A, B)] =
+      Task.zip2(Task.fork(fa), Task.fork(fb))
+
     override def pureEval[A](e: Eval[A]): Task[A] = evalToTask(e)
+
     def pure[A](x: A): Task[A] =
       Task.now(x)
+
+    def handleErrorWith[A](fa: Task[A])(f: Throwable => Task[A]): Task[A] =
+      fa.onErrorHandleWith(f)
+
+    def raiseError[A](e: Throwable): Task[A] =
+      Task.raiseError(e)
+
+    def flatMap[A, B](fa: Task[A])(f: A => Task[B]): Task[B] =
+      fa.flatMap(f)
 
     override def runQuery[A](j: Query[A]): Task[A] = j match {
       case Sync(x) => evalToTask(x)
@@ -70,20 +79,5 @@ object implicits {
             case (f, x) => f(x)
           })
     }
-
-    override def map[A, B](fa: Task[A])(f: A => B): Task[B] =
-      fa.map(f)
-
-    override def sequence[G[_], A](as: G[Task[A]])(implicit G: Traverse[G]): Task[G[A]] =
-      G.sequence(as)(fetchTaskApplicative)
-
-    def handleErrorWith[A](fa: Task[A])(f: Throwable => Task[A]): Task[A] =
-      fa.onErrorHandleWith(f)
-
-    def raiseError[A](e: Throwable): Task[A] =
-      Task.raiseError(e)
-
-    def flatMap[A, B](fa: Task[A])(f: A => Task[B]): Task[B] =
-      fa.flatMap(f)
   }
 }

@@ -370,13 +370,13 @@ implicit object PostTopicSource extends DataSource[Post, PostTopic]{
   override def fetchOne(id: Post): Query[Option[PostTopic]] = {
     Query.later({
       val topic = if (id.id % 2 == 0) "monad" else "applicative"
-	  latency(Option(topic), s"One Post Topic $id")
+      latency(Option(topic), s"One Post Topic $id")
     })
   }
   override def fetchMany(ids: NonEmptyList[Post]): Query[Map[Post, PostTopic]] = {
     Query.later({
 	  val result = ids.unwrap.map(id => (id, if (id.id % 2 == 0) "monad" else "applicative")).toMap
-	  latency(result, s"Many Post Topics $ids")
+      latency(result, s"Many Post Topics $ids")
     })
   }
 }
@@ -904,6 +904,10 @@ val ioSched = Scheduler.io(name="io-scheduler")
 
 Await.result(task.runAsync(ioSched), Duration.Inf)
 ```
+
+## Custom types
+
+TODO
 
 # Resources
 
