@@ -92,7 +92,7 @@ Now that we can convert `Int` values to `Fetch[String]`, let's try creating a fe
 val fetchOne: Fetch[String] = fetchString(1)
 ```
 
-We'll run our fetches to the ambiend `Id` monad in our examples, let's do some imports.
+We'll run our fetches to the ambient `Id` monad in our examples, let's do some imports.
 
 ```tut:silent
 import cats.Id

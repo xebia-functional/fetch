@@ -94,7 +94,7 @@ import fetch.syntax._
 val fetchOne: Fetch[String] = fetchString(1)
 ```
 
-We'll run our fetches to the ambiend `Id` monad in our examples, let's do some imports.
+We'll run our fetches to the ambien `Id` monad in our examples, let's do some imports.
 
 ```tut:silent
 import cats.Id
