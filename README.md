@@ -2,6 +2,7 @@
 
 [![Join the chat at https://gitter.im/47deg/fetch](https://badges.gitter.im/47deg/fetch.svg)](https://gitter.im/47deg/fetch?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![Build status](https://img.shields.io/travis/47deg/fetch.svg)](https://travis-ci.org/47deg/fetch)
+[![codecov.io](http://codecov.io/github/47deg/fetch/coverage.svg?branch=master)](http://codecov.io/github/47deg/fetch?branch=master)
 
 A library for Simple & Efficient data access in Scala and Scala.js
 
@@ -21,10 +22,10 @@ Or, if using Scala.js:
 "com.fortysevendeg" %%% "fetch" %% "0.2.0"
 ```
 
-### Supported versions
+Fetch is available for the following Scala and Scala.js versions:
 
-- Scala: 2.11.x
-- Scala.js: 0.6.x
+- Scala 2.11.x
+- Scala.js 0.6.x
 
 ## Remote data
 
@@ -33,7 +34,7 @@ has a latency cost, such as databases or web services.
 
 ## Define your data sources
 
-To tell `Fetch` how to get the data you want, you must implement the `DataSource` typeclass. Data sources have a `fetch` method that
+For telling `Fetch` how to get the data you want, you must implement the `DataSource` typeclass. Data sources have a `fetch` method that
 defines how to fetch such a piece of data.
 
 Data Sources take two type parameters:
@@ -45,7 +46,8 @@ Data Sources take two type parameters:
 
 ```scala
 trait DataSource[Identity, Result]{
-  def fetch(ids: NonEmptyList[Identity]): Eval[Map[Identity, Result]]
+  def fetchOne(id: Identity): Eval[Option[Result]]
+  def fetchMany(ids: NonEmptyList[Identity]): Eval[Map[Identity, Result]]
 }
 ```
 
@@ -59,7 +61,13 @@ import cats.std.list._
 import fetch._
 
 implicit object ToStringSource extends DataSource[Int, String]{
-  override def fetch(ids: NonEmptyList[Int]): Eval[Map[Int, String]] = {
+  override def fetchOne(id: Int): Eval[Option[String]] = {
+    Eval.later({
+      println(s"ToStringSource $id")
+      Option(id.toString)
+    })
+  }
+  override def fetchMany(ids: NonEmptyList[Int]): Eval[Map[Int, String]] = {
     Eval.later({
       println(s"ToStringSource $ids")
       ids.unwrap.map(i => (i, i.toString)).toMap
@@ -85,7 +93,7 @@ Now that we have created a fetch, we can run it to a target monad. Note that the
 
 ```scala
 val result: String = fetchOne.runA[Eval].value
-// ToStringSource OneAnd(1,List())
+// ToStringSource 1
 // result: String = 1
 ```
 
@@ -115,7 +123,13 @@ If we combine two independent fetches from different data sources, the fetches w
 
 ```scala
 implicit object LengthSource extends DataSource[String, Int]{
-  override def fetch(ids: NonEmptyList[String]): Eval[Map[String, Int]] = {
+  override def fetchOne(id: String): Eval[Option[Int]] = {
+    Eval.later({
+      println(s"LengthSource $id")
+      Option(id.size)
+    })
+  }
+  override def fetchMany(ids: NonEmptyList[String]): Eval[Map[String, Int]] = {
     Eval.later({
       println(s"LengthSource $ids")
       ids.unwrap.map(i => (i, i.size)).toMap
@@ -126,7 +140,7 @@ implicit object LengthSource extends DataSource[String, Int]{
 def fetchLength(s: String): Fetch[Int] = Fetch(s)
 ```
 
-And now we can easily recieve data from the two sources in a single fetch. 
+And now we can easily receive data from the two sources in a single fetch. 
 
 ```scala
 val fetchMulti: Fetch[(String, Int)] = (fetchString(1) |@| fetchLength("one")).tupled
@@ -152,11 +166,11 @@ val fetchTwice: Fetch[(String, String)] = for {
 } yield (one, two)
 ```
 
-While running it, notice that the data source is only queried once. The next time the identity is requested, it's served from the cache.
+While running it, notice that the data source is only queried once. The next time the identity is requested it's served from the cache.
 
 ```scala
 val result: (String, String) = fetchTwice.runA[Eval].value
-// ToStringSource OneAnd(1,List())
+// ToStringSource 1
 // result: (String, String) = (1,1)
 ```
 

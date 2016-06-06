@@ -2,6 +2,7 @@
 
 [![Join the chat at https://gitter.im/47deg/fetch](https://badges.gitter.im/47deg/fetch.svg)](https://gitter.im/47deg/fetch?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![Build status](https://img.shields.io/travis/47deg/fetch.svg)](https://travis-ci.org/47deg/fetch)
+[![codecov.io](http://codecov.io/github/47deg/fetch/coverage.svg?branch=master)](http://codecov.io/github/47deg/fetch?branch=master)
 
 A library for Simple & Efficient data access in Scala and Scala.js
 
@@ -63,7 +64,7 @@ implicit object ToStringSource extends DataSource[Int, String]{
   override def fetchOne(id: Int): Eval[Option[String]] = {
     Eval.later({
       println(s"ToStringSource $id")
-      i.toString
+      Option(id.toString)
     })
   }
   override def fetchMany(ids: NonEmptyList[Int]): Eval[Map[Int, String]] = {
@@ -121,7 +122,7 @@ implicit object LengthSource extends DataSource[String, Int]{
   override def fetchOne(id: String): Eval[Option[Int]] = {
     Eval.later({
       println(s"LengthSource $id")
-      id.size
+      Option(id.size)
     })
   }
   override def fetchMany(ids: NonEmptyList[String]): Eval[Map[String, Int]] = {
