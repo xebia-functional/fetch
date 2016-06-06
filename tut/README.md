@@ -158,7 +158,7 @@ And now we can easily receive data from the two sources in a single fetch.
 val fetchMulti: Fetch[(String, Int)] = (fetchString(1) |@| fetchLength("one")).tupled
 ```
 
-Note how the two independent data fetches are run in parallel, minimizing the latency cost of querying the two data sources.
+Note how the two independent data fetches run in parallel, minimizing the latency cost of querying the two data sources.
 
 ```tut:book
 fetchMulti.runA[Id]
