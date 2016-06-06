@@ -102,7 +102,7 @@ import fetch.unsafe.implicits._
 import fetch.syntax._
 ```
 
-Note that in real-life scenarios you'll want to run a fetch to a concurrency monad, synchronous execution of a fetch
+Note that in real-life scenarios you'll want to run a fetch to a concurrency monad such as `Future` or `Task`, synchronous execution of a fetch
 is only supported in Scala and not Scala.js and is meant for experimentation purposes.
 
 Let's run it and wait for the fetch to complete:
