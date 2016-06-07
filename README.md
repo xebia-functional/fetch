@@ -24,10 +24,8 @@ Or, if using Scala.js (0.6.x):
 "com.fortysevendeg" %%% "fetch" % "0.2.0"
 ```
 
-Fetch is available for the following Scala and Scala.js versions:
 
-- Scala 2.11.x
-- Scala.js 0.6.x
+
 
 ## Remote data
 
@@ -104,7 +102,7 @@ Let's run it and wait for the fetch to complete:
 
 ```scala
 fetchOne.runA[Id]
-// [42] One ToString 1
+// [46] One ToString 1
 // res3: cats.Id[String] = 1
 ```
 
@@ -122,7 +120,7 @@ When executing the above fetch, note how the three identities get batched and th
 
 ```scala
 fetchThree.runA[Id]
-// [42] Many ToString OneAnd(1,List(2, 3))
+// [46] Many ToString OneAnd(1,List(2, 3))
 // res5: cats.Id[(String, String, String)] = (1,2,3)
 ```
 
@@ -161,8 +159,8 @@ Note how the two independent data fetches run in parallel, minimizing the latenc
 
 ```scala
 fetchMulti.runA[Id]
-// [42] One ToString 1
-// [43] One Length one
+// [46] One ToString 1
+// [47] One Length one
 // res7: cats.Id[(String, Int)] = (1,3)
 ```
 
@@ -181,6 +179,6 @@ While running it, notice that the data source is only queried once. The next tim
 
 ```scala
 fetchTwice.runA[Id]
-// [42] One ToString 1
+// [46] One ToString 1
 // res8: cats.Id[(String, String)] = (1,1)
 ```
