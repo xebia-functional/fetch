@@ -72,7 +72,7 @@ class FetchTaskTests extends AsyncFreeSpec with Matchers {
     fut.map(_ shouldEqual Article(1, "An article with id 1"))
   }
 
-  "We can combine several async data sources and interpret a fetch into a future" in {
+  "We can combine several async data sources and interpret a fetch into a task" in {
     val fetch: Fetch[(Article, Author)] = for {
       art    <- article(1)
       author <- author(art)
@@ -84,7 +84,7 @@ class FetchTaskTests extends AsyncFreeSpec with Matchers {
     fut.map(_ shouldEqual (Article(1, "An article with id 1"), Author(2, "@egg2")))
   }
 
-  "We can use combinators in a for comprehension and interpret a fetch from async sources into a future" in {
+  "We can use combinators in a for comprehension and interpret a fetch from async sources into a task" in {
     val fetch: Fetch[List[Article]] = for {
       articles <- Fetch.traverse(List(1, 1, 2))(article)
     } yield articles
@@ -101,7 +101,7 @@ class FetchTaskTests extends AsyncFreeSpec with Matchers {
     )
   }
 
-  "We can use combinators and multiple sources in a for comprehension and interpret a fetch from async sources into a future" in {
+  "We can use combinators and multiple sources in a for comprehension and interpret a fetch from async sources into a task" in {
     val fetch = for {
       articles <- Fetch.traverse(List(1, 1, 2))(article)
       authors  <- Fetch.traverse(articles)(author)

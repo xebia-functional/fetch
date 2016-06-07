@@ -4,8 +4,8 @@ scala:
 jdk:
   - oraclejdk8
 script:
-  - sbt coverage 'fetchJVM/test' 'fetchJVM/coverageReport'
-  - sbt 'fetchJS/test'
+  - sbt coverage 'fetchJVM/test' 'monixJVM/test' 'coverageReport'
+  - sbt 'fetchJS/test' 'monixJS/test'
   - sbt 'docs/tut'
   - sbt 'readme/tut'
 after_success:
