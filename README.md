@@ -39,8 +39,8 @@ To tell `Fetch` how to get the data you want, you must implement the `DataSource
 Data Sources take two type parameters:
 
 <ol>
-<li><code>Identity</code> is a type that has enough information to fetch the data</li>
-<li><code>Result</code> is the type of data we want to fetch</li>
+<li><code>Identity</code> is a type that has enough information to fetch the data. For a users data source, this would be a user's unique ID.</li>
+<li><code>Result</code> is the type of data we want to fetch. For a users data source, this would the `User` type.</li>
 </ol>
 
 ```scala
@@ -87,7 +87,7 @@ import fetch.syntax._
 val fetchOne: Fetch[String] = fetchString(1)
 ```
 
-We'll run our fetches to the ambien `Id` monad in our examples, let's do some imports.
+We'll run our fetches to the ambien `Id` monad in our examples. Note that in real-life scenarios you'll want to run a fetch to a concurrency monad such as `Future` or `Task`, synchronous execution of a fetch is only supported in Scala and not Scala.js and is meant for experimentation purposes.
 
 ```scala
 import cats.Id
@@ -95,14 +95,11 @@ import fetch.unsafe.implicits._
 import fetch.syntax._
 ```
 
-Note that in real-life scenarios you'll want to run a fetch to a concurrency monad such as `Future` or `Task`, synchronous execution of a fetch
-is only supported in Scala and not Scala.js and is meant for experimentation purposes.
-
 Let's run it and wait for the fetch to complete:
 
 ```scala
 fetchOne.runA[Id]
-// [46] One ToString 1
+// [182] One ToString 1
 // res3: cats.Id[String] = 1
 ```
 
@@ -120,7 +117,7 @@ When executing the above fetch, note how the three identities get batched and th
 
 ```scala
 fetchThree.runA[Id]
-// [46] Many ToString OneAnd(1,List(2, 3))
+// [182] Many ToString OneAnd(1,List(2, 3))
 // res5: cats.Id[(String, String, String)] = (1,2,3)
 ```
 
@@ -159,8 +156,8 @@ Note how the two independent data fetches run in parallel, minimizing the latenc
 
 ```scala
 fetchMulti.runA[Id]
-// [46] One ToString 1
-// [47] One Length one
+// [182] One ToString 1
+// [183] One Length one
 // res7: cats.Id[(String, Int)] = (1,3)
 ```
 
@@ -179,6 +176,6 @@ While running it, notice that the data source is only queried once. The next tim
 
 ```scala
 fetchTwice.runA[Id]
-// [46] One ToString 1
+// [182] One ToString 1
 // res8: cats.Id[(String, String)] = (1,1)
 ```

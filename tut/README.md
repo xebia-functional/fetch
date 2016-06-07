@@ -46,8 +46,8 @@ To tell `Fetch` how to get the data you want, you must implement the `DataSource
 Data Sources take two type parameters:
 
 <ol>
-<li><code>Identity</code> is a type that has enough information to fetch the data</li>
-<li><code>Result</code> is the type of data we want to fetch</li>
+<li><code>Identity</code> is a type that has enough information to fetch the data. For a users data source, this would be a user's unique ID.</li>
+<li><code>Result</code> is the type of data we want to fetch. For a users data source, this would the `User` type.</li>
 </ol>
 
 ```scala
@@ -94,16 +94,13 @@ import fetch.syntax._
 val fetchOne: Fetch[String] = fetchString(1)
 ```
 
-We'll run our fetches to the ambien `Id` monad in our examples, let's do some imports.
+We'll run our fetches to the ambien `Id` monad in our examples. Note that in real-life scenarios you'll want to run a fetch to a concurrency monad such as `Future` or `Task`, synchronous execution of a fetch is only supported in Scala and not Scala.js and is meant for experimentation purposes.
 
 ```tut:silent
 import cats.Id
 import fetch.unsafe.implicits._
 import fetch.syntax._
 ```
-
-Note that in real-life scenarios you'll want to run a fetch to a concurrency monad such as `Future` or `Task`, synchronous execution of a fetch
-is only supported in Scala and not Scala.js and is meant for experimentation purposes.
 
 Let's run it and wait for the fetch to complete:
 
