@@ -35,10 +35,10 @@ object TestHelper {
   implicit object OneSource extends DataSource[One, Int] {
     override def name = "OneSource"
     override def fetchOne(id: One): Query[Option[Int]] = {
-      Query.now(Option(id.id))
+      Query.sync(Option(id.id))
     }
     override def fetchMany(ids: NonEmptyList[One]): Query[Map[One, Int]] =
-      Query.now(ids.unwrap.map(one => (one, one.id)).toMap)
+      Query.sync(ids.unwrap.map(one => (one, one.id)).toMap)
   }
   def one(id: Int): Fetch[Int] = Fetch(One(id))
 
@@ -46,9 +46,9 @@ object TestHelper {
   implicit object AnotheroneSource extends DataSource[AnotherOne, Int] {
     override def name = "AnotherOneSource"
     override def fetchOne(id: AnotherOne): Query[Option[Int]] =
-      Query.now(Option(id.id))
+      Query.sync(Option(id.id))
     override def fetchMany(ids: NonEmptyList[AnotherOne]): Query[Map[AnotherOne, Int]] =
-      Query.now(ids.unwrap.map(anotherone => (anotherone, anotherone.id)).toMap)
+      Query.sync(ids.unwrap.map(anotherone => (anotherone, anotherone.id)).toMap)
   }
   def anotherOne(id: Int): Fetch[Int] = Fetch(AnotherOne(id))
 
@@ -56,18 +56,18 @@ object TestHelper {
   implicit object ManySource extends DataSource[Many, List[Int]] {
     override def name = "ManySource"
     override def fetchOne(id: Many): Query[Option[List[Int]]] =
-      Query.now(Option(0 until id.n toList))
+      Query.sync(Option(0 until id.n toList))
     override def fetchMany(ids: NonEmptyList[Many]): Query[Map[Many, List[Int]]] =
-      Query.now(ids.unwrap.map(m => (m, 0 until m.n toList)).toMap)
+      Query.sync(ids.unwrap.map(m => (m, 0 until m.n toList)).toMap)
   }
 
   case class Never()
   implicit object NeverSource extends DataSource[Never, Int] {
     override def name = "NeverSource"
     override def fetchOne(id: Never): Query[Option[Int]] =
-      Query.now(None)
+      Query.sync(None)
     override def fetchMany(ids: NonEmptyList[Never]): Query[Map[Never, Int]] =
-      Query.now(Map.empty[Never, Int])
+      Query.sync(Map.empty[Never, Int])
   }
   def many(id: Int): Fetch[List[Int]] = Fetch(Many(id))
 

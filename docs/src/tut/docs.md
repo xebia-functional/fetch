@@ -127,12 +127,12 @@ val userDatabase: Map[UserId, User] = Map(
 
 implicit object UserSource extends DataSource[UserId, User]{
   override def fetchOne(id: UserId): Query[Option[User]] = {
-    Query.later({
+    Query.sync({
 	  latency(userDatabase.get(id), s"One User $id")
     })
   }
   override def fetchMany(ids: NonEmptyList[UserId]): Query[Map[UserId, User]] = {
-    Query.later({
+    Query.sync({
 	  latency(userDatabase.filterKeys(ids.unwrap.contains), s"Many Users $ids")
     })
   }
@@ -154,7 +154,7 @@ of `fetchMany`. Note that it will use the `fetchOne` implementation for requesti
 ```tut:silent
 implicit object UnbatchedSource extends DataSource[Int, Int]{
   override def fetchOne(id: Int): Query[Option[Int]] = {
-    Query.now(Option(id))
+    Query.sync(Option(id))
   }
   override def fetchMany(ids: NonEmptyList[Int]): Query[Map[Int, Int]] = {
     batchingNotSupported(ids)
@@ -279,16 +279,16 @@ which is run. Let's look at the various ways we have of constructing queries.
 ### Synchronous
 
 A query can be synchronous, and we may want to evaluate it when `fetchOne` and `fetchMany`
-are called. We can do so with `Query#now`:
+are called. We can do so with `Query#sync`:
 
 ```tut:book
-Query.now(42)
+Query.sync(42)
 ```
 
-You can also construct lazy queries that can evaluate synchronously with `Query#later`:
+You can also construct lazy queries that can evaluate synchronously passing a thunk to `Query#sync`:
 
 ```tut:book
-Query.later({ println("Computing 42"); 42 })
+Query.sync({ println("Computing 42"); 42 })
 ```
 
 Synchronous queries simply wrap a Cats' `Eval` instance, which captures the notion of a lazy synchronous
@@ -297,7 +297,7 @@ computation. You can lift an `Eval[A]` into a `Query[A]` too:
 ```tut:book
 import cats.Eval
 
-Query.sync(Eval.always({ println("Computing 42"); 42 }))
+Query.eval(Eval.always({ println("Computing 42"); 42 }))
 ```
 
 ### Asynchronous
@@ -337,12 +337,12 @@ val postDatabase: Map[PostId, Post] = Map(
 
 implicit object PostSource extends DataSource[PostId, Post]{
   override def fetchOne(id: PostId): Query[Option[Post]] = {
-    Query.later({
+    Query.sync({
 	  latency(postDatabase.get(id), s"One Post $id")
     })
   }
   override def fetchMany(ids: NonEmptyList[PostId]): Query[Map[PostId, Post]] = {
-    Query.later({
+    Query.sync({
 	  latency(postDatabase.filterKeys(ids.unwrap.contains), s"Many Posts $ids")
     })
   }
@@ -368,13 +368,13 @@ We'll implement a data source for retrieving a post topic given a post id.
 ```tut:silent
 implicit object PostTopicSource extends DataSource[Post, PostTopic]{
   override def fetchOne(id: Post): Query[Option[PostTopic]] = {
-    Query.later({
+    Query.sync({
       val topic = if (id.id % 2 == 0) "monad" else "applicative"
       latency(Option(topic), s"One Post Topic $id")
     })
   }
   override def fetchMany(ids: NonEmptyList[Post]): Query[Map[Post, PostTopic]] = {
-    Query.later({
+    Query.sync({
 	  val result = ids.unwrap.map(id => (id, if (id.id % 2 == 0) "monad" else "applicative")).toMap
       latency(result, s"Many Post Topics $ids")
     })

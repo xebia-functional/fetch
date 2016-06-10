@@ -57,7 +57,7 @@ trait DataSource[Identity, Result]{
 }
 ```
 
-Note that when we create a query we can choose to compute its result right away (`Query#now`), defer its evaluation (`Query#later`) or make it asynchronous (`Query#async`). Returning `Query` instances from the fetch methods allows us to abstract from the target result type and to run it synchronously or asynchronously.
+Note that when we create a query we can compute its result right away, defer its evaluation or make it asynchronous. Returning `Query` instances from the fetch methods allows us to abstract from the target result type and to run it synchronously or asynchronously.
 
 We'll implement a dummy data source that can convert integers to strings. For convenience, we define a `fetchString` function that lifts identities (`Int` in our dummy data source) to a `Fetch`. 
 
@@ -68,13 +68,13 @@ import fetch._
 
 implicit object ToStringSource extends DataSource[Int, String]{
   override def fetchOne(id: Int): Query[Option[String]] = {
-    Query.later({
+    Query.sync({
       println(s"[${Thread.currentThread.getId}] One ToString $id")
       Option(id.toString)
     })
   }
   override def fetchMany(ids: NonEmptyList[Int]): Query[Map[Int, String]] = {
-    Query.later({
+    Query.sync({
       println(s"[${Thread.currentThread.getId}] Many ToString $ids")
       ids.unwrap.map(i => (i, i.toString)).toMap
     })
@@ -131,7 +131,7 @@ fetchThree.runA[Id]
 
 If we combine two independent fetches from different data sources, the fetches can be run in parallel. First, let's add a data source that fetches a string's size.
 
-This time, instead of creating the results with `Query#later` we are going to do it with `Query#async` for emulating an asynchronous data source.
+This time, instead of creating the results with `Query#sync` we are going to do it with `Query#async` for emulating an asynchronous data source.
 
 ```tut:silent
 implicit object LengthSource extends DataSource[String, Int]{

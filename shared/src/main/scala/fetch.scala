@@ -41,17 +41,18 @@ object Query {
   type Callback[A] = A => Unit
   type Errback     = Throwable => Unit
 
-  def now[A](x: A): Query[A]       = Sync(Eval.now(x))
-  def later[A](th: => A): Query[A] = Sync(Eval.later(th))
+  def eval[A](e: Eval[A]): Query[A] = Sync(e)
 
-  def sync[A](e: Eval[A]) = Sync(e)
+  def sync[A](th: => A): Query[A] = Sync(Eval.later(th))
+
   def async[A](
       action: (Callback[A], Errback) => Unit,
       timeout: Duration = Duration.Inf
   ): Query[A] = Async(action, timeout)
 
   implicit val fetchQueryApplicative: Applicative[Query] = new Applicative[Query] {
-    def pure[A](x: A): Query[A] = Sync(Eval.now(x))
+    override def pureEval[A](e: Eval[A]): Query[A] = Sync(e)
+    def pure[A](x: A): Query[A]                    = Sync(Eval.now(x))
     def ap[A, B](ff: Query[A => B])(fa: Query[A]): Query[B] =
       Ap(ff, fa)
   }

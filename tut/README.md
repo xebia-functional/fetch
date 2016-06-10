@@ -68,13 +68,13 @@ import fetch._
 
 implicit object ToStringSource extends DataSource[Int, String]{
   override def fetchOne(id: Int): Query[Option[String]] = {
-    Query.later({
+    Query.sync({
       println(s"[${Thread.currentThread.getId}] One ToString $id")
       Option(id.toString)
     })
   }
   override def fetchMany(ids: NonEmptyList[Int]): Query[Map[Int, String]] = {
-    Query.later({
+    Query.sync({
       println(s"[${Thread.currentThread.getId}] Many ToString $ids")
       ids.unwrap.map(i => (i, i.toString)).toMap
     })
@@ -128,7 +128,7 @@ fetchThree.runA[Id]
 
 If we combine two independent fetches from different data sources, the fetches can be run in parallel. First, let's add a data source that fetches a string's size.
 
-This time, instead of creating the results with `Query#later` we are going to do it with `Query#async` for emulating an asynchronous data source.
+This time, instead of creating the results with `Query#sync` we are going to do it with `Query#async` for emulating an asynchronous data source.
 
 ```tut:silent
 implicit object LengthSource extends DataSource[String, Int]{

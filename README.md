@@ -61,13 +61,13 @@ import fetch._
 
 implicit object ToStringSource extends DataSource[Int, String]{
   override def fetchOne(id: Int): Query[Option[String]] = {
-    Query.later({
+    Query.sync({
       println(s"[${Thread.currentThread.getId}] One ToString $id")
       Option(id.toString)
     })
   }
   override def fetchMany(ids: NonEmptyList[Int]): Query[Map[Int, String]] = {
-    Query.later({
+    Query.sync({
       println(s"[${Thread.currentThread.getId}] Many ToString $ids")
       ids.unwrap.map(i => (i, i.toString)).toMap
     })
@@ -99,7 +99,7 @@ Let's run it and wait for the fetch to complete:
 
 ```scala
 fetchOne.runA[Id]
-// [182] One ToString 1
+// [169] One ToString 1
 // res3: cats.Id[String] = 1
 ```
 
@@ -117,7 +117,7 @@ When executing the above fetch, note how the three identities get batched and th
 
 ```scala
 fetchThree.runA[Id]
-// [182] Many ToString OneAnd(1,List(2, 3))
+// [169] Many ToString OneAnd(1,List(2, 3))
 // res5: cats.Id[(String, String, String)] = (1,2,3)
 ```
 
@@ -125,7 +125,7 @@ fetchThree.runA[Id]
 
 If we combine two independent fetches from different data sources, the fetches can be run in parallel. First, let's add a data source that fetches a string's size.
 
-This time, instead of creating the results with `Query#later` we are going to do it with `Query#async` for emulating an asynchronous data source.
+This time, instead of creating the results with `Query#sync` we are going to do it with `Query#async` for emulating an asynchronous data source.
 
 ```scala
 implicit object LengthSource extends DataSource[String, Int]{
@@ -156,8 +156,8 @@ Note how the two independent data fetches run in parallel, minimizing the latenc
 
 ```scala
 fetchMulti.runA[Id]
-// [182] One ToString 1
-// [183] One Length one
+// [169] One ToString 1
+// [170] One Length one
 // res7: cats.Id[(String, Int)] = (1,3)
 ```
 
@@ -176,6 +176,6 @@ While running it, notice that the data source is only queried once. The next tim
 
 ```scala
 fetchTwice.runA[Id]
-// [182] One ToString 1
+// [169] One ToString 1
 // res8: cats.Id[(String, String)] = (1,1)
 ```
