@@ -22,7 +22,7 @@ package fetch
 trait DataSourceCache {
   def update[A](k: DataSourceIdentity, v: A): DataSourceCache
 
-  def get(k: DataSourceIdentity): Option[Any]
+  def get[A](k: DataSourceIdentity): Option[A]
 
   def cacheResults[I, A](results: Map[I, A], ds: DataSource[I, A]): DataSourceCache = {
     results.foldLeft(this)({
@@ -35,8 +35,8 @@ trait DataSourceCache {
   * A cache that stores its elements in memory.
   */
 case class InMemoryCache(state: Map[DataSourceIdentity, Any]) extends DataSourceCache {
-  override def get(k: DataSourceIdentity): Option[Any] =
-    state.get(k)
+  override def get[A](k: DataSourceIdentity): Option[A] =
+    state.get(k).asInstanceOf[Option[A]]
 
   override def update[A](k: DataSourceIdentity, v: A): InMemoryCache =
     copy(state = state.updated(k, v))

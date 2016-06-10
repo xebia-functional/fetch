@@ -136,7 +136,7 @@ trait FetchInterpreters {
                 val startRound = System.nanoTime()
                 val cache      = env.cache
                 cache
-                  .get(ds.identity(id))
+                  .get[A](ds.identity(id))
                   .fold[M[(FetchEnv, A)]](
                       M.flatMap(M.runQuery(ds.fetchOne(id)))((res: Option[A]) => {
                         val endRound = System.nanoTime()
@@ -184,7 +184,7 @@ trait FetchInterpreters {
                                    true),
                              List(id)
                          ),
-                         cached.asInstanceOf[A])
+                         cached)
                     )
                   })
               }

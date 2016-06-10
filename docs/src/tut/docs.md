@@ -549,7 +549,7 @@ There is no need for the cache to be mutable since fetch executions run in an in
 ```scala
 trait DataSourceCache {
   def update[A](k: DataSourceIdentity, v: A): DataSourceCache
-  def get(k: DataSourceIdentity): Option[Any]
+  def get[A](k: DataSourceIdentity): Option[A]
 }
 ```
 
@@ -557,7 +557,7 @@ Let's implement a cache that forgets everything we store in it.
 
 ```tut:silent
 final case class ForgetfulCache() extends DataSourceCache {
-  override def get(k: DataSourceIdentity): Option[Any] = None
+  override def get[A](k: DataSourceIdentity): Option[A] = None
   override def update[A](k: DataSourceIdentity, v: A): ForgetfulCache = this
 }
 ```

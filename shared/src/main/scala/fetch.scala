@@ -76,10 +76,10 @@ final case class FetchOne[I, A](a: I, ds: DataSource[I, A])
     extends FetchOp[A]
     with FetchRequest[I, A] {
   override def fullfilledBy(cache: DataSourceCache): Boolean = {
-    cache.get(ds.identity(a)).isDefined
+    cache.get[A](ds.identity(a)).isDefined
   }
   override def missingIdentities(cache: DataSourceCache): List[I] = {
-    cache.get(ds.identity(a)).fold(List(a))((res: Any) => Nil)
+    cache.get[A](ds.identity(a)).fold(List(a))((res: A) => Nil)
   }
   override def dataSource: DataSource[I, A] = ds
   override def identities: NonEmptyList[I]  = NonEmptyList(a, Nil)
@@ -88,10 +88,10 @@ final case class FetchMany[I, A](as: NonEmptyList[I], ds: DataSource[I, A])
     extends FetchOp[List[A]]
     with FetchRequest[I, A] {
   override def fullfilledBy(cache: DataSourceCache): Boolean = {
-    as.forall((i: I) => cache.get(ds.identity(i)).isDefined)
+    as.forall((i: I) => cache.get[A](ds.identity(i)).isDefined)
   }
   override def missingIdentities(cache: DataSourceCache): List[I] = {
-    as.unwrap.distinct.filterNot(i => cache.get(ds.identity(i)).isDefined)
+    as.unwrap.distinct.filterNot(i => cache.get[A](ds.identity(i)).isDefined)
   }
   override def dataSource: DataSource[I, A] = ds
   override def identities: NonEmptyList[I]  = as
@@ -230,9 +230,7 @@ object `package` {
       new (FetchOp ~> FetchOp) {
         def apply[B](f: FetchOp[B]): FetchOp[B] = f match {
           case one @ FetchOne(id, ds) => {
-              results
-                .get(ds.identity(id))
-                .fold(one: FetchOp[B])(b => Cached(b).asInstanceOf[FetchOp[B]])
+              results.get[B](ds.identity(id)).fold(one: FetchOp[B])(b => Cached(b))
             }
           case many @ FetchMany(ids, ds) => {
               val fetched = ids.map(id => results.get(ds.identity(id))).unwrap.sequence

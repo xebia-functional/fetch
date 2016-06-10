@@ -690,7 +690,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   }
 
   case class MyCache(state: Map[Any, Any] = Map.empty[Any, Any]) extends DataSourceCache {
-    override def get(k: DataSourceIdentity): Option[Any] = state.get(k)
+    override def get[A](k: DataSourceIdentity): Option[A] = state.get(k).asInstanceOf[Option[A]]
     override def update[A](k: DataSourceIdentity, v: A): MyCache =
       copy(state = state.updated(k, v))
   }
@@ -736,7 +736,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   }
 
   case class ForgetfulCache() extends DataSourceCache {
-    override def get(k: DataSourceIdentity): Option[Any]                = None
+    override def get[A](k: DataSourceIdentity): Option[A]               = None
     override def update[A](k: DataSourceIdentity, v: A): ForgetfulCache = this
   }
 
