@@ -29,13 +29,13 @@ we read) concerns.
 To begin, add the following dependency to your SBT build file:
 
 ```scala
-"com.fortysevendeg" %% "fetch" %% "0.2.0"
+"com.fortysevendeg" %% "fetch" % "0.2.0"
 ```
 
 Or, if using Scala.js:
 
 ```scala
-"com.fortysevendeg" %%% "fetch" %% "0.2.0"
+"com.fortysevendeg" %%% "fetch" % "0.2.0"
 ```
 
 Now you'll have Fetch available in both Scala and Scala.js.
@@ -64,9 +64,11 @@ If something is missing in Fetch that stops you from using it we'd appreciate if
 In order to tell Fetch how to retrieve data, we must implement the `DataSource` typeclass.
 
 ```scala
+import cats.data.NonEmptyList
+
 trait DataSource[Identity, Result]{
-  def fetchOne(id: Identity): Eval[Option[Result]]
-  def fetchMany(ids: NonEmptyList[Identity]): Eval[Map[Identity, Result]]
+  def fetchOne(id: Identity): Query[Option[Result]]
+  def fetchMany(ids: NonEmptyList[Identity]): Query[Map[Identity, Result]]
 }
 ```
 
@@ -76,15 +78,15 @@ It takes two type parameters:
  - `Result`: the type of the data we retrieve (a `User` if we were fetching users)
 
 There are two methods: `fetchOne` and `fetchMany`. `fetchOne` receives one identity and must return
-an [Eval](https://github.com/typelevel/cats/blob/master/core/src/main/scala/cats/Eval.scala) containing
+a `Query` containing
 an optional result. Returning an `Option` Fetch can detect whether an identity couldn't be fetched or no longer exists.
 
-`fetchMany` method takes a non-empty list of identities and must return an `Eval`  that containing
+`fetchMany` method takes a non-empty list of identities and must return a `Query` containing
 a map from identities to results. Accepting a list of identities gives Fetch the ability to batch requests to
 the same data source, and returning a mapping from identities to results, Fetch can detect whenever an identity
 couldn't be fetched or no longer exists.
 
-Returning `Eval` makes it possible to defer evaluation with a monad when running a fetch.
+Returning `Query` makes it possible to run a fetch independently of the target monad.
 
 ## Writing your first data source
 
@@ -96,10 +98,21 @@ type UserId = Int
 case class User(id: UserId, username: String)
 ```
 
+We'll simulate unpredictable latency with this function.
+
+```tut:silent
+def latency[A](result: A, msg: String) = {
+  val id = Thread.currentThread.getId
+  println(s"~~> [$id] $msg")
+  Thread.sleep(100)
+  println(s"<~~ [$id] $msg")
+  result
+}
+```
+
 And now we're ready to write our user data source; we'll emulate a database with an in-memory map.
 
 ```tut:silent
-import cats.Eval
 import cats.data.NonEmptyList
 import cats.std.list._
 
@@ -108,20 +121,19 @@ import fetch._
 val userDatabase: Map[UserId, User] = Map(
   1 -> User(1, "@one"),
   2 -> User(2, "@two"),
-  3 -> User(3, "@three")
+  3 -> User(3, "@three"),
+  4 -> User(4, "@four")
 )
 
 implicit object UserSource extends DataSource[UserId, User]{
-  override def fetchOne(id: UserId): Eval[Option[User]] = {
-    Eval.later({
-      println(s"Fetching user $id")
-      userDatabase.get(id)
+  override def fetchOne(id: UserId): Query[Option[User]] = {
+    Query.sync({
+	  latency(userDatabase.get(id), s"One User $id")
     })
   }
-  override def fetchMany(ids: NonEmptyList[UserId]): Eval[Map[UserId, User]] = {
-    Eval.later({
-      println(s"Fetching users $ids")
-      userDatabase.filterKeys(ids.unwrap.contains)
+  override def fetchMany(ids: NonEmptyList[UserId]): Query[Map[UserId, User]] = {
+    Query.sync({
+	  latency(userDatabase.filterKeys(ids.unwrap.contains), s"Many Users $ids")
     })
   }
 }
@@ -134,22 +146,22 @@ given an id, we just have to pass a `UserId` as an argument to `Fetch`.
 def getUser(id: UserId): Fetch[User] = Fetch(id) // or, more explicitly: Fetch(id)(UserSource)
 ```
 
-
 ### Data sources that don't support batching
 
 If your data source doesn't support batching, you can use the `DataSource#batchingNotSupported` method as the implementation
 of `fetchMany`. Note that it will use the `fetchOne` implementation for requesting identities one at a time.
 
 ```tut:silent
-implicit object IntSource extends DataSource[Int, Int]{
-  override def fetchOne(id: Int): Eval[Option[Int]] = {
-    Eval.now(Option(id))
+implicit object UnbatchedSource extends DataSource[Int, Int]{
+  override def fetchOne(id: Int): Query[Option[Int]] = {
+    Query.sync(Option(id))
   }
-  override def fetchMany(ids: NonEmptyList[Int]): Eval[Map[Int, Int]] = {
+  override def fetchMany(ids: NonEmptyList[Int]): Query[Map[Int, Int]] = {
     batchingNotSupported(ids)
   }
 }
 ```
+
 
 ## Creating and running a fetch
 
@@ -158,35 +170,32 @@ When we are creating and combining `Fetch` values, we are just constructing a re
 dependencies.
 
 ```tut:silent
-import fetch.implicits._
-import fetch.syntax._
-
 val fetchUser: Fetch[User] = getUser(1)
 ```
 
-A `Fetch` is just a value, and in order to get something out of it, we must execute it. We can execute a `Fetch` value as many times as we want, even to different target monads, since it is just
-an immutable value.
+A `Fetch` is just a value, and in order to be able to get its value we need to run it to a monad first. The
+target monad `M[_]` must be able to lift a `Query[A]` to `M[A]`, evaluating the query in the monad's context.
 
-We need to provide a target monad when we want to execute a fetch. We'll be using `Id` for now.
-Make sure to import `fetch.implicits._` since Fetch needs an instance of `MonadError[Id, Throwable]` for running
-a fetch in the `Id` monad.
+We'll run `fetchUser` using `Id` as our target monad, so let's do some imports first. Note that interpreting
+a fetch to a non-concurrency monad like `Id` or `Eval` is only recommended for trying things out in a Scala
+console, that's why for using them you need to import `fetch.unsafe.implicits`.
 
-Note that Fetch provides `MonadError` instances for a variety of different monads like `Eval` or
-`Future` so it's likely that you won't have to write your own.
-
-Let's run our first fetch!
-
-```tut:book
-val result: User = fetchUser.runA[Eval].value
+```tut:silent
+import cats.Id
+import fetch.unsafe.implicits._
+import fetch.syntax._
 ```
 
-In the previous examples, we:
+Note that running a fetch to non-concurrency monads like `Id` or `Eval` is not supported in Scala.js.
+In real-life scenarios you'll want to run your fetches to `Future` or a `Task` type provided by a library like
+[Monix](https://monix.io/) or [fs2](https://github.com/functional-streams-for-scala/fs2), both of which are supported
+in Fetch.
 
-- brought the implicit instance of `MonadError[Eval, Throwable]` into scope importing `fetch.implicits._`
-- created a fetch for a `User` using the `getUser` function
-- interpreted the fetch to a `Eval[User]` using the syntax `runA` that delegate to `Fetch.run`
+We can now run the fetch and see its result:
 
-As you can see, the fetch was executed in one round to fetch the user and was finished after that.
+```tut:book
+fetchUser.runA[Id]
+```
 
 ### Sequencing
 
@@ -202,7 +211,7 @@ val fetchTwoUsers: Fetch[(User, User)] = for {
 When composing fetches with `flatMap` we are telling Fetch that the second one depends on the previous one, so it isn't able to make any optimizations. When running the above fetch, we will query the user data source in two rounds: one for the user with id 1 and another for the user with id 2.
 
 ```tut:book
-val result: (User, User) = fetchTwoUsers.runA[Eval].value
+fetchTwoUsers.runA[Id]
 ```
 
 ### Batching
@@ -220,7 +229,7 @@ val fetchProduct: Fetch[(User, User)] = getUser(1).product(getUser(2))
 Note how both ids (1 and 2) are requested in a single query to the data source when executing the fetch.
 
 ```tut:book
-val result: (User, User) = fetchProduct.runA[Eval].value
+fetchProduct.runA[Id]
 ```
 
 ### Deduplication
@@ -234,7 +243,7 @@ val fetchDuped: Fetch[(User, User)] = getUser(1).product(getUser(1))
 Note that when running the fetch, the identity 1 is only requested once even when it is needed by both fetches.
 
 ```tut:book
-val result: (User, User) = fetchDuped.runA[Eval].value
+fetchDuped.runA[Id]
 ```
 
 ### Caching
@@ -254,29 +263,70 @@ val fetchCached: Fetch[(User, User)] = for {
 The above fetch asks for the same identity multiple times. Let's see what happens when executing it.
 
 ```tut:book
-val result: (User, User) = fetchCached.runA[Eval].value
+fetchCached.runA[Id]
 ```
 
 As you can see, the `User` with id 1 was fetched only once in a single round-trip. The next
 time it was needed we used the cached versions, thus avoiding another request to the user data
 source.
 
+
+## Queries
+
+Queries are a way of separating the computation required to read a piece of data from the context in
+which is run. Let's look at the various ways we have of constructing queries.
+
+### Synchronous
+
+A query can be synchronous, and we may want to evaluate it when `fetchOne` and `fetchMany`
+are called. We can do so with `Query#sync`:
+
+```tut:book
+Query.sync(42)
+```
+
+You can also construct lazy queries that can evaluate synchronously passing a thunk to `Query#sync`:
+
+```tut:book
+Query.sync({ println("Computing 42"); 42 })
+```
+
+Synchronous queries simply wrap a Cats' `Eval` instance, which captures the notion of a lazy synchronous
+computation. You can lift an `Eval[A]` into a `Query[A]` too:
+
+```tut:book
+import cats.Eval
+
+Query.eval(Eval.always({ println("Computing 42"); 42 }))
+```
+
+### Asynchronous
+
+Asynchronous queries are constructed passing a function that accepts a callback (`A => Unit`) and an errback
+(`Throwable => Unit`) and performs the asynchronous computation. Note that you must ensure that either the
+callback or the errback are called.
+
+```tut:book
+Query.async((ok: (Int => Unit), fail) => {
+  Thread.sleep(100)
+  ok(42)
+})
+```
+
 ## Combining data from multiple sources
 
 Now that we know about some of the optimizations that Fetch can perform to read data efficiently,
-let's look at how we can combine more than one data source. Imagine that we are rendering a blog
-and have the following types for posts and post information:
+let's look at how we can combine more than one data source.
+
+
+Imagine that we are rendering a blog and have the following types for posts:
 
 ```tut:silent
 type PostId = Int
 case class Post(id: PostId, author: UserId, content: String)
-case class PostInfo(topic: String)
 ```
 
-As you can see, every `Post` has an author, but it refers to the author by its id. We'll implement two data sources:
-
-- one for retrieving a post given a post id
-- another for retrieving post metadata given a post id
+As you can see, every `Post` has an author, but it refers to the author by its id. We'll implement a data source for retrieving a post given a post id.
 
 ```tut:silent
 val postDatabase: Map[PostId, Post] = Map(
@@ -286,44 +336,19 @@ val postDatabase: Map[PostId, Post] = Map(
 )
 
 implicit object PostSource extends DataSource[PostId, Post]{
-  override def fetchOne(id: PostId): Eval[Option[Post]] = {
-    Eval.later({
-      println(s"Fetching post $id")
-      postDatabase.get(id)
+  override def fetchOne(id: PostId): Query[Option[Post]] = {
+    Query.sync({
+	  latency(postDatabase.get(id), s"One Post $id")
     })
   }
-  override def fetchMany(ids: NonEmptyList[PostId]): Eval[Map[PostId, Post]] = {
-    Eval.later({
-      println(s"Fetching posts $ids")
-      postDatabase.filterKeys(ids.unwrap.contains)
+  override def fetchMany(ids: NonEmptyList[PostId]): Query[Map[PostId, Post]] = {
+    Query.sync({
+	  latency(postDatabase.filterKeys(ids.unwrap.contains), s"Many Posts $ids")
     })
   }
 }
 
 def getPost(id: PostId): Fetch[Post] = Fetch(id)
-
-val postInfoDatabase: Map[PostId, PostInfo] = Map(
-  1 -> PostInfo("Run Wild, Run Free"),
-  2 -> PostInfo("American Psycho"),
-  3 -> PostInfo("Torrente 3")
-)
-
-implicit object PostInfoSource extends DataSource[PostId, PostInfo]{
-  override def fetchOne(id: PostId): Eval[Option[PostInfo]] = {
-    Eval.later({
-      println(s"Fetching post info $id")
-      postInfoDatabase.get(id)
-    })
-  }
-  override def fetchMany(ids: NonEmptyList[PostId]): Eval[Map[PostId, PostInfo]] = {
-    Eval.later({
-      println(s"Fetching post info $ids")
-      postInfoDatabase.filterKeys(ids.unwrap.contains)
-    })
-  }
-}
-
-def getPostInfo(id: PostId): Fetch[PostInfo] = Fetch(id)
 ```
 
 We can also implement a function for fetching a post's author given a post:
@@ -332,22 +357,49 @@ We can also implement a function for fetching a post's author given a post:
 def getAuthor(p: Post): Fetch[User] = Fetch(p.author)
 ```
 
+Apart from posts, we are going to add another data source: one for post topics.
+
+```tut:silent
+type PostTopic = String
+```
+
+We'll implement a data source for retrieving a post topic given a post id.
+
+```tut:silent
+implicit object PostTopicSource extends DataSource[Post, PostTopic]{
+  override def fetchOne(id: Post): Query[Option[PostTopic]] = {
+    Query.sync({
+      val topic = if (id.id % 2 == 0) "monad" else "applicative"
+      latency(Option(topic), s"One Post Topic $id")
+    })
+  }
+  override def fetchMany(ids: NonEmptyList[Post]): Query[Map[Post, PostTopic]] = {
+    Query.sync({
+	  val result = ids.unwrap.map(id => (id, if (id.id % 2 == 0) "monad" else "applicative")).toMap
+      latency(result, s"Many Post Topics $ids")
+    })
+  }
+}
+
+def getPostTopic(post: Post): Fetch[PostTopic] = Fetch(post)
+```
+
 Now that we have multiple sources let's mix them in the same fetch.
 
 ```tut:silent
-val fetchMulti: Fetch[(Post, User)] = for {
+val fetchMulti: Fetch[(Post, PostTopic)] = for {
   post <- getPost(1)
-  user <- getAuthor(post)
-} yield (post, user)
+  topic <- getPostTopic(post)
+} yield (post, topic)
 ```
 
 We can now run the previous fetch, querying the posts data source first and the user data source afterwards.
 
 ```tut:book
-val result: (Post, User) = fetchMulti.runA[Eval].value
+fetchMulti.runA[Id]
 ```
 
-In the previous example, we fetched a post given its id and then fetched its author. This
+In the previous example, we fetched a post given its id and then fetched its topic. This
 data could come from entirely different places, but Fetch makes working with heterogeneous sources
 of data very easy.
 
@@ -368,12 +420,28 @@ val fetchConcurrent: Fetch[(Post, User)] = getPost(1).product(getUser(2))
 The above example combines data from two different sources, and the library knows they are independent.
 
 ```tut:book
-val result: (Post, User) = fetchConcurrent.runA[Eval].value
+fetchConcurrent.runA[Id]
 ```
 
-Since we are interpreting the fetch to the `Id` monad, that doesn't give us any parallelism; the fetches
-will be run sequentially. However, if we interpret it to a `Future` each request will run in its own logical
-thread.
+Since we are running the fetch to `Id`, we couldn't exploit parallelism for reading from both sources
+at the same time. Let's do some imports in order to be able to run fetches to a `Future`.
+
+```tut:silent
+import scala.concurrent._
+import ExecutionContext.Implicits.global
+import scala.concurrent.duration._
+```
+
+Let's see what happens when running the same fetch to a `Future`, note that you cannot block for a
+future's result in Scala.js.
+
+```tut:book
+import fetch.implicits._
+
+Await.result(fetchConcurrent.runA[Future], Duration.Inf)
+```
+
+As you can see, each independent request ran in its own logical thread.
 
 ## Combinators
 
@@ -396,7 +464,7 @@ val fetchSequence: Fetch[List[User]] = List(getUser(1), getUser(2), getUser(3)).
 Since `sequence` uses applicative operations internally, the library is able to perform optimizations across all the sequenced fetches.
 
 ```tut:book
-val result: List[User] = fetchSequence.runA[Eval].value
+fetchSequence.runA[Id]
 ```
 
 As you can see, requests to the user data source were batched, thus fetching all the data in one round.
@@ -412,45 +480,13 @@ val fetchTraverse: Fetch[List[User]] = List(1, 2, 3).traverse(getUser)
 As you may have guessed, all the optimizations made by `sequence` still apply when using `traverse`.
 
 ```tut:book
-val result: List[User] = fetchTraverse.runA[Eval].value
+fetchTraverse.runA[Id]
 ```
 
-# Interpreting a fetch to an async capable monad
-
-Although the examples use `Id` as the target Monad, `Fetch` is not limited to just `Id`, any monad `M` that
-implements `MonadError[M, Throwable]` will do. Fetch provides `MonadError` instances for some existing monads like
-`Future`, `cats.Id` and `cats.Eval` and it's easy to write your own.
-
-For practice, you'll be interpreting a fetch to an async capable monad like `Future` or `scalaz.concurrent.Task` to exploit
-parallelism whenever we can make requests to multiple independent data sources at the same time.
-
-## Future
-
-For interpreting a fetch into a `Future` we must first import the `MonadError[Future, Throwable]` available in cats.
-
-```tut:silent
-import cats.std.future._
-
-import scala.concurrent._
-import scala.concurrent.duration._
-import scala.concurrent.ExecutionContext.Implicits.global
-
-
-val fetchParallel: Fetch[(User, Post)] = (getUser(1) |@| getPost(1)).tupled
-```
-
-We can now interpret a fetch into a future:
-
-```tut:book
-val fut: Future[(User, Post)] = fetchParallel.runA[Future]
-Await.result(fut, 1.second) // this call blocks the current thread, don't do this at home!
-```
-
-Since futures run in a thread pool, both requests to the data sources run in parallel, each in its own logical thread.
 
 # Caching
 
-As we have learned, Fetch caches intermediate results implicitly using a cache. You can
+As we have learned, Fetch caches intermediate results implicitly. You can
 provide a prepopulated cache for running a fetch, replay a fetch with the cache of a previous
 one, and even implement a custom cache.
 
@@ -459,14 +495,20 @@ one, and even implement a custom cache.
 We'll be using the default in-memory cache, prepopulated with some data. The cache key of an identity
 is calculated with the `DataSource`'s `identity` method.
 
-```tut:silent
+```tut:book
 val cache = InMemoryCache(UserSource.identity(1) -> User(1, "@dialelo"))
 ```
 
 We can pass a cache as the second argument when running a fetch with `Fetch.run`.
 
 ```tut:book
-val result: User = fetchUser.runA[Eval](cache).value
+Fetch.run[Id](fetchUser, cache)
+```
+
+And as the first when using fetch syntax:
+
+```tut:book
+fetchUser.runA[Id](cache)
 ```
 
 As you can see, when all the data is cached, no query to the data sources is executed since the results are available
@@ -479,7 +521,7 @@ val fetchManyUsers: Fetch[List[User]] = List(1, 2, 3).traverse(getUser)
 If only part of the data is cached, the cached data won't be asked for:
 
 ```tut:book
-val result: List[User] = fetchManyUsers.runA[Eval](cache).value
+fetchManyUsers.runA[Id](cache)
 ```
 
 ## Replaying a fetch without querying any data source
@@ -493,9 +535,9 @@ Knowing this, we can replay a fetch reusing the cache of a previous one. The rep
 data sources.
 
 ```tut:book
-val populatedCache = fetchManyUsers.runE[Eval].value.cache
+val env = fetchManyUsers.runE[Id]
 
-val result: List[User] =  fetchManyUsers.runA[Eval](populatedCache).value
+fetchManyUsers.runA[Id](env.cache)
 ```
 
 ## Implementing a custom cache
@@ -507,62 +549,71 @@ There is no need for the cache to be mutable since fetch executions run in an in
 ```scala
 trait DataSourceCache {
   def update[A](k: DataSourceIdentity, v: A): DataSourceCache
-  def get(k: DataSourceIdentity): Option[Any]
+  def get[A](k: DataSourceIdentity): Option[A]
 }
 ```
 
-Let's reimplement the in-memory cache found in Fetch; we'll write a case class that'll store the cache contents in an in-memory immutable map and implement `DataSourceCache`.
+Let's implement a cache that forgets everything we store in it.
 
 ```tut:silent
-case class MyInMemoryCache(state: Map[DataSourceIdentity, Any]) extends DataSourceCache {
-  override def get(k: DataSourceIdentity): Option[Any] =
-    state.get(k)
-
-  override def update[A](k: DataSourceIdentity, v: A): MyInMemoryCache =
-    copy(state = state.updated(k, v))
+final case class ForgetfulCache() extends DataSourceCache {
+  override def get[A](k: DataSourceIdentity): Option[A] = None
+  override def update[A](k: DataSourceIdentity, v: A): ForgetfulCache = this
 }
-```
-
-Now that we have our cache implementation, we can populate it. Note how keys for the cache are tuples and are derived using the data source's `identity` method on identities.
-
-```tut:silent
-val myCache = MyInMemoryCache(Map(UserSource.identity(1) -> User(1, "dialelo")))
 ```
 
 We can now use our implementation of the cache when running a fetch.
 
 ```tut:book
-val result: User = fetchUser.runA[Eval](myCache).value
+val fetchSameTwice: Fetch[(User, User)] = for {
+  one <- getUser(1)
+  another <- getUser(1)
+} yield (one, another)
+
+fetchSameTwice.runA[Id](ForgetfulCache())
 ```
 
 # Error handling
 
-As we mentioned before, when interpreting a fetch to a target monad `M`, an implicit instance of `MonadError[M, Throwable]` has to be
-available. [MonadError](https://github.com/typelevel/cats/blob/master/core/src/main/scala/cats/MonadError.scala) gives us a few combinators
-for working with errors, like `MonadError#raiseError` and `MonadError#attempt`.
-
-One of the most interesting combinators is `attempt`, which given a `M[A]` yields a `M[Throwable Xor A]`. Knowing this, we can run fetches
-in the `Eval` monad to an `Xor` and not worry about exceptions. Let's create a fetch that always fails when executed:
+Fetch is used for reading data from remote sources and the queries we perform can and will fail at some point. What happens if we run a fetch and fails? We'll create a fetch that always fails to learn about it.
 
 ```tut:silent
 val fetchError: Fetch[User] = (new Exception("Oh noes")).fetch
 ```
 
-We can now use the Eval MonadError's `attempt` to convert a fetch result into a disjuntion and avoid throwing exceptions.
+If we try to execute to `Id` the exception will be thrown.
 
-```tut:book
-import cats.data.Xor
-import cats.MonadError
-
-val ME = implicitly[MonadError[Eval, Throwable]]
-
-val result: Eval[User] = fetchError.runA[Eval]
-val safeResult: Eval[Throwable Xor User] = ME.attempt(result)
-val finalValue: Throwable Xor User = safeResult.value
+```tut:fail
+fetchError.runA[Id]
 ```
 
-In the above example, we didn't use `Id` since interpreting a fetch to `Id` throws the exception, and we can't capture it with the
-combinators in `MonadError`.
+Since `Id` runs the fetch eagerly, the only way to recover from errors when running it is surrounding it with a `try-catch` block. We'll use Cats' `Eval` type as the target
+monad which, instead of evaluating the fetch eagerly, gives us an `Eval[A]` that we can run anytime with its `.value` method.
+
+We can use the `FetchMonadError[Eval]#attempt` to convert a fetch result into a disjuntion and avoid throwing exceptions. Fetch provides an implicit instance of `FetchMonadError[Eval]` that we can import from `fetch.unsafe.implicits._` to have it available.
+
+```tut:silent
+import fetch.unsafe.implicits._
+```
+
+Now we can convert `Eval[User]` into `Eval[Throwable Xor User]` and capture exceptions as values in the left of the disjunction.
+
+```tut:book
+import cats.Eval
+import cats.data.Xor
+
+val safeResult: Eval[Throwable Xor User] = FetchMonadError[Eval].attempt(fetchError.runA[Eval])
+
+safeResult.value
+```
+
+And more succintly with Cats' applicative error syntax.
+
+```tut:book
+import cats.syntax.applicativeError._
+
+fetchError.runA[Eval].attempt.value
+```
 
 ## Missing identities
 
@@ -591,23 +642,21 @@ val fetchPure: Fetch[Int] = 42.fetch
 Executing a pure fetch doesn't query any data source, as expected.
 
 ```tut:book
-val result: Int = fetchPure.runA[Eval].value
+fetchPure.runA[Id]
 ```
 
 ### error
 
-Errors can also be lifted to the Fetch monad via `exception.fetch`. Note that interpreting
-an errorful fetch to `Eval` won't throw the exception unless we access the value with the `.value` method.
-
-A safer way to deal with errors is to use MonadError's `attempt` to turn the exception into a `Xor.Left` value:
+Errors can also be lifted to the Fetch monad via `exception.fetch`.
 
 ```tut:silent
-val ME = implicitly[MonadError[Eval, Throwable]]
+val fetchFail: Fetch[Int] = Fetch.error(new Exception("Something went terribly wrong"))
+```
 
-val fetchFail: Fetch[Int] = (new Exception("Something went terribly wrong")).fetch[Int]
-val result: Eval[Int] = fetchFail.runA[Eval]
-val safeResult: Eval[Throwable Xor Int] = ME.attempt(result)
-val finalValue: Throwable Xor Int = safeResult.value
+Note that interpreting an errorful fetch to `Future` and blocking for its result will throw the exception.
+
+```tut:fail
+fetchFail.runA[Id]
 ```
 
 ### join
@@ -621,36 +670,36 @@ val fetchJoined: Fetch[(Post, User)] = getPost(1).join(getUser(2))
 If the fetches are to the same data source they will be batched; if they aren't, they will be evaluated at the same time.
 
 ```tut:book
-val result: (Post, User) = fetchJoined.runA[Eval].value
+fetchJoined.runA[Id]
 ```
 
 ### runA
 
-Run directly any fetch to a target any target `Monad` with a `MonadError` instance in scope `fetch1.runA[Eval]`.
+Run directly any fetch to a `Future` with `fetch1.runA`.
 
-```tut:silent
-val post: Eval[Post] = getPost(1).runA[Eval]
+```tut:book
+getPost(1).runA[Id]
 ```
 
 ### runE
 
-Extract a fetch an get it's runtime environment `fetch1.runE[Eval]`.
+Extract a fetch an get it's runtime environment `fetch1.runE`.
 
-```tut:silent
-val env: Eval[FetchEnv] = getPost(1).runE[Eval]
+```tut:book
+getPost(1).runE[Id]
 ```
 
 ### runF
 
-Run a fetch obtaining the environment and final value `fetch1.runF[Eval]`.
+Run a fetch obtaining the environment and final value `fetch1.runF`.
 
-```tut:silent
-val env: Eval[(FetchEnv, Post)] = getPost(1).runF[Eval]
+```tut:book
+getPost(1).runF[Id]
 ```
 
 ## Companion object
 
-We've been using `cats.syntax' and `fetch.syntax` throughout the examples since it's more concise and general than the
+We've been using Cats' syntax and `fetch.syntax` throughout the examples since it's more concise and general than the
 methods in the `Fetch` companion object. However, you can use the methods in the companion object
 directly.
 
@@ -667,23 +716,21 @@ val fetchPure: Fetch[Int] = Fetch.pure(42)
 Executing a pure fetch doesn't query any data source, as expected.
 
 ```tut:book
-val result: Int = Fetch.run[Eval](fetchPure).value
+Fetch.run[Id](fetchPure)
 ```
 
 ### error
 
-Errors can also be lifted to the Fetch monad, in this case with `Fetch#error`. Note that interpreting
-an errorful fetch to `Eval` won't throw the exception unless we access the value with the `.value` method.
+Errors can also be lifted to the Fetch monad via `Fetch#error`.
 
-A safer way to deal with errors is to use MonadError's `attempt` to turn the exception into a `Xor.Left` value:
-
-```tut:book
-val ME = implicitly[MonadError[Eval, Throwable]]
-
+```tut:silent
 val fetchFail: Fetch[Int] = Fetch.error(new Exception("Something went terribly wrong"))
-val result: Eval[Int] = fetchFail.runA[Eval]
-val safeResult: Eval[Throwable Xor Int] = ME.attempt(result)
-val finalValue: Throwable Xor Int = safeResult.value
+```
+
+Note that interpreting an errorful fetch to `Future` won't throw the exception until we block for its result it.
+
+```tut:fail
+Fetch.run[Id](fetchFail)
 ```
 
 ### join
@@ -697,7 +744,7 @@ val fetchJoined: Fetch[(Post, User)] = Fetch.join(getPost(1), getUser(2))
 If the fetches are to the same data source they will be batched; if they aren't, they will be evaluated at the same time.
 
 ```tut:book
-val result: (Post, User) = Fetch.run[Eval](fetchJoined).value
+Fetch.run[Id](fetchJoined)
 ```
 
 ### sequence
@@ -712,7 +759,7 @@ val fetchSequence: Fetch[List[User]] = Fetch.sequence(List(getUser(1), getUser(2
 Note that `Fetch#sequence` is not as general as the `sequence` method from `Traverse`, but performs the same optimizations.
 
 ```tut:book
-val result: List[User] = Fetch.run[Eval](fetchSequence).value
+Fetch.run[Id](fetchSequence)
 ```
 
 ### traverse
@@ -726,13 +773,13 @@ val fetchTraverse: Fetch[List[User]] = Fetch.traverse(List(1, 2, 3))(getUser)
 Note that `Fetch#traverse` is not as general as the `traverse` method from `Traverse`, but performs the same optimizations.
 
 ```tut:book
-val result: List[User] = Fetch.run[Eval](fetchTraverse).value
+Fetch.run[Id](fetchTraverse)
 ```
 
 ## cats
 
-Fetch is built using cats' Free monad construction and thus works out of the box with
-cats syntax. Using cats' syntax, we can make fetch declarations more concise, without
+Fetch is built using Cats' Free monad construction and thus works out of the box with
+cats syntax. Using Cats' syntax, we can make fetch declarations more concise, without
 the need to use the combinators in the `Fetch` companion object.
 
 Fetch provides its own instance of `Applicative[Fetch]`. Whenever we use applicative
@@ -757,7 +804,7 @@ val fetchThree: Fetch[(Post, User, Post)] = (getPost(1) |@| getUser(2) |@| getPo
 Notice how the queries to posts are batched.
 
 ```tut:book
-val result: (Post, User, Post) = fetchThree.runA[Eval].value
+fetchThree.runA[Id]
 ```
 
 More interestingly, we can use it to apply a pure function to the results of various
@@ -768,7 +815,7 @@ val fetchFriends: Fetch[String] = (getUser(1) |@| getUser(2)).map({ (one, other)
   s"${one.username} is friends with ${other.username}"
 })
 
-val result: String = fetchFriends.runA[Eval].value
+fetchFriends.runA[Id]
 ```
 
 The above example is equivalent to the following using the `Fetch#join` method:
@@ -778,8 +825,185 @@ val fetchFriends: Fetch[String] = Fetch.join(getUser(1), getUser(2)).map({ case 
   s"${one.username} is friends with ${other.username}"
 })
 
-val result: String = fetchFriends.runA[Eval].value
+fetchFriends.runA[Id]
 ```
+
+# Concurrency monads
+
+Fetch lets you choose the concurrency monad you want for running fetches, supporting the Scala and Scala.js
+standard library concurrency primitives. However not everyone is using `Future` and Fetch acknowledges it,
+providing support for the most widespread concurrency monads and making it easy for users to run a fetch to a
+custom type.
+
+For supporting running a fetch to a monad `M[_]` an instance of `FetchMonadError[M]` must be available.
+
+We'll use the following fetches for the examples. They show how we can combine independent fetches both for
+batching and exploiting the concurrency of independent data.
+
+```tut:silent
+val postsByAuthor: Fetch[List[Post]] = for {
+  posts <- List(1, 2).traverse(getPost)
+  authors <- posts.traverse(getAuthor)
+  ordered = (posts zip authors).sortBy({ case (_, author) => author.username }).map(_._1)
+} yield ordered
+
+val postTopics: Fetch[Map[PostTopic, Int]] = for {
+  posts <- List(2, 3).traverse(getPost)
+  topics <- posts.traverse(getPostTopic)
+  countByTopic = (posts zip topics).groupBy(_._2).mapValues(_.size)
+} yield countByTopic
+
+val homePage = (postsByAuthor |@| postTopics).tupled
+```
+
+## Future
+
+You can run a fetch into a `Future` simply by importing `fetch.implicits`. It
+contains an instance of `FetchMonadError[Future]` given that you provide an implicit `ExecutionContext`.
+
+For the sake of the examples we'll use the global `ExecutionContext`.
+
+```tut:book
+Await.result(Fetch.run[Future](homePage),  Duration.Inf)
+```
+
+## Monix Task
+
+The [Monix](https://monix.io/) library provides an abstraction for lazy, asynchronous computations with its [Task](https://monix.io/docs/2x/eval/task.html) type.
+
+For using `Task` as the target concurrency monad of a fetch, add the following dependency to your build file:
+
+```scala
+"com.fortysevendeg" %% "fetch-monix" % "0.2.0"
+```
+
+And do some standard imports, we'll need an Scheduler for running our tasks as well as the instance of `FetchMonadError[Task]` that `fetch-monix` provids:
+
+```tut:silent
+import monix.eval.Task
+import monix.execution.Scheduler
+
+import fetch.monixTask.implicits._
+```
+
+Note that running a fetch to a `Task` doesn't trigger execution. We can interpret a task to a `Future` with the `Task#runAsync` method. We'll use the global scheduler for now.
+
+```tut:book
+val scheduler = Scheduler.Implicits.global
+val task = Fetch.run[Task](homePage)
+
+Await.result(task.runAsync(scheduler), Duration.Inf)
+```
+
+### JVM
+
+In the JVM, you may want to choose a [scheduler tuned for IO workloads](https://monix.io/docs/2x/execution/scheduler.html#builders-on-the-jvm) to interpret fetches.
+
+```tut:book
+val ioSched = Scheduler.io(name="io-scheduler")
+
+Await.result(task.runAsync(ioSched), Duration.Inf)
+```
+
+## Custom types
+
+If you want to run a fetch to a custom type `M[_]`, you need to implement the `FetchMonadError[M]` typeclass. `FetchMonadError[M]` is simply a `MonadError[M, Throwable]` from cats augmented
+with a method for running a `Query[A]` in the context of the monad `M[A]`.
+
+For ilustrating integration with an asynchronous concurrency monad we'll use the implementation of Monix Task.
+
+### Running queries
+
+First of all, we need to run queries in our target type. As we have learned, queries can be synchronous (simply wrapping an `Eval` from Cats) or asynchronous. Since we'll need to lift
+`Eval[A]` values to `Task[A]`, let's write a function for doing so first. Note that Monix's `Task` supports the same evaluation strategies of `Eval` in Cats, so the conversion is very
+direct:
+
+```tut:silent
+import cats.{Eval, Now, Later, Always}
+import monix.eval.Task
+
+def evalToTask[A](e: Eval[A]): Task[A] = e match {
+  case Now(x) => Task.now(x)
+  case l: Later[A]  => Task.evalOnce({ l.value })
+  case a: Always[A] => Task.evalAlways({ a.value })
+  case other => Task.evalOnce({ other.value })
+}
+```
+
+Now that we can run synchronous queries to `Task`, we'll use `Task#create` for running asynchronous computations. Queries also have a third option: `Ap`, which delegates the applicative combination of independent queries to the target monad.
+
+```tut:silent
+import monix.execution.Cancelable
+import scala.concurrent.duration._
+
+def queryToTask[A](q: Query[A]): Task[A] = q match {
+  case Sync(e) => evalToTask(e)
+  case Async(action, timeout) => {
+    val task: Task[A] = Task.create((scheduler, callback) => {
+	  scheduler.execute(new Runnable {
+        def run() = action(callback.onSuccess, callback.onError)
+      })
+
+      Cancelable.empty
+    })
+
+    timeout match {
+      case finite: FiniteDuration => task.timeout(finite)
+      case _                      => task
+    }
+  }
+  case Ap(qf, qx) => Task.zip2(queryToTask(qf), queryToTask(qx)).map({ case (f, x) => f(x) })	
+}
+```
+
+The asynchronous action was built using `Task#create`; it receives the used scheduler and a callback, runs
+the async action in the scheduler passing the success and error versions of the callback and returns an empty
+cancelable (it can not be canceled); if we encounter a finite duration timeout, we set it on the task.
+
+The applicative action used `Task#zip2` to combine two tasks and apply the function contained in one of them
+to the other. We used `Task#zip2` for expressing the independence between the two tasks, which can potentially
+be evaluated in parallel.
+
+### Writing the FetchMonadError instance
+
+Now we're ready for implementing the FetchMonadError instance for `Task`, we need to define it as an implicit. 
+Note that Cats' typeclass hierarchy is expressed with inheritance and methods from weaker typeclasses like `Functor` or `Applicative` in more powerful typeclasses like `Monad` are implemented in terms of the operations of the latter. In practice, this means that if you just implement `pure` and `flatMap` the rest of the combinators like `map` are going to be implemented in terms of them. Because of this we'll override `map` for not using `flatMap` and `product` for expressing the independence of two computations.
+
+
+```tut:silent
+implicit val taskFetchMonadError: FetchMonadError[Task] = new FetchMonadError[Task] {
+  override def map[A, B](fa: Task[A])(f: A => B): Task[B] =
+    fa.map(f)
+
+  override def product[A, B](fa: Task[A], fb: Task[B]): Task[(A, B)] =
+    Task.zip2(Task.fork(fa), Task.fork(fb)) // introduce parallelism with Task#fork
+
+  override def pureEval[A](e: Eval[A]): Task[A] = evalToTask(e)
+
+  def pure[A](x: A): Task[A] =
+    Task.now(x)
+
+  def handleErrorWith[A](fa: Task[A])(f: Throwable => Task[A]): Task[A] =
+    fa.onErrorHandleWith(f)
+
+  def raiseError[A](e: Throwable): Task[A] =
+    Task.raiseError(e)
+
+  def flatMap[A, B](fa: Task[A])(f: A => Task[B]): Task[B] =
+    fa.flatMap(f)
+
+  override def runQuery[A](q: Query[A]): Task[A] = queryToTask(q)
+}
+```
+
+We can now import the above implicit and run a fetch to our custom type, let's give it a go:
+
+```tut:book
+val task = Fetch.run(homePage)(taskFetchMonadError)
+
+Await.result(task.runAsync(scheduler), Duration.Inf)
+```
+
 
 # Resources
 
@@ -794,4 +1018,7 @@ Fetch stands on the shoulders of giants:
 - [Haxl](https://github.com/facebook/haxl) is Facebook's implementation (Haskell) of the [original paper Fetch is based on](http://community.haskell.org/~simonmar/papers/haxl-icfp14.pdf).
 - [Clump](http://getclump.io) has inspired the signature of the `DataSource#fetch` method.
 - [Stitch](https://engineering.twitter.com/university/videos/introducing-stitch) is an in-house Twitter library that is not open source but has inspired Fetch's high-level API.
+- [Cats](http://typelevel.org/cats/), a library for functional programming in Scala.
+- [Monix](https://monix.io) high-performance and multiplatform (Scala / Scala.js) asynchronous programming library.
+
 

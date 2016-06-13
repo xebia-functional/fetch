@@ -12,20 +12,20 @@ A library for Simple & Efficient data access in Scala and Scala.js
 
 Add the following dependency to your project's build file.
 
-```scala
-"com.fortysevendeg" %% "fetch" %% "0.2.0"
-```
-
-Or, if using Scala.js:
+For Scala 2.11.x:
 
 ```scala
-"com.fortysevendeg" %%% "fetch" %% "0.2.0"
+"com.fortysevendeg" %% "fetch" % "0.2.0"
 ```
 
-Fetch is available for the following Scala and Scala.js versions:
+Or, if using Scala.js (0.6.x):
 
-- Scala 2.11.x
-- Scala.js 0.6.x
+```scala
+"com.fortysevendeg" %%% "fetch" % "0.2.0"
+```
+
+
+
 
 ## Remote data
 
@@ -34,42 +34,41 @@ has a latency cost, such as databases or web services.
 
 ## Define your data sources
 
-For telling `Fetch` how to get the data you want, you must implement the `DataSource` typeclass. Data sources have a `fetch` method that
-defines how to fetch such a piece of data.
+To tell `Fetch` how to get the data you want, you must implement the `DataSource` typeclass. Data sources have `fetchOne` and `fetchMany` methods that define how to fetch such a piece of data.
 
 Data Sources take two type parameters:
 
 <ol>
-<li><code>Identity</code> is a type that has enough information to fetch the data</li>
-<li><code>Result</code> is the type of data we want to fetch</li>
+<li><code>Identity</code> is a type that has enough information to fetch the data. For a users data source, this would be a user's unique ID.</li>
+<li><code>Result</code> is the type of data we want to fetch. For a users data source, this would the `User` type.</li>
 </ol>
 
 ```scala
+import cats.data.NonEmptyList
+
 trait DataSource[Identity, Result]{
-  def fetchOne(id: Identity): Eval[Option[Result]]
-  def fetchMany(ids: NonEmptyList[Identity]): Eval[Map[Identity, Result]]
+  def fetchOne(id: Identity): Query[Option[Result]]
+  def fetchMany(ids: NonEmptyList[Identity]): Query[Map[Identity, Result]]
 }
 ```
 
 We'll implement a dummy data source that can convert integers to strings. For convenience, we define a `fetchString` function that lifts identities (`Int` in our dummy data source) to a `Fetch`. 
 
 ```scala
-import cats.Eval
 import cats.data.NonEmptyList
 import cats.std.list._
-
 import fetch._
 
 implicit object ToStringSource extends DataSource[Int, String]{
-  override def fetchOne(id: Int): Eval[Option[String]] = {
-    Eval.later({
-      println(s"ToStringSource $id")
+  override def fetchOne(id: Int): Query[Option[String]] = {
+    Query.sync({
+      println(s"[${Thread.currentThread.getId}] One ToString $id")
       Option(id.toString)
     })
   }
-  override def fetchMany(ids: NonEmptyList[Int]): Eval[Map[Int, String]] = {
-    Eval.later({
-      println(s"ToStringSource $ids")
+  override def fetchMany(ids: NonEmptyList[Int]): Query[Map[Int, String]] = {
+    Query.sync({
+      println(s"[${Thread.currentThread.getId}] Many ToString $ids")
       ids.unwrap.map(i => (i, i.toString)).toMap
     })
   }
@@ -83,21 +82,26 @@ def fetchString(n: Int): Fetch[String] = Fetch(n) // or, more explicitly: Fetch(
 Now that we can convert `Int` values to `Fetch[String]`, let's try creating a fetch.
 
 ```scala
-import fetch.implicits._
 import fetch.syntax._
 
 val fetchOne: Fetch[String] = fetchString(1)
 ```
 
-Now that we have created a fetch, we can run it to a target monad. Note that the target monad (`Eval` in our example) needs to implement `MonadError[M, Throwable]`, we provide an instance for `Eval` in `fetch.implicits._`, that's why we imported it.
+We'll run our fetches to the ambien `Id` monad in our examples. Note that in real-life scenarios you'll want to run a fetch to a concurrency monad such as `Future` or `Task`, synchronous execution of a fetch is only supported in Scala and not Scala.js and is meant for experimentation purposes.
 
 ```scala
-val result: String = fetchOne.runA[Eval].value
-// ToStringSource 1
-// result: String = 1
+import cats.Id
+import fetch.unsafe.implicits._
+import fetch.syntax._
 ```
 
-As you can see in the previous example, the `ToStringSource` is queried once to get the value of 1.
+Let's run it and wait for the fetch to complete:
+
+```scala
+fetchOne.runA[Id]
+// [169] One ToString 1
+// res3: cats.Id[String] = 1
+```
 
 ## Batching
 
@@ -112,27 +116,29 @@ val fetchThree: Fetch[(String, String, String)] = (fetchString(1) |@| fetchStrin
 When executing the above fetch, note how the three identities get batched and the data source is only queried once.
 
 ```scala
-val result: (String, String, String) = fetchThree.runA[Eval].value
-// ToStringSource OneAnd(1,List(2, 3))
-// result: (String, String, String) = (1,2,3)
+fetchThree.runA[Id]
+// [169] Many ToString OneAnd(1,List(2, 3))
+// res5: cats.Id[(String, String, String)] = (1,2,3)
 ```
 
-## Concurrency
+## Parallelism
 
-If we combine two independent fetches from different data sources, the fetches will be run concurrently. First, let's add a data source that fetches a string's size.
+If we combine two independent fetches from different data sources, the fetches can be run in parallel. First, let's add a data source that fetches a string's size.
+
+This time, instead of creating the results with `Query#sync` we are going to do it with `Query#async` for emulating an asynchronous data source.
 
 ```scala
 implicit object LengthSource extends DataSource[String, Int]{
-  override def fetchOne(id: String): Eval[Option[Int]] = {
-    Eval.later({
-      println(s"LengthSource $id")
-      Option(id.size)
+  override def fetchOne(id: String): Query[Option[Int]] = {
+    Query.async((ok, fail) => {
+      println(s"[${Thread.currentThread.getId}] One Length $id")
+      ok(Option(id.size))
     })
   }
-  override def fetchMany(ids: NonEmptyList[String]): Eval[Map[String, Int]] = {
-    Eval.later({
-      println(s"LengthSource $ids")
-      ids.unwrap.map(i => (i, i.size)).toMap
+  override def fetchMany(ids: NonEmptyList[String]): Query[Map[String, Int]] = {
+    Query.async((ok, fail) => {
+      println(s"[${Thread.currentThread.getId}] Many Length $ids")
+      ok(ids.unwrap.map(i => (i, i.size)).toMap)
     })
   }
 }
@@ -146,13 +152,13 @@ And now we can easily receive data from the two sources in a single fetch.
 val fetchMulti: Fetch[(String, Int)] = (fetchString(1) |@| fetchLength("one")).tupled
 ```
 
-Note how the two independent data fetches are run concurrently, minimizing the latency cost of querying the two data sources. If our target monad was a concurrency monad like `Future`, they'd run in parallel, each in its own logical thread.
+Note how the two independent data fetches run in parallel, minimizing the latency cost of querying the two data sources.
 
 ```scala
-val result: (String, Int) = fetchMulti.runA[Eval].value
-// ToStringSource OneAnd(1,List())
-// LengthSource OneAnd(one,List())
-// result: (String, Int) = (1,3)
+fetchMulti.runA[Id]
+// [169] One ToString 1
+// [170] One Length one
+// res7: cats.Id[(String, Int)] = (1,3)
 ```
 
 ## Caching
@@ -169,8 +175,7 @@ val fetchTwice: Fetch[(String, String)] = for {
 While running it, notice that the data source is only queried once. The next time the identity is requested it's served from the cache.
 
 ```scala
-val result: (String, String) = fetchTwice.runA[Eval].value
-// ToStringSource 1
-// result: (String, String) = (1,1)
+fetchTwice.runA[Id]
+// [169] One ToString 1
+// res8: cats.Id[(String, String)] = (1,1)
 ```
-

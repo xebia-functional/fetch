@@ -68,7 +68,7 @@ lazy val docs = (project in file("docs"))
   .settings(
     moduleName := "fetch-docs"
    )
-  .dependsOn(fetchJVM)
+  .dependsOn(fetchJVM, fetchMonixJVM)
   .enablePlugins(JekyllPlugin)
   .settings(docsSettings: _*)
   .settings(noPublishSettings)
@@ -127,3 +127,20 @@ lazy val readme = (project in file("tut"))
   .settings(readmeSettings: _*)
   .settings(noPublishSettings)
 
+lazy val monixSettings = (
+  libraryDependencies ++= Seq(
+    "io.monix" %%% "monix-eval" % "2.0-RC5"
+  )
+)
+
+lazy val monix = crossProject.in(file("monix"))
+  .dependsOn(fetch)
+  .settings(moduleName := "fetch-monix")
+  .settings(allSettings:_*)
+  .jsSettings(fetchJSSettings:_*)
+  .settings(monixSettings: _*)
+  .enablePlugins(AutomateHeaderPlugin)
+
+
+lazy val fetchMonixJVM = monix.jvm
+lazy val fetchMonixJS = monix.js

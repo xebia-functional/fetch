@@ -16,10 +16,9 @@
 
 package fetch
 
-import cats.Eval
 import cats.data.NonEmptyList
-
 import cats.std.list._
+import cats.syntax.functor._
 import cats.syntax.traverse._
 
 /**
@@ -40,17 +39,17 @@ trait DataSource[I, A] {
 
   /** Fetch one identity, returning a None if it wasn't found.
     */
-  def fetchOne(id: I): Eval[Option[A]]
+  def fetchOne(id: I): Query[Option[A]]
 
   /** Fetch many identities, returning a mapping from identities to results. If an
     * identity wasn't found won't appear in the keys.
     */
-  def fetchMany(ids: NonEmptyList[I]): Eval[Map[I, A]]
+  def fetchMany(ids: NonEmptyList[I]): Query[Map[I, A]]
 
   /** Use `fetchOne` for implementing of `fetchMany`. Use only when the data
     * source doesn't support batching.
     */
-  def batchingNotSupported(ids: NonEmptyList[I]): Eval[Map[I, A]] = {
+  def batchingNotSupported(ids: NonEmptyList[I]): Query[Map[I, A]] = {
     val idsList = ids.unwrap
     idsList
       .map(fetchOne)

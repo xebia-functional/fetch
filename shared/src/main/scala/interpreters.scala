@@ -16,14 +16,12 @@
 
 package fetch
 
-import cats.{MonadError, ~>}
-import cats.data.{StateT, NonEmptyList}
-
 import scala.collection.immutable._
 
+import cats.{MonadError, ~>}
+import cats.data.{StateT, NonEmptyList}
 import cats.std.option._
 import cats.std.list._
-
 import cats.syntax.traverse._
 
 /**
@@ -33,56 +31,61 @@ case class FetchFailure(env: Env) extends Throwable
 
 trait FetchInterpreters {
 
-  def interpreter[I, M[_]](
-      implicit MM: MonadError[M, Throwable]
-  ): FetchOp ~> FetchInterpreter[M]#f = {
-    def dedupeIds[I, A, M[_]](ids: NonEmptyList[I], ds: DataSource[I, A], cache: DataSourceCache) = {
-      ids.unwrap.distinct.filterNot(i => cache.get(ds.identity(i)).isDefined)
-    }
+  def pendingRequests(
+      requests: List[FetchRequest[_, _]], cache: DataSourceCache): List[FetchRequest[Any, Any]] = {
+    requests
+      .filterNot(_.fullfilledBy(cache))
+      .map(req => {
+        (req.dataSource, req.missingIdentities(cache))
+      })
+      .collect({
+        case (ds, ids) if ids.size == 1 =>
+          FetchOne[Any, Any](ids.head, ds.asInstanceOf[DataSource[Any, Any]])
+        case (ds, ids) if ids.size > 1 =>
+          FetchMany[Any, Any](
+              NonEmptyList(ids(0), ids.tail), ds.asInstanceOf[DataSource[Any, Any]])
+      })
+  }
 
+  def interpreter[I, M[_]](
+      implicit M: FetchMonadError[M]
+  ): FetchOp ~> FetchInterpreter[M]#f = {
     new (FetchOp ~> FetchInterpreter[M]#f) {
       def apply[A](fa: FetchOp[A]): FetchInterpreter[M]#f[A] = {
         StateT[M, FetchEnv, A] { env: FetchEnv =>
           fa match {
-            case FetchError(e) => MM.raiseError(e)
-            case Cached(a)     => MM.pure((env, a))
-            case Concurrent(manies) => {
+            case FetchError(e) => M.raiseError(e)
+            case Cached(a)     => M.pure((env, a))
+            case Concurrent(concurrentRequests) => {
                 val startRound = System.nanoTime()
                 val cache      = env.cache
-                val sources    = manies.map(_.ds)
-                val ids        = manies.map(_.as)
 
-                val sourcesAndIds = (sources zip ids)
-                  .map({
-                    case (ds, ids) =>
-                      (
-                          ds,
-                          dedupeIds[I, A, M](ids.asInstanceOf[NonEmptyList[I]],
-                                             ds.asInstanceOf[DataSource[I, A]],
-                                             cache)
-                      )
-                  })
-                  .collect({
-                    case (ds, ids) if !ids.isEmpty => (ds, NonEmptyList(ids(0), ids.tail))
-                  })
+                val requests: List[FetchRequest[Any, Any]] =
+                  pendingRequests(concurrentRequests, cache)
 
-                if (sourcesAndIds.isEmpty)
-                  MM.pure((env, env.cache.asInstanceOf[A]))
-                else
-                  MM.flatMap(
-                      sourcesAndIds
-                        .map({
-                      case (ds, as) =>
-                        MM.pureEval(ds
-                              .asInstanceOf[DataSource[I, A]]
-                              .fetchMany(as.asInstanceOf[NonEmptyList[I]]))
-                    })
-                        .sequence)((results: List[Map[_, _]]) => {
+                if (requests.isEmpty)
+                  M.pure((env, cache.asInstanceOf[A]))
+                else {
+                  val sentRequests = M.sequence(requests.map({
+                    case FetchOne(a, ds) => {
+                        val ident = a.asInstanceOf[I]
+                        val task  = M.runQuery(ds.asInstanceOf[DataSource[I, A]].fetchOne(ident))
+                        M.map(task)((r: Option[A]) =>
+                              r.fold(Map.empty[I, A])((result: A) => Map(ident -> result)))
+                      }
+                    case FetchMany(as, ds) =>
+                      M.runQuery(ds
+                            .asInstanceOf[DataSource[I, A]]
+                            .fetchMany(as.asInstanceOf[NonEmptyList[I]]))
+                  }))
+
+                  M.flatMap(sentRequests)((results: List[Map[_, _]]) => {
                     val endRound = System.nanoTime()
-                    val newCache = (sources zip results).foldLeft(cache)((accache, resultset) => {
-                      val (ds, resultmap) = resultset
-                      val tresults        = resultmap.asInstanceOf[Map[I, A]]
-                      val tds             = ds.asInstanceOf[DataSource[I, A]]
+                    val newCache = (requests zip results).foldLeft(cache)((accache, resultset) => {
+                      val (req, resultmap) = resultset
+                      val ds               = req.dataSource
+                      val tresults         = resultmap.asInstanceOf[Map[I, A]]
+                      val tds              = ds.asInstanceOf[DataSource[I, A]]
                       accache.cacheResults[I, A](tresults, tds)
                     })
                     val newEnv = env.next(
@@ -91,9 +94,10 @@ trait FetchInterpreters {
                             cache,
                             "Concurrent",
                             ConcurrentRound(
-                                sourcesAndIds
+                                requests
                                   .map({
-                                    case (ds, as) => (ds.name, as.unwrap)
+                                    case FetchOne(a, ds)   => (ds.name, List(a))
+                                    case FetchMany(as, ds) => (ds.name, as.unwrap)
                                   })
                                   .toMap
                             ),
@@ -103,39 +107,41 @@ trait FetchInterpreters {
                         Nil
                     )
 
-                    val allFetched = (sourcesAndIds zip results).forall({
-                      case ((_, theIds), results) => theIds.unwrap.size == results.size
-                      case _                      => false
+                    val allFullfilled = (requests zip results).forall({
+                      case (FetchOne(_, _), results)   => results.size == 1
+                      case (FetchMany(as, _), results) => as.unwrap.size == results.size
+                      case _                           => false
                     })
 
-                    if (allFetched) {
+                    if (allFullfilled) {
                       // since user-provided caches may discard elements, we use an in-memory
                       // cache to gather these intermediate results that will be used for
                       // concurrent optimizations.
                       val cachedResults =
-                        (sources zip results).foldLeft(InMemoryCache.empty)((cach, resultSet) => {
-                          val (ds, resultmap) = resultSet
-                          val tresults        = resultmap.asInstanceOf[Map[I, A]]
-                          val tds             = ds.asInstanceOf[DataSource[I, A]]
+                        (requests zip results).foldLeft(InMemoryCache.empty)((cach, resultSet) => {
+                          val (req, resultmap) = resultSet
+                          val ds               = req.dataSource
+                          val tresults         = resultmap.asInstanceOf[Map[I, A]]
+                          val tds              = ds.asInstanceOf[DataSource[I, A]]
                           cach.cacheResults[I, A](tresults, tds).asInstanceOf[InMemoryCache]
                         })
-                      MM.pure((newEnv, cachedResults.asInstanceOf[A]))
+                      M.pure((newEnv, cachedResults.asInstanceOf[A]))
                     } else {
-                      MM.raiseError(FetchFailure(newEnv))
+                      M.raiseError(FetchFailure(newEnv))
                     }
                   })
+                }
               }
             case FetchOne(id, ds) => {
                 val startRound = System.nanoTime()
                 val cache      = env.cache
                 cache
-                  .get(ds.identity(id))
+                  .get[A](ds.identity(id))
                   .fold[M[(FetchEnv, A)]](
-                      MM.flatMap(MM.pureEval(ds.fetchOne(id)).asInstanceOf[M[Option[A]]])(
-                          (res: Option[A]) => {
+                      M.flatMap(M.runQuery(ds.fetchOne(id)))((res: Option[A]) => {
                         val endRound = System.nanoTime()
                         res.fold[M[(FetchEnv, A)]](
-                            MM.raiseError(
+                            M.raiseError(
                                 FetchFailure(
                                     env.next(
                                         cache,
@@ -151,7 +157,7 @@ trait FetchInterpreters {
                         )(result => {
                           val endRound = System.nanoTime()
                           val newCache = cache.update(ds.identity(id), result)
-                          MM.pure(
+                          M.pure(
                               (env.next(
                                    newCache,
                                    Round(cache,
@@ -167,7 +173,7 @@ trait FetchInterpreters {
                       })
                   )(cached => {
                     val endRound = System.nanoTime()
-                    MM.pure(
+                    M.pure(
                         (env.next(
                              cache,
                              Round(cache,
@@ -178,17 +184,16 @@ trait FetchInterpreters {
                                    true),
                              List(id)
                          ),
-                         cached.asInstanceOf[A])
+                         cached)
                     )
                   })
               }
-            case FetchMany(ids, ds) => {
+            case many @ FetchMany(ids, ds) => {
                 val startRound = System.nanoTime()
                 val cache      = env.cache
-                val oldIds     = ids.unwrap.distinct
-                val newIds     = dedupeIds[Any, Any, Any](ids, ds, cache)
+                val newIds     = many.missingIdentities(cache)
                 if (newIds.isEmpty)
-                  MM.pure(
+                  M.pure(
                       (env.next(
                            cache,
                            Round(cache,
@@ -202,15 +207,17 @@ trait FetchInterpreters {
                        ids.unwrap.flatMap(id => cache.get(ds.identity(id))))
                   )
                 else {
-                  MM.flatMap(MM
-                        .pureEval(ds.fetchMany(NonEmptyList(newIds(0), newIds.tail)))
-                        .asInstanceOf[M[Map[I, A]]])((res: Map[I, A]) => {
+                  M.flatMap(M.runQuery(ds
+                            .asInstanceOf[DataSource[I, A]]
+                            .fetchMany(NonEmptyList(newIds(0).asInstanceOf[I],
+                                                    newIds.tail.asInstanceOf[List[I]]))))(
+                      (res: Map[I, A]) => {
                     val endRound = System.nanoTime()
                     ids.unwrap
                       .map(i => res.get(i.asInstanceOf[I]))
                       .sequence
                       .fold[M[(FetchEnv, A)]](
-                          MM.raiseError(
+                          M.raiseError(
                               FetchFailure(
                                   env.next(
                                       cache,
@@ -227,8 +234,7 @@ trait FetchInterpreters {
                         val endRound = System.nanoTime()
                         val newCache =
                           cache.cacheResults[I, A](res, ds.asInstanceOf[DataSource[I, A]])
-                        val someCached = oldIds.size == newIds.size
-                        MM.pure(
+                        M.pure(
                             (env.next(
                                  newCache,
                                  Round(cache,
@@ -236,7 +242,7 @@ trait FetchInterpreters {
                                        ManyRound(ids.unwrap),
                                        startRound,
                                        endRound,
-                                       someCached),
+                                       results.size < ids.unwrap.distinct.size),
                                  newIds
                              ),
                              results)

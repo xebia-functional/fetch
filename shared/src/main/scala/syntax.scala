@@ -26,7 +26,7 @@ object syntax {
   }
 
   /** Implicit syntax to lift exception to Fetch errors */
-  implicit class FetchErrorSyntax[A <: Throwable](val a: A) extends AnyVal {
+  implicit class FetchErrorSyntax(val a: Throwable) extends AnyVal {
 
     def fetch[B]: Fetch[B] =
       Fetch.error[B](a)
