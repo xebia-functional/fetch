@@ -181,3 +181,6 @@ While running it, notice that the data source is only queried once. The next tim
 fetchTwice.runA[Id]
 ```
 
+---
+
+For more in-depth information take a look at our [documentation](http://47deg.github.io/fetch/docs.html).
