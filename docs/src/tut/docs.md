@@ -650,10 +650,10 @@ fetchPure.runA[Id]
 Errors can also be lifted to the Fetch monad via `exception.fetch`.
 
 ```tut:silent
-val fetchFail: Fetch[Int] = Fetch.error(new Exception("Something went terribly wrong"))
+val fetchFail: Fetch[Int] = new Exception("Something went terribly wrong").fetch
 ```
 
-Note that interpreting an errorful fetch to `Future` and blocking for its result will throw the exception.
+Note that interpreting an errorful fetch to `Id` will throw the exception.
 
 ```tut:fail
 fetchFail.runA[Id]
@@ -675,7 +675,7 @@ fetchJoined.runA[Id]
 
 ### runA
 
-Run directly any fetch to a `Future` with `fetch1.runA`.
+Run directly any fetch with `fetch1.runA`.
 
 ```tut:book
 getPost(1).runA[Id]
@@ -683,7 +683,7 @@ getPost(1).runA[Id]
 
 ### runE
 
-Extract a fetch an get it's runtime environment `fetch1.runE`.
+Run a fetch an get it's runtime environment `fetch1.runE`.
 
 ```tut:book
 getPost(1).runE[Id]
@@ -727,7 +727,7 @@ Errors can also be lifted to the Fetch monad via `Fetch#error`.
 val fetchFail: Fetch[Int] = Fetch.error(new Exception("Something went terribly wrong"))
 ```
 
-Note that interpreting an errorful fetch to `Future` won't throw the exception until we block for its result it.
+Note that interpreting an errorful fetch to `Id` won't throw the exception until we block for its result it.
 
 ```tut:fail
 Fetch.run[Id](fetchFail)
@@ -924,9 +924,9 @@ import monix.eval.Task
 
 def evalToTask[A](e: Eval[A]): Task[A] = e match {
   case Now(x) => Task.now(x)
-  case l: Later[A]  => Task.evalOnce({ l.value })
-  case a: Always[A] => Task.evalAlways({ a.value })
-  case other => Task.evalOnce({ other.value })
+  case l: Later[A]  => Task.evalOnce(l.value)
+  case a: Always[A] => Task.evalAlways(a.value)
+  case other => Task.evalOnce(other.value)
 }
 ```
 
