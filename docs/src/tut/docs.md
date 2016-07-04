@@ -877,7 +877,7 @@ For using `Task` as the target concurrency monad of a fetch, add the following d
 "com.fortysevendeg" %% "fetch-monix" % "0.3.0-SNAPSHOT"
 ```
 
-And do some standard imports, we'll need an Scheduler for running our tasks as well as the instance of `FetchMonadError[Task]` that `fetch-monix` provids:
+And do some standard imports, we'll need an Scheduler for running our tasks as well as the instance of `FetchMonadError[Task]` that `fetch-monix` provides:
 
 ```tut:silent
 import monix.eval.Task
