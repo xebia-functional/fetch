@@ -727,7 +727,7 @@ Errors can also be lifted to the Fetch monad via `Fetch#error`.
 val fetchFail: Fetch[Int] = Fetch.error(new Exception("Something went terribly wrong"))
 ```
 
-Note that interpreting an errorful fetch to `Id` won't throw the exception until we block for its result it.
+Note that interpreting an errorful fetch to `Id` will throw the exception.
 
 ```tut:fail
 Fetch.run[Id](fetchFail)
