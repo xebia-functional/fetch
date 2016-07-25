@@ -11,8 +11,8 @@
   <meta name="description" content="Simple & Efficient data access for Scala and Scala.js">
   <meta name="author" content="">
   <link rel="icon" type="image/png" href="%7B%7B%20site.favicon.url%20%7D%7D">
-  <meta property="og:image" content="/fetch/poster.png">
-  <meta name="twitter:image" content="/fetch/poster.png">
+  <meta property="og:image" content="https://rawgit.com/47deg/microsites/cdn//fetch/poster.png">
+  <meta name="twitter:image" content="https://rawgit.com/47deg/microsites/cdn//fetch/poster.png">
   <meta property="og:title" content="Fetch">
   <meta property="og:site_name" content="Fetch">
   <meta property="og:url" content="/">
@@ -36,7 +36,7 @@
         <div class="row">
           <div class="col-xs-6">
             <a href="#" data-href="/fetch/" class="brand">
-              <div class="icon-wrapper" style="background:url('/fetch/navbar_brand.png') no-repeat"> <span>Fetch</span> </div>
+              <div class="icon-wrapper" style="background:url('https://rawgit.com/47deg/microsites/cdn//fetch/navbar_brand.png') no-repeat"> <span>Fetch</span> </div>
             </a>
           </div>
           <div class="col-xs-6">
@@ -53,7 +53,7 @@
         </div>
       </div>
     </div>
-    <div class="jumbotron" style="background-image:url('/fetch/jumbotron_pattern.png')">
+    <div class="jumbotron" style="background-image:url('https://rawgit.com/47deg/microsites/cdn//fetch/jumbotron_pattern.png')">
       <div class="container">
         <h1 class="text-center">Simple & Efficient data access for Scala and Scala.js</h1>
         <h2></h2>
@@ -135,7 +135,7 @@ is only supported in Scala and not Scala.js and is meant for experimentation pur
 
 <p>Let&#39;s run it and wait for the fetch to complete:</p>
 <div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="n">fetchOne</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Id</span><span class="o">]</span>
-<span class="c1">// [572] One ToString 1
+<span class="c1">// [92] One ToString 1
 // res2: cats.Id[String] = 1
 </span></code></pre></div>
 <p>As you can see in the previous example, the <code>ToStringSource</code> is queried once to get the value of 1.</p>
@@ -149,7 +149,7 @@ is only supported in Scala and not Scala.js and is meant for experimentation pur
 </code></pre></div>
 <p>When executing the above fetch, note how the three identities get batched and the data source is only queried once.</p>
 <div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="n">fetchThree</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Id</span><span class="o">]</span>
-<span class="c1">// [572] Many ToString OneAnd(1,List(2, 3))
+<span class="c1">// [92] Many ToString OneAnd(1,List(2, 3))
 // res4: cats.Id[(String, String, String)] = (1,2,3)
 </span></code></pre></div>
 <h2>Parallelism</h2>
@@ -179,8 +179,8 @@ is only supported in Scala and not Scala.js and is meant for experimentation pur
 </code></pre></div>
 <p>Note how the two independent data fetches run in parallel, minimizing the latency cost of querying the two data sources.</p>
 <div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="n">fetchMulti</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Id</span><span class="o">]</span>
-<span class="c1">// [572] One ToString 1
-// [582] One Length one
+<span class="c1">// [92] One ToString 1
+// [103] One Length one
 // res6: cats.Id[(String, Int)] = (1,3)
 </span></code></pre></div>
 <h2>Caching</h2>
@@ -193,7 +193,7 @@ is only supported in Scala and not Scala.js and is meant for experimentation pur
 </code></pre></div>
 <p>While running it, notice that the data source is only queried once. The next time the identity is requested it&#39;s served from the cache.</p>
 <div class="highlight"><pre><code class="language-scala" data-lang="scala"><span class="n">fetchTwice</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Id</span><span class="o">]</span>
-<span class="c1">// [572] One ToString 1
+<span class="c1">// [92] One ToString 1
 // res7: cats.Id[(String, String)] = (1,1)
 </span></code></pre></div>
 <hr>
@@ -265,13 +265,13 @@ is only supported in Scala and not Scala.js and is meant for experimentation pur
       $("<link/>", {
         rel: "stylesheet",
         type: "text/css",
-        href: "/style.css"
+        href: "https://rawgit.com/47deg/microsites/cdn//style.css"
       }).appendTo("head");
 
       $("<link/>", {
         rel: "stylesheet",
         type: "text/css",
-        href: "/fetch/palette.css"
+        href: "https://rawgit.com/47deg/microsites/cdn//fetch/palette.css"
       }).appendTo("head");
     }
 
