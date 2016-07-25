@@ -71,34 +71,28 @@ object TestHelper {
   }
   def many(id: Int): Fetch[List[Int]] = Fetch(Many(id))
 
+  def requestFetches(r: FetchRequest): Int =
+    r match {
+      case FetchOne(_, _)       => 1
+      case FetchMany(ids, _)    => ids.unwrap.size
+      case Concurrent(requests) => requests.map(requestFetches).sum
+    }
+
   def totalFetched(rs: Seq[Round]): Int =
-    rs.foldLeft(0)(
-        (acc, round) =>
-          round.kind match {
-        case OneRound(_)          => acc + 1
-        case ManyRound(ids)       => acc + ids.size
-        case ConcurrentRound(ids) => acc + ids.map(_._2.size).sum
-    })
+    rs.map((round: Round) => requestFetches(round.request)).sum
+
+  def requestBatches(r: FetchRequest): Int =
+    r match {
+      case FetchOne(_, _)       => 0
+      case FetchMany(ids, _)    => 1
+      case Concurrent(requests) => requests.collect({ case FetchMany(_, _) => }).size
+    }
 
   def totalBatches(rs: Seq[Round]): Int =
-    rs.foldLeft(0)(
-        (acc, round) =>
-          round.kind match {
-        case OneRound(_)          => acc
-        case ManyRound(ids)       => acc + 1
-        case ConcurrentRound(ids) => acc + ids.filter(_._2.size > 1).size
-    })
-
-  def concurrent(rs: Seq[Round]): Seq[Round] =
-    rs.filter(
-        r =>
-          r.kind match {
-            case ConcurrentRound(_) => true
-            case other              => false
-        }
-    )
+    rs.map((round: Round) => requestBatches(round.request)).sum
 }
 
+@DoNotDiscover
 class FetchSyntaxTests extends AsyncFreeSpec with Matchers {
   import fetch.syntax._
   import TestHelper._
@@ -116,7 +110,7 @@ class FetchSyntaxTests extends AsyncFreeSpec with Matchers {
     val fut = Fetch.runEnv[Future](fetch)
 
     fut.map(env => {
-      concurrent(env.rounds).size shouldEqual 1
+      env.rounds.size shouldEqual 1
     })
   }
 
@@ -130,9 +124,10 @@ class FetchSyntaxTests extends AsyncFreeSpec with Matchers {
     fut.map(
         env => {
       val rounds = env.rounds
-      val stats  = (concurrent(rounds).size, totalBatches(rounds), totalFetched(rounds))
 
-      stats shouldEqual (1, 1, 2)
+      rounds.size shouldEqual 1
+      totalBatches(rounds) shouldEqual 1
+      totalFetched(rounds) shouldEqual 2
     })
   }
 
@@ -322,7 +317,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
     fut.map(_ shouldEqual List(0, 1, 2))
   }
 
-  "Traversals are implicitly concurrent" in {
+  "Traversals are implicitly batched" in {
     import cats.std.list._
     import cats.syntax.traverse._
 
@@ -334,7 +329,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
     Fetch
       .runEnv[Future](fetch)
       .map(env => {
-        concurrent(env.rounds).size shouldEqual 1
+        env.rounds.size shouldEqual 2
       })
   }
 
@@ -344,7 +339,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
     Fetch
       .runEnv[Future](fetch)
       .map(env => {
-        concurrent(env.rounds).size shouldEqual 1
+        env.rounds.size shouldEqual 1
       })
   }
 
@@ -419,7 +414,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
       .runEnv[Future](fetch)
       .map(env => {
         val rounds = env.rounds
-        val stats  = (concurrent(rounds).size, totalBatches(rounds), totalFetched(rounds))
+        val stats  = (rounds.size, totalBatches(rounds), totalFetched(rounds))
 
         stats shouldEqual (1, 1, 4)
       })
@@ -446,7 +441,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
       .runEnv[Future](fetch)
       .map(env => {
         val rounds = env.rounds
-        val stats  = (concurrent(rounds).size, totalBatches(rounds), totalFetched(rounds))
+        val stats  = (rounds.size, totalBatches(rounds), totalFetched(rounds))
 
         stats shouldEqual (2, 1, 4)
       })
@@ -470,7 +465,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
       .runEnv[Future](fetch)
       .map(env => {
         val rounds = env.rounds
-        val stats  = (concurrent(rounds).size, totalBatches(rounds), totalFetched(rounds))
+        val stats  = (rounds.size, totalBatches(rounds), totalFetched(rounds))
 
         stats shouldEqual (3, 3, 6)
       })
@@ -497,7 +492,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
       .runEnv[Future](fetch)
       .map(env => {
         val rounds = env.rounds
-        val stats  = (concurrent(rounds).size, totalBatches(rounds), totalFetched(rounds))
+        val stats  = (rounds.size, totalBatches(rounds), totalFetched(rounds))
 
         stats shouldEqual (3, 3, 9 + 4 + 6)
       })
@@ -510,9 +505,9 @@ class FetchTests extends AsyncFreeSpec with Matchers {
       .runEnv[Future](fetch)
       .map(env => {
         val rounds = env.rounds
-        val stats  = (concurrent(rounds).size, totalBatches(rounds))
 
-        stats shouldEqual (1, 1)
+        rounds.size shouldEqual 1
+        totalBatches(rounds) shouldEqual 1
       })
   }
 
@@ -547,9 +542,9 @@ class FetchTests extends AsyncFreeSpec with Matchers {
       .runEnv[Future](fetch)
       .map(env => {
         val rounds = env.rounds
-        val stats  = (concurrent(rounds).size, totalBatches(rounds))
 
-        stats shouldEqual (1, 2)
+        rounds.size shouldEqual 1
+        totalBatches(rounds) shouldEqual 2
       })
   }
 
@@ -561,9 +556,9 @@ class FetchTests extends AsyncFreeSpec with Matchers {
       .runEnv[Future](fetch)
       .map(env => {
         val rounds = env.rounds
-        val stats  = (concurrent(rounds).size, totalFetched(rounds))
 
-        stats shouldEqual (1, 2)
+        rounds.size shouldEqual 1
+        totalFetched(rounds) shouldEqual 2
       })
   }
 
@@ -582,9 +577,9 @@ class FetchTests extends AsyncFreeSpec with Matchers {
     fut.map(
         env => {
       val rounds = env.rounds
-      val stats  = (concurrent(rounds).size, totalFetched(rounds))
 
-      stats shouldEqual (1, 2)
+      rounds.size shouldEqual 1
+      totalFetched(rounds) shouldEqual 2
     })
   }
 
@@ -594,13 +589,13 @@ class FetchTests extends AsyncFreeSpec with Matchers {
     Fetch.run[Future](fetch).map(_ shouldEqual List(1, 2, 3))
   }
 
-  "Traversals are run concurrently" in {
+  "Traversals are batched" in {
     val fetch = Fetch.traverse(List(1, 2, 3))(one)
 
     Fetch
       .runEnv[Future](fetch)
       .map(env => {
-        concurrent(env.rounds).size shouldEqual 1
+        env.rounds.size shouldEqual 1
       })
   }
 
@@ -611,9 +606,9 @@ class FetchTests extends AsyncFreeSpec with Matchers {
       .runEnv[Future](fetch)
       .map(env => {
         val rounds = env.rounds
-        val stats  = (concurrent(rounds).size, totalFetched(rounds))
 
-        stats shouldEqual (1, 2)
+        rounds.size shouldEqual 1
+        totalFetched(rounds) shouldEqual 2
       })
   }
 
@@ -627,9 +622,9 @@ class FetchTests extends AsyncFreeSpec with Matchers {
       .runEnv[Future](fetch)
       .map(env => {
         val rounds = env.rounds
-        val stats  = (concurrent(rounds).size, totalFetched(rounds))
 
-        stats shouldEqual (1, 2)
+        rounds.size shouldEqual 1
+        totalFetched(rounds) shouldEqual 2
       })
   }
 
@@ -679,7 +674,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
         env => {
       val rounds = env.rounds
 
-      totalFetched(rounds) shouldEqual 0
+      rounds.size shouldEqual 0
     })
   }
 
@@ -725,7 +720,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
         env => {
       val rounds = env.rounds
 
-      totalFetched(rounds) shouldEqual 0
+      rounds.size shouldEqual 0
     })
   }
 
@@ -772,6 +767,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   }
 }
 
+@DoNotDiscover
 class FetchReportingTests extends AsyncFreeSpec with Matchers {
   import TestHelper._
 

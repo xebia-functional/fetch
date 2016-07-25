@@ -27,12 +27,12 @@ import cats.syntax.traverse._
 /**
   * An exception thrown from the interpreter when failing to perform a data fetch.
   */
-case class FetchFailure(env: Env, request: FetchRequest[_, _]) extends Throwable
+case class FetchFailure(env: Env, request: FetchRequest) extends Throwable
 
 trait FetchInterpreters {
-
   def pendingQueries(
       queries: List[FetchQuery[_, _]], cache: DataSourceCache): List[FetchQuery[Any, Any]] = {
+
     queries
       .filterNot(_.fullfilledBy(cache))
       .map(req => {
@@ -75,18 +75,8 @@ trait FetchInterpreters {
                         )(result => {
                           val endRound = System.nanoTime()
                           val newCache = cache.update(ds.identity(id), result)
-                          M.pure(
-                              (env.next(
-                                   newCache,
-                                   Round(cache,
-                                         ds.name,
-                                         OneRound(id),
-                                         startRound,
-                                         endRound),
-                                   List(id)
-                               ),
-                               result)
-                          )
+                          val round    = Round(cache, one, result, startRound, endRound)
+                          M.pure(env.evolve(round, newCache) -> result)
                         })
                       })
                   )(cached => {
@@ -98,20 +88,10 @@ trait FetchInterpreters {
                 val startRound = System.nanoTime()
                 val cache      = env.cache
                 val newIds     = many.missingIdentities(cache)
+                val result     = ids.unwrap.flatMap(id => cache.get(ds.identity(id)))
+
                 if (newIds.isEmpty)
-                  M.pure(
-                      (env.next(
-                           cache,
-                           Round(cache,
-                                 ds.name,
-                                 ManyRound(ids.unwrap),
-                                 startRound,
-                                 System.nanoTime(),
-                                 true),
-                           newIds
-                       ),
-                       ids.unwrap.flatMap(id => cache.get(ds.identity(id))))
-                  )
+                  M.pure(env -> result)
                 else {
                   M.flatMap(M.runQuery(ds
                             .asInstanceOf[DataSource[I, A]]
@@ -133,19 +113,8 @@ trait FetchInterpreters {
                         val endRound = System.nanoTime()
                         val newCache =
                           cache.cacheResults[I, A](res, ds.asInstanceOf[DataSource[I, A]])
-                        M.pure(
-                            (env.next(
-                                 newCache,
-                                 Round(cache,
-                                       ds.name,
-                                       ManyRound(ids.unwrap),
-                                       startRound,
-                                       endRound,
-                                       results.size < ids.unwrap.distinct.size),
-                                 newIds
-                             ),
-                             results)
-                        )
+                        val round = Round(cache, many, results, startRound, endRound)
+                        M.pure(env.evolve(round, newCache) -> results)
                       })
                   })
                 }
@@ -160,6 +129,7 @@ trait FetchInterpreters {
                 if (queries.isEmpty)
                   M.pure((env, cache.asInstanceOf[A]))
                 else {
+                  // fixme: duplicated identities allowed!
                   val sentQueries = M.sequence(queries.map({
                     case FetchOne(a, ds) => {
                         val ident = a.asInstanceOf[I]
@@ -190,25 +160,14 @@ trait FetchInterpreters {
                     })
 
                     if (allFullfilled) {
-                      val newEnv = env.next(
-                          newCache,
-                          Round(
-                              cache,
-                              "Concurrent",
-                              ConcurrentRound(
-                                  queries
-                                    .map({
-                                      case FetchOne(a, ds)   => (ds.name, List(a))
-                                      case FetchMany(as, ds) => (ds.name, as.unwrap)
-                                    })
-                                    .toMap
-                              ),
-                              startRound,
-                              endRound
-                          ),
-                          Nil
+                      val round = Round(
+                          cache,
+                          Concurrent(queries),
+                          results,
+                          startRound,
+                          endRound
                       )
-
+                      val newEnv = env.evolve(round, newCache)
                       // since user-provided caches may discard elements, we use an in-memory
                       // cache to gather these intermediate results that will be used for
                       // concurrent optimizations.
@@ -220,6 +179,8 @@ trait FetchInterpreters {
                           val tds              = ds.asInstanceOf[DataSource[I, A]]
                           cach.cacheResults[I, A](tresults, tds).asInstanceOf[InMemoryCache]
                         })
+
+                      // todo: ojo que no se meten en la cache principal?
 
                       M.pure((newEnv, cachedResults.asInstanceOf[A]))
                     } else {

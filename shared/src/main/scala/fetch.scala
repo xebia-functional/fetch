@@ -60,11 +60,11 @@ object Query {
 
 /** Requests in Fetch Free monad.
   */
-sealed trait FetchRequest[I, A] extends Product with Serializable {
+sealed trait FetchRequest extends Product with Serializable {
   def fullfilledBy(cache: DataSourceCache): Boolean
 }
 
-sealed trait FetchQuery[I, A] extends FetchRequest[I, A] {
+sealed trait FetchQuery[I, A] extends FetchRequest {
   def missingIdentities(cache: DataSourceCache): List[I]
   def dataSource: DataSource[I, A]
   def identities: NonEmptyList[I]
@@ -88,12 +88,14 @@ final case class FetchOne[I, A](a: I, ds: DataSource[I, A])
   override def dataSource: DataSource[I, A] = ds
   override def identities: NonEmptyList[I]  = NonEmptyList(a, Nil)
 }
+
 final case class FetchMany[I, A](as: NonEmptyList[I], ds: DataSource[I, A])
     extends FetchOp[List[A]]
     with FetchQuery[I, A] {
   override def fullfilledBy(cache: DataSourceCache): Boolean = {
     as.forall((i: I) => cache.get[A](ds.identity(i)).isDefined)
   }
+
   override def missingIdentities(cache: DataSourceCache): List[I] = {
     as.unwrap.distinct.filterNot(i => cache.get[A](ds.identity(i)).isDefined)
   }
@@ -102,7 +104,7 @@ final case class FetchMany[I, A](as: NonEmptyList[I], ds: DataSource[I, A])
 }
 final case class Concurrent(as: List[FetchQuery[_, _]])
     extends FetchOp[DataSourceCache]
-    with FetchRequest[Any, Any] {
+    with FetchRequest {
   override def fullfilledBy(cache: DataSourceCache): Boolean = {
     as.forall(_.fullfilledBy(cache))
   }
@@ -191,14 +193,21 @@ object `package` {
               acc.updated(ds,
                           acc
                             .get(ds)
-                            .fold(NonEmptyList(id): NonEmptyList[Any])(accids =>
-                                  accids.combine(NonEmptyList(id))))
+                            .fold(NonEmptyList(id): NonEmptyList[Any])(accids => {
+                              val newIds = List(id)
+                              val allIds = (accids.unwrap ++ newIds).distinct
+                              NonEmptyList(allIds.head, allIds.tail: _*)
+                            }))
             case many @ FetchMany(ids, ds) =>
               acc.updated(ds,
                           acc
                             .get(ds)
-                            .fold(ids.asInstanceOf[NonEmptyList[Any]])(accids =>
-                                  accids.combine(ids.asInstanceOf[NonEmptyList[Any]])))
+                            .fold(ids.asInstanceOf[NonEmptyList[Any]])(accids => {
+                              val accList = accids.unwrap
+                              val newList = ids.unwrap
+                              val allIds  = (accList ++ newList).distinct
+                              NonEmptyList(allIds.head, allIds.tail: _*)
+                            }))
             case _ => acc
         })
         .toList
@@ -244,7 +253,9 @@ object `package` {
             }
           case many @ FetchMany(ids, ds) => {
               val fetched = ids.map(id => results.get(ds.identity(id))).unwrap.sequence
-              fetched.fold(many: FetchOp[B])(results => Fetched(results))
+              fetched.fold({
+                many: FetchOp[B]
+              })(results => Fetched(results))
             }
           case conc @ Concurrent(manies) => {
               val newManies = manies.filterNot(_.fullfilledBy(results))

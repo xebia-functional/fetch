@@ -23,14 +23,9 @@ import scala.collection.immutable._
   * cache and the list of rounds that have been executed.
   */
 trait Env {
-  def cache: DataSourceCache
   def rounds: Seq[Round]
-
-  def next(
-      newCache: DataSourceCache,
-      newRound: Round,
-      newIds: List[Any]
-  ): Env
+  def cache: DataSourceCache
+  def evolve(newRound: Round, newCache: DataSourceCache): Env
 }
 
 /**
@@ -38,38 +33,26 @@ trait Env {
   */
 case class Round(
     cache: DataSourceCache,
-    ds: DataSourceName,
-    kind: RoundKind,
-    startRound: Long,
-    endRound: Long,
-    cached: Boolean = false
+    request: FetchRequest,
+    response: Any,
+    start: Long,
+    end: Long
 ) {
-  def duration: Double = (endRound - startRound) / 1e6
-
-  def isConcurrent: Boolean = kind match {
-    case ConcurrentRound(_) => true
-    case _                  => false
-  }
+  def duration: Double = (end - start) / 1e6
 }
-
-sealed trait RoundKind
-final case class OneRound(id: Any)                            extends RoundKind
-final case class ManyRound(ids: List[Any])                    extends RoundKind
-final case class ConcurrentRound(ids: Map[String, List[Any]]) extends RoundKind
 
 /**
   * A concrete implementation of `Env` used in the default Fetch interpreter.
   */
 case class FetchEnv(
     cache: DataSourceCache,
-    ids: List[Any] = Nil,
     rounds: Queue[Round] = Queue.empty
 )
     extends Env {
-  def next(
-      newCache: DataSourceCache,
+
+  def evolve(
       newRound: Round,
-      newIds: List[Any]
+      newCache: DataSourceCache
   ): FetchEnv =
-    copy(cache = newCache, rounds = rounds :+ newRound, ids = newIds)
+    copy(rounds = rounds :+ newRound, cache = newCache)
 }
