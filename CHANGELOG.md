@@ -1,5 +1,15 @@
 ## Changelog
 
+## Version 0.3.0
+
+Date: 2016-07-25
+
+- Separate `DataSource#fetchOne` and `DataSource#fetchMany` into two methods
+- Provide `DataSource#batchingNotSupported` for implementing `fetchMany` in terms of `fetchOne`
+- Introduce `FetchMonadError[M]` typeclass for being able to run a fetch into the target monad `M`
+- Support for blocking and non-blocking data sources through the `Query` type
+- [Monix](http://monix.io) integration through the `fetch-monix` project
+
 ## Version 0.2.0
 
 Date: 2016-05-22
@@ -19,4 +29,4 @@ Date: 2016-05-20
 
 Date: 2016-05-19
 
-- First relase.
+- First relase
