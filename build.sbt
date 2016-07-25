@@ -129,7 +129,7 @@ lazy val readme = (project in file("tut"))
 
 lazy val monixSettings = (
   libraryDependencies ++= Seq(
-    "io.monix" %%% "monix-eval" % "2.0-RC5"
+    "io.monix" %%% "monix-eval" % "2.0-RC8"
   )
 )
 
