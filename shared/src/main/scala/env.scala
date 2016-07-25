@@ -26,12 +26,6 @@ trait Env {
   def cache: DataSourceCache
   def rounds: Seq[Round]
 
-  def cached: Seq[Round] =
-    rounds.filter(_.cached)
-
-  def uncached: Seq[Round] =
-    rounds.filterNot(_.cached)
-
   def next(
       newCache: DataSourceCache,
       newRound: Round,

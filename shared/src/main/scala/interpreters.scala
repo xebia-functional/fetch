@@ -27,13 +27,13 @@ import cats.syntax.traverse._
 /**
   * An exception thrown from the interpreter when failing to perform a data fetch.
   */
-case class FetchFailure(env: Env) extends Throwable
+case class FetchFailure(env: Env, request: FetchRequest[_, _]) extends Throwable
 
 trait FetchInterpreters {
 
-  def pendingRequests(
-      requests: List[FetchRequest[_, _]], cache: DataSourceCache): List[FetchRequest[Any, Any]] = {
-    requests
+  def pendingQueries(
+      queries: List[FetchQuery[_, _]], cache: DataSourceCache): List[FetchQuery[Any, Any]] = {
+    queries
       .filterNot(_.fullfilledBy(cache))
       .map(req => {
         (req.dataSource, req.missingIdentities(cache))
@@ -55,86 +55,11 @@ trait FetchInterpreters {
         StateT[M, FetchEnv, A] { env: FetchEnv =>
           fa match {
             case FetchError(e) => M.raiseError(e)
-            case Cached(a)     => M.pure((env, a))
-            case Concurrent(concurrentRequests) => {
+            case Fetched(a)    => M.pure((env, a))
+            case one @ FetchOne(id, ds) => {
                 val startRound = System.nanoTime()
                 val cache      = env.cache
 
-                val requests: List[FetchRequest[Any, Any]] =
-                  pendingRequests(concurrentRequests, cache)
-
-                if (requests.isEmpty)
-                  M.pure((env, cache.asInstanceOf[A]))
-                else {
-                  val sentRequests = M.sequence(requests.map({
-                    case FetchOne(a, ds) => {
-                        val ident = a.asInstanceOf[I]
-                        val task  = M.runQuery(ds.asInstanceOf[DataSource[I, A]].fetchOne(ident))
-                        M.map(task)((r: Option[A]) =>
-                              r.fold(Map.empty[I, A])((result: A) => Map(ident -> result)))
-                      }
-                    case FetchMany(as, ds) =>
-                      M.runQuery(ds
-                            .asInstanceOf[DataSource[I, A]]
-                            .fetchMany(as.asInstanceOf[NonEmptyList[I]]))
-                  }))
-
-                  M.flatMap(sentRequests)((results: List[Map[_, _]]) => {
-                    val endRound = System.nanoTime()
-                    val newCache = (requests zip results).foldLeft(cache)((accache, resultset) => {
-                      val (req, resultmap) = resultset
-                      val ds               = req.dataSource
-                      val tresults         = resultmap.asInstanceOf[Map[I, A]]
-                      val tds              = ds.asInstanceOf[DataSource[I, A]]
-                      accache.cacheResults[I, A](tresults, tds)
-                    })
-                    val newEnv = env.next(
-                        newCache,
-                        Round(
-                            cache,
-                            "Concurrent",
-                            ConcurrentRound(
-                                requests
-                                  .map({
-                                    case FetchOne(a, ds)   => (ds.name, List(a))
-                                    case FetchMany(as, ds) => (ds.name, as.unwrap)
-                                  })
-                                  .toMap
-                            ),
-                            startRound,
-                            endRound
-                        ),
-                        Nil
-                    )
-
-                    val allFullfilled = (requests zip results).forall({
-                      case (FetchOne(_, _), results)   => results.size == 1
-                      case (FetchMany(as, _), results) => as.unwrap.size == results.size
-                      case _                           => false
-                    })
-
-                    if (allFullfilled) {
-                      // since user-provided caches may discard elements, we use an in-memory
-                      // cache to gather these intermediate results that will be used for
-                      // concurrent optimizations.
-                      val cachedResults =
-                        (requests zip results).foldLeft(InMemoryCache.empty)((cach, resultSet) => {
-                          val (req, resultmap) = resultSet
-                          val ds               = req.dataSource
-                          val tresults         = resultmap.asInstanceOf[Map[I, A]]
-                          val tds              = ds.asInstanceOf[DataSource[I, A]]
-                          cach.cacheResults[I, A](tresults, tds).asInstanceOf[InMemoryCache]
-                        })
-                      M.pure((newEnv, cachedResults.asInstanceOf[A]))
-                    } else {
-                      M.raiseError(FetchFailure(newEnv))
-                    }
-                  })
-                }
-              }
-            case FetchOne(id, ds) => {
-                val startRound = System.nanoTime()
-                val cache      = env.cache
                 cache
                   .get[A](ds.identity(id))
                   .fold[M[(FetchEnv, A)]](
@@ -143,15 +68,8 @@ trait FetchInterpreters {
                         res.fold[M[(FetchEnv, A)]](
                             M.raiseError(
                                 FetchFailure(
-                                    env.next(
-                                        cache,
-                                        Round(cache,
-                                              ds.name,
-                                              OneRound(id),
-                                              startRound,
-                                              endRound),
-                                        List(id)
-                                    )
+                                    env,
+                                    one
                                 )
                             )
                         )(result => {
@@ -173,19 +91,7 @@ trait FetchInterpreters {
                       })
                   )(cached => {
                     val endRound = System.nanoTime()
-                    M.pure(
-                        (env.next(
-                             cache,
-                             Round(cache,
-                                   ds.name,
-                                   OneRound(id),
-                                   startRound,
-                                   endRound,
-                                   true),
-                             List(id)
-                         ),
-                         cached)
-                    )
+                    M.pure(env -> cached)
                   })
               }
             case many @ FetchMany(ids, ds) => {
@@ -219,15 +125,8 @@ trait FetchInterpreters {
                       .fold[M[(FetchEnv, A)]](
                           M.raiseError(
                               FetchFailure(
-                                  env.next(
-                                      cache,
-                                      Round(cache,
-                                            ds.name,
-                                            ManyRound(ids.unwrap),
-                                            startRound,
-                                            endRound),
-                                      newIds
-                                  )
+                                  env,
+                                  many
                               )
                           )
                       )(results => {
@@ -248,6 +147,84 @@ trait FetchInterpreters {
                              results)
                         )
                       })
+                  })
+                }
+              }
+
+            case conc @ Concurrent(concurrentQueries) => {
+                val startRound = System.nanoTime()
+                val cache      = env.cache
+
+                val queries: List[FetchQuery[Any, Any]] = pendingQueries(concurrentQueries, cache)
+
+                if (queries.isEmpty)
+                  M.pure((env, cache.asInstanceOf[A]))
+                else {
+                  val sentQueries = M.sequence(queries.map({
+                    case FetchOne(a, ds) => {
+                        val ident = a.asInstanceOf[I]
+                        val task  = M.runQuery(ds.asInstanceOf[DataSource[I, A]].fetchOne(ident))
+                        M.map(task)((r: Option[A]) =>
+                              r.fold(Map.empty[I, A])((result: A) => Map(ident -> result)))
+                      }
+                    case FetchMany(as, ds) =>
+                      M.runQuery(ds
+                            .asInstanceOf[DataSource[I, A]]
+                            .fetchMany(as.asInstanceOf[NonEmptyList[I]]))
+                  }))
+
+                  M.flatMap(sentQueries)((results: List[Map[_, _]]) => {
+                    val endRound = System.nanoTime()
+                    val newCache = (queries zip results).foldLeft(cache)((accache, resultset) => {
+                      val (req, resultmap) = resultset
+                      val ds               = req.dataSource
+                      val tresults         = resultmap.asInstanceOf[Map[I, A]]
+                      val tds              = ds.asInstanceOf[DataSource[I, A]]
+                      accache.cacheResults[I, A](tresults, tds)
+                    })
+
+                    val allFullfilled = (queries zip results).forall({
+                      case (FetchOne(_, _), results)   => results.size == 1
+                      case (FetchMany(as, _), results) => as.unwrap.size == results.size
+                      case _                           => false
+                    })
+
+                    if (allFullfilled) {
+                      val newEnv = env.next(
+                          newCache,
+                          Round(
+                              cache,
+                              "Concurrent",
+                              ConcurrentRound(
+                                  queries
+                                    .map({
+                                      case FetchOne(a, ds)   => (ds.name, List(a))
+                                      case FetchMany(as, ds) => (ds.name, as.unwrap)
+                                    })
+                                    .toMap
+                              ),
+                              startRound,
+                              endRound
+                          ),
+                          Nil
+                      )
+
+                      // since user-provided caches may discard elements, we use an in-memory
+                      // cache to gather these intermediate results that will be used for
+                      // concurrent optimizations.
+                      val cachedResults =
+                        (queries zip results).foldLeft(InMemoryCache.empty)((cach, resultSet) => {
+                          val (req, resultmap) = resultSet
+                          val ds               = req.dataSource
+                          val tresults         = resultmap.asInstanceOf[Map[I, A]]
+                          val tds              = ds.asInstanceOf[DataSource[I, A]]
+                          cach.cacheResults[I, A](tresults, tds).asInstanceOf[InMemoryCache]
+                        })
+
+                      M.pure((newEnv, cachedResults.asInstanceOf[A]))
+                    } else {
+                      M.raiseError(FetchFailure(env, conc))
+                    }
                   })
                 }
               }
