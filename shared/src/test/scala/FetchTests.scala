@@ -92,7 +92,6 @@ object TestHelper {
     rs.map((round: Round) => requestBatches(round.request)).sum
 }
 
-@DoNotDiscover
 class FetchSyntaxTests extends AsyncFreeSpec with Matchers {
   import fetch.syntax._
   import TestHelper._
@@ -771,7 +770,6 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   }
 }
 
-@DoNotDiscover
 class FetchReportingTests extends AsyncFreeSpec with Matchers {
   import TestHelper._
 
