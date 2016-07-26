@@ -53,15 +53,22 @@ object implicits {
         }
     }
     def pure[A](x: A): Eval[A] = Eval.now(x)
-    def handleErrorWith[A](fa: Eval[A])(f: Throwable => Eval[A]): Eval[A] =
+
+    def handleErrorWith[A](fa: Eval[A])(f: FetchError => Eval[A]): Eval[A] =
       Eval.later({
         try {
           fa.value
         } catch {
-          case ex: Throwable => f(ex).value
+          case ex: FetchError => f(ex).value
+          case th: Throwable  => f(FetchException(th)).value
         }
       })
-    def raiseError[A](e: Throwable): Eval[A] = Eval.later({ throw e })
+
+    def raiseError[A](e: FetchError): Eval[A] =
+      Eval.later({
+        throw e
+      })
+
     def flatMap[A, B](fa: Eval[A])(f: A => Eval[B]): Eval[B] =
       fa.flatMap(f)
   }
@@ -93,13 +100,20 @@ object implicits {
         }
     }
     def pure[A](x: A): Id[A] = x
-    def handleErrorWith[A](fa: Id[A])(f: Throwable => Id[A]): Id[A] =
+    def handleErrorWith[A](fa: Id[A])(f: FetchError => Id[A]): Id[A] =
       try {
         fa
       } catch {
-        case ex: Throwable => f(ex)
+        case ex: FetchError => f(ex)
       }
-    def raiseError[A](e: Throwable): Id[A]             = throw e
+    def raiseError[A](e: FetchError): Id[A] =
+      e match {
+        case FetchException(ex) => {
+            e.initCause(ex)
+            throw e
+          }
+        case other => throw other
+      }
     def flatMap[A, B](fa: Id[A])(f: A => Id[B]): Id[B] = f(fa)
   }
 }

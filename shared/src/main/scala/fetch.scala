@@ -70,6 +70,11 @@ sealed trait FetchQuery[I, A] extends FetchRequest {
   def identities: NonEmptyList[I]
 }
 
+trait FetchError extends Throwable with Product with Serializable
+case class NotFound(env: Env, request: FetchOne[_, _])                          extends FetchError
+case class MissingIdentities(env: Env, missing: Map[DataSourceName, List[Any]]) extends FetchError
+case class FetchException(err: Throwable)                                       extends FetchError
+
 /**
   * Primitive operations in the Fetch Free monad.
   */
@@ -109,7 +114,7 @@ final case class Concurrent(as: List[FetchQuery[_, _]])
     as.forall(_.fullfilledBy(cache))
   }
 }
-final case class FetchError[A](err: Throwable) extends FetchOp[A]
+final case class Thrown[A](err: Throwable) extends FetchOp[A]
 
 object `package` {
   type DataSourceName     = String
@@ -117,7 +122,7 @@ object `package` {
 
   type Fetch[A] = Free[FetchOp, A]
 
-  trait FetchMonadError[M[_]] extends MonadError[M, Throwable] {
+  trait FetchMonadError[M[_]] extends MonadError[M, FetchError] {
     def runQuery[A](q: Query[A]): M[A]
   }
 
@@ -145,10 +150,10 @@ object `package` {
       Free.pure(a)
 
     /**
-      * Lift an error to the Fetch monad.
+      * Lift an exception to the Fetch monad.
       */
     def error[A](e: Throwable): Fetch[A] =
-      Free.liftF(FetchError(e))
+      Free.liftF(Thrown(e))
 
     /**
       * Given a value that has a related `DataSource` implementation, lift it

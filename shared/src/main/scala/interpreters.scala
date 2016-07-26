@@ -24,11 +24,6 @@ import cats.std.option._
 import cats.std.list._
 import cats.syntax.traverse._
 
-/**
-  * An exception thrown from the interpreter when failing to perform a data fetch.
-  */
-case class FetchFailure(env: Env, request: FetchRequest) extends Throwable
-
 trait FetchInterpreters {
   def pendingQueries(
       queries: List[FetchQuery[_, _]], cache: DataSourceCache): List[FetchQuery[Any, Any]] = {
@@ -54,8 +49,8 @@ trait FetchInterpreters {
       def apply[A](fa: FetchOp[A]): FetchInterpreter[M]#f[A] = {
         StateT[M, FetchEnv, A] { env: FetchEnv =>
           fa match {
-            case FetchError(e) => M.raiseError(e)
-            case Fetched(a)    => M.pure((env, a))
+            case Thrown(e)  => M.raiseError(FetchException(e))
+            case Fetched(a) => M.pure((env, a))
             case one @ FetchOne(id, ds) => {
                 val startRound = System.nanoTime()
                 val cache      = env.cache
@@ -67,10 +62,7 @@ trait FetchInterpreters {
                         val endRound = System.nanoTime()
                         res.fold[M[(FetchEnv, A)]](
                             M.raiseError(
-                                FetchFailure(
-                                    env,
-                                    one
-                                )
+                                NotFound(env, one)
                             )
                         )(result => {
                           val endRound = System.nanoTime()
@@ -99,22 +91,25 @@ trait FetchInterpreters {
                                                     newIds.tail.asInstanceOf[List[I]]))))(
                       (res: Map[I, A]) => {
                     val endRound = System.nanoTime()
+
                     ids.unwrap
                       .map(i => res.get(i.asInstanceOf[I]))
                       .sequence
-                      .fold[M[(FetchEnv, A)]](
-                          M.raiseError(
-                              FetchFailure(
-                                  env,
-                                  many
-                              )
-                          )
-                      )(results => {
+                      .fold[M[(FetchEnv, A)]]({
+                        val missingIdentities = ids.unwrap
+                          .map(i => i.asInstanceOf[I] -> res.get(i.asInstanceOf[I]))
+                          .collect({
+                            case (i, None) => i
+                          })
+                        M.raiseError(
+                            MissingIdentities(env, Map(ds.name -> missingIdentities))
+                        )
+                      })(results => {
                         val endRound = System.nanoTime()
                         val newCache =
                           cache.cacheResults[I, A](res, ds.asInstanceOf[DataSource[I, A]])
                         val round = Round(cache, many, results, startRound, endRound)
-                        M.pure(env.evolve(round, newCache) -> results)
+                        M.pure(env.evolve(round, newCache) -> results.asInstanceOf[A])
                       })
                   })
                 }
@@ -180,11 +175,21 @@ trait FetchInterpreters {
                           cach.cacheResults[I, A](tresults, tds).asInstanceOf[InMemoryCache]
                         })
 
-                      // todo: ojo que no se meten en la cache principal?
-
                       M.pure((newEnv, cachedResults.asInstanceOf[A]))
                     } else {
-                      M.raiseError(FetchFailure(env, conc))
+                      val missingIdentities: Map[DataSourceName, List[Any]] = (queries zip results)
+                        .collect({
+                          case (FetchOne(id, ds), results) if results.size != 1 =>
+                            ds.name -> List(id)
+                          case (FetchMany(as, ds), results) if results.size != as.unwrap.size =>
+                            ds.name -> as.unwrap.collect({
+                              case i if !results.asInstanceOf[Map[Any, Any]].get(i).isDefined => i
+                            })
+                        })
+                        .toMap
+                      M.raiseError(
+                          MissingIdentities(env, missingIdentities)
+                      )
                     }
                   })
                 }

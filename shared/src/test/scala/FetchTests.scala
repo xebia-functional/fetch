@@ -29,7 +29,7 @@ import fetch.implicits._
 object TestHelper {
   import fetch.syntax._
 
-  case class NotFound() extends Throwable
+  case class DidNotFound() extends Throwable
 
   case class One(id: Int)
   implicit object OneSource extends DataSource[One, Int] {
@@ -199,7 +199,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
     ME.attempt(fut)
       .map(xor =>
             xor should matchPattern {
-          case Xor.Left(FetchFailure(env, FetchOne(Never(), _))) =>
+          case Xor.Left(NotFound(env, FetchOne(Never(), _))) =>
       })
   }
 
@@ -218,8 +218,8 @@ class FetchTests extends AsyncFreeSpec with Matchers {
     ME.attempt(Fetch.run[Future](fetch, cache))
       .map(xor =>
             xor match {
-          case Xor.Left(FetchFailure(env, _)) => env.cache shouldEqual cache
-          case _                              => fail("Cache should be populated")
+          case Xor.Left(NotFound(env, _)) => env.cache shouldEqual cache
+          case _                          => fail("Cache should be populated")
       })
   }
 
@@ -232,20 +232,20 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   }
 
   "We can lift errors to Fetch" in {
-    val fetch: Fetch[Int] = Fetch.error(NotFound())
+    val fetch: Fetch[Int] = Fetch.error(DidNotFound())
 
     ME.attempt(Fetch.run[Future](fetch))
       .map(xor =>
             xor match {
-          case Xor.Left(NotFound()) => assert(true)
-          case _                    => fail("Should've thrown NotFound exception")
+          case Xor.Left(FetchException(DidNotFound())) => assert(true)
+          case _                                       => fail("Should've thrown NotFound exception")
       })
   }
 
   "We can lift handle and recover from errors in Fetch" in {
     import cats.syntax.applicativeError._
 
-    val fetch: Fetch[Int] = Fetch.error(NotFound())
+    val fetch: Fetch[Int] = Fetch.error(DidNotFound())
     val fut               = Fetch.run[Future](fetch)
     ME.handleErrorWith(fut)(err => Future.successful(42)).map(_ shouldEqual 42)
   }
@@ -354,26 +354,26 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   }
 
   "If a fetch fails in the left hand of a product the product will fail" in {
-    val fetch: Fetch[(Int, List[Int])] = Fetch.join(Fetch.error(NotFound()), many(3))
+    val fetch: Fetch[(Int, List[Int])] = Fetch.join(Fetch.error(DidNotFound()), many(3))
     val fut                            = Fetch.run[Future](fetch)
 
     ME.attempt(Fetch.run[Future](fetch))
       .map(xor =>
             xor match {
-          case Xor.Left(NotFound()) => assert(true)
-          case _                    => fail("Should've thrown NotFound exception")
+          case Xor.Left(FetchException(DidNotFound())) => assert(true)
+          case _                                       => fail("Should've thrown NotFound exception")
       })
   }
 
   "If a fetch fails in the right hand of a product the product will fail" in {
-    val fetch: Fetch[(List[Int], Int)] = Fetch.join(many(3), Fetch.error(NotFound()))
+    val fetch: Fetch[(List[Int], Int)] = Fetch.join(many(3), Fetch.error(DidNotFound()))
     val fut                            = Fetch.run[Future](fetch)
 
     ME.attempt(Fetch.run[Future](fetch))
       .map(xor =>
             xor match {
-          case Xor.Left(NotFound()) => assert(true)
-          case _                    => fail("Should've thrown NotFound exception")
+          case Xor.Left(FetchException(DidNotFound())) => assert(true)
+          case _                                       => fail("Should've thrown NotFound exception")
       })
   }
 
@@ -382,10 +382,12 @@ class FetchTests extends AsyncFreeSpec with Matchers {
     val fut                            = Fetch.run[Future](fetch)
 
     ME.attempt(Fetch.run[Future](fetch))
-      .map(xor =>
-            xor match {
-          case Xor.Left(FetchFailure(_, _)) => assert(true)
-          case _                            => fail("Should've thrown a fetch failure")
+      .map(xor => {
+        xor match {
+          case Xor.Left(MissingIdentities(_, missing)) =>
+            missing shouldEqual Map(NeverSource.name -> List(Never()))
+          case _ => fail("Should've thrown a fetch failure")
+        }
       })
   }
 
@@ -394,10 +396,12 @@ class FetchTests extends AsyncFreeSpec with Matchers {
     val fut                            = Fetch.run[Future](fetch)
 
     ME.attempt(fut)
-      .map(xor =>
-            xor match {
-          case Xor.Left(FetchFailure(_, _)) => assert(true)
-          case _                            => fail("Should've thrown a fetch failure")
+      .map(xor => {
+        xor match {
+          case Xor.Left(MissingIdentities(_, missing)) =>
+            missing shouldEqual Map(NeverSource.name -> List(Never()))
+          case _ => fail("Should've thrown a fetch failure")
+        }
       })
   }
 

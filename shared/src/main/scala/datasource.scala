@@ -29,7 +29,8 @@ trait DataSource[I, A] {
 
   /** The name of the data source.
     */
-  def name: DataSourceName = this.toString
+  def name: DataSourceName      = this.getClass.getName
+  override def toString: String = name
 
   /**
     * Derive a `DataSourceIdentity` from an identity, suitable for storing the result

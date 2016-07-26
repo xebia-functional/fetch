@@ -45,10 +45,12 @@ object implicits {
     def pure[A](x: A): Task[A] =
       Task.now(x)
 
-    def handleErrorWith[A](fa: Task[A])(f: Throwable => Task[A]): Task[A] =
-      fa.onErrorHandleWith(f)
+    def handleErrorWith[A](fa: Task[A])(f: FetchError => Task[A]): Task[A] =
+      fa.onErrorHandleWith({
+        case e: FetchError => f(e)
+      })
 
-    def raiseError[A](e: Throwable): Task[A] =
+    def raiseError[A](e: FetchError): Task[A] =
       Task.raiseError(e)
 
     def flatMap[A, B](fa: Task[A])(f: A => Task[B]): Task[B] =
