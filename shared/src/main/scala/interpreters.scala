@@ -124,7 +124,6 @@ trait FetchInterpreters {
                 if (queries.isEmpty)
                   M.pure((env, cache.asInstanceOf[A]))
                 else {
-                  // fixme: duplicated identities allowed!
                   val sentQueries = M.sequence(queries.map({
                     case FetchOne(a, ds) => {
                         val ident = a.asInstanceOf[I]
