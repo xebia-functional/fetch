@@ -76,7 +76,7 @@ implicit object ToStringSource extends DataSource[Int, String]{
   override def fetchMany(ids: NonEmptyList[Int]): Query[Map[Int, String]] = {
     Query.sync({
       println(s"[${Thread.currentThread.getId}] Many ToString $ids")
-      ids.unwrap.map(i => (i, i.toString)).toMap
+      ids.toList.map(i => (i, i.toString)).toMap
     })
   }
 }
@@ -144,7 +144,7 @@ implicit object LengthSource extends DataSource[String, Int]{
   override def fetchMany(ids: NonEmptyList[String]): Query[Map[String, Int]] = {
     Query.async((ok, fail) => {
       println(s"[${Thread.currentThread.getId}] Many Length $ids")
-      ok(ids.unwrap.map(i => (i, i.size)).toMap)
+      ok(ids.toList.map(i => (i, i.size)).toMap)
     })
   }
 }

@@ -20,8 +20,8 @@ import scala.collection.immutable._
 
 import cats.{MonadError, ~>}
 import cats.data.{StateT, NonEmptyList}
-import cats.std.option._
-import cats.std.list._
+import cats.instances.option._
+import cats.instances.list._
 import cats.syntax.traverse._
 
 trait FetchInterpreters {
@@ -80,7 +80,7 @@ trait FetchInterpreters {
                 val startRound = System.nanoTime()
                 val cache      = env.cache
                 val newIds     = many.missingIdentities(cache)
-                val result     = ids.unwrap.flatMap(id => cache.get(ds.identity(id)))
+                val result     = ids.toList.flatMap(id => cache.get(ds.identity(id)))
 
                 if (newIds.isEmpty)
                   M.pure(env -> result)
@@ -92,11 +92,11 @@ trait FetchInterpreters {
                       (res: Map[I, A]) => {
                     val endRound = System.nanoTime()
 
-                    ids.unwrap
+                    ids.toList
                       .map(i => res.get(i.asInstanceOf[I]))
                       .sequence
                       .fold[M[(FetchEnv, A)]]({
-                        val missingIdentities = ids.unwrap
+                        val missingIdentities = ids.toList
                           .map(i => i.asInstanceOf[I] -> res.get(i.asInstanceOf[I]))
                           .collect({
                             case (i, None) => i
@@ -149,7 +149,7 @@ trait FetchInterpreters {
 
                     val allFullfilled = (queries zip results).forall({
                       case (FetchOne(_, _), results)   => results.size == 1
-                      case (FetchMany(as, _), results) => as.unwrap.size == results.size
+                      case (FetchMany(as, _), results) => as.toList.size == results.size
                       case _                           => false
                     })
 
@@ -180,8 +180,8 @@ trait FetchInterpreters {
                         .collect({
                           case (FetchOne(id, ds), results) if results.size != 1 =>
                             ds.name -> List(id)
-                          case (FetchMany(as, ds), results) if results.size != as.unwrap.size =>
-                            ds.name -> as.unwrap.collect({
+                          case (FetchMany(as, ds), results) if results.size != as.toList.size =>
+                            ds.name -> as.toList.collect({
                               case i if !results.asInstanceOf[Map[Any, Any]].get(i).isDefined => i
                             })
                         })

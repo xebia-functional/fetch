@@ -18,11 +18,11 @@ package fetch
 
 import scala.collection.immutable.Map
 
-import cats.{Applicative, Monad, ApplicativeError, MonadError, ~>, Eval}
+import cats.{Applicative, Monad, ApplicativeError, MonadError, ~>, Eval, RecursiveTailRecM, FlatMap}
 import cats.data.{StateT, Const, NonEmptyList}
 import cats.free.{Free}
-import cats.std.list._
-import cats.std.option._
+import cats.instances.list._
+import cats.instances.option._
 import cats.syntax.traverse._
 import scala.concurrent.duration.Duration
 
@@ -51,8 +51,7 @@ object Query {
   ): Query[A] = Async(action, timeout)
 
   implicit val fetchQueryApplicative: Applicative[Query] = new Applicative[Query] {
-    override def pureEval[A](e: Eval[A]): Query[A] = Sync(e)
-    def pure[A](x: A): Query[A]                    = Sync(Eval.now(x))
+    def pure[A](x: A): Query[A] = Sync(Eval.now(x))
     def ap[A, B](ff: Query[A => B])(fa: Query[A]): Query[B] =
       Ap(ff, fa)
   }
@@ -103,7 +102,7 @@ final case class FetchMany[I, A](as: NonEmptyList[I], ds: DataSource[I, A])
   }
 
   override def missingIdentities(cache: DataSourceCache): List[I] = {
-    as.unwrap.distinct.filterNot(i => cache.get[A](ds.identity(i)).isDefined)
+    as.toList.distinct.filterNot(i => cache.get[A](ds.identity(i)).isDefined)
   }
   override def dataSource: DataSource[I, A] = ds
   override def identities: NonEmptyList[I]  = as
@@ -167,17 +166,22 @@ object `package` {
       Free.liftF(FetchOne[I, A](i, DS))
 
     type FM = List[FetchOp[_]]
-    private[this] val DM: Monad[Const[FM, ?]] = new Monad[Const[FM, ?]] {
-      def pure[A](x: A): Const[FM, A] = Const(List())
+    private[this] def DM(implicit TR: FlatMap[Const[FM, ?]]): Monad[Const[FM, ?]] =
+      new Monad[Const[FM, ?]] {
+        def pure[A](x: A): Const[FM, A] = Const(List())
 
-      def flatMap[A, B](fa: Const[FM, A])(f: A => Const[FM, B]): Const[FM, B] = fa match {
-        case Const(List(Fetched(a))) => f(a.asInstanceOf[A])
-        case other                   => fa.asInstanceOf[Const[FM, B]]
+        def tailRecM[A, B](a: A)(f: A => cats.data.Const[List[fetch.FetchOp[_]], Either[A, B]])
+          : cats.data.Const[List[fetch.FetchOp[_]], B] =
+          f(a).asInstanceOf[Const[List[FetchOp[_]], B]]
+
+        def flatMap[A, B](fa: Const[FM, A])(f: A => Const[FM, B]): Const[FM, B] = fa match {
+          case Const(List(Fetched(a))) => f(a.asInstanceOf[A])
+          case other                   => fa.asInstanceOf[Const[FM, B]]
+        }
       }
-    }
 
     private[this] def deps[A](f: Fetch[_]): List[FetchQuery[_, _]] = {
-      f.foldMap[Const[FM, ?]](new (FetchOp ~> Const[FM, ?]) {
+      f.foldMapUnsafe[Const[FM, ?]](new (FetchOp ~> Const[FM, ?]) {
           def apply[X](x: FetchOp[X]): Const[FM, X] = x match {
             case one @ FetchOne(id, ds) => Const(List(one))
             case conc @ Concurrent(as)  => Const(as.asInstanceOf[FM])
@@ -199,26 +203,26 @@ object `package` {
               acc.updated(ds,
                           acc
                             .get(ds)
-                            .fold(NonEmptyList(id): NonEmptyList[Any])(accids => {
+                            .fold(NonEmptyList(id, Nil): NonEmptyList[Any])(accids => {
                               val newIds = List(id)
-                              val allIds = (accids.unwrap ++ newIds).distinct
-                              NonEmptyList(allIds.head, allIds.tail: _*)
+                              val allIds = (accids.toList ++ newIds).distinct
+                              NonEmptyList(allIds.head, allIds.tail)
                             }))
             case many @ FetchMany(ids, ds) =>
               acc.updated(ds,
                           acc
                             .get(ds)
                             .fold(ids.asInstanceOf[NonEmptyList[Any]])(accids => {
-                              val accList = accids.unwrap
-                              val newList = ids.unwrap
+                              val accList = accids.toList
+                              val newList = ids.toList
                               val allIds  = (accList ++ newList).distinct
-                              NonEmptyList(allIds.head, allIds.tail: _*)
+                              NonEmptyList(allIds.head, allIds.tail)
                             }))
             case _ => acc
         })
         .toList
         .map({
-          case (ds, ids) if ids.unwrap.size == 1 =>
+          case (ds, ids) if ids.toList.size == 1 =>
             FetchOne[Any, Any](ids.head, ds.asInstanceOf[DataSource[Any, Any]])
           case (ds, ids) =>
             FetchMany[Any, Any](ids, ds.asInstanceOf[DataSource[Any, Any]])
@@ -258,7 +262,7 @@ object `package` {
               results.get[B](ds.identity(id)).fold(one: FetchOp[B])(b => Fetched(b))
             }
           case many @ FetchMany(ids, ds) => {
-              val fetched = ids.map(id => results.get(ds.identity(id))).unwrap.sequence
+              val fetched = ids.map(id => results.get(ds.identity(id))).toList.sequence
               fetched.fold({
                 many: FetchOp[B]
               })(results => Fetched(results))
@@ -306,7 +310,8 @@ object `package` {
           fa: Fetch[A],
           cache: DataSourceCache = InMemoryCache.empty
       )(
-          implicit MM: FetchMonadError[M]
+          implicit MM: FetchMonadError[M],
+          TR: RecursiveTailRecM[M]
       ): M[(FetchEnv, A)] =
         fa.foldMap[FetchInterpreter[M]#f](interpreter).run(FetchEnv(cache))
     }
@@ -322,7 +327,8 @@ object `package` {
           fa: Fetch[A],
           cache: DataSourceCache = InMemoryCache.empty
       )(
-          implicit MM: FetchMonadError[M]
+          implicit MM: FetchMonadError[M],
+          TR: RecursiveTailRecM[M]
       ): M[FetchEnv] =
         fa.foldMap[FetchInterpreter[M]#f](interpreter).runS(FetchEnv(cache))
     }
@@ -337,7 +343,8 @@ object `package` {
           fa: Fetch[A],
           cache: DataSourceCache = InMemoryCache.empty
       )(
-          implicit MM: FetchMonadError[M]
+          implicit MM: FetchMonadError[M],
+          TR: RecursiveTailRecM[M]
       ): M[A] =
         fa.foldMap[FetchInterpreter[M]#f](interpreter).runA(FetchEnv(cache))
     }

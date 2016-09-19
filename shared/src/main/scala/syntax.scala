@@ -16,6 +16,8 @@
 
 package fetch
 
+import cats.RecursiveTailRecM
+
 object syntax {
 
   /** Implicit syntax to lift any value to the context of Fetch via pure */
@@ -38,22 +40,22 @@ object syntax {
     def join[B](fb: Fetch[B]): Fetch[(A, B)] =
       Fetch.join(fa, fb)
 
-    def runF[M[_]: FetchMonadError]: M[(FetchEnv, A)] =
+    def runF[M[_]: FetchMonadError: RecursiveTailRecM]: M[(FetchEnv, A)] =
       Fetch.runFetch[M](fa, InMemoryCache.empty)
 
-    def runE[M[_]: FetchMonadError]: M[FetchEnv] =
+    def runE[M[_]: FetchMonadError: RecursiveTailRecM]: M[FetchEnv] =
       Fetch.runEnv[M](fa, InMemoryCache.empty)
 
-    def runA[M[_]: FetchMonadError]: M[A] =
+    def runA[M[_]: FetchMonadError: RecursiveTailRecM]: M[A] =
       Fetch.run[M](fa, InMemoryCache.empty)
 
-    def runF[M[_]: FetchMonadError](cache: DataSourceCache): M[(FetchEnv, A)] =
+    def runF[M[_]: FetchMonadError: RecursiveTailRecM](cache: DataSourceCache): M[(FetchEnv, A)] =
       Fetch.runFetch[M](fa, cache)
 
-    def runE[M[_]: FetchMonadError](cache: DataSourceCache): M[FetchEnv] =
+    def runE[M[_]: FetchMonadError: RecursiveTailRecM](cache: DataSourceCache): M[FetchEnv] =
       Fetch.runEnv[M](fa, cache)
 
-    def runA[M[_]: FetchMonadError](cache: DataSourceCache): M[A] =
+    def runA[M[_]: FetchMonadError: RecursiveTailRecM](cache: DataSourceCache): M[A] =
       Fetch.run[M](fa, cache)
   }
 }

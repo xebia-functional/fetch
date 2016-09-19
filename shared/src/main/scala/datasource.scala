@@ -17,7 +17,7 @@
 package fetch
 
 import cats.data.NonEmptyList
-import cats.std.list._
+import cats.instances.list._
 import cats.syntax.functor._
 import cats.syntax.traverse._
 
@@ -51,7 +51,7 @@ trait DataSource[I, A] {
     * source doesn't support batching.
     */
   def batchingNotSupported(ids: NonEmptyList[I]): Query[Map[I, A]] = {
-    val idsList = ids.unwrap
+    val idsList = ids.toList
     idsList
       .map(fetchOne)
       .sequence

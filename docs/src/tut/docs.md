@@ -135,7 +135,7 @@ implicit object UserSource extends DataSource[UserId, User]{
   }
   override def fetchMany(ids: NonEmptyList[UserId]): Query[Map[UserId, User]] = {
     Query.sync({
-	  latency(userDatabase.filterKeys(ids.unwrap.contains), s"Many Users $ids")
+	  latency(userDatabase.filterKeys(ids.toList.contains), s"Many Users $ids")
     })
   }
 }
@@ -347,7 +347,7 @@ implicit object PostSource extends DataSource[PostId, Post]{
   }
   override def fetchMany(ids: NonEmptyList[PostId]): Query[Map[PostId, Post]] = {
     Query.sync({
-	  latency(postDatabase.filterKeys(ids.unwrap.contains), s"Many Posts $ids")
+	  latency(postDatabase.filterKeys(ids.toList.contains), s"Many Posts $ids")
     })
   }
 }
@@ -381,7 +381,7 @@ implicit object PostTopicSource extends DataSource[Post, PostTopic]{
   }
   override def fetchMany(ids: NonEmptyList[Post]): Query[Map[Post, PostTopic]] = {
     Query.sync({
-	  val result = ids.unwrap.map(id => (id, if (id.id % 2 == 0) "monad" else "applicative")).toMap
+	  val result = ids.toList.map(id => (id, if (id.id % 2 == 0) "monad" else "applicative")).toMap
       latency(result, s"Many Post Topics $ids")
     })
   }
