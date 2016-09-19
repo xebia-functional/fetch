@@ -44,9 +44,9 @@ object implicits extends FutureInstances {
           })
     }
     def pure[A](x: A): Future[A] = Future.successful(x)
-    def handleErrorWith[A](fa: Future[A])(f: FetchError => Future[A]): Future[A] =
-      fa.recoverWith({ case t: FetchError => f(t) })
-    def raiseError[A](e: FetchError): Future[A]                    = Future.failed(e)
+    def handleErrorWith[A](fa: Future[A])(f: FetchException => Future[A]): Future[A] =
+      fa.recoverWith({ case t: FetchException => f(t) })
+    def raiseError[A](e: FetchException): Future[A]                = Future.failed(e)
     def flatMap[A, B](fa: Future[A])(f: A => Future[B]): Future[B] = fa.flatMap(f)
   }
 }

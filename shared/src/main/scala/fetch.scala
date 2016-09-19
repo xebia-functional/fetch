@@ -70,10 +70,11 @@ sealed trait FetchQuery[I, A] extends FetchRequest {
   def identities: NonEmptyList[I]
 }
 
-trait FetchError extends Throwable with Product with Serializable
-case class NotFound(env: Env, request: FetchOne[_, _])                          extends FetchError
-case class MissingIdentities(env: Env, missing: Map[DataSourceName, List[Any]]) extends FetchError
-case class FetchException(err: Throwable)                                       extends FetchError
+trait FetchException extends Throwable with Product with Serializable
+case class NotFound(env: Env, request: FetchOne[_, _]) extends FetchException
+case class MissingIdentities(env: Env, missing: Map[DataSourceName, List[Any]])
+    extends FetchException
+case class UnhandledException(err: Throwable) extends FetchException
 
 /**
   * Primitive operations in the Fetch Free monad.
@@ -122,7 +123,7 @@ object `package` {
 
   type Fetch[A] = Free[FetchOp, A]
 
-  trait FetchMonadError[M[_]] extends MonadError[M, FetchError] {
+  trait FetchMonadError[M[_]] extends MonadError[M, FetchException] {
     def runQuery[A](q: Query[A]): M[A]
   }
 

@@ -236,8 +236,8 @@ class FetchTests extends AsyncFreeSpec with Matchers {
     ME.attempt(Fetch.run[Future](fetch))
       .map(xor =>
             xor match {
-          case Xor.Left(FetchException(DidNotFound())) => assert(true)
-          case _                                       => fail("Should've thrown NotFound exception")
+          case Xor.Left(UnhandledException(DidNotFound())) => assert(true)
+          case _                                           => fail("Should've thrown NotFound exception")
       })
   }
 
@@ -359,8 +359,8 @@ class FetchTests extends AsyncFreeSpec with Matchers {
     ME.attempt(Fetch.run[Future](fetch))
       .map(xor =>
             xor match {
-          case Xor.Left(FetchException(DidNotFound())) => assert(true)
-          case _                                       => fail("Should've thrown NotFound exception")
+          case Xor.Left(UnhandledException(DidNotFound())) => assert(true)
+          case _                                           => fail("Should've thrown NotFound exception")
       })
   }
 
@@ -371,8 +371,8 @@ class FetchTests extends AsyncFreeSpec with Matchers {
     ME.attempt(Fetch.run[Future](fetch))
       .map(xor =>
             xor match {
-          case Xor.Left(FetchException(DidNotFound())) => assert(true)
-          case _                                       => fail("Should've thrown NotFound exception")
+          case Xor.Left(UnhandledException(DidNotFound())) => assert(true)
+          case _                                           => fail("Should've thrown NotFound exception")
       })
   }
 

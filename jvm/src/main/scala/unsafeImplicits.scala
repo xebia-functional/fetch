@@ -54,17 +54,17 @@ object implicits {
     }
     def pure[A](x: A): Eval[A] = Eval.now(x)
 
-    def handleErrorWith[A](fa: Eval[A])(f: FetchError => Eval[A]): Eval[A] =
+    def handleErrorWith[A](fa: Eval[A])(f: FetchException => Eval[A]): Eval[A] =
       Eval.later({
         try {
           fa.value
         } catch {
-          case ex: FetchError => f(ex).value
-          case th: Throwable  => f(FetchException(th)).value
+          case ex: FetchException => f(ex).value
+          case th: Throwable      => f(UnhandledException(th)).value
         }
       })
 
-    def raiseError[A](e: FetchError): Eval[A] =
+    def raiseError[A](e: FetchException): Eval[A] =
       Eval.later({
         throw e
       })
@@ -100,15 +100,15 @@ object implicits {
         }
     }
     def pure[A](x: A): Id[A] = x
-    def handleErrorWith[A](fa: Id[A])(f: FetchError => Id[A]): Id[A] =
+    def handleErrorWith[A](fa: Id[A])(f: FetchException => Id[A]): Id[A] =
       try {
         fa
       } catch {
-        case ex: FetchError => f(ex)
+        case ex: FetchException => f(ex)
       }
-    def raiseError[A](e: FetchError): Id[A] =
+    def raiseError[A](e: FetchException): Id[A] =
       e match {
-        case FetchException(ex) => {
+        case UnhandledException(ex) => {
             e.initCause(ex)
             throw e
           }
