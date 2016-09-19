@@ -332,6 +332,25 @@ class FetchTests extends AsyncFreeSpec with Matchers {
       })
   }
 
+  "Identities are deduped when batched" in {
+    import cats.std.list._
+    import cats.syntax.traverse._
+
+    val manies = List(1, 1, 2)
+    val fetch: Fetch[List[Int]] = for {
+      ones <- manies.traverse(one)
+    } yield ones
+
+    Fetch
+      .runEnv[Future](fetch)
+      .map(env => {
+        env.rounds.size shouldEqual 1
+        env.rounds.head.request should matchPattern {
+          case Concurrent(FetchMany(NonEmptyList(One(1), List(One(2))), source) :: Nil) =>
+        }
+      })
+  }
+
   "The product of two fetches implies parallel fetching" in {
     val fetch: Fetch[(Int, List[Int])] = Fetch.join(one(1), many(3))
 
