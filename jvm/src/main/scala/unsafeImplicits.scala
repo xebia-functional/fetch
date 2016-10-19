@@ -64,6 +64,8 @@ object implicits {
     def raiseError[A](e: Throwable): Eval[A] = Eval.later({ throw e })
     def flatMap[A, B](fa: Eval[A])(f: A => Eval[B]): Eval[B] =
       fa.flatMap(f)
+    def tailRecM[A, B](a: A)(f: A => Eval[Either[A, B]]): Eval[B] =
+      defaultTailRecM(a)(f)
   }
 
   implicit val idFetchMonadError: FetchMonadError[Id] = new FetchMonadError[Id] {
@@ -101,5 +103,7 @@ object implicits {
       }
     def raiseError[A](e: Throwable): Id[A]             = throw e
     def flatMap[A, B](fa: Id[A])(f: A => Id[B]): Id[B] = f(fa)
+    def tailRecM[A, B](a: A)(f: A => Id[Either[A, B]]): Id[B] =
+      defaultTailRecM(a)(f)
   }
 }

@@ -29,7 +29,7 @@ object implicits {
   def evalToTask[A](e: Eval[A]): Task[A] = e match {
     case Now(x)       => Task.now(x)
     case l: Later[A]  => Task.evalOnce({ l.value })
-    case a: Always[A] => Task.evalAlways({ a.value })
+    case a: Always[A] => Task.eval({ a.value })
     case other        => Task.evalOnce({ other.value })
   }
 
@@ -39,8 +39,6 @@ object implicits {
 
     override def product[A, B](fa: Task[A], fb: Task[B]): Task[(A, B)] =
       Task.zip2(Task.fork(fa), Task.fork(fb))
-
-    override def pureEval[A](e: Eval[A]): Task[A] = evalToTask(e)
 
     def pure[A](x: A): Task[A] =
       Task.now(x)
@@ -53,6 +51,9 @@ object implicits {
 
     def flatMap[A, B](fa: Task[A])(f: A => Task[B]): Task[B] =
       fa.flatMap(f)
+
+    def tailRecM[A, B](a: A)(f: A => Task[Either[A, B]]): Task[B] =
+      defaultTailRecM(a)(f)
 
     override def runQuery[A](q: Query[A]): Task[A] = q match {
       case Sync(x) => evalToTask(x)

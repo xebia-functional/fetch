@@ -20,8 +20,8 @@ import scala.collection.immutable._
 
 import cats.{MonadError, ~>}
 import cats.data.{StateT, NonEmptyList}
-import cats.std.option._
-import cats.std.list._
+import cats.instances.option._
+import cats.instances.list._
 import cats.syntax.traverse._
 
 /**
@@ -97,7 +97,7 @@ trait FetchInterpreters {
                                 requests
                                   .map({
                                     case FetchOne(a, ds)   => (ds.name, List(a))
-                                    case FetchMany(as, ds) => (ds.name, as.unwrap)
+                                    case FetchMany(as, ds) => (ds.name, as.toList)
                                   })
                                   .toMap
                             ),
@@ -109,7 +109,7 @@ trait FetchInterpreters {
 
                     val allFullfilled = (requests zip results).forall({
                       case (FetchOne(_, _), results)   => results.size == 1
-                      case (FetchMany(as, _), results) => as.unwrap.size == results.size
+                      case (FetchMany(as, _), results) => as.toList.size == results.size
                       case _                           => false
                     })
 
@@ -198,13 +198,13 @@ trait FetchInterpreters {
                            cache,
                            Round(cache,
                                  ds.name,
-                                 ManyRound(ids.unwrap),
+                                 ManyRound(ids.toList),
                                  startRound,
                                  System.nanoTime(),
                                  true),
                            newIds
                        ),
-                       ids.unwrap.flatMap(id => cache.get(ds.identity(id))))
+                       ids.toList.flatMap(id => cache.get(ds.identity(id))))
                   )
                 else {
                   M.flatMap(M.runQuery(ds
@@ -213,7 +213,7 @@ trait FetchInterpreters {
                                                     newIds.tail.asInstanceOf[List[I]]))))(
                       (res: Map[I, A]) => {
                     val endRound = System.nanoTime()
-                    ids.unwrap
+                    ids.toList
                       .map(i => res.get(i.asInstanceOf[I]))
                       .sequence
                       .fold[M[(FetchEnv, A)]](
@@ -223,7 +223,7 @@ trait FetchInterpreters {
                                       cache,
                                       Round(cache,
                                             ds.name,
-                                            ManyRound(ids.unwrap),
+                                            ManyRound(ids.toList),
                                             startRound,
                                             endRound),
                                       newIds
@@ -239,10 +239,10 @@ trait FetchInterpreters {
                                  newCache,
                                  Round(cache,
                                        ds.name,
-                                       ManyRound(ids.unwrap),
+                                       ManyRound(ids.toList),
                                        startRound,
                                        endRound,
-                                       results.size < ids.unwrap.distinct.size),
+                                       results.size < ids.toList.distinct.size),
                                  newIds
                              ),
                              results)
