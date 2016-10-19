@@ -114,7 +114,7 @@ And now we're ready to write our user data source; we'll emulate a database with
 
 ```tut:silent
 import cats.data.NonEmptyList
-import cats.std.list._
+import cats.instances.list._
 
 import fetch._
 
@@ -133,7 +133,7 @@ implicit object UserSource extends DataSource[UserId, User]{
   }
   override def fetchMany(ids: NonEmptyList[UserId]): Query[Map[UserId, User]] = {
     Query.sync({
-	  latency(userDatabase.filterKeys(ids.unwrap.contains), s"Many Users $ids")
+	  latency(userDatabase.filterKeys(ids.toList.contains), s"Many Users $ids")
     })
   }
 }
@@ -343,7 +343,7 @@ implicit object PostSource extends DataSource[PostId, Post]{
   }
   override def fetchMany(ids: NonEmptyList[PostId]): Query[Map[PostId, Post]] = {
     Query.sync({
-	  latency(postDatabase.filterKeys(ids.unwrap.contains), s"Many Posts $ids")
+	  latency(postDatabase.filterKeys(ids.toList.contains), s"Many Posts $ids")
     })
   }
 }
@@ -375,7 +375,7 @@ implicit object PostTopicSource extends DataSource[Post, PostTopic]{
   }
   override def fetchMany(ids: NonEmptyList[Post]): Query[Map[Post, PostTopic]] = {
     Query.sync({
-	  val result = ids.unwrap.map(id => (id, if (id.id % 2 == 0) "monad" else "applicative")).toMap
+	  val result = ids.toList.map(id => (id, if (id.id % 2 == 0) "monad" else "applicative")).toMap
       latency(result, s"Many Post Topics $ids")
     })
   }
@@ -455,7 +455,7 @@ combinator. It takes a `List[Fetch[A]]` and gives you back a `Fetch[List[A]]`, b
 data source and running fetches to different sources in parallel. Note that the `sequence` combinator is more general and works not only on lists but on any type that has a [Traverse](http://typelevel.org/cats/tut/traverse.html) instance.
 
 ```tut:silent
-import cats.std.list._
+import cats.instances.list._
 import cats.syntax.traverse._
 
 val fetchSequence: Fetch[List[User]] = List(getUser(1), getUser(2), getUser(3)).sequence
@@ -978,8 +978,6 @@ implicit val taskFetchMonadError: FetchMonadError[Task] = new FetchMonadError[Ta
   override def product[A, B](fa: Task[A], fb: Task[B]): Task[(A, B)] =
     Task.zip2(Task.fork(fa), Task.fork(fb)) // introduce parallelism with Task#fork
 
-  override def pureEval[A](e: Eval[A]): Task[A] = evalToTask(e)
-
   def pure[A](x: A): Task[A] =
     Task.now(x)
 
@@ -991,6 +989,9 @@ implicit val taskFetchMonadError: FetchMonadError[Task] = new FetchMonadError[Ta
 
   def flatMap[A, B](fa: Task[A])(f: A => Task[B]): Task[B] =
     fa.flatMap(f)
+    
+  def tailRecM[A, B](a: A)(f: A => Task[Either[A, B]]): Task[B] =
+    defaultTailRecM(a)(f)
 
   override def runQuery[A](q: Query[A]): Task[A] = queryToTask(q)
 }

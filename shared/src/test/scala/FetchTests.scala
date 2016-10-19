@@ -21,7 +21,7 @@ import org.scalatest._
 
 import cats.{MonadError}
 import cats.data.{NonEmptyList, Xor}
-import cats.std.list._
+import cats.instances.list._
 
 import fetch._
 import fetch.implicits._
@@ -38,7 +38,7 @@ object TestHelper {
       Query.sync(Option(id.id))
     }
     override def fetchMany(ids: NonEmptyList[One]): Query[Map[One, Int]] =
-      Query.sync(ids.unwrap.map(one => (one, one.id)).toMap)
+      Query.sync(ids.toList.map(one => (one, one.id)).toMap)
   }
   def one(id: Int): Fetch[Int] = Fetch(One(id))
 
@@ -48,7 +48,7 @@ object TestHelper {
     override def fetchOne(id: AnotherOne): Query[Option[Int]] =
       Query.sync(Option(id.id))
     override def fetchMany(ids: NonEmptyList[AnotherOne]): Query[Map[AnotherOne, Int]] =
-      Query.sync(ids.unwrap.map(anotherone => (anotherone, anotherone.id)).toMap)
+      Query.sync(ids.toList.map(anotherone => (anotherone, anotherone.id)).toMap)
   }
   def anotherOne(id: Int): Fetch[Int] = Fetch(AnotherOne(id))
 
@@ -58,7 +58,7 @@ object TestHelper {
     override def fetchOne(id: Many): Query[Option[List[Int]]] =
       Query.sync(Option(0 until id.n toList))
     override def fetchMany(ids: NonEmptyList[Many]): Query[Map[Many, List[Int]]] =
-      Query.sync(ids.unwrap.map(m => (m, 0 until m.n toList)).toMap)
+      Query.sync(ids.toList.map(m => (m, 0 until m.n toList)).toMap)
   }
 
   case class Never()
@@ -316,7 +316,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   }
 
   "We can traverse over a list with a Fetch for each element" in {
-    import cats.std.list._
+    import cats.instances.list._
     import cats.syntax.traverse._
 
     val fetch: Fetch[List[Int]] = for {
@@ -329,7 +329,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   }
 
   "Traversals are implicitly concurrent" in {
-    import cats.std.list._
+    import cats.instances.list._
     import cats.syntax.traverse._
 
     val fetch: Fetch[List[Int]] = for {

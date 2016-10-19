@@ -20,7 +20,7 @@ import scala.concurrent.duration._
 import org.scalatest._
 
 import cats.data.NonEmptyList
-import cats.std.list._
+import cats.instances.list._
 import fetch._
 import fetch.implicits._
 

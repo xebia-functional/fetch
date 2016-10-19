@@ -21,8 +21,9 @@ import scala.collection.immutable.Map
 import cats.{Applicative, Monad, ApplicativeError, MonadError, ~>, Eval}
 import cats.data.{StateT, Const, NonEmptyList}
 import cats.free.{Free}
-import cats.std.list._
-import cats.std.option._
+import cats.instances.list._
+import cats.instances.option._
+import cats.RecursiveTailRecM
 import cats.syntax.traverse._
 import scala.concurrent.duration.Duration
 
@@ -51,8 +52,7 @@ object Query {
   ): Query[A] = Async(action, timeout)
 
   implicit val fetchQueryApplicative: Applicative[Query] = new Applicative[Query] {
-    override def pureEval[A](e: Eval[A]): Query[A] = Sync(e)
-    def pure[A](x: A): Query[A]                    = Sync(Eval.now(x))
+    def pure[A](x: A): Query[A] = Sync(Eval.now(x))
     def ap[A, B](ff: Query[A => B])(fa: Query[A]): Query[B] =
       Ap(ff, fa)
   }
@@ -92,7 +92,7 @@ final case class FetchMany[I, A](as: NonEmptyList[I], ds: DataSource[I, A])
     as.forall((i: I) => cache.get[A](ds.identity(i)).isDefined)
   }
   override def missingIdentities(cache: DataSourceCache): List[I] = {
-    as.unwrap.distinct.filterNot(i => cache.get[A](ds.identity(i)).isDefined)
+    as.toList.distinct.filterNot(i => cache.get[A](ds.identity(i)).isDefined)
   }
   override def dataSource: DataSource[I, A] = ds
   override def identities: NonEmptyList[I]  = as
@@ -125,6 +125,9 @@ object `package` {
       Fetch.join(ff, fa).map({ case (f, a) => f(a) })
   }
 
+  implicit def stateTRecursiveTailRecM[F[_]]: RecursiveTailRecM[FetchInterpreter[F]#f] =
+    new RecursiveTailRecM[FetchInterpreter[F]#f] {}
+
   object Fetch extends FetchInterpreters {
 
     /**
@@ -150,14 +153,19 @@ object `package` {
       Free.liftF(FetchOne[I, A](i, DS))
 
     type FM = List[FetchOp[_]]
-    private[this] val DM: Monad[Const[FM, ?]] = new Monad[Const[FM, ?]] {
-      def pure[A](x: A): Const[FM, A] = Const(List())
 
-      def flatMap[A, B](fa: Const[FM, A])(f: A => Const[FM, B]): Const[FM, B] = fa match {
-        case Const(List(Cached(a))) => f(a.asInstanceOf[A])
-        case other                  => fa.asInstanceOf[Const[FM, B]]
+    private[this] val DM: Monad[Const[FM, ?]] with RecursiveTailRecM[Const[FM, ?]] =
+      new Monad[Const[FM, ?]] with RecursiveTailRecM[Const[FM, ?]] {
+        def pure[A](x: A): Const[FM, A] = Const(List())
+
+        def flatMap[A, B](fa: Const[FM, A])(f: A => Const[FM, B]): Const[FM, B] = fa match {
+          case Const(List(Cached(a))) => f(a.asInstanceOf[A])
+          case other                  => fa.asInstanceOf[Const[FM, B]]
+        }
+
+        def tailRecM[A, B](a: A)(f: A => Const[FM, Either[A, B]]): Const[FM, B] =
+          defaultTailRecM(a)(f)
       }
-    }
 
     private[this] def deps[A](f: Fetch[_]): List[FetchRequest[_, _]] = {
       f.foldMap[Const[FM, ?]](new (FetchOp ~> Const[FM, ?]) {
@@ -167,7 +175,7 @@ object `package` {
             case cach @ Cached(a)       => Const(List(cach))
             case _                      => Const(List())
           }
-        })(DM)
+        })(DM, DM)
         .getConst
         .collect({
           case one @ FetchOne(_, _)   => one
@@ -182,19 +190,19 @@ object `package` {
               acc.updated(ds,
                           acc
                             .get(ds)
-                            .fold(NonEmptyList(id): NonEmptyList[Any])(accids =>
-                                  accids.combine(NonEmptyList(id))))
+                            .fold(NonEmptyList.of(id): NonEmptyList[Any])(accids =>
+                                  accids.concat(NonEmptyList.of(id))))
             case many @ FetchMany(ids, ds) =>
               acc.updated(ds,
                           acc
                             .get(ds)
                             .fold(ids.asInstanceOf[NonEmptyList[Any]])(accids =>
-                                  accids.combine(ids.asInstanceOf[NonEmptyList[Any]])))
+                                  accids.concat(ids.asInstanceOf[NonEmptyList[Any]])))
             case _ => acc
         })
         .toList
         .map({
-          case (ds, ids) if ids.unwrap.size == 1 =>
+          case (ds, ids) if ids.toList.size == 1 =>
             FetchOne[Any, Any](ids.head, ds.asInstanceOf[DataSource[Any, Any]])
           case (ds, ids) =>
             FetchMany[Any, Any](ids, ds.asInstanceOf[DataSource[Any, Any]])
@@ -234,7 +242,7 @@ object `package` {
               results.get[B](ds.identity(id)).fold(one: FetchOp[B])(b => Cached(b))
             }
           case many @ FetchMany(ids, ds) => {
-              val fetched = ids.map(id => results.get(ds.identity(id))).unwrap.sequence
+              val fetched = ids.map(id => results.get(ds.identity(id))).toList.sequence
               fetched.fold(many: FetchOp[B])(results => Cached(results))
             }
           case conc @ Concurrent(manies) => {
