@@ -63,7 +63,7 @@ We'll implement a dummy data source that can convert integers to strings. For co
 
 ```tut:silent
 import cats.data.NonEmptyList
-import cats.std.list._
+import cats.instances.list._
 import fetch._
 
 implicit object ToStringSource extends DataSource[Int, String]{

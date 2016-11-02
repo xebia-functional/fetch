@@ -1,4 +1,4 @@
-addSbtPlugin("org.scala-js"  % "sbt-scalajs" % "0.6.8")
+addSbtPlugin("org.scala-js"  % "sbt-scalajs" % "0.6.13")
 addSbtPlugin("de.heikoseeberger" % "sbt-header" % "1.5.1")
 addSbtPlugin("com.typesafe.sbt" % "sbt-site" % "1.0.0")
 addSbtPlugin("com.typesafe.sbt" % "sbt-ghpages" % "0.5.4" exclude("com.typesafe.sbt", "sbt-git"))

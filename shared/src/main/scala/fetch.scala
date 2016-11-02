@@ -18,9 +18,9 @@ package fetch
 
 import scala.collection.immutable.Map
 
-import cats.{Applicative, Monad, ApplicativeError, MonadError, ~>, Eval, RecursiveTailRecM, FlatMap}
-import cats.data.{StateT, Const, NonEmptyList}
-import cats.free.{Free}
+import cats.{Applicative, Monad, ApplicativeError, MonadError, ~>, Eval, RecursiveTailRecM}
+import cats.data.{StateT, Const, NonEmptyList, Writer, XorT}
+import cats.free.Free
 import cats.instances.list._
 import cats.instances.option._
 import cats.syntax.traverse._
@@ -165,37 +165,6 @@ object `package` {
     ): Fetch[A] =
       Free.liftF(FetchOne[I, A](i, DS))
 
-    type FM = List[FetchOp[_]]
-    private[this] def DM(implicit TR: FlatMap[Const[FM, ?]]): Monad[Const[FM, ?]] =
-      new Monad[Const[FM, ?]] {
-        def pure[A](x: A): Const[FM, A] = Const(List())
-
-        def tailRecM[A, B](a: A)(f: A => cats.data.Const[List[fetch.FetchOp[_]], Either[A, B]])
-          : cats.data.Const[List[fetch.FetchOp[_]], B] =
-          f(a).asInstanceOf[Const[List[FetchOp[_]], B]]
-
-        def flatMap[A, B](fa: Const[FM, A])(f: A => Const[FM, B]): Const[FM, B] = fa match {
-          case Const(List(Fetched(a))) => f(a.asInstanceOf[A])
-          case other                   => fa.asInstanceOf[Const[FM, B]]
-        }
-      }
-
-    private[this] def deps[A](f: Fetch[_]): List[FetchQuery[_, _]] = {
-      f.foldMapUnsafe[Const[FM, ?]](new (FetchOp ~> Const[FM, ?]) {
-          def apply[X](x: FetchOp[X]): Const[FM, X] = x match {
-            case one @ FetchOne(id, ds) => Const(List(one))
-            case conc @ Concurrent(as)  => Const(as.asInstanceOf[FM])
-            case cach @ Fetched(a)      => Const(List(cach))
-            case _                      => Const(List())
-          }
-        })(DM)
-        .getConst
-        .collect({
-          case one @ FetchOne(_, _)   => one
-          case many @ FetchMany(_, _) => many
-        })
-    }
-
     private[this] def combineDeps(ds: List[FetchQuery[_, _]]): List[FetchQuery[_, _]] = {
       ds.foldLeft(Map.empty[DataSource[_, _], NonEmptyList[Any]])((acc, op) =>
               op match {
@@ -227,6 +196,40 @@ object `package` {
           case (ds, ids) =>
             FetchMany[Any, Any](ids, ds.asInstanceOf[DataSource[Any, Any]])
         })
+    }
+
+    private[this] type FM             = List[FetchOp[_]]
+    private[this] type KeepFetches[A] = Writer[FM, A]
+    private[this] type AnalyzeTop[A]  = XorT[KeepFetches, Unit, A]
+
+    private[this] object AnalyzeTop {
+      def stopWith[R](list: FM): AnalyzeTop[R] =
+        AnalyzeTop.stop(Writer.tell(list))
+
+      def stopEmpty[R]: AnalyzeTop[R] =
+        AnalyzeTop.stop(Writer.value(()))
+
+      def stop[R](k: KeepFetches[Unit]): AnalyzeTop[R] =
+        XorT.left[KeepFetches, Unit, R](k)
+
+      def go[X](k: KeepFetches[X]): AnalyzeTop[X] =
+        XorT.right[KeepFetches, Unit, X](k)
+    }
+
+    private[this] def deps(f: Fetch[_]): List[FetchQuery[_, _]] = {
+      val analyzeTop: FetchOp ~> AnalyzeTop = new (FetchOp ~> AnalyzeTop) {
+        def apply[A](op: FetchOp[A]): AnalyzeTop[A] = op match {
+          case fetc @ Fetched(c)     => AnalyzeTop.go(Writer(List(fetc), c))
+          case one @ FetchOne(_, _)  => AnalyzeTop.stopWith(List(one))
+          case conc @ Concurrent(as) => AnalyzeTop.stopWith(as.asInstanceOf[FM])
+          case _                     => AnalyzeTop.stopEmpty
+        }
+      }
+
+      f.foldMap[AnalyzeTop](analyzeTop).value.written.collect {
+        case one @ FetchOne(_, _)   => one
+        case many @ FetchMany(_, _) => many
+      }
     }
 
     private[this] def concurrently(fa: Fetch[_], fb: Fetch[_]): Fetch[DataSourceCache] = {

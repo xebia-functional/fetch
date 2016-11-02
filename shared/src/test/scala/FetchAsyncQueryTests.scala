@@ -25,8 +25,7 @@ import fetch._
 import fetch.implicits._
 
 class FetchAsyncQueryTests extends AsyncFreeSpec with Matchers {
-  implicit def executionContext = ExecutionContext.Implicits.global
-  override def newInstance      = new FetchAsyncQueryTests
+  implicit override def executionContext = ExecutionContext.Implicits.global
 
   case class ArticleId(id: Int)
   case class Article(id: Int, content: String) {
