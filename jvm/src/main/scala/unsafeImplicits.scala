@@ -54,7 +54,8 @@ object implicits {
           }
         }
     }
-    def pure[A](x: A): Eval[A]                                    = Eval.now(x)
+    def pure[A](x: A): Eval[A] = Eval.now(x)
+
     def tailRecM[A, B](a: A)(f: A => Eval[Either[A, B]]): Eval[B] = FM.tailRecM(a)(f)
 
     def handleErrorWith[A](fa: Eval[A])(f: FetchException => Eval[A]): Eval[A] =

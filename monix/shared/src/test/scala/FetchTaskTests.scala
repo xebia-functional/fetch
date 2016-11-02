@@ -20,7 +20,7 @@ import monix.execution.Scheduler
 import org.scalatest._
 
 import cats.data.NonEmptyList
-import cats.std.list._
+import cats.instances.list._
 
 import fetch._
 import fetch.monixTask.implicits._
@@ -28,8 +28,7 @@ import fetch.monixTask.implicits._
 import scala.concurrent.Future
 
 class FetchTaskTests extends AsyncFreeSpec with Matchers {
-  implicit def executionContext = Scheduler.Implicits.global
-  override def newInstance      = new FetchTaskTests
+  implicit override def executionContext = Scheduler.Implicits.global
 
   case class ArticleId(id: Int)
   case class Article(id: Int, content: String) {

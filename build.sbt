@@ -18,7 +18,7 @@ lazy val commonSettings = Seq(
   resolvers += Resolver.sonatypeRepo("releases"),
   libraryDependencies ++= Seq(
     "org.typelevel" %%% "cats" % "0.7.2",
-    "org.scalatest" %%% "scalatest" % "3.0.0-M7" % "test",
+    "org.scalatest" %%% "scalatest" % "3.0.0" % "test",
     compilerPlugin(
       "org.spire-math" %% "kind-projector" % "0.7.1"
     )
@@ -129,7 +129,7 @@ lazy val readme = (project in file("tut"))
 
 lazy val monixSettings = (
   libraryDependencies ++= Seq(
-    "io.monix" %%% "monix-eval" % "2.0"
+    "io.monix" %%% "monix-eval" % "2.0.5"
   )
 )
 

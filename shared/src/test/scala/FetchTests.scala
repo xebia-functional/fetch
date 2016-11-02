@@ -83,9 +83,13 @@ object TestHelper {
 
   def requestBatches(r: FetchRequest): Int =
     r match {
-      case FetchOne(_, _)       => 0
-      case FetchMany(ids, _)    => 1
-      case Concurrent(requests) => requests.collect({ case FetchMany(_, _) => }).size
+      case FetchOne(_, _)    => 0
+      case FetchMany(ids, _) => 1
+      case Concurrent(requests) =>
+        requests.count {
+          case FetchMany(_, _) => true
+          case _               => false
+        }
     }
 
   def totalBatches(rs: Seq[Round]): Int =
@@ -98,8 +102,7 @@ class FetchSyntaxTests extends AsyncFreeSpec with Matchers {
 
   val ME = implicitly[FetchMonadError[Future]]
 
-  implicit def executionContext = ExecutionContext.Implicits.global
-  override def newInstance      = new FetchSyntaxTests
+  implicit override def executionContext = ExecutionContext.Implicits.global
 
   "Cartesian syntax is implicitly concurrent" in {
     import cats.syntax.cartesian._
@@ -183,8 +186,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
 
   val ME = implicitly[FetchMonadError[Future]]
 
-  implicit def executionContext = ExecutionContext.Implicits.global
-  override def newInstance      = new FetchTests
+  implicit override def executionContext = ExecutionContext.Implicits.global
 
   "We can lift plain values to Fetch" in {
     val fetch: Fetch[Int] = Fetch.pure(42)
@@ -485,37 +487,37 @@ class FetchTests extends AsyncFreeSpec with Matchers {
       .map(env => {
         val rounds = env.rounds
         val stats  = (rounds.size, totalBatches(rounds), totalFetched(rounds))
-        println("LEROUNDS", rounds)
+
         stats shouldEqual (3, 3, 6)
       })
   }
 
-  // "Every level of sequenced concurrent fetches is batched" in {
-  //   val fetch = Fetch.join(
-  //       Fetch.join(
-  //           for {
-  //             a <- Fetch.sequence(List(one(2), one(3), one(4)))
-  //             b <- Fetch.sequence(List(many(0), many(1)))
-  //             c <- Fetch.sequence(List(one(9), one(10), one(11)))
-  //           } yield c,
-  //           for {
-  //             a <- Fetch.sequence(List(one(5), one(6), one(7)))
-  //             b <- Fetch.sequence(List(many(2), many(3)))
-  //             c <- Fetch.sequence(List(one(12), one(13), one(14)))
-  //           } yield c
-  //       ),
-  //       Fetch.sequence(List(one(15), one(16), one(17)))
-  //   )
+  "Every level of sequenced concurrent fetches is batched" in {
+    val fetch = Fetch.join(
+        Fetch.join(
+            for {
+              a <- Fetch.sequence(List(one(2), one(3), one(4)))
+              b <- Fetch.sequence(List(many(0), many(1)))
+              c <- Fetch.sequence(List(one(9), one(10), one(11)))
+            } yield c,
+            for {
+              a <- Fetch.sequence(List(one(5), one(6), one(7)))
+              b <- Fetch.sequence(List(many(2), many(3)))
+              c <- Fetch.sequence(List(one(12), one(13), one(14)))
+            } yield c
+        ),
+        Fetch.sequence(List(one(15), one(16), one(17)))
+    )
 
-  //   Fetch
-  //     .runEnv[Future](fetch)
-  //     .map(env => {
-  //       val rounds = env.rounds
-  //       val stats  = (rounds.size, totalBatches(rounds), totalFetched(rounds))
+    Fetch
+      .runEnv[Future](fetch)
+      .map(env => {
+        val rounds = env.rounds
+        val stats  = (rounds.size, totalBatches(rounds), totalFetched(rounds))
 
-  //       stats shouldEqual (3, 3, 9 + 4 + 6)
-  //     })
-  // }
+        stats shouldEqual (3, 3, 9 + 4 + 6)
+      })
+  }
 
   "The product of two fetches from the same data source implies batching" in {
     val fetch: Fetch[(Int, Int)] = Fetch.join(one(1), one(3))
@@ -724,7 +726,6 @@ class FetchTests extends AsyncFreeSpec with Matchers {
       _          <- Fetch.traverse(List(1, 2, 3))(one)
       _          <- one(1)
     } yield aOne + anotherOne
-
     val fut = Fetch.runEnv[Future](
         fetch,
         InMemoryCache(
@@ -791,8 +792,7 @@ class FetchReportingTests extends AsyncFreeSpec with Matchers {
 
   val ME = implicitly[FetchMonadError[Future]]
 
-  implicit def executionContext = ExecutionContext.Implicits.global
-  override def newInstance      = new FetchReportingTests
+  implicit override def executionContext = ExecutionContext.Implicits.global
 
   "Plain values have no rounds of execution" in {
     val fetch: Fetch[Int] = Fetch.pure(42)

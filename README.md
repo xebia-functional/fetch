@@ -38,10 +38,8 @@ To tell `Fetch` how to get the data you want, you must implement the `DataSource
 
 Data Sources take two type parameters:
 
-<ol>
-<li><code>Identity</code> is a type that has enough information to fetch the data. For a users data source, this would be a user's unique ID.</li>
-<li><code>Result</code> is the type of data we want to fetch. For a users data source, this would the `User` type.</li>
-</ol>
+1. `Identity` is a type that has enough information to fetch the data. For a users data source, this would be a user's unique ID.
+2. `Result` is the type of data we want to fetch. For a users data source, this would the `User` type.
 
 ```scala
 import cats.data.NonEmptyList
@@ -56,7 +54,7 @@ We'll implement a dummy data source that can convert integers to strings. For co
 
 ```scala
 import cats.data.NonEmptyList
-import cats.std.list._
+import cats.instances.list._
 import fetch._
 
 implicit object ToStringSource extends DataSource[Int, String]{
@@ -69,7 +67,7 @@ implicit object ToStringSource extends DataSource[Int, String]{
   override def fetchMany(ids: NonEmptyList[Int]): Query[Map[Int, String]] = {
     Query.sync({
       println(s"[${Thread.currentThread.getId}] Many ToString $ids")
-      ids.unwrap.map(i => (i, i.toString)).toMap
+      ids.toList.map(i => (i, i.toString)).toMap
     })
   }
 }
@@ -99,7 +97,7 @@ Let's run it and wait for the fetch to complete:
 
 ```scala
 fetchOne.runA[Id]
-// [46] One ToString 1
+// [45] One ToString 1
 // res3: cats.Id[String] = 1
 ```
 
@@ -117,7 +115,7 @@ When executing the above fetch, note how the three identities get batched and th
 
 ```scala
 fetchThree.runA[Id]
-// [46] Many ToString OneAnd(1,List(2, 3))
+// [45] Many ToString NonEmptyList(1, 2, 3)
 // res5: cats.Id[(String, String, String)] = (1,2,3)
 ```
 
@@ -138,7 +136,7 @@ implicit object LengthSource extends DataSource[String, Int]{
   override def fetchMany(ids: NonEmptyList[String]): Query[Map[String, Int]] = {
     Query.async((ok, fail) => {
       println(s"[${Thread.currentThread.getId}] Many Length $ids")
-      ok(ids.unwrap.map(i => (i, i.size)).toMap)
+      ok(ids.toList.map(i => (i, i.size)).toMap)
     })
   }
 }
@@ -156,8 +154,8 @@ Note how the two independent data fetches run in parallel, minimizing the latenc
 
 ```scala
 fetchMulti.runA[Id]
-// [46] One ToString 1
-// [47] One Length one
+// [45] One ToString 1
+// [46] One Length one
 // res7: cats.Id[(String, Int)] = (1,3)
 ```
 
@@ -176,6 +174,6 @@ While running it, notice that the data source is only queried once. The next tim
 
 ```scala
 fetchTwice.runA[Id]
-// [46] One ToString 1
+// [45] One ToString 1
 // res8: cats.Id[(String, String)] = (1,1)
 ```
