@@ -60,6 +60,7 @@ object TestHelper {
     override def fetchMany(ids: NonEmptyList[Many]): Query[Map[Many, List[Int]]] =
       Query.sync(ids.toList.map(m => (m, 0 until m.n toList)).toMap)
   }
+  def many(id: Int): Fetch[List[Int]] = Fetch(Many(id))
 
   case class Never()
   implicit object NeverSource extends DataSource[Never, Int] {
@@ -69,7 +70,6 @@ object TestHelper {
     override def fetchMany(ids: NonEmptyList[Never]): Query[Map[Never, Int]] =
       Query.sync(Map.empty[Never, Int])
   }
-  def many(id: Int): Fetch[List[Int]] = Fetch(Many(id))
 
   def requestFetches(r: FetchRequest): Int =
     r match {
