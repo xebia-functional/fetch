@@ -6,6 +6,8 @@ style: fetch
 highlight_theme: tomorrow
 docs: true
 markdown: redcarpet
+cdn:
+  url: https://rawgit.com/47deg/microsites/cdn/
 collections:
   tut:
     output: true

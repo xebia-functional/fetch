@@ -21,7 +21,7 @@ import org.scalatest._
 
 import cats.{MonadError}
 import cats.data.{NonEmptyList, Xor}
-import cats.std.list._
+import cats.instances.list._
 
 import fetch._
 import fetch.implicits._
@@ -29,7 +29,7 @@ import fetch.implicits._
 object TestHelper {
   import fetch.syntax._
 
-  case class NotFound() extends Throwable
+  case class DidNotFound() extends Throwable
 
   case class One(id: Int)
   implicit object OneSource extends DataSource[One, Int] {
@@ -38,7 +38,7 @@ object TestHelper {
       Query.sync(Option(id.id))
     }
     override def fetchMany(ids: NonEmptyList[One]): Query[Map[One, Int]] =
-      Query.sync(ids.unwrap.map(one => (one, one.id)).toMap)
+      Query.sync(ids.toList.map(one => (one, one.id)).toMap)
   }
   def one(id: Int): Fetch[Int] = Fetch(One(id))
 
@@ -48,7 +48,7 @@ object TestHelper {
     override def fetchOne(id: AnotherOne): Query[Option[Int]] =
       Query.sync(Option(id.id))
     override def fetchMany(ids: NonEmptyList[AnotherOne]): Query[Map[AnotherOne, Int]] =
-      Query.sync(ids.unwrap.map(anotherone => (anotherone, anotherone.id)).toMap)
+      Query.sync(ids.toList.map(anotherone => (anotherone, anotherone.id)).toMap)
   }
   def anotherOne(id: Int): Fetch[Int] = Fetch(AnotherOne(id))
 
@@ -58,8 +58,9 @@ object TestHelper {
     override def fetchOne(id: Many): Query[Option[List[Int]]] =
       Query.sync(Option(0 until id.n toList))
     override def fetchMany(ids: NonEmptyList[Many]): Query[Map[Many, List[Int]]] =
-      Query.sync(ids.unwrap.map(m => (m, 0 until m.n toList)).toMap)
+      Query.sync(ids.toList.map(m => (m, 0 until m.n toList)).toMap)
   }
+  def many(id: Int): Fetch[List[Int]] = Fetch(Many(id))
 
   case class Never()
   implicit object NeverSource extends DataSource[Never, Int] {
@@ -69,34 +70,30 @@ object TestHelper {
     override def fetchMany(ids: NonEmptyList[Never]): Query[Map[Never, Int]] =
       Query.sync(Map.empty[Never, Int])
   }
-  def many(id: Int): Fetch[List[Int]] = Fetch(Many(id))
+
+  def requestFetches(r: FetchRequest): Int =
+    r match {
+      case FetchOne(_, _)       => 1
+      case FetchMany(ids, _)    => ids.toList.size
+      case Concurrent(requests) => requests.map(requestFetches).sum
+    }
 
   def totalFetched(rs: Seq[Round]): Int =
-    rs.filterNot(_.cached)
-      .foldLeft(0)((acc, round) =>
-            round.kind match {
-          case OneRound(_)          => acc + 1
-          case ManyRound(ids)       => acc + ids.size
-          case ConcurrentRound(ids) => acc + ids.map(_._2.size).sum
-      })
+    rs.map((round: Round) => requestFetches(round.request)).sum
+
+  def requestBatches(r: FetchRequest): Int =
+    r match {
+      case FetchOne(_, _)    => 0
+      case FetchMany(ids, _) => 1
+      case Concurrent(requests) =>
+        requests.count {
+          case FetchMany(_, _) => true
+          case _               => false
+        }
+    }
 
   def totalBatches(rs: Seq[Round]): Int =
-    rs.filterNot(_.cached)
-      .foldLeft(0)((acc, round) =>
-            round.kind match {
-          case OneRound(_)          => acc
-          case ManyRound(ids)       => acc + 1
-          case ConcurrentRound(ids) => acc + ids.filter(_._2.size > 1).size
-      })
-
-  def concurrent(rs: Seq[Round]): Seq[Round] =
-    rs.filter(
-        r =>
-          r.kind match {
-            case ConcurrentRound(_) => true
-            case other              => false
-        }
-    )
+    rs.map((round: Round) => requestBatches(round.request)).sum
 }
 
 class FetchSyntaxTests extends AsyncFreeSpec with Matchers {
@@ -105,8 +102,7 @@ class FetchSyntaxTests extends AsyncFreeSpec with Matchers {
 
   val ME = implicitly[FetchMonadError[Future]]
 
-  implicit def executionContext = ExecutionContext.Implicits.global
-  override def newInstance      = new FetchSyntaxTests
+  implicit override def executionContext = ExecutionContext.Implicits.global
 
   "Cartesian syntax is implicitly concurrent" in {
     import cats.syntax.cartesian._
@@ -116,7 +112,7 @@ class FetchSyntaxTests extends AsyncFreeSpec with Matchers {
     val fut = Fetch.runEnv[Future](fetch)
 
     fut.map(env => {
-      concurrent(env.rounds).size shouldEqual 1
+      env.rounds.size shouldEqual 1
     })
   }
 
@@ -130,9 +126,10 @@ class FetchSyntaxTests extends AsyncFreeSpec with Matchers {
     fut.map(
         env => {
       val rounds = env.rounds
-      val stats  = (concurrent(rounds).size, totalBatches(rounds), totalFetched(rounds))
 
-      stats shouldEqual (1, 1, 2)
+      rounds.size shouldEqual 1
+      totalBatches(rounds) shouldEqual 1
+      totalFetched(rounds) shouldEqual 2
     })
   }
 
@@ -189,8 +186,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
 
   val ME = implicitly[FetchMonadError[Future]]
 
-  implicit def executionContext = ExecutionContext.Implicits.global
-  override def newInstance      = new FetchTests
+  implicit override def executionContext = ExecutionContext.Implicits.global
 
   "We can lift plain values to Fetch" in {
     val fetch: Fetch[Int] = Fetch.pure(42)
@@ -203,14 +199,8 @@ class FetchTests extends AsyncFreeSpec with Matchers {
 
     ME.attempt(fut)
       .map(xor =>
-            xor match {
-          case Xor.Left(FetchFailure(env)) => {
-              env.rounds.headOption match {
-                case Some(Round(_, _, OneRound(Never()), _, _, _)) => assert(true)
-                case _                                             => fail("Should've thrown a fetch failure")
-              }
-            }
-          case _ => fail("Should've thrown a fetch failure")
+            xor should matchPattern {
+          case Xor.Left(NotFound(env, FetchOne(Never(), _))) =>
       })
   }
 
@@ -229,8 +219,8 @@ class FetchTests extends AsyncFreeSpec with Matchers {
     ME.attempt(Fetch.run[Future](fetch, cache))
       .map(xor =>
             xor match {
-          case Xor.Left(FetchFailure(env)) => env.cache shouldEqual cache
-          case _                           => fail("Cache should be populated")
+          case Xor.Left(NotFound(env, _)) => env.cache shouldEqual cache
+          case _                          => fail("Cache should be populated")
       })
   }
 
@@ -243,20 +233,20 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   }
 
   "We can lift errors to Fetch" in {
-    val fetch: Fetch[Int] = Fetch.error(NotFound())
+    val fetch: Fetch[Int] = Fetch.error(DidNotFound())
 
     ME.attempt(Fetch.run[Future](fetch))
       .map(xor =>
             xor match {
-          case Xor.Left(NotFound()) => assert(true)
-          case _                    => fail("Should've thrown NotFound exception")
+          case Xor.Left(UnhandledException(DidNotFound())) => assert(true)
+          case _                                           => fail("Should've thrown NotFound exception")
       })
   }
 
   "We can lift handle and recover from errors in Fetch" in {
     import cats.syntax.applicativeError._
 
-    val fetch: Fetch[Int] = Fetch.error(NotFound())
+    val fetch: Fetch[Int] = Fetch.error(DidNotFound())
     val fut               = Fetch.run[Future](fetch)
     ME.handleErrorWith(fut)(err => Future.successful(42)).map(_ shouldEqual 42)
   }
@@ -316,7 +306,6 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   }
 
   "We can traverse over a list with a Fetch for each element" in {
-    import cats.std.list._
     import cats.syntax.traverse._
 
     val fetch: Fetch[List[Int]] = for {
@@ -328,8 +317,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
     fut.map(_ shouldEqual List(0, 1, 2))
   }
 
-  "Traversals are implicitly concurrent" in {
-    import cats.std.list._
+  "Traversals are implicitly batched" in {
     import cats.syntax.traverse._
 
     val fetch: Fetch[List[Int]] = for {
@@ -340,7 +328,25 @@ class FetchTests extends AsyncFreeSpec with Matchers {
     Fetch
       .runEnv[Future](fetch)
       .map(env => {
-        concurrent(env.rounds).size shouldEqual 1
+        env.rounds.size shouldEqual 2
+      })
+  }
+
+  "Identities are deduped when batched" in {
+    import cats.syntax.traverse._
+
+    val manies = List(1, 1, 2)
+    val fetch: Fetch[List[Int]] = for {
+      ones <- manies.traverse(one)
+    } yield ones
+
+    Fetch
+      .runEnv[Future](fetch)
+      .map(env => {
+        env.rounds.size shouldEqual 1
+        env.rounds.head.request should matchPattern {
+          case Concurrent(FetchMany(NonEmptyList(One(1), List(One(2))), source) :: Nil) =>
+        }
       })
   }
 
@@ -350,7 +356,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
     Fetch
       .runEnv[Future](fetch)
       .map(env => {
-        concurrent(env.rounds).size shouldEqual 1
+        env.rounds.size shouldEqual 1
       })
   }
 
@@ -365,26 +371,26 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   }
 
   "If a fetch fails in the left hand of a product the product will fail" in {
-    val fetch: Fetch[(Int, List[Int])] = Fetch.join(Fetch.error(NotFound()), many(3))
+    val fetch: Fetch[(Int, List[Int])] = Fetch.join(Fetch.error(DidNotFound()), many(3))
     val fut                            = Fetch.run[Future](fetch)
 
     ME.attempt(Fetch.run[Future](fetch))
       .map(xor =>
             xor match {
-          case Xor.Left(NotFound()) => assert(true)
-          case _                    => fail("Should've thrown NotFound exception")
+          case Xor.Left(UnhandledException(DidNotFound())) => assert(true)
+          case _                                           => fail("Should've thrown NotFound exception")
       })
   }
 
   "If a fetch fails in the right hand of a product the product will fail" in {
-    val fetch: Fetch[(List[Int], Int)] = Fetch.join(many(3), Fetch.error(NotFound()))
+    val fetch: Fetch[(List[Int], Int)] = Fetch.join(many(3), Fetch.error(DidNotFound()))
     val fut                            = Fetch.run[Future](fetch)
 
     ME.attempt(Fetch.run[Future](fetch))
       .map(xor =>
             xor match {
-          case Xor.Left(NotFound()) => assert(true)
-          case _                    => fail("Should've thrown NotFound exception")
+          case Xor.Left(UnhandledException(DidNotFound())) => assert(true)
+          case _                                           => fail("Should've thrown NotFound exception")
       })
   }
 
@@ -393,10 +399,12 @@ class FetchTests extends AsyncFreeSpec with Matchers {
     val fut                            = Fetch.run[Future](fetch)
 
     ME.attempt(Fetch.run[Future](fetch))
-      .map(xor =>
-            xor match {
-          case Xor.Left(FetchFailure(_)) => assert(true)
-          case _                         => fail("Should've thrown a fetch failure")
+      .map(xor => {
+        xor match {
+          case Xor.Left(MissingIdentities(_, missing)) =>
+            missing shouldEqual Map(NeverSource.name -> List(Never()))
+          case _ => fail("Should've thrown a fetch failure")
+        }
       })
   }
 
@@ -405,10 +413,12 @@ class FetchTests extends AsyncFreeSpec with Matchers {
     val fut                            = Fetch.run[Future](fetch)
 
     ME.attempt(fut)
-      .map(xor =>
-            xor match {
-          case Xor.Left(FetchFailure(_)) => assert(true)
-          case _                         => fail("Should've thrown a fetch failure")
+      .map(xor => {
+        xor match {
+          case Xor.Left(MissingIdentities(_, missing)) =>
+            missing shouldEqual Map(NeverSource.name -> List(Never()))
+          case _ => fail("Should've thrown a fetch failure")
+        }
       })
   }
 
@@ -425,7 +435,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
       .runEnv[Future](fetch)
       .map(env => {
         val rounds = env.rounds
-        val stats  = (concurrent(rounds).size, totalBatches(rounds), totalFetched(rounds))
+        val stats  = (rounds.size, totalBatches(rounds), totalFetched(rounds))
 
         stats shouldEqual (1, 1, 4)
       })
@@ -452,7 +462,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
       .runEnv[Future](fetch)
       .map(env => {
         val rounds = env.rounds
-        val stats  = (concurrent(rounds).size, totalBatches(rounds), totalFetched(rounds))
+        val stats  = (rounds.size, totalBatches(rounds), totalFetched(rounds))
 
         stats shouldEqual (2, 1, 4)
       })
@@ -476,13 +486,13 @@ class FetchTests extends AsyncFreeSpec with Matchers {
       .runEnv[Future](fetch)
       .map(env => {
         val rounds = env.rounds
-        val stats  = (concurrent(rounds).size, totalBatches(rounds), totalFetched(rounds))
+        val stats  = (rounds.size, totalBatches(rounds), totalFetched(rounds))
 
         stats shouldEqual (3, 3, 6)
       })
   }
 
-  "Every level of sequenced concurrent of concurrent fetches is batched" in {
+  "Every level of sequenced concurrent fetches is batched" in {
     val fetch = Fetch.join(
         Fetch.join(
             for {
@@ -503,7 +513,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
       .runEnv[Future](fetch)
       .map(env => {
         val rounds = env.rounds
-        val stats  = (concurrent(rounds).size, totalBatches(rounds), totalFetched(rounds))
+        val stats  = (rounds.size, totalBatches(rounds), totalFetched(rounds))
 
         stats shouldEqual (3, 3, 9 + 4 + 6)
       })
@@ -516,9 +526,9 @@ class FetchTests extends AsyncFreeSpec with Matchers {
       .runEnv[Future](fetch)
       .map(env => {
         val rounds = env.rounds
-        val stats  = (concurrent(rounds).size, totalBatches(rounds))
 
-        stats shouldEqual (1, 1)
+        rounds.size shouldEqual 1
+        totalBatches(rounds) shouldEqual 1
       })
   }
 
@@ -553,9 +563,9 @@ class FetchTests extends AsyncFreeSpec with Matchers {
       .runEnv[Future](fetch)
       .map(env => {
         val rounds = env.rounds
-        val stats  = (concurrent(rounds).size, totalBatches(rounds))
 
-        stats shouldEqual (1, 2)
+        rounds.size shouldEqual 1
+        totalBatches(rounds) shouldEqual 2
       })
   }
 
@@ -567,9 +577,9 @@ class FetchTests extends AsyncFreeSpec with Matchers {
       .runEnv[Future](fetch)
       .map(env => {
         val rounds = env.rounds
-        val stats  = (concurrent(rounds).size, totalFetched(rounds))
 
-        stats shouldEqual (1, 2)
+        rounds.size shouldEqual 1
+        totalFetched(rounds) shouldEqual 2
       })
   }
 
@@ -588,9 +598,9 @@ class FetchTests extends AsyncFreeSpec with Matchers {
     fut.map(
         env => {
       val rounds = env.rounds
-      val stats  = (concurrent(rounds).size, totalFetched(rounds))
 
-      stats shouldEqual (1, 2)
+      rounds.size shouldEqual 1
+      totalFetched(rounds) shouldEqual 2
     })
   }
 
@@ -600,13 +610,13 @@ class FetchTests extends AsyncFreeSpec with Matchers {
     Fetch.run[Future](fetch).map(_ shouldEqual List(1, 2, 3))
   }
 
-  "Traversals are run concurrently" in {
+  "Traversals are batched" in {
     val fetch = Fetch.traverse(List(1, 2, 3))(one)
 
     Fetch
       .runEnv[Future](fetch)
       .map(env => {
-        concurrent(env.rounds).size shouldEqual 1
+        env.rounds.size shouldEqual 1
       })
   }
 
@@ -617,9 +627,9 @@ class FetchTests extends AsyncFreeSpec with Matchers {
       .runEnv[Future](fetch)
       .map(env => {
         val rounds = env.rounds
-        val stats  = (concurrent(rounds).size, totalFetched(rounds))
 
-        stats shouldEqual (1, 2)
+        rounds.size shouldEqual 1
+        totalFetched(rounds) shouldEqual 2
       })
   }
 
@@ -633,9 +643,9 @@ class FetchTests extends AsyncFreeSpec with Matchers {
       .runEnv[Future](fetch)
       .map(env => {
         val rounds = env.rounds
-        val stats  = (concurrent(rounds).size, totalFetched(rounds))
 
-        stats shouldEqual (1, 2)
+        rounds.size shouldEqual 1
+        totalFetched(rounds) shouldEqual 2
       })
   }
 
@@ -685,7 +695,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
         env => {
       val rounds = env.rounds
 
-      totalFetched(rounds) shouldEqual 0
+      rounds.size shouldEqual 0
     })
   }
 
@@ -716,7 +726,6 @@ class FetchTests extends AsyncFreeSpec with Matchers {
       _          <- Fetch.traverse(List(1, 2, 3))(one)
       _          <- one(1)
     } yield aOne + anotherOne
-
     val fut = Fetch.runEnv[Future](
         fetch,
         InMemoryCache(
@@ -731,7 +740,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
         env => {
       val rounds = env.rounds
 
-      totalFetched(rounds) shouldEqual 0
+      rounds.size shouldEqual 0
     })
   }
 
@@ -775,5 +784,120 @@ class FetchTests extends AsyncFreeSpec with Matchers {
     fut.map(env => {
       totalFetched(env.rounds) shouldEqual 10
     })
+  }
+}
+
+class FetchReportingTests extends AsyncFreeSpec with Matchers {
+  import TestHelper._
+
+  val ME = implicitly[FetchMonadError[Future]]
+
+  implicit override def executionContext = ExecutionContext.Implicits.global
+
+  "Plain values have no rounds of execution" in {
+    val fetch: Fetch[Int] = Fetch.pure(42)
+    Fetch.runEnv[Future](fetch).map(_.rounds.size shouldEqual 0)
+  }
+
+  "Single fetches are executed in one round" in {
+    val fetch = one(1)
+    Fetch.runEnv[Future](fetch).map(_.rounds.size shouldEqual 1)
+  }
+
+  "Single fetches are executed in one round per binding in a for comprehension" in {
+    val fetch = for {
+      o <- one(1)
+      t <- one(2)
+    } yield (o, t)
+
+    Fetch.runEnv[Future](fetch).map(_.rounds.size shouldEqual 2)
+  }
+
+  "Single fetches for different data sources are executed in multiple rounds if they are in a for comprehension" in {
+    val fetch: Fetch[(Int, List[Int])] = for {
+      o <- one(1)
+      m <- many(3)
+    } yield (o, m)
+
+    Fetch.runEnv[Future](fetch).map(_.rounds.size shouldEqual 2)
+  }
+
+  "Single fetches combined with cartesian are run in one round" in {
+    import cats.syntax.cartesian._
+
+    val fetch: Fetch[(Int, List[Int])] = (one(1) |@| many(3)).tupled
+    val fut                            = Fetch.runEnv[Future](fetch)
+
+    fut.map(_.rounds.size shouldEqual 1)
+  }
+
+  "Single fetches combined with traverse are run in one round" in {
+    import cats.syntax.traverse._
+
+    val fetch: Fetch[List[Int]] = for {
+      manies <- many(3)
+      ones   <- manies.traverse(one)
+    } yield ones
+
+    val fut = Fetch.runEnv[Future](fetch)
+    fut.map(_.rounds.size shouldEqual 2)
+  }
+
+  "The product of two fetches from the same data source implies batching" in {
+    val fetch: Fetch[(Int, Int)] = Fetch.join(one(1), one(3))
+
+    Fetch
+      .runEnv[Future](fetch)
+      .map(env => {
+        env.rounds.size shouldEqual 1
+      })
+  }
+
+  "The product of concurrent fetches of the same type implies everything fetched in batches" in {
+    val fetch = Fetch.join(
+        Fetch.join(
+            for {
+              a <- one(1)
+              b <- one(2)
+              c <- one(3)
+            } yield c,
+            for {
+              a <- one(2)
+              m <- many(4)
+              c <- one(3)
+            } yield c
+        ),
+        one(3)
+    )
+
+    Fetch
+      .runEnv[Future](fetch)
+      .map(env => {
+        env.rounds.size shouldEqual 2
+      })
+  }
+
+  "Every level of sequenced concurrent of concurrent fetches is batched" in {
+    val fetch = Fetch.join(
+        Fetch.join(
+            for {
+              a <- Fetch.sequence(List(one(2), one(3), one(4)))
+              b <- Fetch.sequence(List(many(0), many(1)))
+              c <- Fetch.sequence(List(one(9), one(10), one(11)))
+            } yield c,
+            for {
+              a <- Fetch.sequence(List(one(5), one(6), one(7)))
+              b <- Fetch.sequence(List(many(2), many(3)))
+              c <- Fetch.sequence(List(one(12), one(13), one(14)))
+            } yield c
+        ),
+        Fetch.sequence(List(one(15), one(16), one(17)))
+    )
+
+    Fetch
+      .runEnv[Future](fetch)
+      .map(env => {
+        env.rounds.size shouldEqual 3
+      })
   }
 }

@@ -18,7 +18,7 @@ package fetch.monixTask
 
 import fetch._
 
-import cats.{Eval, Now, Later, Always, Traverse, Applicative}
+import cats.{Eval, Now, Later, Always, Monad, RecursiveTailRecM}
 
 import monix.eval.Task
 import monix.execution.{Scheduler, Cancelable}
@@ -29,9 +29,11 @@ object implicits {
   def evalToTask[A](e: Eval[A]): Task[A] = e match {
     case Now(x)       => Task.now(x)
     case l: Later[A]  => Task.evalOnce({ l.value })
-    case a: Always[A] => Task.evalAlways({ a.value })
+    case a: Always[A] => Task.eval({ a.value })
     case other        => Task.evalOnce({ other.value })
   }
+
+  implicit val fetchTaskRecursiveTailRecM: RecursiveTailRecM[Task] = RecursiveTailRecM.create[Task]
 
   implicit val fetchTaskFetchMonadError: FetchMonadError[Task] = new FetchMonadError[Task] {
     override def map[A, B](fa: Task[A])(f: A => B): Task[B] =
@@ -40,19 +42,22 @@ object implicits {
     override def product[A, B](fa: Task[A], fb: Task[B]): Task[(A, B)] =
       Task.zip2(Task.fork(fa), Task.fork(fb))
 
-    override def pureEval[A](e: Eval[A]): Task[A] = evalToTask(e)
-
     def pure[A](x: A): Task[A] =
       Task.now(x)
 
-    def handleErrorWith[A](fa: Task[A])(f: Throwable => Task[A]): Task[A] =
-      fa.onErrorHandleWith(f)
+    def handleErrorWith[A](fa: Task[A])(f: FetchException => Task[A]): Task[A] =
+      fa.onErrorHandleWith({
+        case e: FetchException => f(e)
+      })
 
-    def raiseError[A](e: Throwable): Task[A] =
+    def raiseError[A](e: FetchException): Task[A] =
       Task.raiseError(e)
 
     def flatMap[A, B](fa: Task[A])(f: A => Task[B]): Task[B] =
       fa.flatMap(f)
+
+    def tailRecM[A, B](a: A)(f: A => Task[Either[A, B]]): Task[B] =
+      defaultTailRecM(a)(f)
 
     override def runQuery[A](q: Query[A]): Task[A] = q match {
       case Sync(x) => evalToTask(x)

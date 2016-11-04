@@ -18,14 +18,16 @@ package fetch.unsafe
 
 import fetch._
 
-import cats.{Id, Eval}
+import cats.{Id, Eval, FlatMap}
 import cats.data.Xor
 
 import scala.concurrent._
 import scala.concurrent.duration._
 
 object implicits {
-  implicit val evalFetchMonadError: FetchMonadError[Eval] = new FetchMonadError[Eval] {
+  implicit def evalFetchMonadError(
+      implicit FM: FlatMap[Eval]
+  ): FetchMonadError[Eval] = new FetchMonadError[Eval] {
     override def runQuery[A](j: Query[A]): Eval[A] = j match {
       case Sync(e)    => e
       case Ap(qf, qx) => ap(runQuery(qf))(runQuery(qx))
@@ -53,20 +55,31 @@ object implicits {
         }
     }
     def pure[A](x: A): Eval[A] = Eval.now(x)
-    def handleErrorWith[A](fa: Eval[A])(f: Throwable => Eval[A]): Eval[A] =
+
+    def tailRecM[A, B](a: A)(f: A => Eval[Either[A, B]]): Eval[B] = FM.tailRecM(a)(f)
+
+    def handleErrorWith[A](fa: Eval[A])(f: FetchException => Eval[A]): Eval[A] =
       Eval.later({
         try {
           fa.value
         } catch {
-          case ex: Throwable => f(ex).value
+          case ex: FetchException => f(ex).value
+          case th: Throwable      => f(UnhandledException(th)).value
         }
       })
-    def raiseError[A](e: Throwable): Eval[A] = Eval.later({ throw e })
+
+    def raiseError[A](e: FetchException): Eval[A] =
+      Eval.later({
+        throw e
+      })
+
     def flatMap[A, B](fa: Eval[A])(f: A => Eval[B]): Eval[B] =
       fa.flatMap(f)
   }
 
-  implicit val idFetchMonadError: FetchMonadError[Id] = new FetchMonadError[Id] {
+  implicit def idFetchMonadError(
+      implicit FM: FlatMap[Id]
+  ): FetchMonadError[Id] = new FetchMonadError[Id] {
     override def runQuery[A](j: Query[A]): Id[A] = j match {
       case Sync(e)    => e.value
       case Ap(qf, qx) => ap(runQuery(qf))(runQuery(qx))
@@ -92,14 +105,23 @@ object implicits {
           }
         }
     }
-    def pure[A](x: A): Id[A] = x
-    def handleErrorWith[A](fa: Id[A])(f: Throwable => Id[A]): Id[A] =
+    def pure[A](x: A): Id[A]                                            = x
+    def tailRecM[A, B](a: A)(f: A => cats.Id[Either[A, B]]): cats.Id[B] = FM.tailRecM(a)(f)
+
+    def handleErrorWith[A](fa: Id[A])(f: FetchException => Id[A]): Id[A] =
       try {
         fa
       } catch {
-        case ex: Throwable => f(ex)
+        case ex: FetchException => f(ex)
       }
-    def raiseError[A](e: Throwable): Id[A]             = throw e
+    def raiseError[A](e: FetchException): Id[A] =
+      e match {
+        case UnhandledException(ex) => {
+            e.initCause(ex)
+            throw e
+          }
+        case other => throw other
+      }
     def flatMap[A, B](fa: Id[A])(f: A => Id[B]): Id[B] = f(fa)
   }
 }

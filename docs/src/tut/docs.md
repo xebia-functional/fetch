@@ -114,7 +114,7 @@ And now we're ready to write our user data source; we'll emulate a database with
 
 ```tut:silent
 import cats.data.NonEmptyList
-import cats.std.list._
+import cats.instances.list._
 
 import fetch._
 
@@ -126,6 +126,8 @@ val userDatabase: Map[UserId, User] = Map(
 )
 
 implicit object UserSource extends DataSource[UserId, User]{
+  override def name = "User data source"
+
   override def fetchOne(id: UserId): Query[Option[User]] = {
     Query.sync({
 	  latency(userDatabase.get(id), s"One User $id")
@@ -133,7 +135,7 @@ implicit object UserSource extends DataSource[UserId, User]{
   }
   override def fetchMany(ids: NonEmptyList[UserId]): Query[Map[UserId, User]] = {
     Query.sync({
-	  latency(userDatabase.filterKeys(ids.unwrap.contains), s"Many Users $ids")
+	  latency(userDatabase.filterKeys(ids.toList.contains), s"Many Users $ids")
     })
   }
 }
@@ -336,6 +338,8 @@ val postDatabase: Map[PostId, Post] = Map(
 )
 
 implicit object PostSource extends DataSource[PostId, Post]{
+  override def name = "Post data source"
+
   override def fetchOne(id: PostId): Query[Option[Post]] = {
     Query.sync({
 	  latency(postDatabase.get(id), s"One Post $id")
@@ -343,7 +347,7 @@ implicit object PostSource extends DataSource[PostId, Post]{
   }
   override def fetchMany(ids: NonEmptyList[PostId]): Query[Map[PostId, Post]] = {
     Query.sync({
-	  latency(postDatabase.filterKeys(ids.unwrap.contains), s"Many Posts $ids")
+	  latency(postDatabase.filterKeys(ids.toList.contains), s"Many Posts $ids")
     })
   }
 }
@@ -367,6 +371,8 @@ We'll implement a data source for retrieving a post topic given a post id.
 
 ```tut:silent
 implicit object PostTopicSource extends DataSource[Post, PostTopic]{
+  override def name = "Post topic data source"
+
   override def fetchOne(id: Post): Query[Option[PostTopic]] = {
     Query.sync({
       val topic = if (id.id % 2 == 0) "monad" else "applicative"
@@ -375,7 +381,7 @@ implicit object PostTopicSource extends DataSource[Post, PostTopic]{
   }
   override def fetchMany(ids: NonEmptyList[Post]): Query[Map[Post, PostTopic]] = {
     Query.sync({
-	  val result = ids.unwrap.map(id => (id, if (id.id % 2 == 0) "monad" else "applicative")).toMap
+	  val result = ids.toList.map(id => (id, if (id.id % 2 == 0) "monad" else "applicative")).toMap
       latency(result, s"Many Post Topics $ids")
     })
   }
@@ -455,7 +461,7 @@ combinator. It takes a `List[Fetch[A]]` and gives you back a `Fetch[List[A]]`, b
 data source and running fetches to different sources in parallel. Note that the `sequence` combinator is more general and works not only on lists but on any type that has a [Traverse](http://typelevel.org/cats/tut/traverse.html) instance.
 
 ```tut:silent
-import cats.std.list._
+import cats.instances.list._
 import cats.syntax.traverse._
 
 val fetchSequence: Fetch[List[User]] = List(getUser(1), getUser(2), getUser(3)).sequence
@@ -575,16 +581,28 @@ fetchSameTwice.runA[Id](ForgetfulCache())
 
 # Error handling
 
-Fetch is used for reading data from remote sources and the queries we perform can and will fail at some point. What happens if we run a fetch and fails? We'll create a fetch that always fails to learn about it.
+Fetch is used for reading data from remote sources and the queries we perform can and will fail at some point. There are many things that can
+go wrong:
+ - an exception can be thrown by client code of certain data sources
+ - an identity may be missing
+ - the data source may be temporarily available
+
+Since the error cases are plenty and can't be anticipated Fetch errors are represented by the `FetchException` trait, which extends `Throwable`.
+Currently fetch defines `FetchException` cases for missing identities and arbitrary exceptions but you can extend `FetchException` with any error
+you want.
+
+## Exceptions
+
+What happens if we run a fetch and fails with an exception? We'll create a fetch that always fails to learn about it.
 
 ```tut:silent
-val fetchError: Fetch[User] = (new Exception("Oh noes")).fetch
+val fetchException: Fetch[User] = (new Exception("Oh noes")).fetch
 ```
 
-If we try to execute to `Id` the exception will be thrown.
+If we try to execute to `Id` the exception will be thrown wrapped in a `FetchException`.
 
 ```tut:fail
-fetchError.runA[Id]
+fetchException.runA[Id]
 ```
 
 Since `Id` runs the fetch eagerly, the only way to recover from errors when running it is surrounding it with a `try-catch` block. We'll use Cats' `Eval` type as the target
@@ -596,13 +614,13 @@ We can use the `FetchMonadError[Eval]#attempt` to convert a fetch result into a 
 import fetch.unsafe.implicits._
 ```
 
-Now we can convert `Eval[User]` into `Eval[Throwable Xor User]` and capture exceptions as values in the left of the disjunction.
+Now we can convert `Eval[User]` into `Eval[FetchException Xor User]` and capture exceptions as values in the left of the disjunction.
 
 ```tut:book
 import cats.Eval
 import cats.data.Xor
 
-val safeResult: Eval[Throwable Xor User] = FetchMonadError[Eval].attempt(fetchError.runA[Eval])
+val safeResult: Eval[FetchException Xor User] = FetchMonadError[Eval].attempt(fetchException.runA[Eval])
 
 safeResult.value
 ```
@@ -612,17 +630,66 @@ And more succintly with Cats' applicative error syntax.
 ```tut:book
 import cats.syntax.applicativeError._
 
-fetchError.runA[Eval].attempt.value
+fetchException.runA[Eval].attempt.value
 ```
 
 ## Missing identities
 
-You've probably noticed that `DataSource.fetch` takes a list of identities and returns a map of identities to their result, taking
-into account the possibility of some identities not being found. Whenever an identity cannot be found, the fetch execution will
-fail.
+You've probably noticed that `DataSource.fetchOne` and `DataSource.fetchMany` return types help Fetch know if any requested
+identity was not found. Whenever an identity cannot be found, the fetch execution will fail with an instance of `FetchException`.
 
-Whenever a fetch fails, a `FetchFailure` exception is thrown. The `FetchFailure` will have the environment, which gives you information
-about the execution of the fetch.
+The requests can be of different types, each of which is described below.
+
+### One request
+
+When a single identity is being fetched the request will be a `FetchOne`; it contains the data source and the identity to fetch so you
+should be able to easily diagnose the failure. For ilustrating this scenario we'll ask for users that are not in the database.
+
+```tut:silent
+val missingUser = getUser(5)
+val eval: Eval[FetchException Xor User] = missingUser.runA[Eval].attempt
+val result: FetchException Xor User = eval.value
+val err: FetchException = result.swap.toOption.get // don't do this at home, folks
+```
+
+`NotFound` allows you to access the fetch request that was in progress when the error happened and the environment of the fetch.
+
+```tut:book
+err match {
+  case nf: NotFound => {
+    println("Request " + nf.request)
+    println("Environment " + nf.env)
+  }
+}
+```
+
+As you can see in the output, the error was actually a `NotFound`. We can access the request with `.request`, which lets us
+know that the failed request was for the identity `5` of the user data source. We can also see that the environment has an empty
+cache and no rounds of execution happened yet.
+
+### Multiple requests
+
+When multiple requests to the same data source are batched and/or multiple requests are performed at the same time, is possible that more than one identity was missing. There is another error case for such situations: `MissingIdentities`, which contains a mapping from data source names to the list of missing identities.
+
+```tut:silent
+val missingUsers = List(3, 4, 5, 6).traverse(getUser)
+val eval: Eval[FetchException Xor List[User]] = missingUsers.runA[Eval].attempt
+val result: FetchException Xor List[User] = eval.value
+val err: FetchException = result.swap.toOption.get // don't do this at home, folks
+```
+
+The `.missing` attribute will give us the mapping from data source name to missing identities, and `.env` will give us the environment so we can track the execution of the fetch.
+
+```tut:book
+err match {
+  case mi: MissingIdentities => {
+    println("Missing identities " + mi.missing)
+    println("Environment " + mi.env)
+  }
+}
+```
+
+## Your own errors
 
 # Syntax
 
@@ -907,7 +974,7 @@ Await.result(task.runAsync(ioSched), Duration.Inf)
 
 ## Custom types
 
-If you want to run a fetch to a custom type `M[_]`, you need to implement the `FetchMonadError[M]` typeclass. `FetchMonadError[M]` is simply a `MonadError[M, Throwable]` from cats augmented
+If you want to run a fetch to a custom type `M[_]`, you need to implement the `FetchMonadError[M]` typeclass. `FetchMonadError[M]` is simply a `MonadError[M, FetchException]` from cats augmented
 with a method for running a `Query[A]` in the context of the monad `M[A]`.
 
 For ilustrating integration with an asynchronous concurrency monad we'll use the implementation of Monix Task.
@@ -978,28 +1045,36 @@ implicit val taskFetchMonadError: FetchMonadError[Task] = new FetchMonadError[Ta
   override def product[A, B](fa: Task[A], fb: Task[B]): Task[(A, B)] =
     Task.zip2(Task.fork(fa), Task.fork(fb)) // introduce parallelism with Task#fork
 
-  override def pureEval[A](e: Eval[A]): Task[A] = evalToTask(e)
-
   def pure[A](x: A): Task[A] =
     Task.now(x)
 
-  def handleErrorWith[A](fa: Task[A])(f: Throwable => Task[A]): Task[A] =
-    fa.onErrorHandleWith(f)
+  def handleErrorWith[A](fa: Task[A])(f: FetchException => Task[A]): Task[A] =
+    fa.onErrorHandleWith({ case e: FetchException => f(e) })
 
-  def raiseError[A](e: Throwable): Task[A] =
+  def raiseError[A](e: FetchException): Task[A] =
     Task.raiseError(e)
 
   def flatMap[A, B](fa: Task[A])(f: A => Task[B]): Task[B] =
     fa.flatMap(f)
 
+  def tailRecM[A, B](a: A)(f: A => Task[Either[A, B]]): Task[B] =
+    defaultTailRecM(a)(f) // same implementation as monix.cats
+
   override def runQuery[A](q: Query[A]): Task[A] = queryToTask(q)
 }
+```
+
+```tut:silent
+import cats.RecursiveTailRecM
+
+val taskTR: RecursiveTailRecM[Task] =
+  RecursiveTailRecM.create[Task]
 ```
 
 We can now import the above implicit and run a fetch to our custom type, let's give it a go:
 
 ```tut:book
-val task = Fetch.run(homePage)(taskFetchMonadError)
+val task = Fetch.run(homePage)(taskFetchMonadError, taskTR)
 
 Await.result(task.runAsync(scheduler), Duration.Inf)
 ```
@@ -1016,7 +1091,7 @@ Await.result(task.runAsync(scheduler), Duration.Inf)
 Fetch stands on the shoulders of giants:
 
 - [Haxl](https://github.com/facebook/haxl) is Facebook's implementation (Haskell) of the [original paper Fetch is based on](http://community.haskell.org/~simonmar/papers/haxl-icfp14.pdf).
-- [Clump](http://getclump.io) has inspired the signature of the `DataSource#fetch` method.
+- [Clump](http://getclump.io) has inspired the signature of the `DataSource#fetch*` methods.
 - [Stitch](https://engineering.twitter.com/university/videos/introducing-stitch) is an in-house Twitter library that is not open source but has inspired Fetch's high-level API.
 - [Cats](http://typelevel.org/cats/), a library for functional programming in Scala.
 - [Monix](https://monix.io) high-performance and multiplatform (Scala / Scala.js) asynchronous programming library.
