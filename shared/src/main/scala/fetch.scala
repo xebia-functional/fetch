@@ -22,7 +22,10 @@ import cats.{Applicative, Monad, ApplicativeError, MonadError, ~>, Eval, Recursi
 import cats.data.{StateT, Const, NonEmptyList, Writer, XorT}
 import cats.free.Free
 import cats.instances.list._
+import cats.instances.map._
 import cats.instances.option._
+import cats.syntax.foldable._
+import cats.syntax.functor._
 import cats.syntax.traverse._
 import scala.concurrent.duration.Duration
 
@@ -139,6 +142,12 @@ object `package` {
 
     def ap[A, B](ff: Fetch[A => B])(fa: Fetch[A]): Fetch[B] =
       Fetch.join(ff, fa).map({ case (f, a) => f(a) })
+
+    override def product[A, B](fa: Fetch[A], fb: Fetch[B]): Fetch[(A, B)] =
+      Fetch.join(fa, fb)
+
+    override def tuple2[A, B](fa: Fetch[A], fb: Fetch[B]): Fetch[(A, B)] =
+      Fetch.join(fa, fb)
   }
 
   object Fetch extends FetchInterpreters {
@@ -165,45 +174,104 @@ object `package` {
     ): Fetch[A] =
       Free.liftF(FetchOne[I, A](i, DS))
 
-    private[this] def combineDeps(ds: List[FetchQuery[_, _]]): List[FetchQuery[_, _]] = {
-      ds.foldLeft(Map.empty[DataSource[_, _], NonEmptyList[Any]])((acc, op) =>
-              op match {
-            case one @ FetchOne(id, ds) =>
-              acc.updated(ds,
-                          acc
-                            .get(ds)
-                            .fold(NonEmptyList(id, Nil): NonEmptyList[Any])(accids => {
-                              val newIds = List(id)
-                              val allIds = (accids.toList ++ newIds).distinct
-                              NonEmptyList(allIds.head, allIds.tail)
-                            }))
-            case many @ FetchMany(ids, ds) =>
-              acc.updated(ds,
-                          acc
-                            .get(ds)
-                            .fold(ids.asInstanceOf[NonEmptyList[Any]])(accids => {
-                              val accList = accids.toList
-                              val newList = ids.toList
-                              val allIds  = (accList ++ newList).distinct
-                              NonEmptyList(allIds.head, allIds.tail)
-                            }))
-            case _ => acc
-        })
-        .toList
-        .map({
-          case (ds, ids) if ids.toList.size == 1 =>
-            FetchOne[Any, Any](ids.head, ds.asInstanceOf[DataSource[Any, Any]])
-          case (ds, ids) =>
-            FetchMany[Any, Any](ids, ds.asInstanceOf[DataSource[Any, Any]])
-        })
+    /**
+      * Given a list of `FetchRequest`s, lift it to the `Fetch` monad. When executing
+      * the fetch, data sources will be queried and the fetch will return a `DataSourceCache`
+      *  containing the results.
+      */
+    private[this] def concurrently(fetches: List[FetchQuery[_, _]]): Fetch[DataSourceCache] =
+      Free.liftF(Concurrent(fetches))
+
+    /**
+      * Transform a list of fetches into a fetch of a list. It implies concurrent execution of fetches.
+      */
+    def sequence[I, A](ids: List[Fetch[A]]): Fetch[List[A]] =
+      Applicative[Fetch].sequence(ids)
+
+    /**
+      * Apply a fetch-returning function to every element in a list and return a Fetch of the list of
+      * results. It implies concurrent execution of fetches.
+      */
+    def traverse[A, B](ids: List[A])(f: A => Fetch[B]): Fetch[List[B]] =
+      Applicative[Fetch].traverse(ids)(f)
+
+    /**
+      * Apply the given function to the result of the two fetches. It implies concurrent execution of fetches.
+      */
+    def map2[A, B, C](f: (A, B) => C)(fa: Fetch[A], fb: Fetch[B]): Fetch[C] =
+      Applicative[Fetch].map2(fa, fb)(f)
+
+    /**
+      * Join two fetches from any data sources and return a Fetch that returns a tuple with the two
+      * results. It implies concurrent execution of fetches.
+      */
+    def join[A, B](fl: Fetch[A], fr: Fetch[B]): Fetch[(A, B)] = {
+      def depFetches(fa: Fetch[_], fb: Fetch[_]): List[FetchQuery[_, _]] =
+        combineQueries(dependentQueries(fa) ++ dependentQueries(fb))
+
+      def joinWithFetches(
+          fl: Fetch[A], fr: Fetch[B], fetches: List[FetchQuery[_, _]]): Fetch[(A, B)] =
+        concurrently(fetches).flatMap(cache => joinH(fl, fr, cache))
+
+      def joinH(fl: Fetch[A], fr: Fetch[B], cache: DataSourceCache): Fetch[(A, B)] = {
+        val sfl = fl.compile(simplify(cache))
+        val sfr = fr.compile(simplify(cache))
+
+        val remainingDeps = depFetches(sfl, sfr)
+
+        if (remainingDeps.isEmpty) Monad[Fetch].tuple2(sfl, sfr)
+        else joinWithFetches(sfl, sfr, remainingDeps)
+      }
+
+      joinWithFetches(fl, fr, depFetches(fl, fr))
     }
 
-    private[this] type FM             = List[FetchOp[_]]
-    private[this] type KeepFetches[A] = Writer[FM, A]
+    /**
+      * Use a `DataSourceCache` to optimize a `FetchOp`.
+      * If the cache contains all the fetch identities, the fetch doesn't need to be
+      * executed and can be replaced by cached results.
+      */
+    private[this] def simplify(cache: DataSourceCache): (FetchOp ~> FetchOp) = {
+      new (FetchOp ~> FetchOp) {
+        def apply[B](fetchOp: FetchOp[B]): FetchOp[B] = fetchOp match {
+          case one @ FetchOne(id, ds) =>
+            cache.get[B](ds.identity(id)).fold(fetchOp)(b => Fetched(b))
+          case many @ FetchMany(ids, ds) =>
+            val fetched = ids.traverse(id => cache.get(ds.identity(id)))
+            fetched.fold(fetchOp)(results => Fetched(results.toList))
+          case conc @ Concurrent(manies) =>
+            val newManies = manies.filterNot(_.fullfilledBy(cache))
+            (if (newManies.isEmpty) Fetched(cache) else Concurrent(newManies)): FetchOp[B]
+          case other => other
+        }
+      }
+    }
+
+    /**
+      * Combine multiple queries so the resulting `List` only contains one `FetchQuery`
+      * per `DataSource`.
+      */
+    private[this] def combineQueries(ds: List[FetchQuery[_, _]]): List[FetchQuery[_, _]] =
+      ds.foldMap[Map[DataSource[_, _], NonEmptyList[Any]]] {
+          case FetchOne(id, ds)   => Map(ds -> NonEmptyList.of[Any](id))
+          case FetchMany(ids, ds) => Map(ds -> ids.widen[Any])
+        }
+        .mapValues { nel =>
+          // workaround because NEL[Any].distinct needs Order[Any]
+          NonEmptyList.fromListUnsafe(nel.toList.distinct)
+        }
+        .toList
+        .map {
+          case (ds, NonEmptyList(id, Nil)) => FetchOne(id, ds.castDS[Any, Any])
+          case (ds, ids)                   => FetchMany(ids, ds.castDS[Any, Any])
+        }
+
+    private[this] type FetchOps       = List[FetchOp[_]]
+    private[this] type KeepFetches[A] = Writer[FetchOps, A]
     private[this] type AnalyzeTop[A]  = XorT[KeepFetches, Unit, A]
 
     private[this] object AnalyzeTop {
-      def stopWith[R](list: FM): AnalyzeTop[R] =
+      def stopWith[R](list: FetchOps): AnalyzeTop[R] =
         AnalyzeTop.stop(Writer.tell(list))
 
       def stopEmpty[R]: AnalyzeTop[R] =
@@ -216,12 +284,15 @@ object `package` {
         XorT.right[KeepFetches, Unit, X](k)
     }
 
-    private[this] def deps(f: Fetch[_]): List[FetchQuery[_, _]] = {
+    /**
+      * Get a list of dependent `FetchQuery`s for a given `Fetch`.
+      */
+    private[this] def dependentQueries(f: Fetch[_]): List[FetchQuery[_, _]] = {
       val analyzeTop: FetchOp ~> AnalyzeTop = new (FetchOp ~> AnalyzeTop) {
         def apply[A](op: FetchOp[A]): AnalyzeTop[A] = op match {
           case fetc @ Fetched(c)     => AnalyzeTop.go(Writer(List(fetc), c))
           case one @ FetchOne(_, _)  => AnalyzeTop.stopWith(List(one))
-          case conc @ Concurrent(as) => AnalyzeTop.stopWith(as.asInstanceOf[FM])
+          case conc @ Concurrent(as) => AnalyzeTop.stopWith(as.asInstanceOf[FetchOps])
           case _                     => AnalyzeTop.stopEmpty
         }
       }
@@ -230,82 +301,6 @@ object `package` {
         case one @ FetchOne(_, _)   => one
         case many @ FetchMany(_, _) => many
       }
-    }
-
-    private[this] def concurrently(fa: Fetch[_], fb: Fetch[_]): Fetch[DataSourceCache] = {
-      val fetches: List[FetchQuery[_, _]] = combineDeps(deps(fa) ++ deps(fb))
-      Free.liftF(Concurrent(fetches))
-    }
-
-    /**
-      * Transform a list of fetches into a fetch of a list. It implies concurrent execution of fetches.
-      */
-    def sequence[I, A](ids: List[Fetch[A]]): Fetch[List[A]] = {
-      ids.foldLeft(Fetch.pure(List(): List[A]))((f, newF) =>
-            Fetch.join(f, newF).map(t => t._1 :+ t._2))
-    }
-
-    /**
-      * Apply a fetch-returning function to every element in a list and return a Fetch of the list of
-      * results. It implies concurrent execution of fetches.
-      */
-    def traverse[A, B](ids: List[A])(f: A => Fetch[B]): Fetch[List[B]] =
-      sequence(ids.map(f))
-
-    /**
-      * Apply the given function to the result of the two fetches. It implies concurrent execution of fetches.
-      */
-    def map2[A, B, C](f: (A, B) => C)(fa: Fetch[A], fb: Fetch[B]): Fetch[C] =
-      Fetch.join(fa, fb).map({ case (a, b) => f(a, b) })
-
-    private[this] def simplify(results: DataSourceCache): (FetchOp ~> FetchOp) = {
-      new (FetchOp ~> FetchOp) {
-        def apply[B](f: FetchOp[B]): FetchOp[B] = f match {
-          case one @ FetchOne(id, ds) => {
-              results.get[B](ds.identity(id)).fold(one: FetchOp[B])(b => Fetched(b))
-            }
-          case many @ FetchMany(ids, ds) => {
-              val fetched = ids.map(id => results.get(ds.identity(id))).toList.sequence
-              fetched.fold({
-                many: FetchOp[B]
-              })(results => Fetched(results))
-            }
-          case conc @ Concurrent(manies) => {
-              val newManies = manies.filterNot(_.fullfilledBy(results))
-
-              if (newManies.isEmpty)
-                Fetched(results).asInstanceOf[FetchOp[B]]
-              else
-                Concurrent(newManies).asInstanceOf[FetchOp[B]]
-            }
-          case other => other
-        }
-      }
-    }
-
-    /**
-      * Join two fetches from any data sources and return a Fetch that returns a tuple with the two
-      * results. It implies concurrent execution of fetches.
-      */
-    def join[A, B](fl: Fetch[A], fr: Fetch[B]): Fetch[(A, B)] = {
-      for {
-        cache <- concurrently(fl, fr)
-        result <- {
-          val sfl = fl.compile(simplify(cache))
-          val sfr = fr.compile(simplify(cache))
-
-          val remainingDeps = combineDeps(deps(sfl) ++ deps(sfr))
-
-          if (remainingDeps.isEmpty) {
-            for {
-              a <- sfl
-              b <- sfr
-            } yield (a, b)
-          } else {
-            join[A, B](sfl, sfr)
-          }
-        }
-      } yield result
     }
 
     class FetchRunner[M[_]] {
@@ -356,5 +351,9 @@ object `package` {
       * Run a `Fetch` with the given cache, the result in the monad `M`.
       */
     def run[M[_]]: FetchRunnerA[M] = new FetchRunnerA[M]
+  }
+
+  private[fetch] implicit class DataSourceCast[A, B](ds: DataSource[A, B]) {
+    def castDS[C, D]: DataSource[C, D] = ds.asInstanceOf[DataSource[C, D]]
   }
 }
