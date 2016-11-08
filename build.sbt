@@ -1,9 +1,20 @@
 import de.heikoseeberger.sbtheader.AutomateHeaderPlugin
 import de.heikoseeberger.sbtheader.license.Apache2_0
+import catext.Dependencies._
+
+val dev  = Seq(Dev("47 Degrees (twitter: @47deg)", "47 Degrees"))
+val gh   = GitHubSettings("com.fortysevendeg", "fetch", "47 Degrees", apache)
+val vAll = Versions(versions, libraries, scalacPlugins)
+
+addCommandAlias("makeDocs", ";docs/tut;docs/makeSite")
+
+pgpPassphrase := Some(sys.env.getOrElse("PGP_PASSPHRASE", "").toCharArray)
+pgpPublicRing := file(s"${sys.env.getOrElse("PGP_FOLDER", ".")}/pubring.gpg")
+pgpSecretRing := file(s"${sys.env.getOrElse("PGP_FOLDER", ".")}/secring.gpg")
 
 lazy val buildSettings = Seq(
-  organization := "com.fortysevendeg",
-  organizationName := "47 Degrees",
+  organization := gh.org,
+  organizationName := gh.publishOrg,
   description := "Simple & Efficient data access for Scala and Scala.js",
   startYear := Option(2016),
   homepage := Option(url("http://47deg.github.io/fetch/")),
@@ -35,18 +46,18 @@ lazy val commonSettings = Seq(
   scalafmtConfig := Some(file(".scalafmt"))
 ) ++ reformatOnCompileSettings
 
-lazy val allSettings = buildSettings ++ commonSettings ++ publishSettings
-
-lazy val fetchJSSettings = Seq(
-  requiresDOM := false,
-  scalaJSUseRhino := false,
-  jsEnv := NodeJSEnv().value
-)
+lazy val allSettings = buildSettings ++
+    commonSettings ++
+    sharedCommonSettings ++
+    miscSettings ++
+    sharedReleaseProcess ++
+    credentialSettings ++
+    sharedPublishSettings(gh, dev)
 
 lazy val fetch = crossProject.in(file("."))
   .settings(moduleName := "fetch")
   .settings(allSettings:_*)
-  .jsSettings(fetchJSSettings:_*)
+  .jsSettings(sharedJsSettings:_*)
   .enablePlugins(AutomateHeaderPlugin)
 
 lazy val fetchJVM = fetch.jvm
@@ -73,44 +84,6 @@ lazy val docs = (project in file("docs"))
   .settings(docsSettings: _*)
   .settings(noPublishSettings)
 
-addCommandAlias("makeDocs", ";docs/tut;docs/makeSite")
-
-lazy val noPublishSettings = Seq(
-  publish := (),
-  publishLocal := (),
-  publishArtifact := false
-)
-
-lazy val gpgFolder = sys.env.getOrElse("GPG_FOLDER", ".")
-
-lazy val publishSettings = Seq(
-  pgpPassphrase := Some(sys.env.getOrElse("GPG_PASSPHRASE", "").toCharArray),
-  pgpPublicRing := file(s"$gpgFolder/pubring.gpg"),
-  pgpSecretRing := file(s"$gpgFolder/secring.gpg"),
-  credentials += Credentials("Sonatype Nexus Repository Manager",  "oss.sonatype.org",  sys.env.getOrElse("PUBLISH_USERNAME", ""),  sys.env.getOrElse("PUBLISH_PASSWORD", "")),
-  scmInfo := Some(ScmInfo(url("https://github.com/47deg/fetch"), "https://github.com/47deg/fetch.git")),
-  licenses := Seq("Apache License, Version 2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0.txt")),
-  publishMavenStyle := true,
-  publishArtifact in Test := false,
-  pomIncludeRepository := Function.const(false),
-  publishTo := {
-    val nexus = "https://oss.sonatype.org/"
-    if (isSnapshot.value)
-      Some("Snapshots" at nexus + "content/repositories/snapshots")
-    else
-      Some("Releases" at nexus + "service/local/staging/deploy/maven2")
-  },
-  pomExtra :=
-    <developers>
-      <developer>
-        <name>47 Degrees (twitter: @47deg)</name>
-        <email>hello@47deg.com</email>
-      </developer>
-      <developer>
-        <name>47 Degrees</name>
-      </developer>
-    </developers>
-)
 
 lazy val readmeSettings = buildSettings ++ tutSettings ++ Seq(
   tutSourceDirectory := baseDirectory.value,
@@ -137,7 +110,7 @@ lazy val monix = crossProject.in(file("monix"))
   .dependsOn(fetch)
   .settings(moduleName := "fetch-monix")
   .settings(allSettings:_*)
-  .jsSettings(fetchJSSettings:_*)
+  .jsSettings(sharedJsSettings:_*)
   .settings(monixSettings: _*)
   .enablePlugins(AutomateHeaderPlugin)
 
