@@ -29,13 +29,13 @@ we read) concerns.
 To begin, add the following dependency to your SBT build file:
 
 ```scala
-"com.fortysevendeg" %% "fetch" % "0.3.0-SNAPSHOT"
+"com.fortysevendeg" %% "fetch" % "0.3.0"
 ```
 
 Or, if using Scala.js:
 
 ```scala
-"com.fortysevendeg" %%% "fetch" % "0.3.0-SNAPSHOT"
+"com.fortysevendeg" %%% "fetch" % "0.3.0"
 ```
 
 Now you'll have Fetch available in both Scala and Scala.js.
@@ -941,7 +941,7 @@ The [Monix](https://monix.io/) library provides an abstraction for lazy, asynchr
 For using `Task` as the target concurrency monad of a fetch, add the following dependency to your build file:
 
 ```scala
-"com.fortysevendeg" %% "fetch-monix" % "0.3.0-SNAPSHOT"
+"com.fortysevendeg" %% "fetch-monix" % "0.3.0"
 ```
 
 And do some standard imports, we'll need an Scheduler for running our tasks as well as the instance of `FetchMonadError[Task]` that `fetch-monix` provides:
