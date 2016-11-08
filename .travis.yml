@@ -1,13 +1,19 @@
 language: scala
 scala:
-  - 2.11.8
+- 2.11.8
 jdk:
-  - oraclejdk8
+- oraclejdk8
+before_install:
+- if [ "$TRAVIS_BRANCH" = "master" -a "$TRAVIS_PULL_REQUEST" = "false" ]; then openssl aes-256-cbc
+   -K $encrypted_37b99bd39158_key -iv $encrypted_37b99bd39158_iv
+   -in secring.gpg.enc -out secring.gpg -d; fi
 script:
-  - sbt coverage 'fetchJVM/test' 'fetchJVM/coverageReport'
-  - sbt 'monixJVM/test' 'monixJS/test'
-  - sbt 'fetchJS/test'
-  - sbt 'docs/tut'
-  - sbt 'readme/tut'
+- sbt coverage 'fetchJVM/test' 'fetchJVM/coverageReport'
+- sbt 'monixJVM/test' 'monixJS/test'
+- sbt 'fetchJS/test'
+- sbt 'docs/tut'
+- sbt 'readme/tut'
 after_success:
-  - bash <(curl -s https://codecov.io/bash) -t 47609994-e0cd-4f3b-a28d-eb558142c3bb
+- bash <(curl -s https://codecov.io/bash) -t 47609994-e0cd-4f3b-a28d-eb558142c3bb
+- if [ "$TRAVIS_BRANCH" = "master" -a "$TRAVIS_PULL_REQUEST" = "false" ]; then sbt
+  publishSigned; fi
