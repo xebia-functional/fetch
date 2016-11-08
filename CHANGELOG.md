@@ -1,5 +1,14 @@
 ## Changelog
 
+## Version 0.3.0
+
+Date: 2016-11-08
+
+- Improved and documented error handling and reporting facilities
+- Simplify query constructors
+- Minor changes to the DataSource trait, making their methods type parameters explicit
+- Internal simplification and improvements, thanks @peterneyens
+
 ## Version 0.2.0
 
 Date: 2016-05-22
