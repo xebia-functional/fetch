@@ -26,8 +26,7 @@ object implicits extends FutureInstances {
       ME: MonadError[Future, Throwable],
       FM: FlatMap[Future]
   ): FetchMonadError[Future] = new FetchMonadError[Future] {
-    override def tailRecM[A, B](a: A)(
-        f: A => scala.concurrent.Future[Either[A, B]]): scala.concurrent.Future[B] =
+    override def tailRecM[A, B](a: A)(f: A => Future[Either[A, B]]): Future[B] =
       FM.tailRecM(a)(f)
     override def runQuery[A](j: Query[A]): Future[A] = j match {
       case Sync(e) => Future(e.value)

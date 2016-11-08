@@ -29,6 +29,8 @@ trait DataSourceCache {
       case (acc, (i, a)) => acc.update(ds.identity(i), a)
     })
   }
+
+  def contains(k: DataSourceIdentity): Boolean = get(k).isDefined
 }
 
 /**
@@ -50,4 +52,18 @@ object InMemoryCache {
         results.foldLeft(Map.empty[DataSourceIdentity, Any])({
       case (c, (k, v)) => c.updated(k, v)
     }))
+
+  import cats.{Monoid, Semigroup}
+  import cats.instances.map._
+  import cats.syntax.semigroup._
+  implicit val inMemoryCacheMonoid: Monoid[InMemoryCache] = {
+    implicit val anySemigroup = new Semigroup[Any] {
+      def combine(a: Any, b: Any): Any = b
+    }
+    new Monoid[InMemoryCache] {
+      def empty: InMemoryCache = InMemoryCache.empty
+      def combine(c1: InMemoryCache, c2: InMemoryCache): InMemoryCache =
+        InMemoryCache(c1.state |+| c2.state)
+    }
+  }
 }

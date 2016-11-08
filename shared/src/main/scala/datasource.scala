@@ -16,10 +16,10 @@
 
 package fetch
 
-import cats.data.NonEmptyList
+import cats.data.{NonEmptyList, OptionT}
 import cats.instances.list._
 import cats.syntax.functor._
-import cats.syntax.traverse._
+import cats.syntax.traverseFilter._
 
 /**
   * A `DataSource` is the recipe for fetching a certain identity `I`, which yields
@@ -51,16 +51,11 @@ trait DataSource[I, A] {
     * source doesn't support batching.
     */
   def batchingNotSupported(ids: NonEmptyList[I]): Query[Map[I, A]] = {
-    val idsList = ids.toList
-    idsList
-      .map(fetchOne)
-      .sequence
-      .map(results => {
-        (idsList zip results)
-          .collect({
-            case (id, Some(result)) => (id, result)
-          })
-          .toMap
-      })
+    val fetchOneWithId: I => Query[Option[(I, A)]] = id =>
+      OptionT(fetchOne(id)).map(res => (id, res)).value
+
+    ids.toList.traverseFilter(fetchOneWithId).map(_.toMap)
   }
+
+  def maxBatchSize: Option[Int] = None
 }
