@@ -13,3 +13,4 @@ These are the people that have contributed to Fetch in one way or another.
 
 - Pepe García <jl.garhdez@gmail.com>
 - Alessandro Lacava <alessandrolacava@gmail.com>
+- Peter Neyens <@peterneyens>
