@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import monix.cats._
 import monix.eval.Task
 import monix.execution.Scheduler
 

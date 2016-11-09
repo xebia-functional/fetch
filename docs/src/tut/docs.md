@@ -614,13 +614,13 @@ We can use the `FetchMonadError[Eval]#attempt` to convert a fetch result into a 
 import fetch.unsafe.implicits._
 ```
 
-Now we can convert `Eval[User]` into `Eval[FetchException Xor User]` and capture exceptions as values in the left of the disjunction.
+Now we can convert `Eval[User]` into `Eval[FetchException Either User]` and capture exceptions as values in the left of the disjunction.
 
 ```tut:book
 import cats.Eval
-import cats.data.Xor
+import scala.util.Either
 
-val safeResult: Eval[FetchException Xor User] = FetchMonadError[Eval].attempt(fetchException.runA[Eval])
+val safeResult: Eval[FetchException Either User] = FetchMonadError[Eval].attempt(fetchException.runA[Eval])
 
 safeResult.value
 ```
@@ -647,8 +647,8 @@ should be able to easily diagnose the failure. For ilustrating this scenario we'
 
 ```tut:silent
 val missingUser = getUser(5)
-val eval: Eval[FetchException Xor User] = missingUser.runA[Eval].attempt
-val result: FetchException Xor User = eval.value
+val eval: Eval[FetchException Either User] = missingUser.runA[Eval].attempt
+val result: FetchException Either User = eval.value
 val err: FetchException = result.swap.toOption.get // don't do this at home, folks
 ```
 
@@ -673,8 +673,8 @@ When multiple requests to the same data source are batched and/or multiple reque
 
 ```tut:silent
 val missingUsers = List(3, 4, 5, 6).traverse(getUser)
-val eval: Eval[FetchException Xor List[User]] = missingUsers.runA[Eval].attempt
-val result: FetchException Xor List[User] = eval.value
+val eval: Eval[FetchException Either List[User]] = missingUsers.runA[Eval].attempt
+val result: FetchException Either List[User] = eval.value
 val err: FetchException = result.swap.toOption.get // don't do this at home, folks
 ```
 
@@ -1019,7 +1019,7 @@ def queryToTask[A](q: Query[A]): Task[A] = q match {
       case _                      => task
     }
   }
-  case Ap(qf, qx) => Task.zip2(queryToTask(qf), queryToTask(qx)).map({ case (f, x) => f(x) })	
+  case Ap(qf, qx) => Task.zip2(queryToTask(qf), queryToTask(qx)).map({ case (f, x) => f(x) })
 }
 ```
 
@@ -1033,7 +1033,7 @@ be evaluated in parallel.
 
 ### Writing the FetchMonadError instance
 
-Now we're ready for implementing the FetchMonadError instance for `Task`, we need to define it as an implicit. 
+Now we're ready for implementing the FetchMonadError instance for `Task`, we need to define it as an implicit.
 Note that Cats' typeclass hierarchy is expressed with inheritance and methods from weaker typeclasses like `Functor` or `Applicative` in more powerful typeclasses like `Monad` are implemented in terms of the operations of the latter. In practice, this means that if you just implement `pure` and `flatMap` the rest of the combinators like `map` are going to be implemented in terms of them. Because of this we'll override `map` for not using `flatMap` and `product` for expressing the independence of two computations.
 
 
@@ -1064,13 +1064,6 @@ implicit val taskFetchMonadError: FetchMonadError[Task] = new FetchMonadError[Ta
 }
 ```
 
-```tut:silent
-import cats.RecursiveTailRecM
-
-val taskTR: RecursiveTailRecM[Task] =
-  RecursiveTailRecM.create[Task]
-```
-
 We can now import the above implicit and run a fetch to our custom type, let's give it a go:
 
 ```tut:book
@@ -1095,5 +1088,3 @@ Fetch stands on the shoulders of giants:
 - [Stitch](https://engineering.twitter.com/university/videos/introducing-stitch) is an in-house Twitter library that is not open source but has inspired Fetch's high-level API.
 - [Cats](http://typelevel.org/cats/), a library for functional programming in Scala.
 - [Monix](https://monix.io) high-performance and multiplatform (Scala / Scala.js) asynchronous programming library.
-
-
