@@ -39,21 +39,20 @@ object implicits {
       override def runQuery[A](q: Query[A]): Task[A] = q match {
         case Sync(x) => evalToTask(x)
         case Async(ac, timeout) => {
-            val task: Task[A] = Task.create(
-                (scheduler, callback) => {
+          val task: Task[A] = Task.create((scheduler, callback) => {
 
-              scheduler.execute(new Runnable {
-                def run() = ac(callback.onSuccess, callback.onError)
-              })
-
-              Cancelable.empty
+            scheduler.execute(new Runnable {
+              def run() = ac(callback.onSuccess, callback.onError)
             })
 
-            timeout match {
-              case finite: FiniteDuration => task.timeout(finite)
-              case _                      => task
-            }
+            Cancelable.empty
+          })
+
+          timeout match {
+            case finite: FiniteDuration => task.timeout(finite)
+            case _                      => task
           }
+        }
         case Ap(qf, qx) =>
           Task.zip2(runQuery(qf), runQuery(qx)).map { case (f, x) => f(x) }
       }
