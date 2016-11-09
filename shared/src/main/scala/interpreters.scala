@@ -18,34 +18,32 @@ package fetch
 
 import scala.collection.immutable._
 
-import cats.{MonadError, ~>}
-import cats.data.{OptionT, NonEmptyList, StateT, Validated, XorT}
+import cats.{Applicative, ApplicativeError, MonadError, RecursiveTailRecM, Semigroup, ~>}
+import cats.data.{OptionT, NonEmptyList, StateT, Validated, ValidatedNel, Xor, XorT}
+import cats.free.Free
 import cats.instances.option._
 import cats.instances.list._
 import cats.instances.map._
+import cats.instances.tuple._
 import cats.syntax.either._
 import cats.syntax.flatMap._
 import cats.syntax.foldable._
 import cats.syntax.functor._
 import cats.syntax.functorFilter._
+import cats.syntax.list._
 import cats.syntax.option._
+import cats.syntax.reducible._
+import cats.syntax.semigroup._
 import cats.syntax.traverse._
 import cats.syntax.validated._
 
 trait FetchInterpreters {
-  def pendingQueries(
-      queries: List[FetchQuery[_, _]],
-      cache: DataSourceCache
-  ): List[FetchQuery[Any, Any]] =
-    queries.mapFilter { query =>
-      val dsAny = query.dataSource.castDS[Any, Any]
-      NonEmptyList.fromList(query.missingIdentities(cache)).map {
-        case NonEmptyList(id, Nil) => FetchOne(id, dsAny)
-        case ids                   => FetchMany(ids.widen[Any], dsAny)
-      }
-    }
 
-  def interpreter[I, M[_]](
+  def interpreter[M[_]: FetchMonadError: RecursiveTailRecM]: FetchOp ~> FetchInterpreter[M]#f =
+    maxBatchSizePhase.andThen[FetchInterpreter[M]#f](
+        Free.foldMap[FetchOp, FetchInterpreter[M]#f](coreInterpreter[M]))
+
+  def coreInterpreter[M[_]](
       implicit M: FetchMonadError[M]
   ): FetchOp ~> FetchInterpreter[M]#f = {
     new (FetchOp ~> FetchInterpreter[M]#f) {
@@ -98,15 +96,13 @@ trait FetchInterpreters {
       implicit M: FetchMonadError[M],
       ev: List[Any] =:= A
   ): M[(FetchEnv, A)] = {
-    val ids        = many.as
-    val ds         = many.ds //.castDS[Any, Any]
-    val startRound = System.nanoTime()
-    val cache      = env.cache
-    val newIds     = many.missingIdentities(cache)
+    val FetchMany(ids, ds) = many
+    val startRound         = System.nanoTime()
+    val cache              = env.cache
 
     (for {
       newIdsNel <- XorT.fromXor[M] {
-                    NonEmptyList.fromList(newIds).toRightXor {
+                    many.missingIdentities(cache).toNel.toRightXor {
                       // no missing ids, get all from cache
                       val cachedResults = ids.toList.mapFilter(id => cache.get(ds.identity(id)))
                       env -> cachedResults
@@ -115,11 +111,12 @@ trait FetchInterpreters {
       resMap <- XorT.right(M.runQuery(ds.fetchMany(newIdsNel)))
       results <- ids.toList
                   .traverseU(id => resMap.get(id).toValidNel(id))
-                  .fold[XorT[M, (FetchEnv, List[Any]), List[Any]]]({ missingIds =>
+                  .toXor
+                  .leftMap { missingIds =>
                     // not all identities could be found
-                    val map = Map(ds.name -> missingIds.toList)
-                    XorT.left(M.raiseError(MissingIdentities(env, map)))
-                  }, XorT.pure)
+                    MissingIdentities(env, Map(ds.name -> missingIds.toList))
+                  }
+                  .raiseLeftAsError[M, (FetchEnv, List[Any])]
     } yield {
       // found all results (and update cache)
       val endRound = System.nanoTime()
@@ -134,7 +131,35 @@ trait FetchInterpreters {
       env: FetchEnv
   )(
       implicit M: FetchMonadError[M]
-  ): M[(FetchEnv, DataSourceCache)] = {
+  ): M[(FetchEnv, InMemoryCache)] = {
+
+    def uncachedQueriessOrCachedResults[I, A](
+        queries: NonEmptyList[FetchQuery[I, A]],
+        cache: DataSourceCache
+    ): ValidatedNel[FetchQuery[I, A], NonEmptyList[(DataSourceIdentity, A)]] = {
+      def idOrResult[I, A](id: I, ds: DataSource[I, A]): ValidatedNel[I, (DataSourceIdentity, A)] = {
+        val identity = ds.identity(id)
+        cache.get[A](identity).map(identity -> _).toValidNel(id)
+      }
+
+      def missingIdsToQuery[I, A](ids: NonEmptyList[I], ds: DataSource[I, A]): FetchQuery[I, A] =
+        ids match {
+          case NonEmptyList(id, Nil) => FetchOne(id, ds)
+          case ids                   => FetchMany(ids, ds)
+        }
+
+      queries.traverseM[ValidatedNel[FetchQuery[I, A], ?], (DataSourceIdentity, A)] {
+        case FetchOne(id, ds) =>
+          idOrResult(id, ds)
+            .map(NonEmptyList(_, Nil))
+            .leftMap(ids => NonEmptyList.of(missingIdsToQuery(ids, ds)))
+        case FetchMany(ids, ds) =>
+          ids
+            .traverseU(id => idOrResult(id, ds))
+            .leftMap(ids => NonEmptyList.of(missingIdsToQuery(ids, ds)))
+      }
+    }
+
     def runFetchQueryAsMap[I, A](op: FetchQuery[I, A]): M[Map[I, A]] =
       op match {
         case FetchOne(a, ds) =>
@@ -143,10 +168,11 @@ trait FetchInterpreters {
       }
 
     type MissingIdentitiesMap = Map[DataSourceName, List[Any]]
+    type AnyQuery             = FetchQuery[Any, Any]
+    type AnyResult            = Map[Any, Any]
 
-    // Give for a list of queries and result(maps) all the missing identities
     def missingIdentitiesOrAllFulfilled(
-        queriesAndResults: List[(FetchQuery[Any, Any], Map[Any, Any])]
+        queriesAndResults: NonEmptyList[(AnyQuery, AnyResult)]
     ): Validated[MissingIdentitiesMap, Unit] =
       queriesAndResults.traverseU_ {
         case (FetchOne(id, ds), resultMap) =>
@@ -161,45 +187,121 @@ trait FetchInterpreters {
           Map.empty[DataSourceName, List[Any]].invalid
       }
 
+    // return a MissingIdentities error or return a NonEmptyList with all
+    // the query - result pairs
+    def errorOrAllFound(
+        queries: NonEmptyList[AnyQuery],
+        results: NonEmptyList[AnyResult]
+    ): Xor[MissingIdentities, NonEmptyList[(AnyQuery, AnyResult)]] = {
+      val zipped = NonEmptyList.fromListUnsafe(queries.toList zip results.toList)
+      missingIdentitiesOrAllFulfilled(zipped).toXor
+        .bimap(missingIds => MissingIdentities(env, missingIds), _ => zipped)
+    }
+
     val startRound = System.nanoTime()
     val cache      = env.cache
 
-    val queries: List[FetchQuery[Any, Any]] = pendingQueries(concurrent.as, cache)
+    (for {
+      queries <- XorT.fromXor[M](
+                    uncachedQueriessOrCachedResults(concurrent.queries, cache).swap.toXor.bimap(
+                        cachedResults => env -> InMemoryCache(cachedResults.toList.toMap),
+                        _.asInstanceOf[NonEmptyList[AnyQuery]])
+                )
+      results <- XorT.right(queries.traverse(runFetchQueryAsMap))
+      endRound = System.nanoTime()
+      queriesAndResults <- errorOrAllFound(queries, results)
+                            .raiseLeftAsError[M, (FetchEnv, InMemoryCache)]
+    } yield {
+      val round = Round(cache, Concurrent(queries), results, startRound, endRound)
 
-    if (queries.isEmpty)
-      // there are no pending queries
-      M.pure((env, cache))
-    else {
-      val sentRequests = queries.traverse(r => runFetchQueryAsMap(r))
+      // since user-provided caches may discard elements, we use an in-memory
+      // cache to gather these intermediate results that will be used for
+      // concurrent optimizations.
+      val (newCache, cachedResults) = queriesAndResults.foldLeft((cache, InMemoryCache.empty)) {
+        case ((userCache, internCache), (req, resultMap)) =>
+          val anyMap = resultMap.asInstanceOf[AnyResult]
+          val anyDS  = req.dataSource.castDS[Any, Any]
+          (userCache.cacheResults(anyMap, anyDS),
+           internCache.cacheResults(anyMap, anyDS).asInstanceOf[InMemoryCache])
+      }
 
-      sentRequests.flatMap { results =>
-        val endRound          = System.nanoTime()
-        val queriesAndResults = queries zip results
+      (env.evolve(round, newCache), cachedResults)
+    }).merge
+  }
 
-        val missingOrFulfilled = missingIdentitiesOrAllFulfilled(queriesAndResults)
+  val maxBatchSizePhase: FetchOp ~> Fetch = new (FetchOp ~> Fetch) {
+    def apply[A](op: FetchOp[A]): Fetch[A] =
+      op match {
+        case many @ FetchMany(_, _) => batchMany(many)
+        case conc @ Concurrent(_)   => batchConcurrent(conc)
+        case _                      => Free.liftF(op)
+      }
+  }
 
-        missingOrFulfilled.fold({ missingIds =>
-          // not all identiies were found
-          M.raiseError(MissingIdentities(env, missingIds))
-        }, { _ =>
-          // results found for all identities
-          val round = Round(cache, Concurrent(queries), results, startRound, endRound)
-
-          // since user-provided caches may discard elements, we use an in-memory
-          // cache to gather these intermediate results that will be used for
-          // concurrent optimizations.
-          val (newCache, cachedResults) =
-            queriesAndResults.foldLeft((cache, InMemoryCache.empty)) {
-              case ((userCache, internCache), (req, resultMap)) =>
-                val anyMap = resultMap.asInstanceOf[Map[Any, Any]]
-                val anyDS  = req.dataSource.castDS[Any, Any]
-                (userCache.cacheResults(anyMap, anyDS),
-                 internCache.cacheResults(anyMap, anyDS).asInstanceOf[InMemoryCache])
-            }
-
-          M.pure((env.evolve(round, newCache), cachedResults))
-        })
+  private[this] def manyInBatches[I, A](many: FetchMany[I, A]): NonEmptyList[FetchMany[I, A]] = {
+    val FetchMany(ids, ds) = many
+    ds.maxBatchSize.fold(NonEmptyList.of(many)) { batchSize =>
+      ids.unsafeListOp {
+        _.grouped(batchSize)
+          .map(batchIds => FetchMany[I, A](NonEmptyList.fromListUnsafe(batchIds), ds))
+          .toList
       }
     }
+  }
+
+  private[this] def batchMany[I, A](many: FetchMany[I, A]): Fetch[List[A]] = {
+    val batchedFetches = manyInBatches(many)
+    batchedFetches.reduceLeftM[Fetch, List[A]](Free.liftF) {
+      case (results, fetchMany) =>
+        Free.liftF(fetchMany).map(results ++ _)
+    }
+  }
+
+  private[this] def batchConcurrent(conc: Concurrent): Fetch[InMemoryCache] = {
+    type Batch = NonEmptyList[FetchQuery[Any, Any]]
+    val Concurrent(fetches) = conc
+    val individualBatches: NonEmptyList[Batch] = fetches.map {
+      case many @ FetchMany(_, _) => manyInBatches(many).asInstanceOf[Batch]
+      case other                  => NonEmptyList.of(other.asInstanceOf[FetchQuery[Any, Any]])
+    }
+    val batchedConcurrents = transposeNelsUnequalLengths(individualBatches).map(Concurrent(_))
+    batchedConcurrents.reduceLeftM[Fetch, InMemoryCache](Free.liftF(_)) {
+      case (caches, conc) => Free.liftF(conc).map(caches |+| _)
+    }
+  }
+
+  private[fetch] def transposeNelsUnequalLengths[A](
+      nestedNel: NonEmptyList[NonEmptyList[A]]
+  ): NonEmptyList[NonEmptyList[A]] = {
+    type NEL[A] = NonEmptyList[A]
+    // return one transposed line and the rest of the still untransposed lines
+    def oneLine(nelnel: NEL[NEL[A]]): (NEL[A], List[NEL[A]]) =
+      nelnel.reduceMap(nel => (NonEmptyList.of(nel.head), nel.tail.toNel.toList))
+
+    // keep transposing until oneLine returns an empty list as "rest lines"
+    // List[NEL[A]] == Option[NEL[NEL[A]]]
+    unfoldNonEmpty[NEL, NEL[A], NEL[NEL[A]]](nestedNel) { nel =>
+      val (line, rest) = oneLine(nel)
+      (line, rest.toNel)
+    }
+  }
+
+  private[fetch] def unfoldNonEmpty[F[_], A, B](seed: B)(f: B => (A, Option[B]))(
+      implicit F: Applicative[F], S: Semigroup[F[A]]): F[A] = {
+    def loop(seed: B)(xs: F[A]): F[A] = f(seed) match {
+      case (a, Some(b)) => loop(b)(S.combine(xs, F.pure(a)))
+      case (a, None)    => S.combine(xs, F.pure(a))
+    }
+
+    f(seed) match {
+      case (a, Some(b)) => loop(b)(F.pure(a))
+      case (a, None)    => F.pure(a)
+    }
+  }
+
+  private[this] implicit class RaiseErrorXorT[E <: FetchException, B](xor: Xor[E, B]) {
+    def raiseLeftAsError[M[_], A](implicit M: FetchMonadError[M]): XorT[M, A, B] =
+      xor.fold[XorT[M, A, B]](
+          error => XorT.left[M, A, B](M.raiseError(error)), XorT.pure[M, A, B](_))
   }
 }

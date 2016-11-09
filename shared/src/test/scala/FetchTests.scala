@@ -75,25 +75,25 @@ object TestHelper {
     r match {
       case FetchOne(_, _)       => 1
       case FetchMany(ids, _)    => ids.toList.size
-      case Concurrent(requests) => requests.map(requestFetches).sum
+      case Concurrent(requests) => requests.toList.map(requestFetches).sum
     }
 
   def totalFetched(rs: Seq[Round]): Int =
-    rs.map((round: Round) => requestFetches(round.request)).sum
+    rs.map((round: Round) => requestFetches(round.request)).toList.sum
 
   def requestBatches(r: FetchRequest): Int =
     r match {
       case FetchOne(_, _)    => 0
       case FetchMany(ids, _) => 1
       case Concurrent(requests) =>
-        requests.count {
+        requests.toList.count {
           case FetchMany(_, _) => true
           case _               => false
         }
     }
 
   def totalBatches(rs: Seq[Round]): Int =
-    rs.map((round: Round) => requestBatches(round.request)).sum
+    rs.map((round: Round) => requestBatches(round.request)).toList.sum
 }
 
 class FetchSyntaxTests extends AsyncFreeSpec with Matchers {
@@ -345,7 +345,8 @@ class FetchTests extends AsyncFreeSpec with Matchers {
       .map(env => {
         env.rounds.size shouldEqual 1
         env.rounds.head.request should matchPattern {
-          case Concurrent(FetchMany(NonEmptyList(One(1), List(One(2))), source) :: Nil) =>
+          case Concurrent(
+              NonEmptyList(FetchMany(NonEmptyList(One(1), List(One(2))), source), Nil)) =>
         }
       })
   }
@@ -531,7 +532,6 @@ class FetchTests extends AsyncFreeSpec with Matchers {
         totalBatches(rounds) shouldEqual 1
       })
   }
-
   "We can depend on previous computations of Fetch values" in {
     val fetch: Fetch[Int] = for {
       o <- one(1)
@@ -785,6 +785,16 @@ class FetchTests extends AsyncFreeSpec with Matchers {
       totalFetched(env.rounds) shouldEqual 10
     })
   }
+
+  "We can fetch multiple items at the same time" in {
+    val fetch: Fetch[List[Int]] = Fetch.multiple(One(1), One(2), One(3))
+    Fetch.runFetch[Future](fetch).map {
+      case (env, res) =>
+        res shouldEqual List(1, 2, 3)
+        totalFetched(env.rounds) shouldEqual 3
+        env.rounds.size shouldEqual 1
+    }
+  }
 }
 
 class FetchReportingTests extends AsyncFreeSpec with Matchers {
@@ -899,5 +909,34 @@ class FetchReportingTests extends AsyncFreeSpec with Matchers {
       .map(env => {
         env.rounds.size shouldEqual 3
       })
+  }
+}
+
+class FetchBatchingTests extends AsyncFreeSpec with Matchers {
+  import TestHelper._
+
+  implicit override def executionContext = ExecutionContext.Implicits.global
+
+  case class BatchedData(id: Int)
+  implicit object MaxBatchSource extends DataSource[BatchedData, Int] {
+    override def name = "BatchSource"
+    override def fetchOne(id: BatchedData): Query[Option[Int]] = {
+      Query.sync(Option(id.id))
+    }
+    override def fetchMany(ids: NonEmptyList[BatchedData]): Query[Map[BatchedData, Int]] =
+      Query.sync(ids.toList.map(one => (one, one.id)).toMap)
+
+    override val maxBatchSize = Some(2)
+  }
+  def fetchBatchedData(id: Int): Fetch[Int] = Fetch(BatchedData(id))
+
+  "A large fetch to a datasource with a maximum batch size is split and executed in sequence" in {
+    val fetch: Fetch[List[Int]] = Fetch.traverse(List.range(1, 6))(fetchBatchedData)
+    Fetch.runFetch[Future](fetch).map {
+      case (env, res) =>
+        res shouldEqual List(1, 2, 3, 4, 5)
+        totalFetched(env.rounds) shouldEqual 5
+        env.rounds.size shouldEqual 3
+    }
   }
 }
