@@ -29,7 +29,6 @@ lazy val buildSettings = Seq(
 lazy val commonSettings = Seq(
   resolvers += Resolver.sonatypeRepo("releases"),
   libraryDependencies ++= Seq(
-    "org.typelevel" %%% "cats-core" % "0.8.1",
     "org.typelevel" %%% "cats-free" % "0.8.1",
     "org.scalatest" %%% "scalatest" % "3.0.0" % "test",
     compilerPlugin(
