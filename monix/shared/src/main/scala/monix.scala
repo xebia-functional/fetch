@@ -18,7 +18,7 @@ package fetch.monixTask
 
 import fetch._
 
-import cats.{Eval, Now, Later, Always, Monad, RecursiveTailRecM}
+import cats.{Eval, Now, Later, Always, Monad}
 
 import monix.eval.Task
 import monix.execution.{Scheduler, Cancelable}
@@ -32,8 +32,6 @@ object implicits {
     case a: Always[A] => Task.eval({ a.value })
     case other        => Task.evalOnce({ other.value })
   }
-
-  implicit val fetchTaskRecursiveTailRecM: RecursiveTailRecM[Task] = RecursiveTailRecM.create[Task]
 
   implicit val fetchTaskFetchMonadError: FetchMonadError[Task] = new FetchMonadError[Task] {
     override def map[A, B](fa: Task[A])(f: A => B): Task[B] =

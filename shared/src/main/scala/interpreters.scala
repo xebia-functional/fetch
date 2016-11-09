@@ -17,9 +17,10 @@
 package fetch
 
 import scala.collection.immutable._
+import scala.util.Either
 
-import cats.{Applicative, ApplicativeError, MonadError, RecursiveTailRecM, Semigroup, ~>}
-import cats.data.{OptionT, NonEmptyList, StateT, Validated, ValidatedNel, Xor, XorT}
+import cats.{Applicative, ApplicativeError, MonadError, Semigroup, ~>}
+import cats.data.{OptionT, NonEmptyList, StateT, Validated, ValidatedNel, EitherT}
 import cats.free.Free
 import cats.instances.option._
 import cats.instances.list._
@@ -39,7 +40,7 @@ import cats.syntax.validated._
 
 trait FetchInterpreters {
 
-  def interpreter[M[_]: FetchMonadError: RecursiveTailRecM]: FetchOp ~> FetchInterpreter[M]#f =
+  def interpreter[M[_]: FetchMonadError]: FetchOp ~> FetchInterpreter[M]#f =
     maxBatchSizePhase.andThen[FetchInterpreter[M]#f](
         Free.foldMap[FetchOp, FetchInterpreter[M]#f](coreInterpreter[M]))
 
@@ -101,17 +102,18 @@ trait FetchInterpreters {
     val cache              = env.cache
 
     (for {
-      newIdsNel <- XorT.fromXor[M] {
-                    many.missingIdentities(cache).toNel.toRightXor {
-                      // no missing ids, get all from cache
-                      val cachedResults = ids.toList.mapFilter(id => cache.get(ds.identity(id)))
-                      env -> cachedResults
-                    }
-                  }
-      resMap <- XorT.right(M.runQuery(ds.fetchMany(newIdsNel)))
+      newIdsNel <- EitherT.fromOption[M](
+                      many.missingIdentities(cache).toNel, {
+                        // no missing ids, get all from cache
+                        val cachedResults =
+                          ids.toList.mapFilter[Any](id => cache.get(ds.identity(id)))
+                        env -> cachedResults
+                      }
+                  )
+      resMap <- EitherT.right(M.runQuery(ds.fetchMany(newIdsNel)))
       results <- ids.toList
                   .traverseU(id => resMap.get(id).toValidNel(id))
-                  .toXor
+                  .toEither
                   .leftMap { missingIds =>
                     // not all identities could be found
                     MissingIdentities(env, Map(ds.name -> missingIds.toList))
@@ -148,7 +150,7 @@ trait FetchInterpreters {
           case ids                   => FetchMany(ids, ds)
         }
 
-      queries.traverseM[ValidatedNel[FetchQuery[I, A], ?], (DataSourceIdentity, A)] {
+      queries.flatTraverse[ValidatedNel[FetchQuery[I, A], ?], (DataSourceIdentity, A)] {
         case FetchOne(id, ds) =>
           idOrResult(id, ds)
             .map(NonEmptyList(_, Nil))
@@ -192,9 +194,9 @@ trait FetchInterpreters {
     def errorOrAllFound(
         queries: NonEmptyList[AnyQuery],
         results: NonEmptyList[AnyResult]
-    ): Xor[MissingIdentities, NonEmptyList[(AnyQuery, AnyResult)]] = {
+    ): Either[MissingIdentities, NonEmptyList[(AnyQuery, AnyResult)]] = {
       val zipped = NonEmptyList.fromListUnsafe(queries.toList zip results.toList)
-      missingIdentitiesOrAllFulfilled(zipped).toXor
+      missingIdentitiesOrAllFulfilled(zipped).toEither
         .bimap(missingIds => MissingIdentities(env, missingIds), _ => zipped)
     }
 
@@ -202,12 +204,12 @@ trait FetchInterpreters {
     val cache      = env.cache
 
     (for {
-      queries <- XorT.fromXor[M](
-                    uncachedQueriessOrCachedResults(concurrent.queries, cache).swap.toXor.bimap(
+      queries <- EitherT.fromEither[M](
+                    uncachedQueriessOrCachedResults(concurrent.queries, cache).swap.toEither.bimap(
                         cachedResults => env -> InMemoryCache(cachedResults.toList.toMap),
                         _.asInstanceOf[NonEmptyList[AnyQuery]])
                 )
-      results <- XorT.right(queries.traverse(runFetchQueryAsMap))
+      results <- EitherT.right(queries.traverse(runFetchQueryAsMap))
       endRound = System.nanoTime()
       queriesAndResults <- errorOrAllFound(queries, results)
                             .raiseLeftAsError[M, (FetchEnv, InMemoryCache)]
@@ -299,9 +301,9 @@ trait FetchInterpreters {
     }
   }
 
-  private[this] implicit class RaiseErrorXorT[E <: FetchException, B](xor: Xor[E, B]) {
-    def raiseLeftAsError[M[_], A](implicit M: FetchMonadError[M]): XorT[M, A, B] =
-      xor.fold[XorT[M, A, B]](
-          error => XorT.left[M, A, B](M.raiseError(error)), XorT.pure[M, A, B](_))
+  private[this] implicit class RaiseErrorEitherT[E <: FetchException, B](Either: Either[E, B]) {
+    def raiseLeftAsError[M[_], A](implicit M: FetchMonadError[M]): EitherT[M, A, B] =
+      Either.fold[EitherT[M, A, B]](
+          error => EitherT.left[M, A, B](M.raiseError(error)), EitherT.pure[M, A, B](_))
   }
 }

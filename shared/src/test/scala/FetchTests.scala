@@ -16,11 +16,12 @@
 
 import scala.concurrent._
 import scala.concurrent.duration._
+import scala.util.Either
 
 import org.scalatest._
 
 import cats.{MonadError}
-import cats.data.{NonEmptyList, Xor}
+import cats.data.{NonEmptyList}
 import cats.instances.list._
 
 import fetch._
@@ -198,9 +199,9 @@ class FetchTests extends AsyncFreeSpec with Matchers {
     val fut               = Fetch.runEnv[Future](fetch)
 
     ME.attempt(fut)
-      .map(xor =>
-            xor should matchPattern {
-          case Xor.Left(NotFound(env, FetchOne(Never(), _))) =>
+      .map(Either =>
+            Either should matchPattern {
+          case Left(NotFound(env, FetchOne(Never(), _))) =>
       })
   }
 
@@ -217,10 +218,10 @@ class FetchTests extends AsyncFreeSpec with Matchers {
     )
 
     ME.attempt(Fetch.run[Future](fetch, cache))
-      .map(xor =>
-            xor match {
-          case Xor.Left(NotFound(env, _)) => env.cache shouldEqual cache
-          case _                          => fail("Cache should be populated")
+      .map(Either =>
+            Either match {
+          case Left(NotFound(env, _)) => env.cache shouldEqual cache
+          case _                      => fail("Cache should be populated")
       })
   }
 
@@ -236,10 +237,10 @@ class FetchTests extends AsyncFreeSpec with Matchers {
     val fetch: Fetch[Int] = Fetch.error(DidNotFound())
 
     ME.attempt(Fetch.run[Future](fetch))
-      .map(xor =>
-            xor match {
-          case Xor.Left(UnhandledException(DidNotFound())) => assert(true)
-          case _                                           => fail("Should've thrown NotFound exception")
+      .map(Either =>
+            Either match {
+          case Left(UnhandledException(DidNotFound())) => assert(true)
+          case _                                       => fail("Should've thrown NotFound exception")
       })
   }
 
@@ -376,10 +377,10 @@ class FetchTests extends AsyncFreeSpec with Matchers {
     val fut                            = Fetch.run[Future](fetch)
 
     ME.attempt(Fetch.run[Future](fetch))
-      .map(xor =>
-            xor match {
-          case Xor.Left(UnhandledException(DidNotFound())) => assert(true)
-          case _                                           => fail("Should've thrown NotFound exception")
+      .map(Either =>
+            Either match {
+          case Left(UnhandledException(DidNotFound())) => assert(true)
+          case _                                       => fail("Should've thrown NotFound exception")
       })
   }
 
@@ -388,10 +389,10 @@ class FetchTests extends AsyncFreeSpec with Matchers {
     val fut                            = Fetch.run[Future](fetch)
 
     ME.attempt(Fetch.run[Future](fetch))
-      .map(xor =>
-            xor match {
-          case Xor.Left(UnhandledException(DidNotFound())) => assert(true)
-          case _                                           => fail("Should've thrown NotFound exception")
+      .map(Either =>
+            Either match {
+          case Left(UnhandledException(DidNotFound())) => assert(true)
+          case _                                       => fail("Should've thrown NotFound exception")
       })
   }
 
@@ -400,9 +401,9 @@ class FetchTests extends AsyncFreeSpec with Matchers {
     val fut                            = Fetch.run[Future](fetch)
 
     ME.attempt(Fetch.run[Future](fetch))
-      .map(xor => {
-        xor match {
-          case Xor.Left(MissingIdentities(_, missing)) =>
+      .map(Either => {
+        Either match {
+          case Left(MissingIdentities(_, missing)) =>
             missing shouldEqual Map(NeverSource.name -> List(Never()))
           case _ => fail("Should've thrown a fetch failure")
         }
@@ -414,9 +415,9 @@ class FetchTests extends AsyncFreeSpec with Matchers {
     val fut                            = Fetch.run[Future](fetch)
 
     ME.attempt(fut)
-      .map(xor => {
-        xor match {
-          case Xor.Left(MissingIdentities(_, missing)) =>
+      .map(Either => {
+        Either match {
+          case Left(MissingIdentities(_, missing)) =>
             missing shouldEqual Map(NeverSource.name -> List(Never()))
           case _ => fail("Should've thrown a fetch failure")
         }
