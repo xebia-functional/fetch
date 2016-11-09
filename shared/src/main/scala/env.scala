@@ -47,8 +47,7 @@ case class Round(
 case class FetchEnv(
     cache: DataSourceCache,
     rounds: Queue[Round] = Queue.empty
-)
-    extends Env {
+) extends Env {
 
   def evolve(
       newRound: Round,

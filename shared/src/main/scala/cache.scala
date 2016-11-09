@@ -48,8 +48,7 @@ object InMemoryCache {
   def empty: InMemoryCache = InMemoryCache(Map.empty[DataSourceIdentity, Any])
 
   def apply(results: (DataSourceIdentity, Any)*): InMemoryCache =
-    InMemoryCache(
-        results.foldLeft(Map.empty[DataSourceIdentity, Any])({
+    InMemoryCache(results.foldLeft(Map.empty[DataSourceIdentity, Any])({
       case (c, (k, v)) => c.updated(k, v)
     }))
 

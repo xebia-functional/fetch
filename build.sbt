@@ -19,7 +19,8 @@ lazy val buildSettings = Seq(
   startYear := Option(2016),
   homepage := Option(url("http://47deg.github.io/fetch/")),
   organizationHomepage := Option(new URL("http://47deg.com")),
-  scalaVersion := "2.11.8",
+  scalaVersion := "2.12.0",
+  crossScalaVersions := Seq("2.11.8", "2.12.0"),
   headers := Map(
     "scala" -> Apache2_0("2016", "47 Degrees, LLC. <http://www.47deg.com>")
   )
@@ -28,10 +29,11 @@ lazy val buildSettings = Seq(
 lazy val commonSettings = Seq(
   resolvers += Resolver.sonatypeRepo("releases"),
   libraryDependencies ++= Seq(
-    "org.typelevel" %%% "cats" % "0.7.2",
+    "org.typelevel" %%% "cats-core" % "0.8.1",
+    "org.typelevel" %%% "cats-free" % "0.8.1",
     "org.scalatest" %%% "scalatest" % "3.0.0" % "test",
     compilerPlugin(
-      "org.spire-math" %% "kind-projector" % "0.7.1"
+      "org.spire-math" %% "kind-projector" % "0.9.3"
     )
   ),
   scalacOptions ++= Seq(
@@ -43,7 +45,7 @@ lazy val commonSettings = Seq(
     "-language:existentials",
     "-language:postfixOps"
   ),
-  scalafmtConfig := Some(file(".scalafmt"))
+  scalafmtConfig := Some(file(".scalafmt.conf"))
 ) ++ reformatOnCompileSettings
 
 lazy val allSettings = buildSettings ++
@@ -102,7 +104,8 @@ lazy val readme = (project in file("tut"))
 
 lazy val monixSettings = (
   libraryDependencies ++= Seq(
-    "io.monix" %%% "monix-eval" % "2.0.5"
+    "io.monix" %%% "monix-eval" % "2.1.0",
+    "io.monix" %%% "monix-cats" % "2.1.0"
   )
 )
 

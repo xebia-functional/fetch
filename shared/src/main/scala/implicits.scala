@@ -16,21 +16,19 @@
 
 package fetch
 
-import cats.{Eval, MonadError, FlatMap}
-import cats.instances.FutureInstances
+import cats.MonadError
+import cats.instances.future._
 import scala.concurrent.{Promise, Future, ExecutionContext}
 
-object implicits extends FutureInstances {
+object implicits {
+
   implicit def fetchFutureFetchMonadError(
-      implicit ec: ExecutionContext,
-      ME: MonadError[Future, Throwable],
-      FM: FlatMap[Future]
-  ): FetchMonadError[Future] = new FetchMonadError[Future] {
-    override def tailRecM[A, B](a: A)(f: A => Future[Either[A, B]]): Future[B] =
-      FM.tailRecM(a)(f)
-    override def runQuery[A](j: Query[A]): Future[A] = j match {
-      case Sync(e) => Future(e.value)
-      case Async(ac, timeout) => {
+      implicit ec: ExecutionContext
+  ): FetchMonadError[Future] =
+    new FetchMonadError.FromMonadError[Future] {
+      override def runQuery[A](j: Query[A]): Future[A] = j match {
+        case Sync(e) => Future(e.value)
+        case Async(ac, timeout) => {
           val p = Promise[A]()
 
           ec.execute(new Runnable {
@@ -39,17 +37,8 @@ object implicits extends FutureInstances {
 
           p.future
         }
-      case Ap(qf, qx) =>
-        runQuery(qf)
-          .zip(runQuery(qx))
-          .map({
-            case (f, x) => f(x)
-          })
+        case Ap(qf, qx) =>
+          runQuery(qf).zip(runQuery(qx)).map { case (f, x) => f(x) }
+      }
     }
-    def pure[A](x: A): Future[A] = Future.successful(x)
-    def handleErrorWith[A](fa: Future[A])(f: FetchException => Future[A]): Future[A] =
-      fa.recoverWith({ case t: FetchException => f(t) })
-    def raiseError[A](e: FetchException): Future[A]                = Future.failed(e)
-    def flatMap[A, B](fa: Future[A])(f: A => Future[B]): Future[B] = fa.flatMap(f)
-  }
 }

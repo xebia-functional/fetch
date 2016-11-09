@@ -18,8 +18,8 @@ package fetch
 
 import scala.collection.immutable.Map
 
-import cats.{Applicative, Monad, ApplicativeError, MonadError, ~>, Eval, RecursiveTailRecM}
-import cats.data.{NonEmptyList, StateT, Writer, XorT}
+import cats.{Applicative, ApplicativeError, Eval, Monad, MonadError, ~>}
+import cats.data.{EitherT, NonEmptyList, StateT, Writer}
 import cats.free.Free
 import cats.instances.list._
 import cats.instances.map._
@@ -73,7 +73,7 @@ sealed trait FetchQuery[I, A] extends FetchRequest {
   def identities: NonEmptyList[I]
 }
 
-trait FetchException extends Throwable with Product with Serializable
+trait FetchException                                   extends Throwable with Product with Serializable
 case class NotFound(env: Env, request: FetchOne[_, _]) extends FetchException
 case class MissingIdentities(env: Env, missing: Map[DataSourceName, List[Any]])
     extends FetchException
@@ -125,14 +125,6 @@ object `package` {
   type DataSourceIdentity = (DataSourceName, Any)
 
   type Fetch[A] = Free[FetchOp, A]
-
-  trait FetchMonadError[M[_]] extends MonadError[M, FetchException] {
-    def runQuery[A](q: Query[A]): M[A]
-  }
-
-  object FetchMonadError {
-    def apply[M[_]](implicit ME: FetchMonadError[M]): FetchMonadError[M] = ME
-  }
 
   type FetchInterpreter[M[_]] = {
     type f[x] = StateT[M, FetchEnv, x]
@@ -282,7 +274,7 @@ object `package` {
 
     private[this] type FetchOps       = List[FetchOp[_]]
     private[this] type KeepFetches[A] = Writer[FetchOps, A]
-    private[this] type AnalyzeTop[A]  = XorT[KeepFetches, Unit, A]
+    private[this] type AnalyzeTop[A]  = EitherT[KeepFetches, Unit, A]
 
     private[this] object AnalyzeTop {
       def stopWith[R](list: FetchOps): AnalyzeTop[R] =
@@ -292,10 +284,10 @@ object `package` {
         AnalyzeTop.stop(Writer.value(()))
 
       def stop[R](k: KeepFetches[Unit]): AnalyzeTop[R] =
-        XorT.left[KeepFetches, Unit, R](k)
+        EitherT.left[KeepFetches, Unit, R](k)
 
       def go[X](k: KeepFetches[X]): AnalyzeTop[X] =
-        XorT.right[KeepFetches, Unit, X](k)
+        EitherT.right[KeepFetches, Unit, X](k)
     }
 
     /**
@@ -322,8 +314,7 @@ object `package` {
           fa: Fetch[A],
           cache: DataSourceCache = InMemoryCache.empty
       )(
-          implicit MM: FetchMonadError[M],
-          TR: RecursiveTailRecM[M]
+          implicit MM: FetchMonadError[M]
       ): M[(FetchEnv, A)] =
         fa.foldMap[FetchInterpreter[M]#f](interpreter).run(FetchEnv(cache))
     }
@@ -339,8 +330,7 @@ object `package` {
           fa: Fetch[A],
           cache: DataSourceCache = InMemoryCache.empty
       )(
-          implicit MM: FetchMonadError[M],
-          TR: RecursiveTailRecM[M]
+          implicit MM: FetchMonadError[M]
       ): M[FetchEnv] =
         fa.foldMap[FetchInterpreter[M]#f](interpreter).runS(FetchEnv(cache))
     }
@@ -355,8 +345,7 @@ object `package` {
           fa: Fetch[A],
           cache: DataSourceCache = InMemoryCache.empty
       )(
-          implicit MM: FetchMonadError[M],
-          TR: RecursiveTailRecM[M]
+          implicit MM: FetchMonadError[M]
       ): M[A] =
         fa.foldMap[FetchInterpreter[M]#f](interpreter).runA(FetchEnv(cache))
     }
@@ -376,15 +365,5 @@ object `package` {
       extends AnyVal {
     def unsafeListOp[B](f: List[A] => List[B]): NonEmptyList[B] =
       NonEmptyList.fromListUnsafe(f(nel.toList))
-  }
-
-  // cats 0.8
-  import cats.arrow.FunctionK
-  private[fetch] implicit class FreeFoldMapOps(val free: Free.type) extends AnyVal {
-    def foldMap[F[_], M[_]: Monad: RecursiveTailRecM](
-        fk: FunctionK[F, M]): FunctionK[Free[F, ?], M] =
-      new FunctionK[Free[F, ?], M] {
-        def apply[A](f: Free[F, A]): M[A] = f.foldMap(fk)
-      }
   }
 }
