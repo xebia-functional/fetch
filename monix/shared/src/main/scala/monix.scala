@@ -18,8 +18,9 @@ package fetch.monixTask
 
 import fetch._
 
-import cats.{Eval, Now, Later, Always, Monad, RecursiveTailRecM}
+import cats.{Eval, Now, Later, Always, Monad, FlatMap}
 
+import monix.cats._
 import monix.eval.Task
 import monix.execution.{Scheduler, Cancelable}
 
@@ -33,56 +34,55 @@ object implicits {
     case other        => Task.evalOnce({ other.value })
   }
 
-  implicit val fetchTaskRecursiveTailRecM: RecursiveTailRecM[Task] = RecursiveTailRecM.create[Task]
+  implicit def fetchTaskFetchMonadError(implicit FM: FlatMap[Task]): FetchMonadError[Task] =
+    new FetchMonadError[Task] {
+      override def map[A, B](fa: Task[A])(f: A => B): Task[B] =
+        fa.map(f)
 
-  implicit val fetchTaskFetchMonadError: FetchMonadError[Task] = new FetchMonadError[Task] {
-    override def map[A, B](fa: Task[A])(f: A => B): Task[B] =
-      fa.map(f)
+      override def product[A, B](fa: Task[A], fb: Task[B]): Task[(A, B)] =
+        Task.zip2(Task.fork(fa), Task.fork(fb))
 
-    override def product[A, B](fa: Task[A], fb: Task[B]): Task[(A, B)] =
-      Task.zip2(Task.fork(fa), Task.fork(fb))
+      def pure[A](x: A): Task[A] =
+        Task.now(x)
 
-    def pure[A](x: A): Task[A] =
-      Task.now(x)
+      def handleErrorWith[A](fa: Task[A])(f: FetchException => Task[A]): Task[A] =
+        fa.onErrorHandleWith({
+          case e: FetchException => f(e)
+        })
 
-    def handleErrorWith[A](fa: Task[A])(f: FetchException => Task[A]): Task[A] =
-      fa.onErrorHandleWith({
-        case e: FetchException => f(e)
-      })
+      def raiseError[A](e: FetchException): Task[A] =
+        Task.raiseError(e)
 
-    def raiseError[A](e: FetchException): Task[A] =
-      Task.raiseError(e)
+      def flatMap[A, B](fa: Task[A])(f: A => Task[B]): Task[B] =
+        fa.flatMap(f)
 
-    def flatMap[A, B](fa: Task[A])(f: A => Task[B]): Task[B] =
-      fa.flatMap(f)
+      def tailRecM[A, B](a: A)(f: A => Task[Either[A, B]]): Task[B] =
+        FM.tailRecM(a)(f)
 
-    def tailRecM[A, B](a: A)(f: A => Task[Either[A, B]]): Task[B] =
-      defaultTailRecM(a)(f)
+      override def runQuery[A](q: Query[A]): Task[A] = q match {
+        case Sync(x) => evalToTask(x)
+        case Async(ac, timeout) => {
+            val task: Task[A] = Task.create(
+                (scheduler, callback) => {
 
-    override def runQuery[A](q: Query[A]): Task[A] = q match {
-      case Sync(x) => evalToTask(x)
-      case Async(ac, timeout) => {
-          val task: Task[A] = Task.create(
-              (scheduler, callback) => {
+              scheduler.execute(new Runnable {
+                def run() = ac(callback.onSuccess, callback.onError)
+              })
 
-            scheduler.execute(new Runnable {
-              def run() = ac(callback.onSuccess, callback.onError)
+              Cancelable.empty
             })
 
-            Cancelable.empty
-          })
-
-          timeout match {
-            case finite: FiniteDuration => task.timeout(finite)
-            case _                      => task
+            timeout match {
+              case finite: FiniteDuration => task.timeout(finite)
+              case _                      => task
+            }
           }
-        }
-      case Ap(qf, qx) =>
-        Task
-          .zip2(runQuery(qf), runQuery(qx))
-          .map({
-            case (f, x) => f(x)
-          })
+        case Ap(qf, qx) =>
+          Task
+            .zip2(runQuery(qf), runQuery(qx))
+            .map({
+              case (f, x) => f(x)
+            })
+      }
     }
-  }
 }

@@ -19,7 +19,7 @@ package fetch.unsafe
 import fetch._
 
 import cats.{Id, Eval, FlatMap}
-import cats.data.Xor
+import scala.util.Either
 
 import scala.concurrent._
 import scala.concurrent.duration._
@@ -34,23 +34,23 @@ object implicits {
       case Async(action, timeout) =>
         Eval.later {
           val latch = new java.util.concurrent.CountDownLatch(1)
-          @volatile var result: Xor[Throwable, A] = null
+          @volatile var result: Either[Throwable, A] = null
           new Thread(
               new Runnable {
             def run() = {
               action(a => {
-                result = Xor.Right(a);
+                result = Right(a);
                 latch.countDown
               }, err => {
-                result = Xor.Left(err);
+                result = Left(err);
                 latch.countDown
               })
             }
           }).start()
           latch.await
           result match {
-            case Xor.Left(err) => throw err
-            case Xor.Right(v)  => v
+            case Left(err) => throw err
+            case Right(v)  => v
           }
         }
     }
@@ -85,23 +85,23 @@ object implicits {
       case Ap(qf, qx) => ap(runQuery(qf))(runQuery(qx))
       case Async(action, timeout) => {
           val latch = new java.util.concurrent.CountDownLatch(1)
-          @volatile var result: Xor[Throwable, A] = null
+          @volatile var result: Either[Throwable, A] = null
           new Thread(
               new Runnable {
             def run() = {
               action(a => {
-                result = Xor.Right(a);
+                result = Right(a);
                 latch.countDown
               }, err => {
-                result = Xor.Left(err);
+                result = Left(err);
                 latch.countDown
               })
             }
           }).start()
           latch.await
           result match {
-            case Xor.Left(err) => throw err
-            case Xor.Right(v)  => v
+            case Left(err) => throw err
+            case Right(v)  => v
           }
         }
     }
