@@ -14,38 +14,48 @@
  * limitations under the License.
  */
 
-package cats
-package free
+package cats.free
 
-import cats.Id
+import cats.{Id, ~>}
 import cats.data.Coproduct
-import cats.syntax.either._
+
+import scala.annotation.tailrec
 
 object FreeTopExt {
 
-  def inspect[F[_], A](free: Free[F, A]): Option[F[_]] = free match {
-    case Free.Suspend(fa)          => println("suspended " + fa); Some(fa)
-    case Free.Pure(p)              => println("pure " + p); None
+  @tailrec
+  def inspect[F[_]](free: Free[F, _]): Option[F[_]] = free match {
+    case Free.Pure(p)              => None
+    case Free.Suspend(fa)          => Some(fa)
     case Free.FlatMapped(free2, _) => inspect(free2)
   }
 
+  /**
+    * Is the first step a `Pure` ?
+    *
+    * Could be implemented using `resume` as :
+    * {{{
+    * val liftCoyoneda: F ~> Coyoneda[F, ?] = λ[(F ~> Coyoneda[F, ?])](Coyoneda.lift(_))
+    * free.compile[Coyoneda[F, ?]](liftCoyoneda).resume.toOption
+    * }}}
+    */
   def inspectPure[F[_], A](free: Free[F, A]): Option[A] = free match {
+    case Free.Pure(p)              => Some(p)
     case Free.Suspend(fa)          => None
     case Free.FlatMapped(free2, _) => None
-    case Free.Pure(p)              => Some(p)
   }
 
   def modify[F[_], A](free: Free[F, A])(f: F ~> Coproduct[F, Id, ?]): Free[F, A] =
     free match {
-      case ss @ Free.Suspend(fa)             => f(fa).run.fold(Free.liftF(_), Free.Pure(_))
-      case fm @ Free.FlatMapped(free2, cont) => Free.FlatMapped(modify(free2)(f), cont).step
-      case pr @ Free.Pure(p)                 => pr
+      case pure @ Free.Pure(_)          => pure
+      case Free.Suspend(fa)             => f(fa).run.fold(Free.liftF(_), Free.Pure(_))
+      case Free.FlatMapped(free2, cont) => Free.FlatMapped(modify(free2)(f), cont).step
     }
 
   def print[F[_], A](free: Free[F, A]): String = free match {
+    case Free.Pure(p)              => s"Pure($p)"
     case Free.Suspend(fa)          => s"Suspend($fa)"
     case Free.FlatMapped(free2, _) => s"FlatMapped(${print(free2)}, <fb => Free>)"
-    case Free.Pure(p)              => s"Pure($p)"
   }
 
 }

@@ -105,13 +105,8 @@ final case class Concurrent(queries: NonEmptyList[FetchQuery[Any, Any]])
     extends FetchOp[InMemoryCache]
     with FetchRequest
 
-final case class Join[A, B](fl: Fetch[A], fr: Fetch[B]) extends FetchOp[(A, B)] {
-  override def toString: String =
-    s"""|Join(
-        |  ${cats.free.FreeTopExt.print(fl)},
-        |  ${cats.free.FreeTopExt.print(fr)})""".stripMargin
-}
-final case class Thrown[A](err: Throwable) extends FetchOp[A]
+final case class Join[A, B](fl: Fetch[A], fr: Fetch[B]) extends FetchOp[(A, B)]
+final case class Thrown[A](err: Throwable)              extends FetchOp[A]
 
 object `package` {
   type DataSourceName     = String
@@ -170,7 +165,7 @@ object `package` {
       Free.liftF(FetchMany(NonEmptyList(i, is.toList), DS))
 
     /**
-      * Given a non empty list of `FetchRequest`s, lift it to the `Fetch` monad. When executing
+      * Given a non empty list of `FetchQuery`s, lift it to the `Fetch` monad. When executing
       * the fetch, data sources will be queried and the fetch will return an `InMemoryCache`
       * containing the results.
       */

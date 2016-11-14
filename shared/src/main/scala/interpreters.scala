@@ -18,13 +18,14 @@ package fetch
 
 import scala.collection.immutable._
 
-import cats.{Applicative, ApplicativeError, Monad, MonadError, Semigroup, ~>}
-import cats.data.{EitherT, OptionT, NonEmptyList, StateT, Validated, ValidatedNel, Writer}
+import cats.{Applicative, ApplicativeError, Id, Monad, MonadError, Semigroup, ~>}
+import cats.data.{Coproduct, EitherT, NonEmptyList, OptionT, StateT, Validated, ValidatedNel}
 import cats.free.Free
 import cats.instances.option._
 import cats.instances.list._
 import cats.instances.map._
 import cats.instances.tuple._
+import cats.syntax.cartesian._
 import cats.syntax.either._
 import cats.syntax.flatMap._
 import cats.syntax.foldable._
@@ -36,6 +37,8 @@ import cats.syntax.reducible._
 import cats.syntax.semigroup._
 import cats.syntax.traverse._
 import cats.syntax.validated._
+
+import cats.free.FreeTopExt
 
 trait FetchInterpreters {
 
@@ -142,7 +145,6 @@ trait FetchInterpreters {
   )(
       implicit M: FetchMonadError[M]
   ): M[(FetchEnv, InMemoryCache)] = {
-    println(s"(processConcurrent) $concurrent")
 
     def uncachedQueriessOrCachedResults[I, A](
         queries: NonEmptyList[FetchQuery[I, A]],
@@ -316,37 +318,24 @@ trait FetchInterpreters {
                                     EitherT.pure[M, A, B](_))
   }
 
-  // -------------------------------------------------------------------
-
-  import cats.Id
-  import cats.data.Coproduct
-  import cats.free.FreeTopExt
-  import cats.syntax.cartesian._
-
   val parallelJoinPhase: FetchOp ~> Fetch =
     new (FetchOp ~> Fetch) {
       def apply[A](op: FetchOp[A]): Fetch[A] = op match {
         case join @ Join(fl, fr) =>
           val fetchJoin    = Free.liftF(join)
           val indepQueries = combineQueries(independentQueries(fetchJoin))
-          val parJoin      = parallelJoin(fetchJoin, indepQueries)
-          println(s"""|(parallelJoinPhase) original join :
-                      |${FreeTopExt.print(fetchJoin)}
-                      |(parallelJoinPhase) parallel join :
-                      |${FreeTopExt.print(parJoin)}""".stripMargin)
-          parJoin
+          parallelJoin(fetchJoin, indepQueries)
         case other => Free.liftF(other)
       }
     }
 
-  def parallelJoin[A, B](
+  private[this] def parallelJoin[A, B](
       fetchJoin: Fetch[(A, B)],
       queries: List[FetchQuery[_, _]]
   ): Fetch[(A, B)] = {
     combineQueries(queries).asInstanceOf[List[FetchQuery[Any, Any]]].toNel.fold(fetchJoin) {
       queriesNel =>
         Free.liftF(Concurrent(queriesNel)).flatMap { cache =>
-          println("(parallelJoinPhase) cache size " + cache.state.size)
           val simplerFetchJoin = simplify(cache)(fetchJoin)
           val indepQueries     = independentQueries(simplerFetchJoin)
           indepQueries.toNel.fold(simplerFetchJoin) { queries =>
@@ -356,9 +345,9 @@ trait FetchInterpreters {
     }
   }
 
-  def independentQueries(f: Fetch[_]): List[FetchQuery[_, _]] =
+  private[this] def independentQueries(f: Fetch[_]): List[FetchQuery[_, _]] =
     // we need the `.step` below to ignore pure values when we search for
-    // independent queries, but this also has the consequences that pure
+    // independent queries, but this also has the consequence that pure
     // values can be executed multiple times.
     //  eg : Fetch.pure(5).map { i => println("hello"); i * 2 }
     FreeTopExt.inspect(f.step).foldMap {
