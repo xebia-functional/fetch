@@ -614,13 +614,12 @@ We can use the `FetchMonadError[Eval]#attempt` to convert a fetch result into a 
 import fetch.unsafe.implicits._
 ```
 
-Now we can convert `Eval[User]` into `Eval[FetchException Xor User]` and capture exceptions as values in the left of the disjunction.
+Now we can convert `Eval[User]` into `Eval[Either[FetchException, User]` and capture exceptions as values in the left of the disjunction.
 
 ```tut:book
 import cats.Eval
-import cats.data.Xor
 
-val safeResult: Eval[FetchException Xor User] = FetchMonadError[Eval].attempt(fetchException.runA[Eval])
+val safeResult: Eval[Either[FetchException, User]] = FetchMonadError[Eval].attempt(fetchException.runA[Eval])
 
 safeResult.value
 ```
@@ -647,8 +646,8 @@ should be able to easily diagnose the failure. For ilustrating this scenario we'
 
 ```tut:silent
 val missingUser = getUser(5)
-val eval: Eval[FetchException Xor User] = missingUser.runA[Eval].attempt
-val result: FetchException Xor User = eval.value
+val eval: Eval[Either[FetchException, User]] = missingUser.runA[Eval].attempt
+val result: Either[FetchException, User] = eval.value
 val err: FetchException = result.swap.toOption.get // don't do this at home, folks
 ```
 
@@ -673,8 +672,8 @@ When multiple requests to the same data source are batched and/or multiple reque
 
 ```tut:silent
 val missingUsers = List(3, 4, 5, 6).traverse(getUser)
-val eval: Eval[FetchException Xor List[User]] = missingUsers.runA[Eval].attempt
-val result: FetchException Xor List[User] = eval.value
+val eval: Eval[Either[FetchException, List[User]]] = missingUsers.runA[Eval].attempt
+val result: Either[FetchException, List[User]] = eval.value
 val err: FetchException = result.swap.toOption.get // don't do this at home, folks
 ```
 
@@ -992,7 +991,7 @@ import monix.eval.Task
 def evalToTask[A](e: Eval[A]): Task[A] = e match {
   case Now(x) => Task.now(x)
   case l: Later[A]  => Task.evalOnce(l.value)
-  case a: Always[A] => Task.evalAlways(a.value)
+  case a: Always[A] => Task.eval(a.value)
   case other => Task.evalOnce(other.value)
 }
 ```
@@ -1036,45 +1035,27 @@ be evaluated in parallel.
 Now we're ready for implementing the FetchMonadError instance for `Task`, we need to define it as an implicit. 
 Note that Cats' typeclass hierarchy is expressed with inheritance and methods from weaker typeclasses like `Functor` or `Applicative` in more powerful typeclasses like `Monad` are implemented in terms of the operations of the latter. In practice, this means that if you just implement `pure` and `flatMap` the rest of the combinators like `map` are going to be implemented in terms of them. Because of this we'll override `map` for not using `flatMap` and `product` for expressing the independence of two computations.
 
+We make use of the `FromMonadError` class below, making it easer to implement `FetchMonadError[Task]` given a `MonadError[Task, Throwable]` which we can get from the _monix-cats_ projects.
 
 ```tut:silent
-implicit val taskFetchMonadError: FetchMonadError[Task] = new FetchMonadError[Task] {
-  override def map[A, B](fa: Task[A])(f: A => B): Task[B] =
-    fa.map(f)
+import monix.cats._
 
-  override def product[A, B](fa: Task[A], fb: Task[B]): Task[(A, B)] =
-    Task.zip2(Task.fork(fa), Task.fork(fb)) // introduce parallelism with Task#fork
+implicit val taskFetchMonadError: FetchMonadError[Task] =
+  new FetchMonadError.FromMonadError[Task] {
+    override def runQuery[A](q: Query[A]): Task[A] = queryToTask[A](q)
 
-  def pure[A](x: A): Task[A] =
-    Task.now(x)
+    override def map[A, B](fa: Task[A])(f: A => B): Task[B] =
+      fa.map(f)
 
-  def handleErrorWith[A](fa: Task[A])(f: FetchException => Task[A]): Task[A] =
-    fa.onErrorHandleWith({ case e: FetchException => f(e) })
-
-  def raiseError[A](e: FetchException): Task[A] =
-    Task.raiseError(e)
-
-  def flatMap[A, B](fa: Task[A])(f: A => Task[B]): Task[B] =
-    fa.flatMap(f)
-
-  def tailRecM[A, B](a: A)(f: A => Task[Either[A, B]]): Task[B] =
-    defaultTailRecM(a)(f) // same implementation as monix.cats
-
-  override def runQuery[A](q: Query[A]): Task[A] = queryToTask(q)
-}
-```
-
-```tut:silent
-import cats.RecursiveTailRecM
-
-val taskTR: RecursiveTailRecM[Task] =
-  RecursiveTailRecM.create[Task]
+    override def product[A, B](fa: Task[A], fb: Task[B]): Task[(A, B)] =
+      Task.zip2(Task.fork(fa), Task.fork(fb))
+  }
 ```
 
 We can now import the above implicit and run a fetch to our custom type, let's give it a go:
 
 ```tut:book
-val task = Fetch.run(homePage)(taskFetchMonadError, taskTR)
+val task = Fetch.run(homePage)(taskFetchMonadError)
 
 Await.result(task.runAsync(scheduler), Duration.Inf)
 ```

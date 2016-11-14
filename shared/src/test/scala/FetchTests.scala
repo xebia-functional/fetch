@@ -19,8 +19,8 @@ import scala.concurrent.duration._
 
 import org.scalatest._
 
-import cats.{MonadError}
-import cats.data.{NonEmptyList, Xor}
+import cats.MonadError
+import cats.data.NonEmptyList
 import cats.instances.list._
 
 import fetch._
@@ -123,8 +123,7 @@ class FetchSyntaxTests extends AsyncFreeSpec with Matchers {
 
     val fut = Fetch.runEnv[Future](fetch)
 
-    fut.map(
-        env => {
+    fut.map(env => {
       val rounds = env.rounds
 
       rounds.size shouldEqual 1
@@ -198,9 +197,9 @@ class FetchTests extends AsyncFreeSpec with Matchers {
     val fut               = Fetch.runEnv[Future](fetch)
 
     ME.attempt(fut)
-      .map(xor =>
-            xor should matchPattern {
-          case Xor.Left(NotFound(env, FetchOne(Never(), _))) =>
+      .map(either =>
+        either should matchPattern {
+          case Left(NotFound(env, FetchOne(Never(), _))) =>
       })
   }
 
@@ -213,21 +212,19 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   "Data sources with errors and cached values throw fetch failures with the cache" in {
     val fetch: Fetch[Int] = Fetch(Never())
     val cache = InMemoryCache(
-        OneSource.identity(One(1)) -> 1
+      OneSource.identity(One(1)) -> 1
     )
 
-    ME.attempt(Fetch.run[Future](fetch, cache))
-      .map(xor =>
-            xor match {
-          case Xor.Left(NotFound(env, _)) => env.cache shouldEqual cache
-          case _                          => fail("Cache should be populated")
-      })
+    ME.attempt(Fetch.run[Future](fetch, cache)).map {
+      case Left(NotFound(env, _)) => env.cache shouldEqual cache
+      case _                      => fail("Cache should be populated")
+    }
   }
 
   "Data sources with errors won't fail if they're cached" in {
     val fetch: Fetch[Int] = Fetch(Never())
     val cache = InMemoryCache(
-        NeverSource.identity(Never()) -> 1
+      NeverSource.identity(Never()) -> 1
     )
     Fetch.run[Future](fetch, cache).map(_ shouldEqual 1)
   }
@@ -235,12 +232,10 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   "We can lift errors to Fetch" in {
     val fetch: Fetch[Int] = Fetch.error(DidNotFound())
 
-    ME.attempt(Fetch.run[Future](fetch))
-      .map(xor =>
-            xor match {
-          case Xor.Left(UnhandledException(DidNotFound())) => assert(true)
-          case _                                           => fail("Should've thrown NotFound exception")
-      })
+    ME.attempt(Fetch.run[Future](fetch)).map {
+      case Left(UnhandledException(DidNotFound())) => assert(true)
+      case _                                       => fail("Should've thrown NotFound exception")
+    }
   }
 
   "We can lift handle and recover from errors in Fetch" in {
@@ -375,61 +370,51 @@ class FetchTests extends AsyncFreeSpec with Matchers {
     val fetch: Fetch[(Int, List[Int])] = Fetch.join(Fetch.error(DidNotFound()), many(3))
     val fut                            = Fetch.run[Future](fetch)
 
-    ME.attempt(Fetch.run[Future](fetch))
-      .map(xor =>
-            xor match {
-          case Xor.Left(UnhandledException(DidNotFound())) => assert(true)
-          case _                                           => fail("Should've thrown NotFound exception")
-      })
+    ME.attempt(Fetch.run[Future](fetch)).map {
+      case Left(UnhandledException(DidNotFound())) => assert(true)
+      case _                                       => fail("Should've thrown NotFound exception")
+    }
   }
 
   "If a fetch fails in the right hand of a product the product will fail" in {
     val fetch: Fetch[(List[Int], Int)] = Fetch.join(many(3), Fetch.error(DidNotFound()))
     val fut                            = Fetch.run[Future](fetch)
 
-    ME.attempt(Fetch.run[Future](fetch))
-      .map(xor =>
-            xor match {
-          case Xor.Left(UnhandledException(DidNotFound())) => assert(true)
-          case _                                           => fail("Should've thrown NotFound exception")
-      })
+    ME.attempt(Fetch.run[Future](fetch)).map {
+      case Left(UnhandledException(DidNotFound())) => assert(true)
+      case _                                       => fail("Should've thrown NotFound exception")
+    }
   }
 
   "If there is a missing identity in the left hand of a product the product will fail" in {
     val fetch: Fetch[(Int, List[Int])] = Fetch.join(Fetch(Never()), many(3))
     val fut                            = Fetch.run[Future](fetch)
 
-    ME.attempt(Fetch.run[Future](fetch))
-      .map(xor => {
-        xor match {
-          case Xor.Left(MissingIdentities(_, missing)) =>
-            missing shouldEqual Map(NeverSource.name -> List(Never()))
-          case _ => fail("Should've thrown a fetch failure")
-        }
-      })
+    ME.attempt(Fetch.run[Future](fetch)).map {
+      case Left(MissingIdentities(_, missing)) =>
+        missing shouldEqual Map(NeverSource.name -> List(Never()))
+      case _ => fail("Should've thrown a fetch failure")
+    }
   }
 
   "If there is a missing identity in the right hand of a product the product will fail" in {
     val fetch: Fetch[(List[Int], Int)] = Fetch.join(many(3), Fetch(Never()))
     val fut                            = Fetch.run[Future](fetch)
 
-    ME.attempt(fut)
-      .map(xor => {
-        xor match {
-          case Xor.Left(MissingIdentities(_, missing)) =>
-            missing shouldEqual Map(NeverSource.name -> List(Never()))
-          case _ => fail("Should've thrown a fetch failure")
-        }
-      })
+    ME.attempt(fut).map {
+      case Left(MissingIdentities(_, missing)) =>
+        missing shouldEqual Map(NeverSource.name -> List(Never()))
+      case _ => fail("Should've thrown a fetch failure")
+    }
   }
 
   "The product of concurrent fetches implies everything fetched concurrently" in {
     val fetch = Fetch.join(
-        Fetch.join(
-            one(1),
-            Fetch.join(one(2), one(3))
-        ),
-        one(4)
+      Fetch.join(
+        one(1),
+        Fetch.join(one(2), one(3))
+      ),
+      one(4)
     )
 
     Fetch
@@ -444,19 +429,19 @@ class FetchTests extends AsyncFreeSpec with Matchers {
 
   "The product of concurrent fetches of the same type implies everything fetched in a single batch" in {
     val fetch = Fetch.join(
-        Fetch.join(
-            for {
-              a <- one(1)
-              b <- one(2)
-              c <- one(3)
-            } yield c,
-            for {
-              a <- one(2)
-              m <- many(4)
-              c <- one(3)
-            } yield c
-        ),
-        one(3)
+      Fetch.join(
+        for {
+          a <- one(1)
+          b <- one(2)
+          c <- one(3)
+        } yield c,
+        for {
+          a <- one(2)
+          m <- many(4)
+          c <- one(3)
+        } yield c
+      ),
+      one(3)
     )
 
     Fetch
@@ -471,16 +456,16 @@ class FetchTests extends AsyncFreeSpec with Matchers {
 
   "Every level of joined concurrent fetches is combined and batched" in {
     val fetch = Fetch.join(
-        for {
-          a <- one(2)
-          b <- many(1)
-          c <- one(5)
-        } yield c,
-        for {
-          a <- one(3)
-          b <- many(2)
-          c <- one(4)
-        } yield c
+      for {
+        a <- one(2)
+        b <- many(1)
+        c <- one(5)
+      } yield c,
+      for {
+        a <- one(3)
+        b <- many(2)
+        c <- one(4)
+      } yield c
     )
 
     Fetch
@@ -495,19 +480,19 @@ class FetchTests extends AsyncFreeSpec with Matchers {
 
   "Every level of sequenced concurrent fetches is batched" in {
     val fetch = Fetch.join(
-        Fetch.join(
-            for {
-              a <- Fetch.sequence(List(one(2), one(3), one(4)))
-              b <- Fetch.sequence(List(many(0), many(1)))
-              c <- Fetch.sequence(List(one(9), one(10), one(11)))
-            } yield c,
-            for {
-              a <- Fetch.sequence(List(one(5), one(6), one(7)))
-              b <- Fetch.sequence(List(many(2), many(3)))
-              c <- Fetch.sequence(List(one(12), one(13), one(14)))
-            } yield c
-        ),
-        Fetch.sequence(List(one(15), one(16), one(17)))
+      Fetch.join(
+        for {
+          a <- Fetch.sequence(List(one(2), one(3), one(4)))
+          b <- Fetch.sequence(List(many(0), many(1)))
+          c <- Fetch.sequence(List(one(9), one(10), one(11)))
+        } yield c,
+        for {
+          a <- Fetch.sequence(List(one(5), one(6), one(7)))
+          b <- Fetch.sequence(List(many(2), many(3)))
+          c <- Fetch.sequence(List(one(12), one(13), one(14)))
+        } yield c
+      ),
+      Fetch.sequence(List(one(15), one(16), one(17)))
     )
 
     Fetch
@@ -588,15 +573,14 @@ class FetchTests extends AsyncFreeSpec with Matchers {
     val fetch: Fetch[List[Int]]   = Fetch.sequence(sources)
 
     val fut = Fetch.runEnv[Future](
-        fetch,
-        InMemoryCache(
-            OneSource.identity(One(1)) -> 1,
-            OneSource.identity(One(2)) -> 2
-        )
+      fetch,
+      InMemoryCache(
+        OneSource.identity(One(1)) -> 1,
+        OneSource.identity(One(2)) -> 2
+      )
     )
 
-    fut.map(
-        env => {
+    fut.map(env => {
       val rounds = env.rounds
 
       rounds.size shouldEqual 1
@@ -683,16 +667,15 @@ class FetchTests extends AsyncFreeSpec with Matchers {
     } yield aOne + anotherOne
 
     val fut = Fetch.runEnv[Future](
-        fetch,
-        InMemoryCache(
-            OneSource.identity(One(1)) -> 1,
-            OneSource.identity(One(2)) -> 2,
-            OneSource.identity(One(3)) -> 3
-        )
+      fetch,
+      InMemoryCache(
+        OneSource.identity(One(1)) -> 1,
+        OneSource.identity(One(2)) -> 2,
+        OneSource.identity(One(3)) -> 3
+      )
     )
 
-    fut.map(
-        env => {
+    fut.map(env => {
       val rounds = env.rounds
 
       rounds.size shouldEqual 0
@@ -706,13 +689,13 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   }
 
   val fullCache: MyCache = MyCache(
-      Map(
-          OneSource.identity(One(1))   -> 1,
-          OneSource.identity(One(2))   -> 2,
-          OneSource.identity(One(3))   -> 3,
-          OneSource.identity(One(1))   -> 1,
-          ManySource.identity(Many(2)) -> List(0, 1)
-      )
+    Map(
+      OneSource.identity(One(1))   -> 1,
+      OneSource.identity(One(2))   -> 2,
+      OneSource.identity(One(3))   -> 3,
+      OneSource.identity(One(1))   -> 1,
+      ManySource.identity(Many(2)) -> List(0, 1)
+    )
   )
 
   "We can use a custom cache" in {
@@ -727,17 +710,16 @@ class FetchTests extends AsyncFreeSpec with Matchers {
       _          <- one(1)
     } yield aOne + anotherOne
     val fut = Fetch.runEnv[Future](
-        fetch,
-        InMemoryCache(
-            OneSource.identity(One(1))   -> 1,
-            OneSource.identity(One(2))   -> 2,
-            OneSource.identity(One(3))   -> 3,
-            ManySource.identity(Many(2)) -> List(0, 1)
-        )
+      fetch,
+      InMemoryCache(
+        OneSource.identity(One(1))   -> 1,
+        OneSource.identity(One(2))   -> 2,
+        OneSource.identity(One(3))   -> 3,
+        ManySource.identity(Many(2)) -> List(0, 1)
+      )
     )
 
-    fut.map(
-        env => {
+    fut.map(env => {
       val rounds = env.rounds
 
       rounds.size shouldEqual 0
@@ -865,19 +847,19 @@ class FetchReportingTests extends AsyncFreeSpec with Matchers {
 
   "The product of concurrent fetches of the same type implies everything fetched in batches" in {
     val fetch = Fetch.join(
-        Fetch.join(
-            for {
-              a <- one(1)
-              b <- one(2)
-              c <- one(3)
-            } yield c,
-            for {
-              a <- one(2)
-              m <- many(4)
-              c <- one(3)
-            } yield c
-        ),
-        one(3)
+      Fetch.join(
+        for {
+          a <- one(1)
+          b <- one(2)
+          c <- one(3)
+        } yield c,
+        for {
+          a <- one(2)
+          m <- many(4)
+          c <- one(3)
+        } yield c
+      ),
+      one(3)
     )
 
     Fetch
@@ -889,19 +871,19 @@ class FetchReportingTests extends AsyncFreeSpec with Matchers {
 
   "Every level of sequenced concurrent of concurrent fetches is batched" in {
     val fetch = Fetch.join(
-        Fetch.join(
-            for {
-              a <- Fetch.sequence(List(one(2), one(3), one(4)))
-              b <- Fetch.sequence(List(many(0), many(1)))
-              c <- Fetch.sequence(List(one(9), one(10), one(11)))
-            } yield c,
-            for {
-              a <- Fetch.sequence(List(one(5), one(6), one(7)))
-              b <- Fetch.sequence(List(many(2), many(3)))
-              c <- Fetch.sequence(List(one(12), one(13), one(14)))
-            } yield c
-        ),
-        Fetch.sequence(List(one(15), one(16), one(17)))
+      Fetch.join(
+        for {
+          a <- Fetch.sequence(List(one(2), one(3), one(4)))
+          b <- Fetch.sequence(List(many(0), many(1)))
+          c <- Fetch.sequence(List(one(9), one(10), one(11)))
+        } yield c,
+        for {
+          a <- Fetch.sequence(List(one(5), one(6), one(7)))
+          b <- Fetch.sequence(List(many(2), many(3)))
+          c <- Fetch.sequence(List(one(12), one(13), one(14)))
+        } yield c
+      ),
+      Fetch.sequence(List(one(15), one(16), one(17)))
     )
 
     Fetch

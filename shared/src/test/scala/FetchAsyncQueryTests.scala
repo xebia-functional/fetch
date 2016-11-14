@@ -86,11 +86,11 @@ class FetchAsyncQueryTests extends AsyncFreeSpec with Matchers {
     val fut: Future[List[Article]] = Fetch.run[Future](fetch)
 
     fut.map(
-        _ shouldEqual List(
-            Article(1, "An article with id 1"),
-            Article(1, "An article with id 1"),
-            Article(2, "An article with id 2")
-        )
+      _ shouldEqual List(
+        Article(1, "An article with id 1"),
+        Article(1, "An article with id 1"),
+        Article(2, "An article with id 2")
+      )
     )
   }
 
@@ -103,18 +103,18 @@ class FetchAsyncQueryTests extends AsyncFreeSpec with Matchers {
     val fut: Future[(List[Article], List[Author])] = Fetch.run[Future](fetch, InMemoryCache.empty)
 
     fut.map(
-        _ shouldEqual (
-            List(
-                Article(1, "An article with id 1"),
-                Article(1, "An article with id 1"),
-                Article(2, "An article with id 2")
-            ),
-            List(
-                Author(2, "@egg2"),
-                Author(2, "@egg2"),
-                Author(3, "@egg3")
-            )
+      _ shouldEqual (
+        List(
+          Article(1, "An article with id 1"),
+          Article(1, "An article with id 1"),
+          Article(2, "An article with id 2")
+        ),
+        List(
+          Author(2, "@egg2"),
+          Author(2, "@egg2"),
+          Author(3, "@egg3")
         )
+      )
     )
   }
 }

@@ -18,8 +18,8 @@ package fetch
 
 import scala.collection.immutable._
 
-import cats.{Applicative, ApplicativeError, MonadError, RecursiveTailRecM, Semigroup, ~>}
-import cats.data.{OptionT, NonEmptyList, StateT, Validated, ValidatedNel, Xor, XorT}
+import cats.{Applicative, ApplicativeError, MonadError, Semigroup, ~>}
+import cats.data.{EitherT, OptionT, NonEmptyList, StateT, Validated, ValidatedNel}
 import cats.free.Free
 import cats.instances.option._
 import cats.instances.list._
@@ -39,9 +39,9 @@ import cats.syntax.validated._
 
 trait FetchInterpreters {
 
-  def interpreter[M[_]: FetchMonadError: RecursiveTailRecM]: FetchOp ~> FetchInterpreter[M]#f =
+  def interpreter[M[_]: FetchMonadError]: FetchOp ~> FetchInterpreter[M]#f =
     maxBatchSizePhase.andThen[FetchInterpreter[M]#f](
-        Free.foldMap[FetchOp, FetchInterpreter[M]#f](coreInterpreter[M]))
+      Free.foldMap[FetchOp, FetchInterpreter[M]#f](coreInterpreter[M]))
 
   def coreInterpreter[M[_]](
       implicit M: FetchMonadError[M]
@@ -71,18 +71,18 @@ trait FetchInterpreters {
     env.cache
       .get[A](ds.identity(id))
       .fold[M[(FetchEnv, A)]](
-          M.runQuery(ds.fetchOne(id)).flatMap { (res: Option[A]) =>
-            val endRound = System.nanoTime()
-            res.fold[M[(FetchEnv, A)]] {
-              // could not get result from datasource
-              M.raiseError(NotFound(env, one))
-            } { result =>
-              // found result (and update cache)
-              val newCache = env.cache.update(ds.identity(id), result)
-              val round    = Round(env.cache, one, result, startRound, endRound)
-              M.pure(env.evolve(round, newCache) -> result)
-            }
+        M.runQuery(ds.fetchOne(id)).flatMap { (res: Option[A]) =>
+          val endRound = System.nanoTime()
+          res.fold[M[(FetchEnv, A)]] {
+            // could not get result from datasource
+            M.raiseError(NotFound(env, one))
+          } { result =>
+            // found result (and update cache)
+            val newCache = env.cache.update(ds.identity(id), result)
+            val round    = Round(env.cache, one, result, startRound, endRound)
+            M.pure(env.evolve(round, newCache) -> result)
           }
+        }
       ) { cached =>
         // get result from cache
         M.pure(env -> cached)
@@ -101,22 +101,22 @@ trait FetchInterpreters {
     val cache              = env.cache
 
     (for {
-      newIdsNel <- XorT.fromXor[M] {
-                    many.missingIdentities(cache).toNel.toRightXor {
-                      // no missing ids, get all from cache
-                      val cachedResults = ids.toList.mapFilter(id => cache.get(ds.identity(id)))
-                      env -> cachedResults
-                    }
-                  }
-      resMap <- XorT.right(M.runQuery(ds.fetchMany(newIdsNel)))
+      newIdsNel <- EitherT.fromEither[M] {
+        many.missingIdentities(cache).toNel.toRight[(FetchEnv, List[Any])] {
+          // no missing ids, get all from cache
+          val cachedResults = ids.toList.mapFilter(id => cache.get(ds.identity(id)))
+          env -> cachedResults
+        }
+      }
+      resMap <- EitherT.right(M.runQuery(ds.fetchMany(newIdsNel)))
       results <- ids.toList
-                  .traverseU(id => resMap.get(id).toValidNel(id))
-                  .toXor
-                  .leftMap { missingIds =>
-                    // not all identities could be found
-                    MissingIdentities(env, Map(ds.name -> missingIds.toList))
-                  }
-                  .raiseLeftAsError[M, (FetchEnv, List[Any])]
+        .traverseU(id => resMap.get(id).toValidNel(id))
+        .toEither
+        .leftMap { missingIds =>
+          // not all identities could be found
+          MissingIdentities(env, Map(ds.name -> missingIds.toList))
+        }
+        .raiseLeftAsError[M, (FetchEnv, List[Any])]
     } yield {
       // found all results (and update cache)
       val endRound = System.nanoTime()
@@ -148,7 +148,7 @@ trait FetchInterpreters {
           case ids                   => FetchMany(ids, ds)
         }
 
-      queries.traverseM[ValidatedNel[FetchQuery[I, A], ?], (DataSourceIdentity, A)] {
+      queries.flatTraverse[ValidatedNel[FetchQuery[I, A], ?], (DataSourceIdentity, A)] {
         case FetchOne(id, ds) =>
           idOrResult(id, ds)
             .map(NonEmptyList(_, Nil))
@@ -187,14 +187,14 @@ trait FetchInterpreters {
           Map.empty[DataSourceName, List[Any]].invalid
       }
 
-    // return a MissingIdentities error or return a NonEmptyList with all
+    // return a MissingIdentities error or a NonEmptyList with all
     // the query - result pairs
     def errorOrAllFound(
         queries: NonEmptyList[AnyQuery],
         results: NonEmptyList[AnyResult]
-    ): Xor[MissingIdentities, NonEmptyList[(AnyQuery, AnyResult)]] = {
+    ): Either[MissingIdentities, NonEmptyList[(AnyQuery, AnyResult)]] = {
       val zipped = NonEmptyList.fromListUnsafe(queries.toList zip results.toList)
-      missingIdentitiesOrAllFulfilled(zipped).toXor
+      missingIdentitiesOrAllFulfilled(zipped).toEither
         .bimap(missingIds => MissingIdentities(env, missingIds), _ => zipped)
     }
 
@@ -202,15 +202,15 @@ trait FetchInterpreters {
     val cache      = env.cache
 
     (for {
-      queries <- XorT.fromXor[M](
-                    uncachedQueriessOrCachedResults(concurrent.queries, cache).swap.toXor.bimap(
-                        cachedResults => env -> InMemoryCache(cachedResults.toList.toMap),
-                        _.asInstanceOf[NonEmptyList[AnyQuery]])
-                )
-      results <- XorT.right(queries.traverse(runFetchQueryAsMap))
+      queries <- EitherT.fromEither[M](
+        uncachedQueriessOrCachedResults(concurrent.queries, cache).swap.toEither.bimap(
+          cachedResults => env -> InMemoryCache(cachedResults.toList.toMap),
+          _.asInstanceOf[NonEmptyList[AnyQuery]])
+      )
+      results <- EitherT.right(queries.traverse(runFetchQueryAsMap))
       endRound = System.nanoTime()
       queriesAndResults <- errorOrAllFound(queries, results)
-                            .raiseLeftAsError[M, (FetchEnv, InMemoryCache)]
+        .raiseLeftAsError[M, (FetchEnv, InMemoryCache)]
     } yield {
       val round = Round(cache, Concurrent(queries), results, startRound, endRound)
 
@@ -286,8 +286,8 @@ trait FetchInterpreters {
     }
   }
 
-  private[fetch] def unfoldNonEmpty[F[_], A, B](seed: B)(f: B => (A, Option[B]))(
-      implicit F: Applicative[F], S: Semigroup[F[A]]): F[A] = {
+  private[fetch] def unfoldNonEmpty[F[_], A, B](seed: B)(
+      f: B => (A, Option[B]))(implicit F: Applicative[F], S: Semigroup[F[A]]): F[A] = {
     def loop(seed: B)(xs: F[A]): F[A] = f(seed) match {
       case (a, Some(b)) => loop(b)(S.combine(xs, F.pure(a)))
       case (a, None)    => S.combine(xs, F.pure(a))
@@ -299,9 +299,9 @@ trait FetchInterpreters {
     }
   }
 
-  private[this] implicit class RaiseErrorXorT[E <: FetchException, B](xor: Xor[E, B]) {
-    def raiseLeftAsError[M[_], A](implicit M: FetchMonadError[M]): XorT[M, A, B] =
-      xor.fold[XorT[M, A, B]](
-          error => XorT.left[M, A, B](M.raiseError(error)), XorT.pure[M, A, B](_))
+  private[this] implicit class RaiseErrorEitherT[E <: FetchException, B](either: Either[E, B]) {
+    def raiseLeftAsError[M[_], A](implicit M: FetchMonadError[M]): EitherT[M, A, B] =
+      either.fold[EitherT[M, A, B]](error => EitherT.left[M, A, B](M.raiseError(error)),
+                                    EitherT.pure[M, A, B](_))
   }
 }

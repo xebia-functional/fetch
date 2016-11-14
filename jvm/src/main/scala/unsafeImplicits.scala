@@ -19,7 +19,7 @@ package fetch.unsafe
 import fetch._
 
 import cats.{Id, Eval, FlatMap}
-import cats.data.Xor
+import cats.syntax.either._
 
 import scala.concurrent._
 import scala.concurrent.duration._
@@ -33,24 +33,23 @@ object implicits {
       case Ap(qf, qx) => ap(runQuery(qf))(runQuery(qx))
       case Async(action, timeout) =>
         Eval.later {
-          val latch = new java.util.concurrent.CountDownLatch(1)
-          @volatile var result: Xor[Throwable, A] = null
-          new Thread(
-              new Runnable {
+          val latch                                  = new java.util.concurrent.CountDownLatch(1)
+          @volatile var result: Either[Throwable, A] = null
+          new Thread(new Runnable {
             def run() = {
               action(a => {
-                result = Xor.Right(a);
+                result = Either.right(a);
                 latch.countDown
               }, err => {
-                result = Xor.Left(err);
+                result = Either.left(err);
                 latch.countDown
               })
             }
           }).start()
           latch.await
           result match {
-            case Xor.Left(err) => throw err
-            case Xor.Right(v)  => v
+            case Left(err) => throw err
+            case Right(v)  => v
           }
         }
     }
@@ -84,29 +83,28 @@ object implicits {
       case Sync(e)    => e.value
       case Ap(qf, qx) => ap(runQuery(qf))(runQuery(qx))
       case Async(action, timeout) => {
-          val latch = new java.util.concurrent.CountDownLatch(1)
-          @volatile var result: Xor[Throwable, A] = null
-          new Thread(
-              new Runnable {
-            def run() = {
-              action(a => {
-                result = Xor.Right(a);
-                latch.countDown
-              }, err => {
-                result = Xor.Left(err);
-                latch.countDown
-              })
-            }
-          }).start()
-          latch.await
-          result match {
-            case Xor.Left(err) => throw err
-            case Xor.Right(v)  => v
+        val latch                                  = new java.util.concurrent.CountDownLatch(1)
+        @volatile var result: Either[Throwable, A] = null
+        new Thread(new Runnable {
+          def run() = {
+            action(a => {
+              result = Either.right(a);
+              latch.countDown
+            }, err => {
+              result = Either.left(err);
+              latch.countDown
+            })
           }
+        }).start()
+        latch.await
+        result match {
+          case Left(err) => throw err
+          case Right(v)  => v
         }
+      }
     }
-    def pure[A](x: A): Id[A]                                            = x
-    def tailRecM[A, B](a: A)(f: A => cats.Id[Either[A, B]]): cats.Id[B] = FM.tailRecM(a)(f)
+    def pure[A](x: A): Id[A]                                  = x
+    def tailRecM[A, B](a: A)(f: A => Id[Either[A, B]]): Id[B] = FM.tailRecM(a)(f)
 
     def handleErrorWith[A](fa: Id[A])(f: FetchException => Id[A]): Id[A] =
       try {
@@ -117,9 +115,9 @@ object implicits {
     def raiseError[A](e: FetchException): Id[A] =
       e match {
         case UnhandledException(ex) => {
-            e.initCause(ex)
-            throw e
-          }
+          e.initCause(ex)
+          throw e
+        }
         case other => throw other
       }
     def flatMap[A, B](fa: Id[A])(f: A => Id[B]): Id[B] = f(fa)
