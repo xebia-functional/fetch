@@ -66,6 +66,7 @@ lazy val fetchJS = fetch.js
 
 lazy val root = project.in(file("."))
   .aggregate(fetchJS, fetchJVM, fetchMonixJVM, fetchMonixJS)
+  .settings(allSettings)
   .settings(noPublishSettings)
 
 lazy val docsSettings = ghpages.settings ++ buildSettings ++ tutSettings ++ Seq(
