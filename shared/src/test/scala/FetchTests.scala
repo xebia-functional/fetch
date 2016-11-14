@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+package fetch
+
 import scala.concurrent._
 import scala.concurrent.duration._
 
@@ -774,6 +776,23 @@ class FetchTests extends AsyncFreeSpec with Matchers {
       case (env, res) =>
         res shouldEqual List(1, 2, 3)
         totalFetched(env.rounds) shouldEqual 3
+        env.rounds.size shouldEqual 1
+    }
+  }
+
+  "Pure Fetches should be ignored in the parallel optimization" in {
+    val fetch: Fetch[(Int, Int)] = Fetch.join(
+      one(1),
+      for {
+        a <- Fetch.pure(2)
+        b <- one(3)
+      } yield a + b
+    )
+
+    Fetch.runFetch[Future](fetch).map {
+      case (env, res) =>
+        res shouldEqual (1, 5)
+        totalFetched(env.rounds) shouldEqual 2
         env.rounds.size shouldEqual 1
     }
   }

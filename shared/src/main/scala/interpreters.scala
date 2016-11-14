@@ -18,13 +18,14 @@ package fetch
 
 import scala.collection.immutable._
 
-import cats.{Applicative, ApplicativeError, MonadError, Semigroup, ~>}
-import cats.data.{EitherT, OptionT, NonEmptyList, StateT, Validated, ValidatedNel}
+import cats.{Applicative, ApplicativeError, Id, Monad, MonadError, Semigroup, ~>}
+import cats.data.{Coproduct, EitherT, NonEmptyList, OptionT, StateT, Validated, ValidatedNel}
 import cats.free.Free
 import cats.instances.option._
 import cats.instances.list._
 import cats.instances.map._
 import cats.instances.tuple._
+import cats.syntax.cartesian._
 import cats.syntax.either._
 import cats.syntax.flatMap._
 import cats.syntax.foldable._
@@ -37,25 +38,37 @@ import cats.syntax.semigroup._
 import cats.syntax.traverse._
 import cats.syntax.validated._
 
+import cats.free.FreeTopExt
+
 trait FetchInterpreters {
 
   def interpreter[M[_]: FetchMonadError]: FetchOp ~> FetchInterpreter[M]#f =
-    maxBatchSizePhase.andThen[FetchInterpreter[M]#f](
-      Free.foldMap[FetchOp, FetchInterpreter[M]#f](coreInterpreter[M]))
+    parallelJoinPhase
+      .andThen[Fetch](Free.foldMap(maxBatchSizePhase))
+      .andThen[FetchInterpreter[M]#f](
+        Free.foldMap[FetchOp, FetchInterpreter[M]#f](coreInterpreter[M]))
 
   def coreInterpreter[M[_]](
       implicit M: FetchMonadError[M]
   ): FetchOp ~> FetchInterpreter[M]#f = {
     new (FetchOp ~> FetchInterpreter[M]#f) {
       def apply[A](fa: FetchOp[A]): FetchInterpreter[M]#f[A] =
-        StateT[M, FetchEnv, A] { env: FetchEnv =>
-          fa match {
-            case Thrown(e)              => M.raiseError(UnhandledException(e))
-            case Fetched(a)             => M.pure((env, a))
-            case one @ FetchOne(_, _)   => processOne(one, env)
-            case many @ FetchMany(_, _) => processMany(many, env)
-            case conc @ Concurrent(_)   => processConcurrent(conc, env)
-          }
+        fa match {
+          case Join(fl, fr) =>
+            Monad[FetchInterpreter[M]#f].tuple2(
+              fl.foldMap[FetchInterpreter[M]#f](coreInterpreter[M]),
+              fr.foldMap[FetchInterpreter[M]#f](coreInterpreter[M]))
+
+          case other =>
+            StateT[M, FetchEnv, A] { env: FetchEnv =>
+              other match {
+                case Thrown(e)              => M.raiseError(UnhandledException(e))
+                case one @ FetchOne(_, _)   => processOne(one, env)
+                case many @ FetchMany(_, _) => processMany(many, env)
+                case conc @ Concurrent(_)   => processConcurrent(conc, env)
+                case Join(_, _)             => throw new Exception("join already handled")
+              }
+            }
         }
     }
   }
@@ -251,7 +264,7 @@ trait FetchInterpreters {
 
   private[this] def batchMany[I, A](many: FetchMany[I, A]): Fetch[List[A]] = {
     val batchedFetches = manyInBatches(many)
-    batchedFetches.reduceLeftM[Fetch, List[A]](Free.liftF) {
+    batchedFetches.reduceLeftM[Fetch, List[A]](Free.liftF[FetchOp, List[A]]) {
       case (results, fetchMany) =>
         Free.liftF(fetchMany).map(results ++ _)
     }
@@ -304,4 +317,88 @@ trait FetchInterpreters {
       either.fold[EitherT[M, A, B]](error => EitherT.left[M, A, B](M.raiseError(error)),
                                     EitherT.pure[M, A, B](_))
   }
+
+  val parallelJoinPhase: FetchOp ~> Fetch =
+    new (FetchOp ~> Fetch) {
+      def apply[A](op: FetchOp[A]): Fetch[A] = op match {
+        case join @ Join(fl, fr) =>
+          val fetchJoin    = Free.liftF(join)
+          val indepQueries = combineQueries(independentQueries(fetchJoin))
+          parallelJoin(fetchJoin, indepQueries)
+        case other => Free.liftF(other)
+      }
+    }
+
+  private[this] def parallelJoin[A, B](
+      fetchJoin: Fetch[(A, B)],
+      queries: List[FetchQuery[_, _]]
+  ): Fetch[(A, B)] = {
+    combineQueries(queries).asInstanceOf[List[FetchQuery[Any, Any]]].toNel.fold(fetchJoin) {
+      queriesNel =>
+        Free.liftF(Concurrent(queriesNel)).flatMap { cache =>
+          val simplerFetchJoin = simplify(cache)(fetchJoin)
+          val indepQueries     = independentQueries(simplerFetchJoin)
+          indepQueries.toNel.fold(simplerFetchJoin) { queries =>
+            parallelJoin(simplerFetchJoin, queries.toList)
+          }
+        }
+    }
+  }
+
+  private[this] def independentQueries(f: Fetch[_]): List[FetchQuery[_, _]] =
+    // we need the `.step` below to ignore pure values when we search for
+    // independent queries, but this also has the consequence that pure
+    // values can be executed multiple times.
+    //  eg : Fetch.pure(5).map { i => println("hello"); i * 2 }
+    FreeTopExt.inspect(f.step).foldMap {
+      case Join(ffl, ffr)         => independentQueries(ffl) ++ independentQueries(ffr)
+      case one @ FetchOne(_, _)   => one :: Nil
+      case many @ FetchMany(_, _) => many :: Nil
+      case _                      => Nil
+    }
+
+  /**
+    * Use a `DataSourceCache` to optimize a `FetchOp`.
+    * If the cache contains all the fetch identities, the fetch doesn't need to be
+    * executed and can be replaced by cached results.
+    */
+  private[this] def simplify[A](cache: InMemoryCache)(fetch: Fetch[A]): Fetch[A] =
+    FreeTopExt.modify(fetch)(
+      new (FetchOp ~> Coproduct[FetchOp, Id, ?]) {
+        def apply[X](fetchOp: FetchOp[X]): Coproduct[FetchOp, Id, X] = fetchOp match {
+          case one @ FetchOne(id, ds) =>
+            Coproduct[FetchOp, Id, X](cache.get[X](ds.identity(id)).toRight(one))
+          case many @ FetchMany(ids, ds) =>
+            val fetched = ids.traverse(id => cache.get(ds.identity(id)))
+            Coproduct[FetchOp, Id, X](fetched.map(_.toList).toRight(many))
+          case join @ Join(fl, fr) =>
+            val sfl      = simplify(cache)(fl)
+            val sfr      = simplify(cache)(fr)
+            val optTuple = (FreeTopExt.inspectPure(sfl) |@| FreeTopExt.inspectPure(sfr)).tupled
+            Coproduct[FetchOp, Id, X](optTuple.toRight(Join(sfl, sfr)))
+          case other =>
+            Coproduct.leftc(other)
+        }
+      }
+    )
+
+  /**
+    * Combine multiple queries so the resulting `List` only contains one `FetchQuery`
+    * per `DataSource`.
+    */
+  private[this] def combineQueries(qs: List[FetchQuery[_, _]]): List[FetchQuery[_, _]] =
+    qs.foldMap[Map[DataSource[_, _], NonEmptyList[Any]]] {
+        case FetchOne(id, ds)   => Map(ds -> NonEmptyList.of[Any](id))
+        case FetchMany(ids, ds) => Map(ds -> ids.widen[Any])
+      }
+      .mapValues { nel =>
+        // workaround because NEL[Any].distinct would need Order[Any]
+        nel.unsafeListOp(_.distinct)
+      }
+      .toList
+      .map {
+        case (ds, NonEmptyList(id, Nil)) => FetchOne(id, ds.castDS[Any, Any])
+        case (ds, ids)                   => FetchMany(ids, ds.castDS[Any, Any])
+      }
+
 }
