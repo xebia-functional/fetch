@@ -10,16 +10,16 @@ technologies:
 
 Add the following dependency to your project's build file.
 
-For Scala 2.11.x:
+For Scala 2.11.x and 2.12.x:
 
 ```scala
-"com.fortysevendeg" %% "fetch" % "0.3.0"
+"com.fortysevendeg" %% "fetch" % "0.4.0"
 ```
 
 Or, if using Scala.js (0.6.x):
 
 ```scala
-"com.fortysevendeg" %%% "fetch" % "0.3.0"
+"com.fortysevendeg" %%% "fetch" % "0.4.0"
 ```
 
 ```tut:invisible
