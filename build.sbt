@@ -20,7 +20,7 @@ lazy val buildSettings = Seq(
   homepage := Option(url("http://47deg.github.io/fetch/")),
   organizationHomepage := Option(new URL("http://47deg.com")),
   scalaVersion := "2.12.0",
-  crossScalaVersions := Seq("2.11.8", "2.12.0"),
+  crossScalaVersions := Seq("2.10.6", "2.11.8", "2.12.0"),
   headers := Map(
     "scala" -> Apache2_0("2016", "47 Degrees, LLC. <http://www.47deg.com>")
   )
