@@ -20,32 +20,32 @@ lazy val buildSettings = Seq(
   homepage := Option(url("http://47deg.github.io/fetch/")),
   organizationHomepage := Option(new URL("http://47deg.com")),
   scalaVersion := "2.12.0",
-  crossScalaVersions := Seq("2.11.8", "2.12.0"),
+  crossScalaVersions := Seq("2.10.6", "2.11.8", "2.12.0"),
   headers := Map(
     "scala" -> Apache2_0("2016", "47 Degrees, LLC. <http://www.47deg.com>")
   )
 )
 
 lazy val commonSettings = Seq(
-  resolvers += Resolver.sonatypeRepo("releases"),
-  libraryDependencies ++= Seq(
-    "org.typelevel" %%% "cats-free" % "0.8.1",
-    "org.scalatest" %%% "scalatest" % "3.0.0" % "test",
-    compilerPlugin(
-      "org.spire-math" %% "kind-projector" % "0.9.3"
-    )
-  ),
-  scalacOptions ++= Seq(
-    "-unchecked",
-    "-deprecation",
-    "-feature",
-    "-Ywarn-dead-code",
-    "-language:higherKinds",
-    "-language:existentials",
-    "-language:postfixOps"
-  ),
-  scalafmtConfig := Some(file(".scalafmt.conf"))
-) ++ reformatOnCompileSettings
+    resolvers += Resolver.sonatypeRepo("releases"),
+    libraryDependencies ++= Seq(
+      "org.typelevel" %%% "cats-free" % "0.8.1",
+      "org.scalatest" %%% "scalatest" % "3.0.0" % "test",
+      compilerPlugin(
+        "org.spire-math" %% "kind-projector" % "0.9.3"
+      )
+    ),
+    scalacOptions ++= Seq(
+      "-unchecked",
+      "-deprecation",
+      "-feature",
+      "-Ywarn-dead-code",
+      "-language:higherKinds",
+      "-language:existentials",
+      "-language:postfixOps"
+    ),
+    scalafmtConfig := Some(file(".scalafmt.conf"))
+  ) ++ reformatOnCompileSettings
 
 lazy val allSettings = buildSettings ++
     commonSettings ++
@@ -55,44 +55,45 @@ lazy val allSettings = buildSettings ++
     credentialSettings ++
     sharedPublishSettings(gh, dev)
 
-lazy val fetch = crossProject.in(file("."))
+lazy val fetch = crossProject
+  .in(file("."))
   .settings(moduleName := "fetch")
-  .settings(allSettings:_*)
-  .jsSettings(sharedJsSettings:_*)
+  .settings(allSettings: _*)
+  .jsSettings(sharedJsSettings: _*)
   .enablePlugins(AutomateHeaderPlugin)
 
 lazy val fetchJVM = fetch.jvm
-lazy val fetchJS = fetch.js
+lazy val fetchJS  = fetch.js
 
-lazy val root = project.in(file("."))
+lazy val root = project
+  .in(file("."))
   .aggregate(fetchJS, fetchJVM, fetchMonixJVM, fetchMonixJS)
   .settings(allSettings)
   .settings(noPublishSettings)
 
 lazy val docsSettings = ghpages.settings ++ buildSettings ++ tutSettings ++ Seq(
-  git.remoteRepo := "git@github.com:47deg/fetch.git",
-  tutSourceDirectory := sourceDirectory.value / "tut",
-  tutTargetDirectory := sourceDirectory.value / "jekyll",
-  tutScalacOptions ~= (_.filterNot(Set("-Ywarn-unused-import", "-Ywarn-dead-code"))),
-  aggregate in doc := true
-)
+    git.remoteRepo := "git@github.com:47deg/fetch.git",
+    tutSourceDirectory := sourceDirectory.value / "tut",
+    tutTargetDirectory := sourceDirectory.value / "jekyll",
+    tutScalacOptions ~= (_.filterNot(Set("-Ywarn-unused-import", "-Ywarn-dead-code"))),
+    aggregate in doc := true
+  )
 
 lazy val docs = (project in file("docs"))
   .settings(
     moduleName := "fetch-docs"
-   )
+  )
   .dependsOn(fetchJVM, fetchMonixJVM)
   .enablePlugins(JekyllPlugin)
   .settings(docsSettings: _*)
   .settings(noPublishSettings)
 
-
 lazy val readmeSettings = buildSettings ++ tutSettings ++ Seq(
-  tutSourceDirectory := baseDirectory.value,
-  tutTargetDirectory := baseDirectory.value.getParentFile,
-  tutScalacOptions ~= (_.filterNot(Set("-Ywarn-unused-import", "-Ywarn-dead-code"))),
-  tutNameFilter := """README.md""".r
-)
+    tutSourceDirectory := baseDirectory.value,
+    tutTargetDirectory := baseDirectory.value.getParentFile,
+    tutScalacOptions ~= (_.filterNot(Set("-Ywarn-unused-import", "-Ywarn-dead-code"))),
+    tutNameFilter := """README.md""".r
+  )
 
 lazy val readme = (project in file("tut"))
   .settings(
@@ -103,20 +104,20 @@ lazy val readme = (project in file("tut"))
   .settings(noPublishSettings)
 
 lazy val monixSettings = (
-  libraryDependencies ++= Seq(
-    "io.monix" %%% "monix-eval" % "2.1.0",
-    "io.monix" %%% "monix-cats" % "2.1.0"
+    libraryDependencies ++= Seq(
+      "io.monix" %%% "monix-eval" % "2.1.0",
+      "io.monix" %%% "monix-cats" % "2.1.0"
+    )
   )
-)
 
-lazy val monix = crossProject.in(file("monix"))
+lazy val monix = crossProject
+  .in(file("monix"))
   .dependsOn(fetch)
   .settings(moduleName := "fetch-monix")
-  .settings(allSettings:_*)
-  .jsSettings(sharedJsSettings:_*)
+  .settings(allSettings: _*)
+  .jsSettings(sharedJsSettings: _*)
   .settings(monixSettings: _*)
   .enablePlugins(AutomateHeaderPlugin)
-
 
 lazy val fetchMonixJVM = monix.jvm
 lazy val fetchMonixJS = monix.js

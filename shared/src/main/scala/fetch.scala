@@ -246,12 +246,11 @@ object `package` {
     def run[M[_]]: FetchRunnerA[M] = new FetchRunnerA[M]
   }
 
-  private[fetch] implicit class DataSourceCast[A, B](private val ds: DataSource[A, B])
-      extends AnyVal {
+  private[fetch] implicit class DataSourceCast[A, B](val ds: DataSource[A, B]) extends AnyVal {
     def castDS[C, D]: DataSource[C, D] = ds.asInstanceOf[DataSource[C, D]]
   }
 
-  private[fetch] implicit class NonEmptyListDetourList[A](private val nel: NonEmptyList[A])
+  private[fetch] implicit class NonEmptyListDetourList[A](val nel: NonEmptyList[A])
       extends AnyVal {
     def unsafeListOp[B](f: List[A] => List[B]): NonEmptyList[B] =
       NonEmptyList.fromListUnsafe(f(nel.toList))
