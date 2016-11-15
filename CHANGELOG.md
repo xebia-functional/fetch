@@ -1,5 +1,17 @@
 ## Changelog
 
+## Version 0.4.0
+
+Date: 2016-11-14
+
+- Added support for Scala 2.12.0
+- Updated cats to 0.8.1 (and monix to the compatible 2.1.0).
+- Support a maximum batch size per `DataSource` (https://github.com/47deg/fetch/pull/76).
+- Provided a new implementation for Parallel joins. This new impl changes the way fetches are inspected to parallelize independent fetches. It does this by adding a new Join construct to the Fetch structure. This Join is parallelized in a new intermediate interpreter which inspects the actual Free constructs and replaces cached fetches by Free.Pure.
+- Updated the scalafmt version which triggered some code reformatting. There is apparently an issue with sbt and scalafmt (sbt/sbt#2786) which keeps us from using sbt 0.13.13.
+
+Thanks @peterneyens!
+
 ## Version 0.3.0
 
 Date: 2016-11-08
