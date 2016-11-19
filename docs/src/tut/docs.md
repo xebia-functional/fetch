@@ -628,6 +628,7 @@ And more succintly with Cats' applicative error syntax.
 
 ```tut:book
 import cats.syntax.applicativeError._
+import fetch.unsafe.implicits._
 
 fetchException.runA[Eval].attempt.value
 ```
