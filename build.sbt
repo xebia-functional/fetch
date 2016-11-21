@@ -20,6 +20,12 @@ lazy val buildSettings = Seq(
   organizationHomepage := Option(new URL("http://47deg.com")),
   scalaVersion := "2.12.0",
   crossScalaVersions := Seq("2.10.6", "2.11.8", "2.12.0"),
+  libraryDependencies ++= (scalaBinaryVersion.value match {
+    case "2.10" =>
+      compilerPlugin("org.scalamacros" % "paradise" % versions("paradise") cross CrossVersion.full) :: Nil
+    case _ =>
+      Nil
+  }),
   headers := Map(
     "scala" -> Apache2_0("2016", "47 Degrees, LLC. <http://www.47deg.com>")
   )
