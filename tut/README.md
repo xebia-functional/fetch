@@ -52,6 +52,7 @@ Data Sources take two type parameters:
 import cats.data.NonEmptyList
 
 trait DataSource[Identity, Result]{
+  def name: String
   def fetchOne(id: Identity): Query[Option[Result]]
   def fetchMany(ids: NonEmptyList[Identity]): Query[Map[Identity, Result]]
 }
@@ -65,6 +66,8 @@ import cats.instances.list._
 import fetch._
 
 implicit object ToStringSource extends DataSource[Int, String]{
+  override def name = "ToString"
+  
   override def fetchOne(id: Int): Query[Option[String]] = {
     Query.sync({
       println(s"[${Thread.currentThread.getId}] One ToString $id")
@@ -130,6 +133,8 @@ This time, instead of creating the results with `Query#sync` we are going to do 
 
 ```tut:silent
 implicit object LengthSource extends DataSource[String, Int]{
+  override def name = "Length"
+  
   override def fetchOne(id: String): Query[Option[Int]] = {
     Query.async((ok, fail) => {
       println(s"[${Thread.currentThread.getId}] One Length $id")

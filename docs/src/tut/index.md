@@ -52,6 +52,7 @@ Data Sources take two type parameters:
 import cats.data.NonEmptyList
 
 trait DataSource[Identity, Result]{
+  def name: String
   def fetchOne(id: Identity): Query[Option[Result]]
   def fetchMany(ids: NonEmptyList[Identity]): Query[Map[Identity, Result]]
 }
@@ -59,7 +60,7 @@ trait DataSource[Identity, Result]{
 
 Note that when we create a query we can compute its result right away, defer its evaluation or make it asynchronous. Returning `Query` instances from the fetch methods allows us to abstract from the target result type and to run it synchronously or asynchronously.
 
-We'll implement a dummy data source that can convert integers to strings. For convenience, we define a `fetchString` function that lifts identities (`Int` in our dummy data source) to a `Fetch`. 
+We'll implement a dummy data source that can convert integers to strings. For convenience, we define a `fetchString` function that lifts identities (`Int` in our dummy data source) to a `Fetch`.
 
 ```tut:silent
 import cats.data.NonEmptyList
@@ -67,6 +68,8 @@ import cats.instances.list._
 import fetch._
 
 implicit object ToStringSource extends DataSource[Int, String]{
+  override def name = "ToString"
+
   override def fetchOne(id: Int): Query[Option[String]] = {
     Query.sync({
       println(s"[${Thread.currentThread.getId}] One ToString $id")
@@ -135,6 +138,8 @@ This time, instead of creating the results with `Query#sync` we are going to do 
 
 ```tut:silent
 implicit object LengthSource extends DataSource[String, Int]{
+  override def name = "Length"
+
   override def fetchOne(id: String): Query[Option[Int]] = {
     Query.async((ok, fail) => {
       println(s"[${Thread.currentThread.getId}] One Length $id")
@@ -152,7 +157,7 @@ implicit object LengthSource extends DataSource[String, Int]{
 def fetchLength(s: String): Fetch[Int] = Fetch(s)
 ```
 
-And now we can easily receive data from the two sources in a single fetch. 
+And now we can easily receive data from the two sources in a single fetch.
 
 ```tut:silent
 val fetchMulti: Fetch[(String, Int)] = (fetchString(1) |@| fetchLength("one")).tupled

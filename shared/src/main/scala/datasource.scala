@@ -29,7 +29,7 @@ trait DataSource[I, A] {
 
   /** The name of the data source.
     */
-  def name: DataSourceName      = this.getClass.getName
+  def name: DataSourceName
   override def toString: String = name
 
   /**
