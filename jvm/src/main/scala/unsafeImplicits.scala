@@ -63,7 +63,6 @@ object implicits {
           fa.value
         } catch {
           case ex: FetchException => f(ex).value
-          case th: Throwable      => f(UnhandledException(th)).value
         }
       })
 
@@ -114,7 +113,7 @@ object implicits {
       }
     def raiseError[A](e: FetchException): Id[A] =
       e match {
-        case UnhandledException(ex) => {
+        case UnhandledException(_, ex) => {
           e.initCause(ex)
           throw e
         }
