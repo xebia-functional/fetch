@@ -75,30 +75,48 @@ lazy val root = project
   .settings(allSettings)
   .settings(noPublishSettings)
 
-lazy val docsSettings = ghpages.settings ++ buildSettings ++ tutSettings ++ Seq(
-    git.remoteRepo := "git@github.com:47deg/fetch.git",
-    tutSourceDirectory := sourceDirectory.value / "tut",
-    tutTargetDirectory := sourceDirectory.value / "jekyll",
-    tutScalacOptions ~= (_.filterNot(
-      Set("-Ywarn-unused-import", "-Ywarn-dead-code"))),
-    tutScalacOptions += "-Xdivergence211",
-    aggregate in doc := true
-  )
+lazy val micrositeSettings = Seq(
+  micrositeName := "Fetch",
+  micrositeDescription := "Simple & Efficient data access for Scala and Scala.js",
+  micrositeBaseUrl := "fetch",
+  micrositeDocumentationUrl := "/fetch/docs/",
+  micrositeGithubOwner := "47deg",
+  micrositeGithubRepo := "fetch",
+  micrositeHighlightTheme := "tomorrow",
+  micrositePalette := Map(
+    "brand-primary"     -> "#FF518C",
+    "brand-secondary"   -> "#2F2859",
+    "brand-tertiary"    -> "#28224C",
+    "gray-dark"         -> "#48474C",
+    "gray"              -> "#8D8C92",
+    "gray-light"        -> "#E3E2E3",
+    "gray-lighter"      -> "#F4F3F9",
+    "white-color"       -> "#FFFFFF"),
+  includeFilter in makeSite := "*.html" | "*.css" | "*.png" | "*.jpg" | "*.gif" | "*.js" | "*.swf" | "*.md"
+)
+
+lazy val docsSettings = buildSettings ++ micrositeSettings ++ Seq(
+  tutScalacOptions ~= (_.filterNot(Set("-Ywarn-unused-import", "-Ywarn-dead-code"))),
+  tutScalacOptions ++= (scalaBinaryVersion.value match {
+    case "2.10" => Seq("-Xdivergence211")
+    case _ => Nil
+  }),
+  aggregate in doc := true
+)
 
 lazy val docs = (project in file("docs"))
+  .dependsOn(fetchJVM, fetchMonixJVM)
   .settings(
     moduleName := "fetch-docs"
   )
-  .dependsOn(fetchJVM, fetchMonixJVM)
-  .enablePlugins(JekyllPlugin)
   .settings(docsSettings: _*)
   .settings(noPublishSettings)
+  .enablePlugins(MicrositesPlugin)
 
 lazy val readmeSettings = buildSettings ++ tutSettings ++ Seq(
     tutSourceDirectory := baseDirectory.value,
     tutTargetDirectory := baseDirectory.value.getParentFile,
-    tutScalacOptions ~= (_.filterNot(
-      Set("-Ywarn-unused-import", "-Ywarn-dead-code"))),
+    tutScalacOptions ~= (_.filterNot(Set("-Ywarn-unused-import", "-Ywarn-dead-code"))),
     tutScalacOptions += "-Xdivergence211",
     tutNameFilter := """README.md""".r
   )
