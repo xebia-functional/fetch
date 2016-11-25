@@ -25,8 +25,6 @@ Or, if using Scala.js (0.6.x):
 ```
 
 
-
-
 ## Remote data
 
 Fetch is a library for making access to data both simple & efficient. Fetch is especially useful when querying data that

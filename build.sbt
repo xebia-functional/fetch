@@ -146,4 +146,16 @@ lazy val monix = crossProject
   .enablePlugins(AutomateHeaderPlugin)
 
 lazy val fetchMonixJVM = monix.jvm
-lazy val fetchMonixJS = monix.js
+lazy val fetchMonixJS  = monix.js
+
+lazy val debug = (crossProject in file("debug"))
+  .settings(
+    moduleName := "fetch-debug"
+  )
+  .dependsOn(fetch)
+  .settings(allSettings: _*)
+  .jsSettings(sharedJsSettings: _*)
+  .enablePlugins(AutomateHeaderPlugin)
+
+lazy val debugJVM = debug.jvm
+lazy val debugJS = debug.js
