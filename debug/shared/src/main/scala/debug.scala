@@ -17,9 +17,8 @@
 package fetch
 
 object debug {
-  // TODO: avoid deprecation warnings
   // TODO: docs
-  import scala.text.Document
+  import fetch.document.Document
 
   def string(doc: Document): String = {
     val writer = new java.io.StringWriter
@@ -83,10 +82,12 @@ object debug {
       Document.text(s"[Error] Unhandled `${err.getClass.getName}`: ${err.getMessage}")
   }
 
+  /* Given a [[fetch.env.Env]], describe it with a human-readable string. */
   def describe(env: Env): String = {
     string(showEnv(env))
   }
 
+  /* Given a [[fetch.FetchException]], describe it with a human-readable string. */
   def describe(err: FetchException): String = {
     string(
       showException(err) :: Document.text(
