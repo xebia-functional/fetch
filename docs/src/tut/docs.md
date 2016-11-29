@@ -67,6 +67,7 @@ In order to tell Fetch how to retrieve data, we must implement the `DataSource` 
 import cats.data.NonEmptyList
 
 trait DataSource[Identity, Result]{
+  def name: String
   def fetchOne(id: Identity): Query[Option[Result]]
   def fetchMany(ids: NonEmptyList[Identity]): Query[Map[Identity, Result]]
 }
@@ -126,7 +127,7 @@ val userDatabase: Map[UserId, User] = Map(
 )
 
 implicit object UserSource extends DataSource[UserId, User]{
-  override def name = "User data source"
+  override def name = "User"
 
   override def fetchOne(id: UserId): Query[Option[User]] = {
     Query.sync({
@@ -155,6 +156,8 @@ of `fetchMany`. Note that it will use the `fetchOne` implementation for requesti
 
 ```tut:silent
 implicit object UnbatchedSource extends DataSource[Int, Int]{
+  override def name = "Unbatched"
+  
   override def fetchOne(id: Int): Query[Option[Int]] = {
     Query.sync(Option(id))
   }
@@ -338,7 +341,7 @@ val postDatabase: Map[PostId, Post] = Map(
 )
 
 implicit object PostSource extends DataSource[PostId, Post]{
-  override def name = "Post data source"
+  override def name = "Post"
 
   override def fetchOne(id: PostId): Query[Option[Post]] = {
     Query.sync({
@@ -371,7 +374,7 @@ We'll implement a data source for retrieving a post topic given a post id.
 
 ```tut:silent
 implicit object PostTopicSource extends DataSource[Post, PostTopic]{
-  override def name = "Post topic data source"
+  override def name = "Post topic"
 
   override def fetchOne(id: Post): Query[Option[PostTopic]] = {
     Query.sync({
