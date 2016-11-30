@@ -46,9 +46,10 @@ object debug {
         last  <- env.rounds.lastOption
       } yield last.end - first.start
       val durationDoc =
-        duration.fold(Document.empty: Document)((d) => showDuration(d / 1e9))
+        duration.fold(Document.empty: Document)((d) =>
+          Document.text("Fetch execution") :: showDuration(d / 1e9))
 
-      resultDoc :: durationDoc :/: Document.nest(2, pile(env.rounds.map(showRound)))
+      durationDoc :/: Document.nest(2, pile(env.rounds.map(showRound)))
     }
   }
 
@@ -58,8 +59,12 @@ object debug {
     case Round(cache, q @ FetchMany(ids, ds), result, start, end) =>
       showQuery(q) :: showDuration(r.duration / 1e6)
     case Round(cache, Concurrent(queries), result, start, end) =>
-      Document.text("[Concurrent]") :: showDuration(r.duration / 1e6) :: Document
-        .nest(2, pile(queries.toList.map(showQuery)))
+      if (queries.tail.isEmpty) {
+        showQuery(queries.head) :: showDuration(r.duration / 1e6)
+      } else {
+        Document.text("[Concurrent]") :: showDuration(r.duration / 1e6) :: Document
+          .nest(2, pile(queries.toList.map(showQuery)))
+      }
   }
 
   def showQuery(q: FetchQuery[_, _]): Document = q match {
@@ -72,14 +77,20 @@ object debug {
     Document.text(s"`${ds}` missing identities ${ids}")
   }
 
+  def showRoundCount(err: FetchException): Document = {
+    Document.text(s", fetch interrupted after ${err.env.rounds.size} rounds")
+  }
+
   def showException(err: FetchException): Document = err match {
     case NotFound(env, q @ FetchOne(id, ds)) =>
-      Document.text(s"[Error] Identity not found: ${id} in `${ds.name}`")
+      Document.text(s"[Error] Identity not found: ${id} in `${ds.name}`") :: showRoundCount(err)
     case MissingIdentities(env, missing) =>
-      Document.text("[Error] Missing identities") :/:
+      Document.text("[Error] Missing identities") :: showRoundCount(err) :/:
         Document.nest(2, pile(missing.toSeq.map((kv) => showMissing(kv._1, kv._2))))
-    case UnhandledException(env, err) =>
-      Document.text(s"[Error] Unhandled `${err.getClass.getName}`: ${err.getMessage}")
+    case UnhandledException(env, exc) =>
+      Document
+        .text(s"[Error] Unhandled `${exc.getClass.getName}`: '${exc.getMessage}'") :: showRoundCount(
+        err)
   }
 
   /* Given a [[fetch.env.Env]], describe it with a human-readable string. */
@@ -90,8 +101,7 @@ object debug {
   /* Given a [[fetch.FetchException]], describe it with a human-readable string. */
   def describe(err: FetchException): String = {
     string(
-      showException(err) :: Document.text(
-        s", fetch interrupted after ${err.env.rounds.size} rounds") :/:
+      showException(err) :/:
         Document.nest(
           2,
           showEnv(err.env)

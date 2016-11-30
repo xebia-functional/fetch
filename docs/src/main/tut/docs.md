@@ -29,13 +29,13 @@ we read) concerns.
 To begin, add the following dependency to your SBT build file:
 
 ```scala
-"com.fortysevendeg" %% "fetch" % "0.4.0"
+"com.fortysevendeg" %% "fetch" % "0.4.1-SNAPSHOT"
 ```
 
 Or, if using Scala.js:
 
 ```scala
-"com.fortysevendeg" %%% "fetch" % "0.4.0"
+"com.fortysevendeg" %%% "fetch" % "0.4.1-SNAPSHOT"
 ```
 
 Now you'll have Fetch available in both Scala and Scala.js.
@@ -636,6 +636,34 @@ import fetch.unsafe.implicits._
 fetchException.runA[Eval].attempt.value
 ```
 
+### Debugging exceptions
+
+Using fetch's debugging facilities, we can visualize a failed fetch's execution up until the point where it failed. Let's create
+a fetch that fails after a couple rounds to see it in action:
+
+```tut:silent
+val failingFetch: Fetch[String] = for {
+  a <- getUser(1)
+  b <- getUser(2)
+  c <- fetchException
+} yield s"${a.username} loves ${b.username}"
+
+val result: Eval[Either[FetchException, String]] = FetchMonadError[Eval].attempt(failingFetch.runA[Eval])
+```
+
+Now let's use the `fetch.debug.describe` function for describing the error if we find one:
+
+```tut:book
+import fetch.debug.describe
+
+val value: Either[FetchException, String] = result.value
+
+println(value.fold(describe, identity _))
+```
+
+As you can see in the output from `describe`, the fetch stopped due to a `java.lang.Exception` after succesfully executing two
+rounds for getting users 1 and 2.
+
 ## Missing identities
 
 You've probably noticed that `DataSource.fetchOne` and `DataSource.fetchMany` return types help Fetch know if any requested
@@ -650,46 +678,63 @@ should be able to easily diagnose the failure. For ilustrating this scenario we'
 
 ```tut:silent
 import cats.syntax.either._
+import fetch.debug.describe
+
 val missingUser = getUser(5)
-val eval: Eval[Either[FetchException, User]] = missingUser.runA[Eval].attempt
-val result: Either[FetchException, User] = eval.value
-val err: FetchException = result.swap.toOption.get // don't do this at home, folks
+
+val result: Eval[Either[FetchException, User]] = missingUser.runA[Eval].attempt
 ```
 
-`NotFound` allows you to access the fetch request that was in progress when the error happened and the environment of the fetch.
+And now we can execute the fetch and describe its execution:
 
 ```tut:book
-err match {
-  case nf: NotFound => {
+val value: Either[FetchException, User] = result.value
+
+println(value.fold(describe, _.toString))
+```
+
+As you can see in the output, the identity `5` for the user source was not found, thus the fetch failed without executing any rounds.
+`NotFound` also allows you to access the fetch request that was in progress when the error happened and the environment of the fetch.
+
+```tut:book
+value match {
+  case Left(nf @ NotFound(_, _)) => {
     println("Request " + nf.request)
     println("Environment " + nf.env)
   }
+  case _ => 
 }
 ```
-
-As you can see in the output, the error was actually a `NotFound`. We can access the request with `.request`, which lets us
-know that the failed request was for the identity `5` of the user data source. We can also see that the environment has an empty
-cache and no rounds of execution happened yet.
 
 ### Multiple requests
 
 When multiple requests to the same data source are batched and/or multiple requests are performed at the same time, is possible that more than one identity was missing. There is another error case for such situations: `MissingIdentities`, which contains a mapping from data source names to the list of missing identities.
 
-```tut:silent
+```tut:book
+import fetch.debug.describe
+
 val missingUsers = List(3, 4, 5, 6).traverse(getUser)
-val eval: Eval[Either[FetchException, List[User]]] = missingUsers.runA[Eval].attempt
-val result: Either[FetchException, List[User]] = eval.value
-val err: FetchException = result.swap.toOption.get // don't do this at home, folks
+
+val result: Eval[Either[FetchException, List[User]]] = missingUsers.runA[Eval].attempt
+```
+
+And now we can execute the fetch and describe its execution:
+
+```tut:book
+val value: Either[FetchException, List[User]] = result.value
+
+println(value.fold(describe, _.toString))
 ```
 
 The `.missing` attribute will give us the mapping from data source name to missing identities, and `.env` will give us the environment so we can track the execution of the fetch.
 
 ```tut:book
-err match {
-  case mi: MissingIdentities => {
+value match {
+  case Left(mi @ MissingIdentities(_, _)) => {
     println("Missing identities " + mi.missing)
     println("Environment " + mi.env)
   }
+  case _ =>
 }
 ```
 
@@ -945,7 +990,7 @@ The [Monix](https://monix.io/) library provides an abstraction for lazy, asynchr
 For using `Task` as the target concurrency monad of a fetch, add the following dependency to your build file:
 
 ```scala
-"com.fortysevendeg" %% "fetch-monix" % "0.4.0"
+"com.fortysevendeg" %% "fetch-monix" % "0.4.1-SNAPSHOT"
 ```
 
 And do some standard imports, we'll need an Scheduler for running our tasks as well as the instance of `FetchMonadError[Task]` that `fetch-monix` provides:
@@ -1065,6 +1110,45 @@ val task = Fetch.run(homePage)(taskFetchMonadError)
 Await.result(task.runAsync(scheduler), Duration.Inf)
 ```
 
+# Debugging
+
+We have introduced the handy `fetch.debug.describe` function for debugging errors, but it can do more than that. It can also give you a detailed description of
+a fetch execution given an environment. 
+
+## Fetch execution
+
+We are going to create an interesting fetch that applies all the optimizations available (caching, batching and concurrent request) for ilustrating how we can
+visualize fetch executions using the environment.
+
+```tut:silent
+val batched: Fetch[List[User]] = Fetch.multiple(1, 2)
+val cached: Fetch[User] = getUser(2)
+val concurrent: Fetch[(List[User], List[Post])] = (List(1, 2, 3).traverse(getUser) |@| List(1, 2, 3).traverse(getPost)).tupled
+
+val interestingFetch = for {
+  users <- batched
+  anotherUser <- cached
+  _ <- concurrent
+} yield "done"
+```
+
+Now that we have the fetch let's run it, get the environment and visualize its execution using the `describe` function:
+
+```tut:book
+import fetch.debug.describe
+
+val env = interestingFetch.runE[Id]
+
+println(describe(env))
+```
+
+Let's break down the output from `describe`:
+
+ - The first line shows the total time that took to run the fetch
+ - The nested lines represent the different rounds of execution 
+  + "Fetch one" rounds are executed for getting an identity from one data source
+  + "Fetch many" rounds are executed for getting a batch of identities from one data source
+  + "Concurrent" rounds are multiple "one" or "many" rounds for different data sources executed concurrently
 
 # Resources
 

@@ -5,7 +5,7 @@ import catext.Dependencies._
 val dev = Seq(Dev("47 Degrees (twitter: @47deg)", "47 Degrees"))
 val gh  = GitHubSettings("com.fortysevendeg", "fetch", "47 Degrees", apache)
 
-addCommandAlias("makeDocs", ";readme/tut;docs/tut;docs/makeSite")
+addCommandAlias("makeDocs", ";docs/makeMicrosite")
 
 pgpPassphrase := Some(sys.env.getOrElse("PGP_PASSPHRASE", "").toCharArray)
 pgpPublicRing := file(s"${sys.env.getOrElse("PGP_FOLDER", ".")}/pubring.gpg")
@@ -105,7 +105,7 @@ lazy val docsSettings = buildSettings ++ micrositeSettings ++ Seq(
 )
 
 lazy val docs = (project in file("docs"))
-  .dependsOn(fetchJVM, fetchMonixJVM)
+  .dependsOn(fetchJVM, fetchMonixJVM, debugJVM)
   .settings(
     moduleName := "fetch-docs"
   )
