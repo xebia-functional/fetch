@@ -5,7 +5,7 @@ import catext.Dependencies._
 val dev = Seq(Dev("47 Degrees (twitter: @47deg)", "47 Degrees"))
 val gh  = GitHubSettings("com.fortysevendeg", "fetch", "47 Degrees", apache)
 
-addCommandAlias("makeDocs", ";readme/tut;docs/tut;docs/makeSite")
+addCommandAlias("makeDocs", ";docs/makeMicrosite")
 
 pgpPassphrase := Some(sys.env.getOrElse("PGP_PASSPHRASE", "").toCharArray)
 pgpPublicRing := file(s"${sys.env.getOrElse("PGP_FOLDER", ".")}/pubring.gpg")
@@ -75,30 +75,48 @@ lazy val root = project
   .settings(allSettings)
   .settings(noPublishSettings)
 
-lazy val docsSettings = ghpages.settings ++ buildSettings ++ tutSettings ++ Seq(
-    git.remoteRepo := "git@github.com:47deg/fetch.git",
-    tutSourceDirectory := sourceDirectory.value / "tut",
-    tutTargetDirectory := sourceDirectory.value / "jekyll",
-    tutScalacOptions ~= (_.filterNot(
-      Set("-Ywarn-unused-import", "-Ywarn-dead-code"))),
-    tutScalacOptions += "-Xdivergence211",
-    aggregate in doc := true
-  )
+lazy val micrositeSettings = Seq(
+  micrositeName := "Fetch",
+  micrositeDescription := "Simple & Efficient data access for Scala and Scala.js",
+  micrositeBaseUrl := "fetch",
+  micrositeDocumentationUrl := "/fetch/docs/",
+  micrositeGithubOwner := "47deg",
+  micrositeGithubRepo := "fetch",
+  micrositeHighlightTheme := "tomorrow",
+  micrositePalette := Map(
+    "brand-primary"     -> "#FF518C",
+    "brand-secondary"   -> "#2F2859",
+    "brand-tertiary"    -> "#28224C",
+    "gray-dark"         -> "#48474C",
+    "gray"              -> "#8D8C92",
+    "gray-light"        -> "#E3E2E3",
+    "gray-lighter"      -> "#F4F3F9",
+    "white-color"       -> "#FFFFFF"),
+  includeFilter in makeSite := "*.html" | "*.css" | "*.png" | "*.jpg" | "*.gif" | "*.js" | "*.swf" | "*.md"
+)
+
+lazy val docsSettings = buildSettings ++ micrositeSettings ++ Seq(
+  tutScalacOptions ~= (_.filterNot(Set("-Ywarn-unused-import", "-Ywarn-dead-code"))),
+  tutScalacOptions ++= (scalaBinaryVersion.value match {
+    case "2.10" => Seq("-Xdivergence211")
+    case _ => Nil
+  }),
+  aggregate in doc := true
+)
 
 lazy val docs = (project in file("docs"))
+  .dependsOn(fetchJVM, fetchMonixJVM, debugJVM)
   .settings(
     moduleName := "fetch-docs"
   )
-  .dependsOn(fetchJVM, fetchMonixJVM)
-  .enablePlugins(JekyllPlugin)
   .settings(docsSettings: _*)
   .settings(noPublishSettings)
+  .enablePlugins(MicrositesPlugin)
 
 lazy val readmeSettings = buildSettings ++ tutSettings ++ Seq(
     tutSourceDirectory := baseDirectory.value,
     tutTargetDirectory := baseDirectory.value.getParentFile,
-    tutScalacOptions ~= (_.filterNot(
-      Set("-Ywarn-unused-import", "-Ywarn-dead-code"))),
+    tutScalacOptions ~= (_.filterNot(Set("-Ywarn-unused-import", "-Ywarn-dead-code"))),
     tutScalacOptions += "-Xdivergence211",
     tutNameFilter := """README.md""".r
   )
@@ -128,4 +146,16 @@ lazy val monix = crossProject
   .enablePlugins(AutomateHeaderPlugin)
 
 lazy val fetchMonixJVM = monix.jvm
-lazy val fetchMonixJS = monix.js
+lazy val fetchMonixJS  = monix.js
+
+lazy val debug = (crossProject in file("debug"))
+  .settings(
+    moduleName := "fetch-debug"
+  )
+  .dependsOn(fetch)
+  .settings(allSettings: _*)
+  .jsSettings(sharedJsSettings: _*)
+  .enablePlugins(AutomateHeaderPlugin)
+
+lazy val debugJVM = debug.jvm
+lazy val debugJS = debug.js

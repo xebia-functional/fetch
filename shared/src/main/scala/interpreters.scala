@@ -62,7 +62,7 @@ trait FetchInterpreters {
           case other =>
             StateT[M, FetchEnv, A] { env: FetchEnv =>
               other match {
-                case Thrown(e)              => M.raiseError(UnhandledException(e))
+                case Thrown(e)              => M.raiseError(UnhandledException(env, e))
                 case one @ FetchOne(_, _)   => processOne(one, env)
                 case many @ FetchMany(_, _) => processMany(many, env)
                 case conc @ Concurrent(_)   => processConcurrent(conc, env)

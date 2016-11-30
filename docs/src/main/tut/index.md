@@ -1,9 +1,9 @@
 ---
 layout: home
 technologies:
- - scala: ["Scala", "Fetch is written in Scala and supports both Scala (JVM) and Scala.js (JavaScript environments)"]
- - cats: ["Cats", "Fetch uses cats' Free Monad implementation as well as some of its data types."]
- - fp: ["Functional Programming", "Fetch is implemented using the Free Monad and Interpreter pattern."]
+ - first: ["Scala", "Fetch is written in Scala and supports both Scala (JVM) and Scala.js (JavaScript environments)"]
+ - second: ["Cats", "Fetch uses cats' Free Monad implementation as well as some of its data types."]
+ - third: ["Functional Programming", "Fetch is implemented using the Free Monad and Interpreter pattern."]
 ---
 
 ## Installation
@@ -13,13 +13,13 @@ Add the following dependency to your project's build file.
 For Scala 2.11.x and 2.12.x:
 
 ```scala
-"com.fortysevendeg" %% "fetch" % "0.4.0"
+"com.fortysevendeg" %% "fetch" % "0.4.1-SNAPSHOT"
 ```
 
 Or, if using Scala.js (0.6.x):
 
 ```scala
-"com.fortysevendeg" %%% "fetch" % "0.4.0"
+"com.fortysevendeg" %%% "fetch" % "0.4.1-SNAPSHOT"
 ```
 
 ```tut:invisible

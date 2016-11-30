@@ -235,8 +235,8 @@ class FetchTests extends AsyncFreeSpec with Matchers {
     val fetch: Fetch[Int] = Fetch.error(DidNotFound())
 
     ME.attempt(Fetch.run[Future](fetch)).map {
-      case Left(UnhandledException(DidNotFound())) => assert(true)
-      case _                                       => fail("Should've thrown NotFound exception")
+      case Left(UnhandledException(_, DidNotFound())) => assert(true)
+      case _                                          => fail("Should've thrown NotFound exception")
     }
   }
 
@@ -373,8 +373,8 @@ class FetchTests extends AsyncFreeSpec with Matchers {
     val fut                            = Fetch.run[Future](fetch)
 
     ME.attempt(Fetch.run[Future](fetch)).map {
-      case Left(UnhandledException(DidNotFound())) => assert(true)
-      case _                                       => fail("Should've thrown NotFound exception")
+      case Left(UnhandledException(_, DidNotFound())) => assert(true)
+      case _                                          => fail("Should've thrown NotFound exception")
     }
   }
 
@@ -383,8 +383,8 @@ class FetchTests extends AsyncFreeSpec with Matchers {
     val fut                            = Fetch.run[Future](fetch)
 
     ME.attempt(Fetch.run[Future](fetch)).map {
-      case Left(UnhandledException(DidNotFound())) => assert(true)
-      case _                                       => fail("Should've thrown NotFound exception")
+      case Left(UnhandledException(_, DidNotFound())) => assert(true)
+      case _                                          => fail("Should've thrown NotFound exception")
     }
   }
 

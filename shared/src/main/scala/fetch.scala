@@ -61,11 +61,13 @@ object Query {
   }
 }
 
-trait FetchException                                   extends Throwable with Product with Serializable
+trait FetchException extends Throwable with Product with Serializable {
+  def env: Env
+}
 case class NotFound(env: Env, request: FetchOne[_, _]) extends FetchException
 case class MissingIdentities(env: Env, missing: Map[DataSourceName, List[Any]])
     extends FetchException
-case class UnhandledException(err: Throwable) extends FetchException
+case class UnhandledException(env: Env, err: Throwable) extends FetchException
 
 /** Requests in Fetch Free monad. */
 sealed trait FetchRequest extends Product with Serializable
