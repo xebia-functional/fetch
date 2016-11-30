@@ -51,6 +51,7 @@ function addSectionToSidebar(text, slug) {
     var a = $('<a href="#' + slug + '">' + text + '<span><i class="fa fa-angle-right"></i></span></a>');
     var li = $('<li class="' + slug + '"></li>');
     li.append(a).append(ul);
+    ul.hide();
     $('#sidebar').append(li);
     a.click(function(event) {
         $('#sidebar li').add('#sidebar a').removeClass('active');
