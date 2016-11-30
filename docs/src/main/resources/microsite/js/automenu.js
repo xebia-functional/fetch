@@ -49,6 +49,7 @@ function makeSectionAnchor(h, text, slug) {
 function addSectionToSidebar(text, slug) {
     var ul = $('<ul></ul>').addClass('sub_section');
     var a = $('<a href="#' + slug + '">' + text + '<span><i class="fa fa-angle-right"></i></span></a>');
+    a.find('.fa-angle-right').css('padding-top', '0.7em');
     var li = $('<li class="' + slug + '"></li>');
     li.append(a).append(ul);
     ul.hide();
