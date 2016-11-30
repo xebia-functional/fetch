@@ -17,7 +17,6 @@
 package fetch
 
 object debug {
-  // TODO: docs
   import fetch.document.Document
 
   def string(doc: Document): String = {
