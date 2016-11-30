@@ -193,8 +193,8 @@ import fetch.syntax._
 
 Note that running a fetch to non-concurrency monads like `Id` or `Eval` is not supported in Scala.js.
 In real-life scenarios you'll want to run your fetches to `Future` or a `Task` type provided by a library like
-[Monix](https://monix.io/) or [fs2](https://github.com/functional-streams-for-scala/fs2), both of which are supported
-in Fetch.
+[Monix](https://monix.io/) or [fs2](https://github.com/functional-streams-for-scala/fs2). Monix's Task is already
+supported in the `fetch-monix` project, but fs2's Task is not at the moment.
 
 We can now run the fetch and see its result:
 
