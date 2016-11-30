@@ -1115,6 +1115,12 @@ Await.result(task.runAsync(scheduler), Duration.Inf)
 We have introduced the handy `fetch.debug.describe` function for debugging errors, but it can do more than that. It can also give you a detailed description of
 a fetch execution given an environment. 
 
+Add the following line to your dependencies for including Fetch's debugging facilities:
+
+```scala
+"com.fortysevendeg" %% "fetch-debug" % "0.4.1-SNAPSHOT"
+```
+
 ## Fetch execution
 
 We are going to create an interesting fetch that applies all the optimizations available (caching, batching and concurrent request) for ilustrating how we can
