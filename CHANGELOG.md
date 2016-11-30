@@ -1,5 +1,12 @@
 ## Changelog
 
+## Version 0.4.1
+
+Date: Unreleased
+
+- Make `DataSource#name` mandatory to implement
+- Add `fetch-debug` project with debugging facilities for Fetch
+
 ## Version 0.4.0
 
 Date: 2016-11-14
