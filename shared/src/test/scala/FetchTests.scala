@@ -231,6 +231,18 @@ class FetchTests extends AsyncFreeSpec with Matchers {
     fut.map(_ shouldEqual List(0, 1, 2))
   }
 
+  "Deeply nested traversals don't cause stack overflows" in {
+    import cats.syntax.traverse._
+
+    val depth = 2000
+    val fetch = (1 to depth)
+      .map((x) => (0 until x).toList.traverse(one(_)))
+      .foldLeft(Fetch.pure(List.empty[Int]))((acc, f) => acc.flatMap((x) => f))
+
+    val fut = Fetch.runEnv[Future](fetch)
+    fut.map(_.rounds.size shouldEqual depth)
+  }
+
   "Traversals are implicitly batched" in {
     import cats.syntax.traverse._
 
