@@ -381,7 +381,7 @@ trait FetchInterpreters {
           case many @ FetchMany(ids, ds) =>
             val fetched = ids.traverse(id => cache.get(ds.identity(id)))
             Coproduct[FetchOp, Id, X](fetched.map(_.toList).toRight(many))
-          case join @ Join(fl, fr) => // todo: stack consumption
+          case join @ Join(fl, fr) =>
             val sfl      = FreeTopExt.modify(fl)(this)
             val sfr      = FreeTopExt.modify(fr)(this)
             val optTuple = (FreeTopExt.inspectPure(sfl) |@| FreeTopExt.inspectPure(sfr)).tupled
