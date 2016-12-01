@@ -17,6 +17,7 @@
 package fetch
 
 import scala.collection.immutable._
+import scala.annotation.tailrec
 
 import cats.{Applicative, ApplicativeError, Id, Monad, MonadError, Semigroup, ~>}
 import cats.data.{Coproduct, EitherT, Ior, NonEmptyList, OptionT, StateT, Validated, ValidatedNel}
@@ -350,11 +351,20 @@ trait FetchInterpreters {
     // independent queries, but this also has the consequence that pure
     // values can be executed multiple times.
     //  eg : Fetch.pure(5).map { i => println("hello"); i * 2 }
-    FreeTopExt.inspect(f.step).foldMap {
-      case Join(ffl, ffr)         => independentQueries(ffl) ++ independentQueries(ffr)
-      case one @ FetchOne(_, _)   => one :: Nil
-      case many @ FetchMany(_, _) => many :: Nil
-      case _                      => Nil
+    independentQueriesRec(f, List.empty)
+
+  @tailrec
+  private[this] def independentQueriesRec(
+      f: Fetch[_],
+      acc: List[FetchQuery[_, _]] = List.empty): List[FetchQuery[_, _]] =
+    FreeTopExt.inspect(f.step) match {
+      case Some(Join(ffl, ffr)) => {
+        val nacc = independentQueries(ffl)
+        independentQueriesRec(ffr, acc ++ nacc)
+      }
+      case Some(one @ FetchOne(_, _))   => one :: acc
+      case Some(many @ FetchMany(_, _)) => many :: acc
+      case _                            => acc
     }
 
   /**
@@ -362,8 +372,8 @@ trait FetchInterpreters {
     * If the cache contains all the fetch identities, the fetch doesn't need to be
     * executed and can be replaced by cached results.
     */
-  private[this] def simplify[A](cache: InMemoryCache)(fetch: Fetch[A]): Fetch[A] =
-    FreeTopExt.modify(fetch)(
+  private[this] def simplify[A](cache: InMemoryCache)(fetch: Fetch[A]): Fetch[A] = {
+    val interpreter: (FetchOp ~> Coproduct[FetchOp, Id, ?]) =
       new (FetchOp ~> Coproduct[FetchOp, Id, ?]) {
         def apply[X](fetchOp: FetchOp[X]): Coproduct[FetchOp, Id, X] = fetchOp match {
           case one @ FetchOne(id, ds) =>
@@ -371,16 +381,18 @@ trait FetchInterpreters {
           case many @ FetchMany(ids, ds) =>
             val fetched = ids.traverse(id => cache.get(ds.identity(id)))
             Coproduct[FetchOp, Id, X](fetched.map(_.toList).toRight(many))
-          case join @ Join(fl, fr) =>
-            val sfl      = simplify(cache)(fl)
-            val sfr      = simplify(cache)(fr)
+          case join @ Join(fl, fr) => // todo: stack consumption
+            val sfl      = FreeTopExt.modify(fl)(this)
+            val sfr      = FreeTopExt.modify(fr)(this)
             val optTuple = (FreeTopExt.inspectPure(sfl) |@| FreeTopExt.inspectPure(sfr)).tupled
             Coproduct[FetchOp, Id, X](optTuple.toRight(Join(sfl, sfr)))
           case other =>
             Coproduct.leftc(other)
         }
       }
-    )
+
+    FreeTopExt.modify(fetch)(interpreter)
+  }
 
   /**
     * Combine multiple queries so the resulting `List` only contains one `FetchQuery`
