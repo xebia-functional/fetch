@@ -174,8 +174,8 @@ import fetch.syntax._
 
 <p>Note that running a fetch to non-concurrency monads like <code>Id</code> or <code>Eval</code> is not supported in Scala.js.
 In real-life scenarios you’ll want to run your fetches to <code>Future</code> or a <code>Task</code> type provided by a library like
-<a href="https://monix.io/">Monix</a> or <a href="https://github.com/functional-streams-for-scala/fs2">fs2</a>, both of which are supported
-in Fetch.</p>
+<a href="https://monix.io/">Monix</a> or <a href="https://github.com/functional-streams-for-scala/fs2">fs2</a>. Monix’s Task is already
+supported in the <code>fetch-monix</code> project, but fs2’s Task is not at the moment.</p>
 
 <p>We can now run the fetch and see its result:</p>
 
@@ -275,13 +275,13 @@ which is run. Let’s look at the various ways we have of constructing queries.<
 are called. We can do so with <code>Query#sync</code>:</p>
 
 <pre><code class="language-scala">Query.sync(42)
-// res9: fetch.Query[Int] = Sync(cats.Later@4b39080f)
+// res9: fetch.Query[Int] = Sync(cats.Later@6ed5e549)
 </code></pre>
 
 <p>You can also construct lazy queries that can evaluate synchronously passing a thunk to <code>Query#sync</code>:</p>
 
 <pre><code class="language-scala">Query.sync({ println("Computing 42"); 42 })
-// res10: fetch.Query[Int] = Sync(cats.Later@1f83ca08)
+// res10: fetch.Query[Int] = Sync(cats.Later@5c9b9417)
 </code></pre>
 
 <p>Synchronous queries simply wrap a Cats’ <code>Eval</code> instance, which captures the notion of a lazy synchronous
@@ -291,7 +291,7 @@ computation. You can lift an <code>Eval[A]</code> into a <code>Query[A]</code> t
 // import cats.Eval
 
 Query.eval(Eval.always({ println("Computing 42"); 42 }))
-// res11: fetch.Query[Int] = Sync(cats.Always@f0999d4)
+// res11: fetch.Query[Int] = Sync(cats.Always@5a046ba)
 </code></pre>
 
 <h3 id="asynchronous">Asynchronous</h3>
@@ -304,7 +304,7 @@ callback or the errback are called.</p>
   Thread.sleep(100)
   ok(42)
 })
-// res12: fetch.Query[Int] = Async($$Lambda$1778/1629532722@494d5a50,Duration.Inf)
+// res12: fetch.Query[Int] = Async($$Lambda$1778/112184238@587f7f54,Duration.Inf)
 </code></pre>
 
 <h2 id="combining-data-from-multiple-sources">Combining data from multiple sources</h2>
@@ -439,9 +439,9 @@ future’s result in Scala.js.</p>
 
 Await.result(fetchConcurrent.runA[Future], Duration.Inf)
 // ~~&gt; [45] One Post 1
-// ~~&gt; [47] One User 2
+// ~~&gt; [46] One User 2
 // &lt;~~ [45] One Post 1
-// &lt;~~ [47] One User 2
+// &lt;~~ [46] One User 2
 // res18: (Post, User) = (Post(1,2,An article),User(2,@two))
 </code></pre>
 
@@ -543,7 +543,7 @@ data sources.</p>
 <pre><code class="language-scala">val env = fetchManyUsers.runE[Id]
 // ~~&gt; [44] Many Users NonEmptyList(1, 2, 3)
 // &lt;~~ [44] Many Users NonEmptyList(1, 2, 3)
-// env: cats.Id[fetch.FetchEnv] = FetchEnv(InMemoryCache(Map((User,1) -&gt; User(1,@one), (User,2) -&gt; User(2,@two), (User,3) -&gt; User(3,@three))),Queue(Round(InMemoryCache(Map()),Concurrent(NonEmptyList(FetchMany(NonEmptyList(1, 2, 3),User))),NonEmptyList(Map(1 -&gt; User(1,@one), 2 -&gt; User(2,@two), 3 -&gt; User(3,@three))),24916292464188,24916394539441)))
+// env: cats.Id[fetch.FetchEnv] = FetchEnv(InMemoryCache(Map((User,1) -&gt; User(1,@one), (User,2) -&gt; User(2,@two), (User,3) -&gt; User(3,@three))),Queue(Round(InMemoryCache(Map()),Concurrent(NonEmptyList(FetchMany(NonEmptyList(1, 2, 3),User))),NonEmptyList(Map(1 -&gt; User(1,@one), 2 -&gt; User(2,@two), 3 -&gt; User(3,@three))),5363587614962,5363690836039)))
 
 fetchManyUsers.runA[Id](env.cache)
 // res25: cats.Id[List[User]] = List(User(1,@one), User(2,@two), User(3,@three))
@@ -669,7 +669,7 @@ monad which, instead of evaluating the fetch eagerly, gives us an <code>Eval[A]<
 // import cats.Eval
 
 val safeResult: Eval[Either[FetchException, User]] = FetchMonadError[Eval].attempt(fetchException.runA[Eval])
-// safeResult: cats.Eval[Either[fetch.FetchException,User]] = cats.Later@31e0df14
+// safeResult: cats.Eval[Either[fetch.FetchException,User]] = cats.Later@58036b38
 
 safeResult.value
 // res28: Either[fetch.FetchException,User] = Left(fetch.UnhandledException)
@@ -715,10 +715,10 @@ val value: Either[FetchException, String] = result.value
 
 println(value.fold(describe, identity _))
 // [Error] Unhandled `java.lang.Exception`: 'Oh noes', fetch interrupted after 2 rounds
-// Fetch execution took 0.203314 seconds
+// Fetch execution took 0.204286 seconds
 //   
-//     [Fetch one] From `User` with id 1 took 0.000101 seconds
-//     [Fetch one] From `User` with id 2 took 0.000101 seconds
+//     [Fetch one] From `User` with id 1 took 0.000102 seconds
+//     [Fetch one] From `User` with id 2 took 0.000102 seconds
 </code></pre>
 
 <p>As you can see in the output from <code>describe</code>, the fetch stopped due to a <code>java.lang.Exception</code> after succesfully executing two
@@ -781,7 +781,7 @@ val missingUsers = List(3, 4, 5, 6).traverse(getUser)
 // missingUsers: fetch.Fetch[List[User]] = Free(...)
 
 val result: Eval[Either[FetchException, List[User]]] = missingUsers.runA[Eval].attempt
-// result: cats.Eval[Either[fetch.FetchException,List[User]]] = cats.Later@7bf896f1
+// result: cats.Eval[Either[fetch.FetchException,List[User]]] = cats.Later@1ce0284a
 </code></pre>
 
 <p>And now we can execute the fetch and describe its execution:</p>
@@ -923,7 +923,7 @@ Caused by: java.lang.Exception: Something went terribly wrong
 <pre><code class="language-scala">getPost(1).runE[Id]
 // ~~&gt; [44] One Post 1
 // &lt;~~ [44] One Post 1
-// res42: cats.Id[fetch.FetchEnv] = FetchEnv(InMemoryCache(Map((Post,1) -&gt; Post(1,2,An article))),Queue(Round(InMemoryCache(Map()),FetchOne(1,Post),Post(1,2,An article),24924104336412,24924206197806)))
+// res42: cats.Id[fetch.FetchEnv] = FetchEnv(InMemoryCache(Map((Post,1) -&gt; Post(1,2,An article))),Queue(Round(InMemoryCache(Map()),FetchOne(1,Post),Post(1,2,An article),5371589267189,5371691662616)))
 </code></pre>
 
 <h3 id="runf">runF</h3>
@@ -933,7 +933,7 @@ Caused by: java.lang.Exception: Something went terribly wrong
 <pre><code class="language-scala">getPost(1).runF[Id]
 // ~~&gt; [44] One Post 1
 // &lt;~~ [44] One Post 1
-// res43: cats.Id[(fetch.FetchEnv, Post)] = (FetchEnv(InMemoryCache(Map((Post,1) -&gt; Post(1,2,An article))),Queue(Round(InMemoryCache(Map()),FetchOne(1,Post),Post(1,2,An article),24924408759284,24924510633918))),Post(1,2,An article))
+// res43: cats.Id[(fetch.FetchEnv, Post)] = (FetchEnv(InMemoryCache(Map((Post,1) -&gt; Post(1,2,An article))),Queue(Round(InMemoryCache(Map()),FetchOne(1,Post),Post(1,2,An article),5371914795245,5372016350973))),Post(1,2,An article))
 </code></pre>
 
 <h2 id="companion-object">Companion object</h2>
@@ -1155,12 +1155,12 @@ contains an instance of <code>FetchMonadError[Future]</code> given that you prov
 <p>For the sake of the examples we’ll use the global <code>ExecutionContext</code>.</p>
 
 <pre><code class="language-scala">Await.result(Fetch.run[Future](homePage),  Duration.Inf)
-// ~~&gt; [47] Many Posts NonEmptyList(1, 2, 3)
-// &lt;~~ [47] Many Posts NonEmptyList(1, 2, 3)
+// ~~&gt; [46] Many Posts NonEmptyList(1, 2, 3)
+// &lt;~~ [46] Many Posts NonEmptyList(1, 2, 3)
 // ~~&gt; [49] Many Users NonEmptyList(2, 3)
-// ~~&gt; [47] Many Post Topics NonEmptyList(Post(2,3,Another article), Post(3,4,Yet another article))
+// ~~&gt; [51] Many Post Topics NonEmptyList(Post(2,3,Another article), Post(3,4,Yet another article))
 // &lt;~~ [49] Many Users NonEmptyList(2, 3)
-// &lt;~~ [47] Many Post Topics NonEmptyList(Post(2,3,Another article), Post(3,4,Yet another article))
+// &lt;~~ [51] Many Post Topics NonEmptyList(Post(2,3,Another article), Post(3,4,Yet another article))
 // res55: (List[Post], Map[PostTopic,Int]) = (List(Post(2,3,Another article), Post(1,2,An article)),Map(monad -&gt; 1, applicative -&gt; 1))
 </code></pre>
 
@@ -1184,18 +1184,18 @@ import fetch.monixTask.implicits._
 <p>Note that running a fetch to a <code>Task</code> doesn’t trigger execution. We can interpret a task to a <code>Future</code> with the <code>Task#runAsync</code> method. We’ll use the global scheduler for now.</p>
 
 <pre><code class="language-scala">val scheduler = Scheduler.Implicits.global
-// scheduler: monix.execution.Scheduler = monix.execution.schedulers.AsyncScheduler@78fd7ed3
+// scheduler: monix.execution.Scheduler = monix.execution.schedulers.AsyncScheduler@7f4c83a7
 
 val task = Fetch.run[Task](homePage)
-// task: monix.eval.Task[(List[Post], Map[PostTopic,Int])] = BindSuspend(monix.eval.Task$$Lambda$2026/1947039830@640af65d,monix.eval.Task$$Lambda$2027/1190469298@31db7274)
+// task: monix.eval.Task[(List[Post], Map[PostTopic,Int])] = BindSuspend(monix.eval.Task$$Lambda$2025/1833609981@37dae161,monix.eval.Task$$Lambda$2026/676207495@5941d32)
 
 Await.result(task.runAsync(scheduler), Duration.Inf)
-// ~~&gt; [51] Many Posts NonEmptyList(1, 2, 3)
-// &lt;~~ [51] Many Posts NonEmptyList(1, 2, 3)
-// ~~&gt; [50] Many Post Topics NonEmptyList(Post(2,3,Another article), Post(3,4,Yet another article))
-// ~~&gt; [47] Many Users NonEmptyList(2, 3)
-// &lt;~~ [50] Many Post Topics NonEmptyList(Post(2,3,Another article), Post(3,4,Yet another article))
-// &lt;~~ [47] Many Users NonEmptyList(2, 3)
+// ~~&gt; [50] Many Posts NonEmptyList(1, 2, 3)
+// &lt;~~ [50] Many Posts NonEmptyList(1, 2, 3)
+// ~~&gt; [51] Many Post Topics NonEmptyList(Post(2,3,Another article), Post(3,4,Yet another article))
+// ~~&gt; [49] Many Users NonEmptyList(2, 3)
+// &lt;~~ [51] Many Post Topics NonEmptyList(Post(2,3,Another article), Post(3,4,Yet another article))
+// &lt;~~ [49] Many Users NonEmptyList(2, 3)
 // res57: (List[Post], Map[PostTopic,Int]) = (List(Post(2,3,Another article), Post(1,2,An article)),Map(monad -&gt; 1, applicative -&gt; 1))
 </code></pre>
 
@@ -1204,7 +1204,7 @@ Await.result(task.runAsync(scheduler), Duration.Inf)
 <p>In the JVM, you may want to choose a <a href="https://monix.io/docs/2x/execution/scheduler.html#builders-on-the-jvm">scheduler tuned for IO workloads</a> to interpret fetches.</p>
 
 <pre><code class="language-scala">val ioSched = Scheduler.io(name="io-scheduler")
-// ioSched: monix.execution.Scheduler = monix.execution.schedulers.AsyncScheduler@295e9964
+// ioSched: monix.execution.Scheduler = monix.execution.schedulers.AsyncScheduler@5b7d5acb
 
 Await.result(task.runAsync(ioSched), Duration.Inf)
 // ~~&gt; [53] Many Posts NonEmptyList(1, 2, 3)
@@ -1297,11 +1297,11 @@ implicit val taskFetchMonadError: FetchMonadError[Task] =
 <p>We can now import the above implicit and run a fetch to our custom type, let’s give it a go:</p>
 
 <pre><code class="language-scala">val task = Fetch.run(homePage)(taskFetchMonadError)
-// task: monix.eval.Task[(List[Post], Map[PostTopic,Int])] = BindSuspend(monix.eval.Task$$Lambda$2026/1947039830@832bb50,monix.eval.Task$$Lambda$2027/1190469298@239874df)
+// task: monix.eval.Task[(List[Post], Map[PostTopic,Int])] = BindSuspend(monix.eval.Task$$Lambda$2025/1833609981@6d6d2799,monix.eval.Task$$Lambda$2026/676207495@1de0c7da)
 
 Await.result(task.runAsync(scheduler), Duration.Inf)
-// ~~&gt; [50] Many Posts NonEmptyList(1, 2, 3)
-// &lt;~~ [50] Many Posts NonEmptyList(1, 2, 3)
+// ~~&gt; [46] Many Posts NonEmptyList(1, 2, 3)
+// &lt;~~ [46] Many Posts NonEmptyList(1, 2, 3)
 // ~~&gt; [50] Many Post Topics NonEmptyList(Post(2,3,Another article), Post(3,4,Yet another article))
 // ~~&gt; [51] Many Users NonEmptyList(2, 3)
 // &lt;~~ [50] Many Post Topics NonEmptyList(Post(2,3,Another article), Post(3,4,Yet another article))
@@ -1347,13 +1347,13 @@ val env = interestingFetch.runE[Id]
 // &lt;~~ [44] One User 3
 // ~~&gt; [44] Many Posts NonEmptyList(1, 2, 3)
 // &lt;~~ [44] Many Posts NonEmptyList(1, 2, 3)
-// env: cats.Id[fetch.FetchEnv] = FetchEnv(InMemoryCache(Map((Post,2) -&gt; Post(2,3,Another article), (User,2) -&gt; User(2,@two), (User,3) -&gt; User(3,@three), (User,1) -&gt; User(1,@one), (Post,3) -&gt; Post(3,4,Yet another article), (Post,1) -&gt; Post(1,2,An article))),Queue(Round(InMemoryCache(Map()),FetchMany(NonEmptyList(1, 2),User),List(User(1,@one), User(2,@two)),24935781324662,24935890902648), Round(InMemoryCache(Map((User,1) -&gt; User(1,@one), (User,2) -&gt; User(2,@two))),Concurrent(NonEmptyList(FetchOne(3,User), FetchMany(NonEmptyList(1, 2, 3),Post))),NonEmptyList(Map(3 -&gt; User(3,@three)), Map(1 -&gt; Post(1,2,An article), 2 -&gt; Post(2,3,Another article), 3 -&gt; Post(3,4,Yet another article))),24935891971151,24936098596200)))
+// env: cats.Id[fetch.FetchEnv] = FetchEnv(InMemoryCache(Map((Post,2) -&gt; Post(2,3,Another article), (User,2) -&gt; User(2,@two), (User,3) -&gt; User(3,@three), (User,1) -&gt; User(1,@one), (Post,3) -&gt; Post(3,4,Yet another article), (Post,1) -&gt; Post(1,2,An article))),Queue(Round(InMemoryCache(Map()),FetchMany(NonEmptyList(1, 2),User),List(User(1,@one), User(2,@two)),5383192521020,5383306906883), Round(InMemoryCache(Map((User,1) -&gt; User(1,@one), (User,2) -&gt; User(2,@two))),Concurrent(NonEmptyList(FetchOne(3,User), FetchMany(NonEmptyList(1, 2, 3),Post))),NonEmptyList(Map(3 -&gt; User(3,@three)), Map(1 -&gt; Post(1,2,An article), 2 -&gt; Post(2,3,Another article), 3 -&gt; Post(3,4,Yet another article))),5383309074636,5383518687526)))
 
 println(describe(env))
-// Fetch execution took 0.317272 seconds
+// Fetch execution took 0.326167 seconds
 // 
-//   [Fetch many] From `User` with ids List(1, 2) took 0.000110 seconds
-//   [Concurrent] took 0.000207 seconds
+//   [Fetch many] From `User` with ids List(1, 2) took 0.000114 seconds
+//   [Concurrent] took 0.000210 seconds
 //     [Fetch one] From `User` with id 3
 //     [Fetch many] From `Post` with ids List(1, 2, 3)
 </code></pre>
