@@ -161,3 +161,15 @@ lazy val debug = (crossProject in file("debug"))
 
 lazy val debugJVM = debug.jvm
 lazy val debugJS = debug.js
+
+lazy val benchmarks = project
+  .in(file("bench"))
+  .settings(allSettings: _*)
+  .dependsOn(fetchJVM)
+  .settings(
+    moduleName := "fetch-bench",
+    libraryDependencies ++= Seq(
+      "com.storm-enroute" %% "scalameter" % "0.8.2"
+    )
+  )
+  .settings(noPublishSettings)
