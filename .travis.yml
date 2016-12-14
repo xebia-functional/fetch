@@ -15,6 +15,7 @@ script:
 - sbt ++$TRAVIS_SCALA_VERSION 'fetchJS/test'
 - sbt ++$TRAVIS_SCALA_VERSION 'docs/tut'
 - sbt ++$TRAVIS_SCALA_VERSION 'readme/tut'
+- sbt 'examples/test'
 after_success:
 - bash <(curl -s https://codecov.io/bash) -t 47609994-e0cd-4f3b-a28d-eb558142c3bb
 - if [ "$TRAVIS_BRANCH" = "master" -a "$TRAVIS_PULL_REQUEST" = "false" ]; then sbt ++$TRAVIS_SCALA_VERSION

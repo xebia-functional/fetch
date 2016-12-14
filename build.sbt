@@ -71,7 +71,7 @@ lazy val fetchJS  = fetch.js
 
 lazy val root = project
   .in(file("."))
-  .aggregate(fetchJS, fetchJVM, fetchMonixJVM, fetchMonixJS)
+  .aggregate(fetchJS, fetchJVM, fetchMonixJVM, fetchMonixJS, debugJVM, debugJS)
   .settings(allSettings)
   .settings(noPublishSettings)
 
@@ -83,26 +83,25 @@ lazy val micrositeSettings = Seq(
   micrositeGithubOwner := "47deg",
   micrositeGithubRepo := "fetch",
   micrositeHighlightTheme := "tomorrow",
-  micrositePalette := Map(
-    "brand-primary"     -> "#FF518C",
-    "brand-secondary"   -> "#2F2859",
-    "brand-tertiary"    -> "#28224C",
-    "gray-dark"         -> "#48474C",
-    "gray"              -> "#8D8C92",
-    "gray-light"        -> "#E3E2E3",
-    "gray-lighter"      -> "#F4F3F9",
-    "white-color"       -> "#FFFFFF"),
+  micrositePalette := Map("brand-primary"   -> "#FF518C",
+                          "brand-secondary" -> "#2F2859",
+                          "brand-tertiary"  -> "#28224C",
+                          "gray-dark"       -> "#48474C",
+                          "gray"            -> "#8D8C92",
+                          "gray-light"      -> "#E3E2E3",
+                          "gray-lighter"    -> "#F4F3F9",
+                          "white-color"     -> "#FFFFFF"),
   includeFilter in makeSite := "*.html" | "*.css" | "*.png" | "*.jpg" | "*.gif" | "*.js" | "*.swf" | "*.md"
 )
 
 lazy val docsSettings = buildSettings ++ micrositeSettings ++ Seq(
-  tutScalacOptions ~= (_.filterNot(Set("-Ywarn-unused-import", "-Ywarn-dead-code"))),
-  tutScalacOptions ++= (scalaBinaryVersion.value match {
+    tutScalacOptions ~= (_.filterNot(Set("-Ywarn-unused-import", "-Ywarn-dead-code"))),
+    tutScalacOptions ++= (scalaBinaryVersion.value match {
     case "2.10" => Seq("-Xdivergence211")
-    case _ => Nil
+    case _      => Nil
   }),
-  aggregate in doc := true
-)
+    aggregate in doc := true
+  )
 
 lazy val docs = (project in file("docs"))
   .dependsOn(fetchJVM, fetchMonixJVM, debugJVM)
@@ -158,4 +157,22 @@ lazy val debug = (crossProject in file("debug"))
   .enablePlugins(AutomateHeaderPlugin)
 
 lazy val debugJVM = debug.jvm
-lazy val debugJS = debug.js
+lazy val debugJS  = debug.js
+
+lazy val examplesSettings = Seq(
+  scalaVersion := "2.12.0",
+  libraryDependencies ++= Seq(
+    "org.tpolecat" %% "doobie-core-cats"    % "0.3.1-M2",
+    "org.tpolecat" %% "doobie-h2-cats"      % "0.3.1-M2",
+    "org.http4s"   %% "http4s-blaze-client" % "0.15.0a",
+    "org.http4s"   %% "http4s-circe"        % "0.15.0a",
+    "io.circe"     %% "circe-generic"       % "0.6.1"
+  )
+)
+
+lazy val examples = (project in file("examples"))
+  .settings(moduleName := "fetch-examples")
+  .dependsOn(fetchJVM)
+  .settings(commonSettings: _*)
+  .settings(noPublishSettings: _*)
+  .settings(examplesSettings: _*)
