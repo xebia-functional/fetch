@@ -1025,13 +1025,20 @@ class FetchBatchingTests extends AsyncFreeSpec with Matchers {
   }
 
   "Very deep fetches don't overflow stack or heap" in {
-    val depth                   = 2000
-    val fetch: Fetch[List[Int]] = Fetch.traverse((1 to depth).toList)(fetchBatchedData)
+    import cats.syntax.traverse._
+
+    val depth = 20
+    val fetch: Fetch[List[Int]] = (1 to depth).toList
+      .map((x) => (0 until 2).toList.traverse(fetchBatchedData))
+      .foldLeft(
+        Fetch.pure(List.empty[Int])
+      )((acc, f) => acc.flatMap((x) => f))
+
     Fetch.runFetch[Future](fetch).map {
       case (env, res) =>
-        res shouldEqual (1 to depth).toList
-        totalFetched(env.rounds) shouldEqual depth
-        env.rounds.size shouldEqual depth / 2
+        res shouldEqual List(0, 1)
+        totalFetched(env.rounds) shouldEqual 2
+        env.rounds.size shouldEqual 1
     }
   }
 }
