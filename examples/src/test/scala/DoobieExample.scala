@@ -63,8 +63,8 @@ class DoobieExample extends AsyncWordSpec with Matchers {
       sql"SELECT * FROM author WHERE id = $id".query[Author].option
 
     def fetchByIds(ids: NonEmptyList[AuthorId]): ConnectionIO[List[Author]] = {
-      implicit val idsParam = Param.many(ids)
-      sql"SELECT * FROM author WHERE id IN (${ids: ids.type})".query[Author].list
+      val q = fr"SELECT * FROM author WHERE" ++ Fragments.in(fr"id", ids)
+      q.query[Author].list
     }
 
     implicit val authorIdMeta: Meta[AuthorId] =
