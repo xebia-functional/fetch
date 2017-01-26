@@ -216,9 +216,8 @@ trait FetchInterpreters {
 
     (for {
       queries <- EitherT.fromEither[M](
-        uncachedQueriessOrCachedResults(concurrent.queries, cache).swap.toEither.bimap(
-          cachedResults => env -> InMemoryCache(cachedResults.toList.toMap),
-          _.asInstanceOf[NonEmptyList[AnyQuery]])
+        uncachedQueriessOrCachedResults(concurrent.queries, cache).swap.toEither
+          .leftMap(cachedResults => env -> InMemoryCache(cachedResults.toList.toMap))
       )
       results <- EitherT.right(queries.traverse(runFetchQueryAsMap))
       endRound = System.nanoTime()
@@ -242,14 +241,12 @@ trait FetchInterpreters {
     }).merge
   }
 
-  val maxBatchSizePhase: FetchOp ~> Fetch = new (FetchOp ~> Fetch) {
-    def apply[A](op: FetchOp[A]): Fetch[A] =
-      op match {
-        case many @ FetchMany(_, _) => batchMany(many)
-        case conc @ Concurrent(_)   => batchConcurrent(conc)
-        case _                      => Free.liftF(op)
-      }
-  }
+  val maxBatchSizePhase: FetchOp ~> Fetch =
+    λ[FetchOp ~> Fetch] {
+      case many @ FetchMany(_, _) => batchMany(many)
+      case conc @ Concurrent(_)   => batchConcurrent(conc)
+      case op                     => Free.liftF(op)
+    }
 
   private[this] def manyInBatches[I, A](many: FetchMany[I, A]): NonEmptyList[FetchMany[I, A]] = {
     val FetchMany(ids, ds) = many
@@ -264,23 +261,18 @@ trait FetchInterpreters {
 
   private[this] def batchMany[I, A](many: FetchMany[I, A]): Fetch[List[A]] = {
     val batchedFetches = manyInBatches(many)
-    batchedFetches.reduceLeftM[Fetch, List[A]](Free.liftF[FetchOp, List[A]]) {
-      case (results, fetchMany) =>
-        Free.liftF(fetchMany).map(results ++ _)
-    }
+    batchedFetches.reduceMapM[Fetch, List[A]](Free.liftF[FetchOp, List[A]])
   }
 
   private[this] def batchConcurrent(conc: Concurrent): Fetch[InMemoryCache] = {
     type Batch = NonEmptyList[FetchQuery[Any, Any]]
     val Concurrent(fetches) = conc
     val individualBatches: NonEmptyList[Batch] = fetches.map {
-      case many @ FetchMany(_, _) => manyInBatches(many).asInstanceOf[Batch]
-      case other                  => NonEmptyList.of(other.asInstanceOf[FetchQuery[Any, Any]])
+      case many @ FetchMany(_, _) => manyInBatches(many)
+      case other                  => NonEmptyList.of(other)
     }
     val batchedConcurrents = transposeNelsUnequalLengths(individualBatches).map(Concurrent(_))
-    batchedConcurrents.reduceLeftM[Fetch, InMemoryCache](Free.liftF(_)) {
-      case (caches, conc) => Free.liftF(conc).map(caches |+| _)
-    }
+    batchedConcurrents.reduceMapM[Fetch, InMemoryCache](Free.liftF(_))
   }
 
   private[fetch] def transposeNelsUnequalLengths[A](
@@ -319,14 +311,12 @@ trait FetchInterpreters {
   }
 
   val parallelJoinPhase: FetchOp ~> Fetch =
-    new (FetchOp ~> Fetch) {
-      def apply[A](op: FetchOp[A]): Fetch[A] = op match {
-        case join @ Join(fl, fr) =>
-          val fetchJoin    = Free.liftF(join)
-          val indepQueries = combineQueries(independentQueries(fetchJoin))
-          parallelJoin(fetchJoin, indepQueries)
-        case other => Free.liftF(other)
-      }
+    λ[FetchOp ~> Fetch] {
+      case join @ Join(fl, fr) =>
+        val fetchJoin    = Free.liftF(join)
+        val indepQueries = combineQueries(independentQueries(fetchJoin))
+        parallelJoin(fetchJoin, indepQueries)
+      case other => Free.liftF(other)
     }
 
   private[this] def parallelJoin[A, B](
@@ -388,8 +378,8 @@ trait FetchInterpreters {
     */
   private[this] def combineQueries(qs: List[FetchQuery[_, _]]): List[FetchQuery[_, _]] =
     qs.foldMap[Map[DataSource[_, _], NonEmptyList[Any]]] {
-        case FetchOne(id, ds)   => Map(ds -> NonEmptyList.of[Any](id))
-        case FetchMany(ids, ds) => Map(ds -> ids.widen[Any])
+        case FetchOne(id, ds)   => Map(ds -> NonEmptyList.of(id))
+        case FetchMany(ids, ds) => Map(ds -> ids)
       }
       .mapValues { nel =>
         // workaround because NEL[Any].distinct would need Order[Any]

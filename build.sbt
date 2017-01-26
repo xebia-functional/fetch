@@ -18,8 +18,8 @@ lazy val buildSettings = Seq(
   startYear := Option(2016),
   homepage := Option(url("http://47deg.github.io/fetch/")),
   organizationHomepage := Option(new URL("http://47deg.com")),
-  scalaVersion := "2.12.0",
-  crossScalaVersions := Seq("2.10.6", "2.11.8", "2.12.0"),
+  scalaVersion := "2.12.1",
+  crossScalaVersions := Seq("2.10.6", "2.11.8", "2.12.1"),
   libraryDependencies ++= (scalaBinaryVersion.value match {
     case "2.10" =>
       compilerPlugin("org.scalamacros" % "paradise" % versions("paradise") cross CrossVersion.full) :: Nil
@@ -160,13 +160,13 @@ lazy val debugJVM = debug.jvm
 lazy val debugJS  = debug.js
 
 lazy val examplesSettings = Seq(
-  scalaVersion := "2.12.0",
+  scalaVersion := "2.12.1",
   libraryDependencies ++= Seq(
-    "org.tpolecat" %% "doobie-core-cats"    % "0.3.1-M2",
-    "org.tpolecat" %% "doobie-h2-cats"      % "0.3.1-M2",
-    "org.http4s"   %% "http4s-blaze-client" % "0.15.0a",
-    "org.http4s"   %% "http4s-circe"        % "0.15.0a",
-    "io.circe"     %% "circe-generic"       % "0.6.1"
+    "org.tpolecat" %% "doobie-core-cats"    % versions("doobie"),
+    "org.tpolecat" %% "doobie-h2-cats"      % versions("doobie"),
+    "org.http4s"   %% "http4s-blaze-client" % versions("http4s"),
+    "org.http4s"   %% "http4s-circe"        % versions("http4s"),
+    "io.circe"     %% "circe-generic"       % versions("circe")
   )
 )
 
