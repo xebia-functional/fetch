@@ -1,11 +1,13 @@
 ## Changelog
 
-## Version 0.4.1
+## Version 0.5.0
 
-Date: Unreleased
+Date: 2017-01-26
 
 - Make `DataSource#name` mandatory to implement
 - Add `fetch-debug` project with debugging facilities for Fetch
+- Update cats to 0.9.0
+- Update Monix to 2.2.0
 
 ## Version 0.4.0
 
