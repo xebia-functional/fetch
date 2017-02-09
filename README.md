@@ -15,14 +15,16 @@ Add the following dependency to your project's build file.
 For Scala 2.11.x and 2.12.x:
 
 ```scala
-"com.fortysevendeg" %% "fetch" % "0.4.0"
+"com.47deg" %% "fetch" % "0.5.0"
 ```
 
 Or, if using Scala.js (0.6.x):
 
 ```scala
-"com.fortysevendeg" %%% "fetch" % "0.4.0"
+"com.47deg" %%% "fetch" % "0.5.0"
 ```
+
+
 
 
 ## Remote data
@@ -116,7 +118,7 @@ When executing the above fetch, note how the three identities get batched and th
 
 ```scala
 fetchThree.runA[Id]
-// [97] Many ToString NonEmptyList(1, 2, 3)
+// [44] Many ToString NonEmptyList(1, 2, 3)
 // res5: cats.Id[(String, String, String)] = (1,2,3)
 ```
 
@@ -157,8 +159,8 @@ Note how the two independent data fetches run in parallel, minimizing the latenc
 
 ```scala
 fetchMulti.runA[Id]
-// [97] One ToString 1
-// [98] One Length one
+// [44] One ToString 1
+// [45] One Length one
 // res7: cats.Id[(String, Int)] = (1,3)
 ```
 
@@ -177,6 +179,6 @@ While running it, notice that the data source is only queried once. The next tim
 
 ```scala
 fetchTwice.runA[Id]
-// [97] One ToString 1
+// [44] One ToString 1
 // res8: cats.Id[(String, String)] = (1,1)
 ```

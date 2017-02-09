@@ -3,7 +3,7 @@ import de.heikoseeberger.sbtheader.license.Apache2_0
 import catext.Dependencies._
 
 val dev = Seq(Dev("47 Degrees (twitter: @47deg)", "47 Degrees"))
-val gh  = GitHubSettings("com.fortysevendeg", "fetch", "47 Degrees", apache)
+val gh  = GitHubSettings("com.47deg", "fetch", "47 Degrees", apache)
 
 addCommandAlias("makeDocs", ";docs/makeMicrosite")
 
@@ -116,7 +116,6 @@ lazy val readmeSettings = buildSettings ++ tutSettings ++ Seq(
     tutSourceDirectory := baseDirectory.value,
     tutTargetDirectory := baseDirectory.value.getParentFile,
     tutScalacOptions ~= (_.filterNot(Set("-Ywarn-unused-import", "-Ywarn-dead-code"))),
-    tutScalacOptions += "-Xdivergence211",
     tutNameFilter := """README.md""".r
   )
 
