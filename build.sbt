@@ -116,6 +116,10 @@ lazy val readmeSettings = buildSettings ++ tutSettings ++ Seq(
     tutSourceDirectory := baseDirectory.value,
     tutTargetDirectory := baseDirectory.value.getParentFile,
     tutScalacOptions ~= (_.filterNot(Set("-Ywarn-unused-import", "-Ywarn-dead-code"))),
+    tutScalacOptions ++= (scalaBinaryVersion.value match {
+      case "2.10" => Seq("-Xdivergence211")
+      case _      => Nil
+    }),
     tutNameFilter := """README.md""".r
   )
 
