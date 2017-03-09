@@ -57,5 +57,8 @@ trait DataSource[I, A] {
     ids.toList.traverseFilter(fetchOneWithId).map(_.toMap)
   }
 
+  def batchingOnly(id: I): Query[Option[A]] =
+    fetchMany(NonEmptyList.of(id)).map(_ get id)
+      
   def maxBatchSize: Option[Int] = None
 }
