@@ -59,6 +59,12 @@ trait DataSource[I, A] {
 
   def batchingOnly(id: I): Query[Option[A]] =
     fetchMany(NonEmptyList.of(id)).map(_ get id)
-      
+
   def maxBatchSize: Option[Int] = None
+
+  def batchExecution: ExecutionType = Parallel
 }
+
+sealed trait ExecutionType extends Product with Serializable
+case object Sequential extends ExecutionType
+case object Parallel extends ExecutionType

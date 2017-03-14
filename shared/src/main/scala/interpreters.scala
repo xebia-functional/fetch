@@ -19,24 +19,9 @@ package fetch
 import scala.collection.immutable._
 
 import cats.{Applicative, ApplicativeError, Id, Monad, MonadError, Semigroup, ~>}
-import cats.data.{Coproduct, EitherT, NonEmptyList, OptionT, StateT, Validated, ValidatedNel}
+import cats.data.{Coproduct, EitherT, Ior, NonEmptyList, OptionT, StateT, Validated, ValidatedNel}
 import cats.free.Free
-import cats.instances.option._
-import cats.instances.list._
-import cats.instances.map._
-import cats.instances.tuple._
-import cats.syntax.cartesian._
-import cats.syntax.either._
-import cats.syntax.flatMap._
-import cats.syntax.foldable._
-import cats.syntax.functor._
-import cats.syntax.functorFilter._
-import cats.syntax.list._
-import cats.syntax.option._
-import cats.syntax.reducible._
-import cats.syntax.semigroup._
-import cats.syntax.traverse._
-import cats.syntax.validated._
+import cats.implicits._
 
 import cats.free.FreeTopExt
 
@@ -261,18 +246,43 @@ trait FetchInterpreters {
 
   private[this] def batchMany[I, A](many: FetchMany[I, A]): Fetch[List[A]] = {
     val batchedFetches = manyInBatches(many)
-    batchedFetches.reduceMapM[Fetch, List[A]](Free.liftF[FetchOp, List[A]])
+    many.ds.batchExecution match {
+      case _ if many.ds.maxBatchSize.isEmpty =>
+        Free.liftF(many)
+      case Sequential =>
+        batchedFetches.reduceMapM[Fetch, List[A]](Free.liftF(_))
+      case Parallel =>
+        val queries = batchedFetches.asInstanceOf[NonEmptyList[FetchQuery[Any, Any]]]
+        Free.liftF(Concurrent(queries)).map { results =>
+          many.ids.toList.mapFilter(id => results.get(many.ds.identity(id)))
+        }
+    }
   }
 
   private[this] def batchConcurrent(conc: Concurrent): Fetch[InMemoryCache] = {
     type Batch = NonEmptyList[FetchQuery[Any, Any]]
     val Concurrent(fetches) = conc
-    val individualBatches: NonEmptyList[Batch] = fetches.map {
-      case many @ FetchMany(_, _) => manyInBatches(many)
-      case other                  => NonEmptyList.of(other)
-    }
-    val batchedConcurrents = transposeNelsUnequalLengths(individualBatches).map(Concurrent(_))
-    batchedConcurrents.reduceMapM[Fetch, InMemoryCache](Free.liftF(_))
+
+    val parIorSeqBatches: Ior[Batch, NonEmptyList[Batch]] =
+      fetches.reduceMap {
+        case many @ FetchMany(_, ds) =>
+          val batches = manyInBatches(many)
+          many.ds.batchExecution match {
+            case Parallel   => Ior.left(batches)
+            case Sequential => Ior.right(NonEmptyList.of(batches))
+          }
+        case other =>
+          Ior.left(NonEmptyList.of(other))
+      }
+
+    val batches: NonEmptyList[Batch] =
+      parIorSeqBatches.map(transposeNelsUnequalLengths) match {
+        case Ior.Left(par)       => NonEmptyList.of(par)
+        case Ior.Right(seqs)     => seqs
+        case Ior.Both(par, seqs) => NonEmptyList(par <+> seqs.head, seqs.tail)
+      }
+
+    batches.map(Concurrent(_)).reduceMapM[Fetch, InMemoryCache](Free.liftF(_))
   }
 
   private[fetch] def transposeNelsUnequalLengths[A](
