@@ -24,6 +24,7 @@ import org.scalatest._
 import cats.MonadError
 import cats.data.NonEmptyList
 import cats.instances.list._
+import cats.syntax.cartesian._
 
 import fetch._
 import fetch.implicits._
@@ -781,6 +782,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
       case (env, res) =>
         res shouldEqual List(1, 2, 3)
         totalFetched(env.rounds) shouldEqual 3
+        totalBatches(env.rounds) shouldEqual 1
         env.rounds.size shouldEqual 1
     }
   }
@@ -972,6 +974,44 @@ class FetchBatchingTests extends AsyncFreeSpec with Matchers {
         res shouldEqual List(1, 2, 3, 4, 5)
         totalFetched(env.rounds) shouldEqual 5
         totalBatches(env.rounds) shouldEqual 2
+        env.rounds.size shouldEqual 1
+    }
+  }
+
+  "Fetches to datasources with a maximum batch size should be split and executed in parallel and sequentially" in {
+    val fetch: Fetch[List[Int]] =
+      Fetch.traverse(List.range(1, 6))(fetchBatchedDataPar) *>
+        Fetch.traverse(List.range(1, 6))(fetchBatchedDataSeq)
+
+    Fetch.runFetch[Future](fetch).map {
+      case (env, res) =>
+        res shouldEqual List(1, 2, 3, 4, 5)
+        totalFetched(env.rounds) shouldEqual 5 + 5
+        totalBatches(env.rounds) shouldEqual 2 + 2
+        env.rounds.size shouldEqual 3
+    }
+  }
+
+  "A large (many) fetch to a datasource with a maximum batch size is split and executed in sequence" in {
+    val fetch: Fetch[List[Int]] =
+      Fetch.multiple(BatchedDataSeq(1), BatchedDataSeq(2), BatchedDataSeq(3))
+    Fetch.runFetch[Future](fetch).map {
+      case (env, res) =>
+        res shouldEqual List(1, 2, 3)
+        totalFetched(env.rounds) shouldEqual 3
+        totalBatches(env.rounds) shouldEqual 2 // FetchMany(NEL(1, 2)) and FetchMany(NEL(3))
+        env.rounds.size shouldEqual 2
+    }
+  }
+
+  "A large (many) fetch to a datasource with a maximum batch size is split and executed in parallel" in {
+    val fetch: Fetch[List[Int]] =
+      Fetch.multiple(BatchedDataPar(1), BatchedDataPar(2), BatchedDataPar(3))
+    Fetch.runFetch[Future](fetch).map {
+      case (env, res) =>
+        res shouldEqual List(1, 2, 3)
+        totalFetched(env.rounds) shouldEqual 3
+        totalBatches(env.rounds) shouldEqual 1
         env.rounds.size shouldEqual 1
     }
   }

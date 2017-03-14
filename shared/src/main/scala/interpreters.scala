@@ -247,6 +247,8 @@ trait FetchInterpreters {
   private[this] def batchMany[I, A](many: FetchMany[I, A]): Fetch[List[A]] = {
     val batchedFetches = manyInBatches(many)
     many.ds.batchExecution match {
+      case _ if many.ds.maxBatchSize.isEmpty =>
+        Free.liftF(many)
       case Sequential =>
         batchedFetches.reduceMapM[Fetch, List[A]](Free.liftF(_))
       case Parallel =>
