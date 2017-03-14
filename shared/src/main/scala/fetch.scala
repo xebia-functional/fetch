@@ -138,7 +138,9 @@ object `package` {
 
   object Fetch extends FetchInterpreters {
 
-    class PartialApply[A]{def apply[I](i:I)(implicit DS: DataSource[I, A]): Fetch[A] = Fetch(i)}
+    class PartialApply[A] {
+      def apply[I](i: I)(implicit DS: DataSource[I, A]): Fetch[A] = Fetch(i)
+    }
 
     def apply[A]: PartialApply[A] =
       new PartialApply[A]

@@ -923,26 +923,56 @@ class FetchBatchingTests extends AsyncFreeSpec with Matchers {
 
   implicit override def executionContext = ExecutionContext.Implicits.global
 
-  case class BatchedData(id: Int)
-  implicit object MaxBatchSource extends DataSource[BatchedData, Int] {
-    override def name = "BatchSource"
-    override def fetchOne(id: BatchedData): Query[Option[Int]] = {
+  case class BatchedDataSeq(id: Int)
+  implicit object MaxBatchSourceSeq extends DataSource[BatchedDataSeq, Int] {
+    override def name = "BatchSourceSeq"
+    override def fetchOne(id: BatchedDataSeq): Query[Option[Int]] = {
       Query.sync(Option(id.id))
     }
-    override def fetchMany(ids: NonEmptyList[BatchedData]): Query[Map[BatchedData, Int]] =
+    override def fetchMany(ids: NonEmptyList[BatchedDataSeq]): Query[Map[BatchedDataSeq, Int]] =
       Query.sync(ids.toList.map(one => (one, one.id)).toMap)
 
     override val maxBatchSize = Some(2)
+
+    override val batchExecution = Sequential
   }
-  def fetchBatchedData(id: Int): Fetch[Int] = Fetch(BatchedData(id))
+
+  case class BatchedDataPar(id: Int)
+  implicit object MaxBatchSourcePar extends DataSource[BatchedDataPar, Int] {
+    override def name = "BatchSourcePar"
+    override def fetchOne(id: BatchedDataPar): Query[Option[Int]] = {
+      Query.sync(Option(id.id))
+    }
+    override def fetchMany(ids: NonEmptyList[BatchedDataPar]): Query[Map[BatchedDataPar, Int]] =
+      Query.sync(ids.toList.map(one => (one, one.id)).toMap)
+
+    override val maxBatchSize = Some(2)
+
+    override val batchExecution = Parallel
+  }
+
+  def fetchBatchedDataSeq(id: Int): Fetch[Int] = Fetch(BatchedDataSeq(id))
+  def fetchBatchedDataPar(id: Int): Fetch[Int] = Fetch(BatchedDataPar(id))
 
   "A large fetch to a datasource with a maximum batch size is split and executed in sequence" in {
-    val fetch: Fetch[List[Int]] = Fetch.traverse(List.range(1, 6))(fetchBatchedData)
+    val fetch: Fetch[List[Int]] = Fetch.traverse(List.range(1, 6))(fetchBatchedDataSeq)
     Fetch.runFetch[Future](fetch).map {
       case (env, res) =>
         res shouldEqual List(1, 2, 3, 4, 5)
         totalFetched(env.rounds) shouldEqual 5
+        totalBatches(env.rounds) shouldEqual 2
         env.rounds.size shouldEqual 3
+    }
+  }
+
+  "A large fetch to a datasource with a maximum batch size is split and executed in parallel" in {
+    val fetch: Fetch[List[Int]] = Fetch.traverse(List.range(1, 6))(fetchBatchedDataPar)
+    Fetch.runFetch[Future](fetch).map {
+      case (env, res) =>
+        res shouldEqual List(1, 2, 3, 4, 5)
+        totalFetched(env.rounds) shouldEqual 5
+        totalBatches(env.rounds) shouldEqual 2
+        env.rounds.size shouldEqual 1
     }
   }
 }
