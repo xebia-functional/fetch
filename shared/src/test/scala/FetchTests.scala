@@ -190,11 +190,6 @@ class FetchTests extends AsyncFreeSpec with Matchers {
 
   implicit override def executionContext = ExecutionContext.Implicits.global
 
-  "We can fetch using partial application" in {
-    val fetch = Fetch[Int](One(1))
-    Fetch.run[Future](fetch).map(_ shouldEqual 1)
-  }
-
   "We can lift plain values to Fetch" in {
     val fetch: Fetch[Int] = Fetch.pure(42)
     Fetch.run[Future](fetch).map(_ shouldEqual 42)
