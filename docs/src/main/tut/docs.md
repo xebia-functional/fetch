@@ -600,7 +600,7 @@ fetchSameTwice.runA[Id](ForgetfulCache())
 # Batching
 
 As we have learned, Fetch performs batched requests whenever it can. It also exposes a couple knobs
-for tweaking the maximum batch size and whether multiple batches are run on parallel or sequentially.
+for tweaking the maximum batch size and whether multiple batches are run in parallel or sequentially.
 
 ## Maximum batch size
 
