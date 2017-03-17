@@ -25,6 +25,8 @@ Or, if using Scala.js (0.6.x):
 ```
 
 
+
+
 ## Remote data
 
 Fetch is a library for making access to data both simple & efficient. Fetch is especially useful when querying data that
@@ -98,7 +100,7 @@ Let's run it and wait for the fetch to complete:
 
 ```scala
 fetchOne.runA[Id]
-// [64] One ToString 1
+// [554] One ToString 1
 // res3: cats.Id[String] = 1
 ```
 
@@ -116,7 +118,7 @@ When executing the above fetch, note how the three identities get batched and th
 
 ```scala
 fetchThree.runA[Id]
-// [64] Many ToString NonEmptyList(1, 2, 3)
+// [554] Many ToString NonEmptyList(1, 2, 3)
 // res5: cats.Id[(String, String, String)] = (1,2,3)
 ```
 
@@ -157,8 +159,8 @@ Note how the two independent data fetches run in parallel, minimizing the latenc
 
 ```scala
 fetchMulti.runA[Id]
-// [64] One ToString 1
-// [65] One Length one
+// [554] One ToString 1
+// [555] One Length one
 // res7: cats.Id[(String, Int)] = (1,3)
 ```
 
@@ -177,6 +179,6 @@ While running it, notice that the data source is only queried once. The next tim
 
 ```scala
 fetchTwice.runA[Id]
-// [64] One ToString 1
+// [554] One ToString 1
 // res8: cats.Id[(String, String)] = (1,1)
 ```

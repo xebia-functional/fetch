@@ -4,7 +4,7 @@
 
 Date: 2017-03-17
 
-- Add `DataSource#batchingOnly` for batch-only data sources
+- Add `DataSource#batchingOnly` for batch-only data sources (thanks @aleczorab)
 - Add `DataSource#batchExecution` for controlling how batches are executed
 
 
