@@ -29,13 +29,13 @@ we read) concerns.
 To begin, add the following dependency to your SBT build file:
 
 ```scala
-"com.47deg" %% "fetch" % "0.5.0"
+"com.47deg" %% "fetch" % "0.6.0"
 ```
 
 Or, if using Scala.js:
 
 ```scala
-"com.47deg" %%% "fetch" % "0.5.0"
+"com.47deg" %%% "fetch" % "0.6.0"
 ```
 
 Now you'll have Fetch available in both Scala and Scala.js.
@@ -157,7 +157,7 @@ of `fetchMany`. Note that it will use the `fetchOne` implementation for requesti
 ```tut:silent
 implicit object UnbatchedSource extends DataSource[Int, Int]{
   override def name = "Unbatched"
-  
+
   override def fetchOne(id: Int): Query[Option[Int]] = {
     Query.sync(Option(id))
   }
@@ -167,6 +167,21 @@ implicit object UnbatchedSource extends DataSource[Int, Int]{
 }
 ```
 
+### Data sources that only support batching
+
+If your data source only supports querying it in batches, you can implement `fetchOne` in terms of `fetchMany` using `DataSource#batchingOnly`.
+
+```tut:silent
+implicit object OnlyBatchedSource extends DataSource[Int, Int]{
+  override def name = "OnlyBatched"
+
+  override def fetchOne(id: Int): Query[Option[Int]] =
+    batchingOnly(id)
+
+  override def fetchMany(ids: NonEmptyList[Int]): Query[Map[Int, Int]] =
+    Query.sync(ids.toList.map((x) => (x, x)).toMap)
+}
+```
 
 ## Creating and running a fetch
 
@@ -582,6 +597,83 @@ val fetchSameTwice: Fetch[(User, User)] = for {
 fetchSameTwice.runA[Id](ForgetfulCache())
 ```
 
+# Batching
+
+As we have learned, Fetch performs batched requests whenever it can. It also exposes a couple knobs
+for tweaking the maximum batch size and whether multiple batches are run in parallel or sequentially.
+
+## Maximum batch size
+
+When implementing a `DataSource`, there is a method we can override called `maxBatchSize`. When implementing it
+we can specify the maximum size of the batched requests to this data source, let's try it out:
+
+```tut:silent
+implicit object BatchedUserSource extends DataSource[UserId, User]{
+  override def name = "BatchedUser"
+
+  override def maxBatchSize: Option[Int] = Some(2)
+
+  override def fetchOne(id: UserId): Query[Option[User]] = {
+    Query.sync({
+	  latency(userDatabase.get(id), s"One User $id")
+    })
+  }
+  override def fetchMany(ids: NonEmptyList[UserId]): Query[Map[UserId, User]] = {
+    Query.sync({
+	  latency(userDatabase.filterKeys(ids.toList.contains), s"Many Users $ids")
+    })
+  }
+}
+
+def getBatchedUser(id: Int): Fetch[User] = Fetch(id)(BatchedUserSource)
+```
+
+We have defined the maximum batch size to be 2, let's see what happens when running a fetch that needs more
+than two users:
+
+
+```tut:book
+val fetchManyBatchedUsers: Fetch[List[User]] = List(1, 2, 3, 4).traverse(getBatchedUser)
+
+fetchManyBatchedUsers.runA[Id]
+```
+
+## Batch execution strategy
+
+In the presence of multiple concurrent batches, we can choose between a sequential or parallel execution strategy. By default they will be run in parallel, but you can tweak it by overriding `DataSource#batchExection`.
+
+```tut:silent
+implicit object SequentialUserSource extends DataSource[UserId, User]{
+  override def name = "SequentialUser"
+
+  override def maxBatchSize: Option[Int] = Some(2)
+
+  override def batchExecution: ExecutionType = Sequential
+
+  override def fetchOne(id: UserId): Query[Option[User]] = {
+    Query.sync({
+	  latency(userDatabase.get(id), s"One User $id")
+    })
+  }
+  override def fetchMany(ids: NonEmptyList[UserId]): Query[Map[UserId, User]] = {
+    Query.sync({
+	  latency(userDatabase.filterKeys(ids.toList.contains), s"Many Users $ids")
+    })
+  }
+}
+
+def getSequentialUser(id: Int): Fetch[User] = Fetch(id)(SequentialUserSource)
+```
+
+We have defined the maximum batch size to be 2 and the batch execution to be sequential, let's see what happens when running a fetch that needs more than one batch:
+
+
+```tut:book
+val fetchManySeqBatchedUsers: Fetch[List[User]] = List(1, 2, 3, 4).traverse(getSequentialUser)
+
+fetchManySeqBatchedUsers.runA[Id]
+```
+
 # Error handling
 
 Fetch is used for reading data from remote sources and the queries we perform can and will fail at some point. There are many things that can
@@ -702,7 +794,7 @@ value match {
     println("Request " + nf.request)
     println("Environment " + nf.env)
   }
-  case _ => 
+  case _ =>
 }
 ```
 
@@ -990,7 +1082,7 @@ The [Monix](https://monix.io/) library provides an abstraction for lazy, asynchr
 For using `Task` as the target concurrency monad of a fetch, add the following dependency to your build file:
 
 ```scala
-"com.47deg" %% "fetch-monix" % "0.5.0"
+"com.47deg" %% "fetch-monix" % "0.6.0"
 ```
 
 And do some standard imports, we'll need an Scheduler for running our tasks as well as the instance of `FetchMonadError[Task]` that `fetch-monix` provides:
@@ -1068,7 +1160,7 @@ def queryToTask[A](q: Query[A]): Task[A] = q match {
       case _                      => task
     }
   }
-  case Ap(qf, qx) => Task.zip2(queryToTask(qf), queryToTask(qx)).map({ case (f, x) => f(x) })	
+  case Ap(qf, qx) => Task.zip2(queryToTask(qf), queryToTask(qx)).map({ case (f, x) => f(x) })
 }
 ```
 
@@ -1082,7 +1174,7 @@ be evaluated in parallel.
 
 ### Writing the FetchMonadError instance
 
-Now we're ready for implementing the FetchMonadError instance for `Task`, we need to define it as an implicit. 
+Now we're ready for implementing the FetchMonadError instance for `Task`, we need to define it as an implicit.
 Note that Cats' typeclass hierarchy is expressed with inheritance and methods from weaker typeclasses like `Functor` or `Applicative` in more powerful typeclasses like `Monad` are implemented in terms of the operations of the latter. In practice, this means that if you just implement `pure` and `flatMap` the rest of the combinators like `map` are going to be implemented in terms of them. Because of this we'll override `map` for not using `flatMap` and `product` for expressing the independence of two computations.
 
 We make use of the `FromMonadError` class below, making it easer to implement `FetchMonadError[Task]` given a `MonadError[Task, Throwable]` which we can get from the _monix-cats_ projects.
@@ -1113,12 +1205,12 @@ Await.result(task.runAsync(scheduler), Duration.Inf)
 # Debugging
 
 We have introduced the handy `fetch.debug.describe` function for debugging errors, but it can do more than that. It can also give you a detailed description of
-a fetch execution given an environment. 
+a fetch execution given an environment.
 
 Add the following line to your dependencies for including Fetch's debugging facilities:
 
 ```scala
-"com.47deg" %% "fetch-debug" % "0.5.0"
+"com.47deg" %% "fetch-debug" % "0.6.0"
 ```
 
 ## Fetch execution
@@ -1127,7 +1219,7 @@ We are going to create an interesting fetch that applies all the optimizations a
 visualize fetch executions using the environment.
 
 ```tut:silent
-val batched: Fetch[List[User]] = Fetch.multiple(1, 2)
+val batched: Fetch[List[User]] = Fetch.multiple(1, 2)(UserSource)
 val cached: Fetch[User] = getUser(2)
 val concurrent: Fetch[(List[User], List[Post])] = (List(1, 2, 3).traverse(getUser) |@| List(1, 2, 3).traverse(getPost)).tupled
 
@@ -1151,7 +1243,7 @@ println(describe(env))
 Let's break down the output from `describe`:
 
  - The first line shows the total time that took to run the fetch
- - The nested lines represent the different rounds of execution 
+ - The nested lines represent the different rounds of execution
   + "Fetch one" rounds are executed for getting an identity from one data source
   + "Fetch many" rounds are executed for getting a batch of identities from one data source
   + "Concurrent" rounds are multiple "one" or "many" rounds for different data sources executed concurrently
