@@ -43,6 +43,8 @@ class FetchBatchingTests extends AsyncFreeSpec with Matchers {
       Query.sync(ids.toList.map(one => (one, one.id)).toMap)
 
     override val maxBatchSize = Some(2)
+
+    override val batchExecution = Sequential
   }
   def fetchBatchedData(id: Int): Fetch[Int] = Fetch(BatchedData(id))
 
@@ -59,7 +61,7 @@ class FetchBatchingTests extends AsyncFreeSpec with Matchers {
   "Very deep fetches don't overflow stack or heap" in {
     import cats.syntax.traverse._
 
-    val depth = 20
+    val depth = 200
     val fetch: Fetch[List[Int]] = (1 to depth).toList
       .map((x) => (0 until 2).toList.traverse(fetchBatchedData))
       .foldLeft(
