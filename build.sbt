@@ -63,10 +63,7 @@ lazy val fetch = crossProject
   .in(file("."))
   .settings(moduleName := "fetch")
   .settings(allSettings: _*)
-  .jsSettings(
-    jsEnv := NodeJSEnv(args = Seq("--max_old_space_size=4096", "--stack_size=4096")).value
-      .withSourceMap(false)
-  )
+  .jsSettings(sharedJsSettings: _*)
   .enablePlugins(AutomateHeaderPlugin)
 
 lazy val fetchJVM = fetch.jvm
