@@ -11,8 +11,7 @@ before_install:
    -in secring.gpg.enc -out secring.gpg -d; fi
 script:
 - sbt coverage 'fetchJVM/test' 'fetchJVM/coverageReport'
-- sbt ++$TRAVIS_SCALA_VERSION 'monixJVM/test' 'monixJS/test'
-- sbt ++$TRAVIS_SCALA_VERSION 'fetchJS/test'
+- sbt ++$TRAVIS_SCALA_VERSION 'tests/test'
 - sbt ++$TRAVIS_SCALA_VERSION 'docs/tut'
 - sbt ++$TRAVIS_SCALA_VERSION 'readme/tut'
 - sbt 'examples/test'

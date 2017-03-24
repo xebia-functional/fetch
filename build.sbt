@@ -117,9 +117,9 @@ lazy val readmeSettings = buildSettings ++ tutSettings ++ Seq(
     tutTargetDirectory := baseDirectory.value.getParentFile,
     tutScalacOptions ~= (_.filterNot(Set("-Ywarn-unused-import", "-Ywarn-dead-code"))),
     tutScalacOptions ++= (scalaBinaryVersion.value match {
-      case "2.10" => Seq("-Xdivergence211")
-      case _      => Nil
-    }),
+    case "2.10" => Seq("-Xdivergence211")
+    case _      => Nil
+  }),
     tutNameFilter := """README.md""".r
   )
 
@@ -179,3 +179,9 @@ lazy val examples = (project in file("examples"))
   .settings(commonSettings: _*)
   .settings(noPublishSettings: _*)
   .settings(examplesSettings: _*)
+
+lazy val tests = (project in file("."))
+  .aggregate(fetchJVM, fetchMonixJVM, debugJVM)
+  .settings(buildSettings)
+  .settings(commonSettings)
+  .settings(noPublishSettings)
