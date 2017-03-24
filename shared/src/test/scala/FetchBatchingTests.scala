@@ -28,6 +28,7 @@ import cats.instances.list._
 import fetch._
 import fetch.implicits._
 import cats.syntax.cartesian._
+import cats.syntax.foldable._
 
 class FetchBatchingTests extends AsyncFreeSpec with Matchers {
   import TestHelper._
@@ -131,9 +132,9 @@ class FetchBatchingTests extends AsyncFreeSpec with Matchers {
     val depth = 200
     val fetch: Fetch[List[Int]] = (1 to depth).toList
       .map((x) => (0 until 2).toList.traverse(fetchBatchedDataSeq))
-      .foldLeft(
-        Fetch.pure(List.empty[Int])
-      )((acc, f) => acc.flatMap((x) => f))
+      .foldM(
+        List.empty[Int]
+      )((_, f) => f)
 
     Fetch.runFetch[Future](fetch).map {
       case (env, res) =>
