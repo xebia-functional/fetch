@@ -1,3 +1,19 @@
+/*
+ * Copyright 2016-2017 47 Degrees, LLC. <http://www.47deg.com>
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 import cats.data.NonEmptyList
 import cats.instances.list._
 import cats.syntax.traverse._
@@ -6,15 +22,14 @@ import io.circe.generic.semiauto._
 import org.http4s.circe._
 import org.http4s.client.blaze._
 import org.scalatest.{AsyncWordSpec, Matchers}
-import scalaz.concurrent.Task
 
 import scala.concurrent.{ExecutionContext, Future}
-
 import fetch._
 import fetch.implicits._
+import fs2.Task
 
-class HttpExample extends AsyncWordSpec with Matchers {
-  implicit override def executionContext = ExecutionContext.Implicits.global
+class Http4sExample extends AsyncWordSpec with Matchers {
+  implicit override def executionContext: ExecutionContext = ExecutionContext.Implicits.global
 
   // in this example we are fetching users and their posts via http using http4s
   // the demo api is https://jsonplaceholder.typicode.com/
@@ -44,13 +59,13 @@ class HttpExample extends AsyncWordSpec with Matchers {
     override def name = "UserH4s"
     override def fetchOne(id: UserId): Query[Option[User]] =
       Query.async { (ok, fail) =>
-        fetchById(id).unsafePerformAsync(_.fold(fail, ok))
+        fetchById(id).unsafeRunAsync(_.fold(fail, ok))
       }
     override def fetchMany(ids: NonEmptyList[UserId]): Query[Map[UserId, User]] =
       Query.async { (ok, fail) =>
         fetchByIds(ids)
           .map(users => users.map(user => user.id -> user).toMap)
-          .unsafePerformAsync(_.fold(fail, ok))
+          .unsafeRunAsync(_.fold(fail, ok))
       }
 
     // fetchById and fetchByIds would probably be defined in some other module
@@ -73,11 +88,11 @@ class HttpExample extends AsyncWordSpec with Matchers {
     override def name = "PostH4s"
     override def fetchOne(id: UserId): Query[Option[List[Post]]] =
       Query.async { (ok, fail) =>
-        fetchById(id).map(Option.apply).unsafePerformAsync(_.fold(fail, ok))
+        fetchById(id).map(Option.apply).unsafeRunAsync(_.fold(fail, ok))
       }
     override def fetchMany(ids: NonEmptyList[UserId]): Query[Map[UserId, List[Post]]] =
       Query.async { (ok, fail) =>
-        fetchByIds(ids).unsafePerformAsync(_.fold(fail, ok))
+        fetchByIds(ids).unsafeRunAsync(_.fold(fail, ok))
       }
 
     def fetchById(id: UserId): Task[List[Post]] = {
@@ -128,10 +143,12 @@ class HttpExample extends AsyncWordSpec with Matchers {
     val fut = Fetch.runFetch[Future](fetch)
     fut.map {
       case (env, userPosts) =>
-        userPosts.map {
-          case (user, posts) =>
-            s"${user.username} has ${posts.size} posts"
-        }.foreach(println)
+        userPosts
+          .map {
+            case (user, posts) =>
+              s"${user.username} has ${posts.size} posts"
+          }
+          .foreach(println)
         env.rounds.size shouldEqual 2
     }
   }

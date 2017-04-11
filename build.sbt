@@ -1,187 +1,55 @@
-import de.heikoseeberger.sbtheader.AutomateHeaderPlugin
-import de.heikoseeberger.sbtheader.license.Apache2_0
-import catext.Dependencies._
-
-val dev = Seq(Dev("47 Degrees (twitter: @47deg)", "47 Degrees"))
-val gh  = GitHubSettings("com.47deg", "fetch", "47 Degrees", apache)
+pgpPassphrase := Some(getEnvVar("PGP_PASSPHRASE").getOrElse("").toCharArray)
+pgpPublicRing := file(s"$gpgFolder/pubring.gpg")
+pgpSecretRing := file(s"$gpgFolder/secring.gpg")
 
 addCommandAlias("makeDocs", ";docs/makeMicrosite")
 
-pgpPassphrase := Some(sys.env.getOrElse("PGP_PASSPHRASE", "").toCharArray)
-pgpPublicRing := file(s"${sys.env.getOrElse("PGP_FOLDER", ".")}/pubring.gpg")
-pgpSecretRing := file(s"${sys.env.getOrElse("PGP_FOLDER", ".")}/secring.gpg")
+lazy val root = project.in(file("."))
+  .settings(name := "fetch")
+  .settings(moduleName := "root")
+  .aggregate(fetchJS, fetchJVM, fetchMonixJVM, fetchMonixJS, debugJVM, debugJS)
 
-lazy val buildSettings = Seq(
-  organization := gh.org,
-  organizationName := gh.publishOrg,
-  description := "Simple & Efficient data access for Scala and Scala.js",
-  startYear := Option(2016),
-  homepage := Option(url("http://47deg.github.io/fetch/")),
-  organizationHomepage := Option(new URL("http://47deg.com")),
-  scalaVersion := "2.12.1",
-  crossScalaVersions := Seq("2.10.6", "2.11.8", "2.12.1"),
-  libraryDependencies ++= (scalaBinaryVersion.value match {
-    case "2.10" =>
-      compilerPlugin("org.scalamacros" % "paradise" % versions("paradise") cross CrossVersion.full) :: Nil
-    case _ =>
-      Nil
-  }),
-  headers := Map(
-    "scala" -> Apache2_0("2016", "47 Degrees, LLC. <http://www.47deg.com>")
-  )
-)
-
-lazy val commonSettings = Seq(
-    libraryDependencies ++= Seq(
-      "org.typelevel" %%% "cats-free" % versions("cats"),
-      "org.scalatest" %%% "scalatest" % versions("scalatest") % "test",
-      compilerPlugin(
-        "org.spire-math" %% "kind-projector" % versions("kind-projector")
-      )
-    ),
-    scalacOptions ++= Seq(
-      "-unchecked",
-      "-deprecation",
-      "-feature",
-      "-Ywarn-dead-code",
-      "-language:higherKinds",
-      "-language:existentials",
-      "-language:postfixOps"
-    ),
-    scalafmtConfig := Some(file(".scalafmt.conf"))
-  ) ++ reformatOnCompileSettings
-
-lazy val allSettings = buildSettings ++
-    commonSettings ++
-    sharedCommonSettings ++
-    miscSettings ++
-    sharedReleaseProcess ++
-    credentialSettings ++
-    sharedPublishSettings(gh, dev)
-
-lazy val fetch = crossProject
-  .in(file("."))
-  .settings(moduleName := "fetch")
-  .settings(allSettings: _*)
+lazy val fetch = crossProject.in(file("."))
+  .settings(name := "fetch")
   .jsSettings(sharedJsSettings: _*)
-  .enablePlugins(AutomateHeaderPlugin)
+  .crossDepSettings(commonCrossDependencies: _*)
 
 lazy val fetchJVM = fetch.jvm
 lazy val fetchJS  = fetch.js
 
-lazy val root = project
-  .in(file("."))
-  .aggregate(fetchJS, fetchJVM, fetchMonixJVM, fetchMonixJS, debugJVM, debugJS)
-  .settings(allSettings)
-  .settings(noPublishSettings)
-
-lazy val micrositeSettings = Seq(
-  micrositeName := "Fetch",
-  micrositeDescription := "Simple & Efficient data access for Scala and Scala.js",
-  micrositeBaseUrl := "fetch",
-  micrositeDocumentationUrl := "/fetch/docs.html",
-  micrositeGithubOwner := "47deg",
-  micrositeGithubRepo := "fetch",
-  micrositeHighlightTheme := "tomorrow",
-  micrositePalette := Map("brand-primary"   -> "#FF518C",
-                          "brand-secondary" -> "#2F2859",
-                          "brand-tertiary"  -> "#28224C",
-                          "gray-dark"       -> "#48474C",
-                          "gray"            -> "#8D8C92",
-                          "gray-light"      -> "#E3E2E3",
-                          "gray-lighter"    -> "#F4F3F9",
-                          "white-color"     -> "#FFFFFF"),
-  includeFilter in makeSite := "*.html" | "*.css" | "*.png" | "*.jpg" | "*.gif" | "*.js" | "*.swf" | "*.md"
-)
-
-lazy val docsSettings = buildSettings ++ micrositeSettings ++ Seq(
-    tutScalacOptions ~= (_.filterNot(Set("-Ywarn-unused-import", "-Ywarn-dead-code"))),
-    tutScalacOptions ++= (scalaBinaryVersion.value match {
-    case "2.10" => Seq("-Xdivergence211")
-    case _      => Nil
-  }),
-    aggregate in doc := true
-  )
-
-lazy val docs = (project in file("docs"))
-  .dependsOn(fetchJVM, fetchMonixJVM, debugJVM)
-  .settings(
-    moduleName := "fetch-docs"
-  )
-  .settings(docsSettings: _*)
-  .settings(noPublishSettings)
-  .enablePlugins(MicrositesPlugin)
-
-lazy val readmeSettings = buildSettings ++ tutSettings ++ Seq(
-    tutSourceDirectory := baseDirectory.value,
-    tutTargetDirectory := baseDirectory.value.getParentFile,
-    tutScalacOptions ~= (_.filterNot(Set("-Ywarn-unused-import", "-Ywarn-dead-code"))),
-    tutScalacOptions ++= (scalaBinaryVersion.value match {
-    case "2.10" => Seq("-Xdivergence211")
-    case _      => Nil
-  }),
-    tutNameFilter := """README.md""".r
-  )
-
-lazy val readme = (project in file("tut"))
-  .settings(
-    moduleName := "fetch-readme"
-  )
-  .dependsOn(fetchJVM)
-  .settings(readmeSettings: _*)
-  .settings(noPublishSettings)
-
-lazy val monixSettings = (
-    libraryDependencies ++= Seq(
-      "io.monix" %%% "monix-eval" % versions("monix"),
-      "io.monix" %%% "monix-cats" % versions("monix")
-    )
-  )
-
-lazy val monix = crossProject
-  .in(file("monix"))
+lazy val monix = crossProject.in(file("monix"))
   .dependsOn(fetch)
-  .settings(moduleName := "fetch-monix")
-  .settings(allSettings: _*)
+  .settings(name := "fetch-monix")
   .jsSettings(sharedJsSettings: _*)
-  .settings(monixSettings: _*)
-  .enablePlugins(AutomateHeaderPlugin)
+  .crossDepSettings(commonCrossDependencies ++ monixCrossDependencies: _*)
 
 lazy val fetchMonixJVM = monix.jvm
 lazy val fetchMonixJS  = monix.js
 
 lazy val debug = (crossProject in file("debug"))
-  .settings(
-    moduleName := "fetch-debug"
-  )
+  .settings(name := "fetch-debug")
   .dependsOn(fetch)
-  .settings(allSettings: _*)
   .jsSettings(sharedJsSettings: _*)
-  .enablePlugins(AutomateHeaderPlugin)
+  .crossDepSettings(commonCrossDependencies: _*)
 
 lazy val debugJVM = debug.jvm
 lazy val debugJS  = debug.js
 
-lazy val examplesSettings = Seq(
-  scalaVersion := "2.12.1",
-  libraryDependencies ++= Seq(
-    "org.tpolecat" %% "doobie-core-cats"    % versions("doobie"),
-    "org.tpolecat" %% "doobie-h2-cats"      % versions("doobie"),
-    "org.http4s"   %% "http4s-blaze-client" % versions("http4s"),
-    "org.http4s"   %% "http4s-circe"        % versions("http4s"),
-    "io.circe"     %% "circe-generic"       % versions("circe")
-  )
-)
-
 lazy val examples = (project in file("examples"))
-  .settings(moduleName := "fetch-examples")
+  .settings(name := "fetch-examples")
   .dependsOn(fetchJVM)
-  .settings(commonSettings: _*)
   .settings(noPublishSettings: _*)
   .settings(examplesSettings: _*)
 
-lazy val tests = (project in file("."))
-  .aggregate(fetchJVM, fetchMonixJVM, debugJVM)
-  .settings(buildSettings)
-  .settings(commonSettings)
+lazy val docs = (project in file("docs"))
+  .dependsOn(fetchJVM, fetchMonixJVM, debugJVM)
+  .settings(name := "fetch-docs")
+  .settings(docsSettings: _*)
+  .settings(noPublishSettings)
+  .enablePlugins(MicrositesPlugin)
+
+lazy val readme = (project in file("tut"))
+  .settings(name := "fetch-readme")
+  .dependsOn(fetchJVM)
+  .settings(readmeSettings: _*)
   .settings(noPublishSettings)
