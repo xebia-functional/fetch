@@ -1,3 +1,9 @@
+
+[comment]: # (Start Badges)
+
+[![Build Status](https://travis-ci.org/47deg/fetch.svg?branch=master)](https://travis-ci.org/47deg/fetch) [![Maven Central](https://img.shields.io/badge/maven%20central-0.6.1-green.svg)](https://maven-badges.herokuapp.com/maven-central/com.47deg/fetch) [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](https://raw.githubusercontent.com/47deg/fetch/master/LICENSE) [![Join the chat at https://gitter.im/47deg/fetch](https://badges.gitter.im/47deg/fetch.svg)](https://gitter.im/47deg/fetch?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) [![GitHub Issues](https://img.shields.io/github/issues/47deg/fetch.svg)](https://github.com/47deg/fetch/issues)
+
+[comment]: # (End Badges)
 # Fetch
 
 [![Join the chat at https://gitter.im/47deg/fetch](https://badges.gitter.im/47deg/fetch.svg)](https://gitter.im/47deg/fetch?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
@@ -100,7 +106,7 @@ Let's run it and wait for the fetch to complete:
 
 ```scala
 fetchOne.runA[Id]
-// [132] One ToString 1
+// [150] One ToString 1
 // res3: cats.Id[String] = 1
 ```
 
@@ -118,7 +124,7 @@ When executing the above fetch, note how the three identities get batched and th
 
 ```scala
 fetchThree.runA[Id]
-// [132] Many ToString NonEmptyList(3, 1, 2)
+// [150] Many ToString NonEmptyList(3, 1, 2)
 // res5: cats.Id[(String, String, String)] = (1,2,3)
 ```
 
@@ -159,8 +165,8 @@ Note how the two independent data fetches run in parallel, minimizing the latenc
 
 ```scala
 fetchMulti.runA[Id]
-// [133] One Length one
-// [132] One ToString 1
+// [151] One Length one
+// [150] One ToString 1
 // res7: cats.Id[(String, Int)] = (1,3)
 ```
 
@@ -179,6 +185,15 @@ While running it, notice that the data source is only queried once. The next tim
 
 ```scala
 fetchTwice.runA[Id]
-// [132] One ToString 1
+// [150] One ToString 1
 // res8: cats.Id[(String, String)] = (1,1)
 ```
+
+[comment]: # (Start Copyright)
+# Copyright
+
+fetch is designed and developed by 47 Degrees
+
+Copyright (C) 2016-2017 47 Degrees. <http://47deg.com>
+
+[comment]: # (End Copyright)
