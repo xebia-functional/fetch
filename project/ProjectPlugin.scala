@@ -73,9 +73,9 @@ object ProjectPlugin extends AutoPlugin {
       startYear := Option(2016),
       homepage := Option(url("http://47deg.github.io/fetch/")),
       organizationHomepage := Option(new URL("http://47deg.com")),
-      scalaVersion := "2.12.1",
       scalaOrganization := "org.scala-lang",
-      crossScalaVersions := "2.10.6" :: scalac.crossScalaVersions,
+      scalaVersion := "2.12.2",
+      crossScalaVersions := List("2.10.6", "2.11.11", "2.12.2"),
       resolvers += Resolver.sonatypeRepo("snapshots"),
       scalacOptions := Seq(
         "-unchecked",
@@ -91,7 +91,6 @@ object ProjectPlugin extends AutoPlugin {
           compilerPlugin(%%("paradise") cross CrossVersion.full) :: Nil
         case _ =>
           Nil
-      }),
-      orgGithubTokenSetting := "GITHUB_TOKEN_REPO"
+      })
     ) ++ shellPromptSettings
 }
