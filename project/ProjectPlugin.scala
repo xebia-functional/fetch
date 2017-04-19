@@ -82,6 +82,7 @@ object ProjectPlugin extends AutoPlugin {
         ScalaJSBadge.apply(_),
         GitHubIssuesBadge.apply(_)
       ),
+      orgSupportedScalaJSVersion := Some("0.6.15"),
       orgUpdateDocFilesSetting += baseDirectory.value / "tut",
       scalaOrganization := "org.scala-lang",
       scalaVersion := "2.12.2",
