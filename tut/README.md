@@ -1,9 +1,5 @@
 # Fetch
 
-[![Join the chat at https://gitter.im/47deg/fetch](https://badges.gitter.im/47deg/fetch.svg)](https://gitter.im/47deg/fetch?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-[![Build status](https://img.shields.io/travis/47deg/fetch.svg)](https://travis-ci.org/47deg/fetch)
-[![codecov.io](http://codecov.io/github/47deg/fetch/coverage.svg?branch=master)](http://codecov.io/github/47deg/fetch?branch=master)
-
 A library for Simple & Efficient data access in Scala and Scala.js
 
 - [Documentation](http://47deg.github.io/fetch/docs)
@@ -14,6 +10,8 @@ Add the following dependency to your project's build file.
 
 For Scala 2.11.x and 2.12.x:
 
+[comment]: # (Start Replace)
+
 ```scala
 "com.47deg" %% "fetch" % "0.6.0"
 ```
@@ -23,6 +21,8 @@ Or, if using Scala.js (0.6.x):
 ```scala
 "com.47deg" %%% "fetch" % "0.6.0"
 ```
+
+[comment]: # (End Replace)
 
 ```tut:invisible
 val out = Console.out

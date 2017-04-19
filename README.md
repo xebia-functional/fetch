@@ -1,14 +1,10 @@
+# Fetch
 
 [comment]: # (Start Badges)
 
 [![Build Status](https://travis-ci.org/47deg/fetch.svg?branch=master)](https://travis-ci.org/47deg/fetch) [![Maven Central](https://img.shields.io/badge/maven%20central-0.6.1-green.svg)](https://maven-badges.herokuapp.com/maven-central/com.47deg/fetch) [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](https://raw.githubusercontent.com/47deg/fetch/master/LICENSE) [![Join the chat at https://gitter.im/47deg/fetch](https://badges.gitter.im/47deg/fetch.svg)](https://gitter.im/47deg/fetch?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) [![GitHub Issues](https://img.shields.io/github/issues/47deg/fetch.svg)](https://github.com/47deg/fetch/issues)
 
 [comment]: # (End Badges)
-# Fetch
-
-[![Join the chat at https://gitter.im/47deg/fetch](https://badges.gitter.im/47deg/fetch.svg)](https://gitter.im/47deg/fetch?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-[![Build status](https://img.shields.io/travis/47deg/fetch.svg)](https://travis-ci.org/47deg/fetch)
-[![codecov.io](http://codecov.io/github/47deg/fetch/coverage.svg?branch=master)](http://codecov.io/github/47deg/fetch?branch=master)
 
 A library for Simple & Efficient data access in Scala and Scala.js
 
@@ -20,6 +16,7 @@ Add the following dependency to your project's build file.
 
 For Scala 2.11.x and 2.12.x:
 
+[comment]: # (Start Replace)
 ```scala
 "com.47deg" %% "fetch" % "0.6.0"
 ```
@@ -30,6 +27,7 @@ Or, if using Scala.js (0.6.x):
 "com.47deg" %%% "fetch" % "0.6.0"
 ```
 
+[comment]: # (End Replace)
 
 
 

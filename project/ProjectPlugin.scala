@@ -3,8 +3,8 @@ import com.typesafe.sbt.site.SitePlugin.autoImport._
 import sbt.Keys._
 import sbt._
 import sbtorgpolicies.OrgPoliciesPlugin
-import sbtorgpolicies.model._
 import sbtorgpolicies.OrgPoliciesPlugin.autoImport._
+import sbtorgpolicies.templates.badges._
 import tut.Plugin._
 
 object ProjectPlugin extends AutoPlugin {
@@ -69,9 +69,20 @@ object ProjectPlugin extends AutoPlugin {
   override def projectSettings: Seq[Def.Setting[_]] =
     Seq(
       description := "Simple & Efficient data access for Scala and Scala.js",
+      orgProjectName := "Fetch",
       startYear := Option(2016),
       homepage := Option(url("http://47deg.github.io/fetch/")),
-      organizationHomepage := Option(new URL("http://47deg.com")),
+      orgBadgeListSetting := List(
+        GitterBadge.apply(_),
+        TravisBadge.apply(_),
+        CodecovBadge.apply(_),
+        MavenCentralBadge.apply(_),
+        LicenseBadge.apply(_),
+        ScalaLangBadge.apply(_),
+        ScalaJSBadge.apply(_),
+        GitHubIssuesBadge.apply(_)
+      ),
+      orgUpdateDocFilesSetting += baseDirectory.value / "tut",
       scalaOrganization := "org.scala-lang",
       scalaVersion := "2.12.2",
       crossScalaVersions := List("2.10.6", "2.11.11", "2.12.2"),
