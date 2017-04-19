@@ -52,8 +52,8 @@ object ProjectPlugin extends AutoPlugin {
       aggregate in doc := true)
 
     lazy val readmeSettings: Seq[Def.Setting[_]] = tutSettings ++ commonTutSettings ++ Seq(
-      tutSourceDirectory := baseDirectory.value,
-      tutTargetDirectory := baseDirectory.value.getParentFile,
+      tutSourceDirectory := (baseDirectory in LocalRootProject).value,
+      tutTargetDirectory := (baseDirectory in LocalRootProject).value / "target",
       tutNameFilter := """README.md""".r
     )
 
@@ -82,6 +82,7 @@ object ProjectPlugin extends AutoPlugin {
         ScalaJSBadge.apply(_),
         GitHubIssuesBadge.apply(_)
       ),
+      orgSupportedScalaJSVersion := Some("0.6.15"),
       orgUpdateDocFilesSetting += baseDirectory.value / "tut",
       scalaOrganization := "org.scala-lang",
       scalaVersion := "2.12.2",

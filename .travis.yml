@@ -10,7 +10,7 @@ before_install:
    -K $encrypted_37b99bd39158_key -iv $encrypted_37b99bd39158_iv
    -in secring.gpg.enc -out secring.gpg -d; fi
 script:
-- sbt ++$TRAVIS_SCALA_VERSION compile test
+- sbt ++$TRAVIS_SCALA_VERSION clean compile test
 - sbt ++$TRAVIS_SCALA_VERSION coverage 'fetchJVM/test' 'fetchJVM/coverageReport'
 - sbt ++$TRAVIS_SCALA_VERSION 'docs/tut'
 - sbt ++$TRAVIS_SCALA_VERSION 'readme/tut'

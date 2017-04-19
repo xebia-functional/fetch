@@ -1,5 +1,11 @@
 # Fetch
 
+[comment]: # (Start Badges)
+
+[![Join the chat at https://gitter.im/47deg/fetch](https://badges.gitter.im/47deg/fetch.svg)](https://gitter.im/47deg/fetch?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) [![Build Status](https://travis-ci.org/47deg/fetch.svg?branch=master)](https://travis-ci.org/47deg/fetch) [![codecov.io](http://codecov.io/github/47deg/fetch/coverage.svg?branch=master)](http://codecov.io/github/47deg/fetch?branch=master) [![Maven Central](https://img.shields.io/badge/maven%20central-0.6.1-green.svg)](https://maven-badges.herokuapp.com/maven-central/com.47deg/fetch) [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](https://raw.githubusercontent.com/47deg/fetch/master/LICENSE) [![Latest version](https://index.scala-lang.org/47deg/fetch/fetch/latest.svg)](https://index.scala-lang.org/47deg/fetch/fetch)  [![GitHub Issues](https://img.shields.io/github/issues/47deg/fetch.svg)](https://github.com/47deg/fetch/issues)
+
+[comment]: # (End Badges)
+
 A library for Simple & Efficient data access in Scala and Scala.js
 
 - [Documentation](http://47deg.github.io/fetch/docs)
@@ -182,3 +188,12 @@ fetchTwice.runA[Id]
 // [158] One ToString 1
 // res8: cats.Id[(String, String)] = (1,1)
 ```
+
+[comment]: # (Start Copyright)
+# Copyright
+
+Fetch is designed and developed by 47 Degrees
+
+Copyright (C) 2016-2017 47 Degrees. <http://47deg.com>
+
+[comment]: # (End Copyright)
