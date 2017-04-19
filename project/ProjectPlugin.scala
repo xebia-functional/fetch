@@ -62,8 +62,7 @@ object ProjectPlugin extends AutoPlugin {
       %%("doobie-core-cats"),
       %%("doobie-h2-cats"),
       %%("http4s-blaze-client"),
-      %%("http4s-circe"),
-      %%("scalaz-concurrent")
+      %%("http4s-circe")
     ) ++ commonCrossDependencies
   }
 
