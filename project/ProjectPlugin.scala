@@ -52,8 +52,8 @@ object ProjectPlugin extends AutoPlugin {
       aggregate in doc := true)
 
     lazy val readmeSettings: Seq[Def.Setting[_]] = tutSettings ++ commonTutSettings ++ Seq(
-      tutSourceDirectory := baseDirectory.value,
-      tutTargetDirectory := baseDirectory.value.getParentFile,
+      tutSourceDirectory := baseDirectory.value.getParentFile,
+      tutTargetDirectory := baseDirectory.value.getParentFile / "target",
       tutNameFilter := """README.md""".r
     )
 
