@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 47 Degrees, LLC. <http://www.47deg.com>
+ * Copyright 2016-2017 47 Degrees, LLC. <http://www.47deg.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -79,8 +79,8 @@ sealed trait FetchQuery[I, A] extends FetchRequest {
 }
 
 /**
-  * Primitive operations in the Fetch Free monad.
-  */
+ * Primitive operations in the Fetch Free monad.
+ */
 sealed abstract class FetchOp[A] extends Product with Serializable
 
 final case class FetchOne[I, A](id: I, ds: DataSource[I, A])
@@ -139,65 +139,65 @@ object `package` {
   object Fetch extends FetchInterpreters {
 
     /**
-      * Lift a plain value to the Fetch monad.
-      */
+     * Lift a plain value to the Fetch monad.
+     */
     def pure[A](a: A): Fetch[A] =
       Free.pure(a)
 
     /**
-      * Lift an exception to the Fetch monad.
-      */
+     * Lift an exception to the Fetch monad.
+     */
     def error[A](e: Throwable): Fetch[A] =
       Free.liftF(Thrown(e))
 
     /**
-      * Given a value that has a related `DataSource` implementation, lift it
-      * to the `Fetch` monad. When executing the fetch the data source will be
-      * queried and the fetch will return its result.
-      */
+     * Given a value that has a related `DataSource` implementation, lift it
+     * to the `Fetch` monad. When executing the fetch the data source will be
+     * queried and the fetch will return its result.
+     */
     def apply[I, A](i: I)(
         implicit DS: DataSource[I, A]
     ): Fetch[A] =
       Free.liftF(FetchOne[I, A](i, DS))
 
     /**
-      * Given multiple values with a related `DataSource` lift them to the `Fetch` monad.
-      */
+     * Given multiple values with a related `DataSource` lift them to the `Fetch` monad.
+     */
     def multiple[I, A](i: I, is: I*)(implicit DS: DataSource[I, A]): Fetch[List[A]] =
       Free.liftF(FetchMany(NonEmptyList(i, is.toList), DS))
 
     /**
-      * Given a non empty list of `FetchQuery`s, lift it to the `Fetch` monad. When executing
-      * the fetch, data sources will be queried and the fetch will return an `InMemoryCache`
-      * containing the results.
-      */
+     * Given a non empty list of `FetchQuery`s, lift it to the `Fetch` monad. When executing
+     * the fetch, data sources will be queried and the fetch will return an `InMemoryCache`
+     * containing the results.
+     */
     private[fetch] def concurrently(
         queries: NonEmptyList[FetchQuery[Any, Any]]): Fetch[InMemoryCache] =
       Free.liftF(Concurrent(queries))
 
     /**
-      * Transform a list of fetches into a fetch of a list. It implies concurrent execution of fetches.
-      */
+     * Transform a list of fetches into a fetch of a list. It implies concurrent execution of fetches.
+     */
     def sequence[I, A](ids: List[Fetch[A]]): Fetch[List[A]] =
       Applicative[Fetch].sequence(ids)
 
     /**
-      * Apply a fetch-returning function to every element in a list and return a Fetch of the list of
-      * results. It implies concurrent execution of fetches.
-      */
+     * Apply a fetch-returning function to every element in a list and return a Fetch of the list of
+     * results. It implies concurrent execution of fetches.
+     */
     def traverse[A, B](ids: List[A])(f: A => Fetch[B]): Fetch[List[B]] =
       Applicative[Fetch].traverse(ids)(f)
 
     /**
-      * Apply the given function to the result of the two fetches. It implies concurrent execution of fetches.
-      */
+     * Apply the given function to the result of the two fetches. It implies concurrent execution of fetches.
+     */
     def map2[A, B, C](f: (A, B) => C)(fa: Fetch[A], fb: Fetch[B]): Fetch[C] =
       Applicative[Fetch].map2(fa, fb)(f)
 
     /**
-      * Join two fetches from any data sources and return a Fetch that returns a tuple with the two
-      * results. It implies concurrent execution of fetches.
-      */
+     * Join two fetches from any data sources and return a Fetch that returns a tuple with the two
+     * results. It implies concurrent execution of fetches.
+     */
     def join[A, B](fl: Fetch[A], fr: Fetch[B]): Fetch[(A, B)] =
       Free.liftF(Join(fl, fr))
 
@@ -212,9 +212,9 @@ object `package` {
     }
 
     /**
-      * Run a `Fetch` with the given cache, returning a pair of the final environment and result
-      * in the monad `M`.
-      */
+     * Run a `Fetch` with the given cache, returning a pair of the final environment and result
+     * in the monad `M`.
+     */
     def runFetch[M[_]]: FetchRunner[M] = new FetchRunner[M]
 
     class FetchRunnerEnv[M[_]] {
@@ -228,8 +228,8 @@ object `package` {
     }
 
     /**
-      * Run a `Fetch` with the given cache, returning the final environment in the monad `M`.
-      */
+     * Run a `Fetch` with the given cache, returning the final environment in the monad `M`.
+     */
     def runEnv[M[_]]: FetchRunnerEnv[M] = new FetchRunnerEnv[M]
 
     class FetchRunnerA[M[_]] {
@@ -243,8 +243,8 @@ object `package` {
     }
 
     /**
-      * Run a `Fetch` with the given cache, the result in the monad `M`.
-      */
+     * Run a `Fetch` with the given cache, the result in the monad `M`.
+     */
     def run[M[_]]: FetchRunnerA[M] = new FetchRunnerA[M]
   }
 

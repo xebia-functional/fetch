@@ -1,12 +1,9 @@
-## Changelog
+# Changelog
 
-## Version 0.6.0
-
-Date: 2017-03-17
+## 2017-03-17 - Version 0.6.0
 
 - Add `DataSource#batchingOnly` for batch-only data sources (thanks @aleczorab)
 - Add `DataSource#batchExecution` for controlling how batches are executed
-
 
 ## Version 0.5.0
 

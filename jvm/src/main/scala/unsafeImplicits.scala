@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 47 Degrees, LLC. <http://www.47deg.com>
+ * Copyright 2016-2017 47 Degrees, LLC. <http://www.47deg.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ package fetch.unsafe
 
 import fetch._
 
-import cats.{Id, Eval, FlatMap}
+import cats.{Eval, FlatMap, Id}
 import cats.syntax.either._
 
 import scala.concurrent._
