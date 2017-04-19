@@ -1,18 +1,18 @@
 # Contributing
 
-Discussion around fetch happens in the [Gitter channel](https://gitter.im/47deg/fetch) as well as on
+Discussion around Fetch happens in the [Gitter channel](https://gitter.im/47deg/fetch) as well as on
 [GitHub issues](https://github.com/47deg/fetch/issues) and [pull requests](https://github.com/47deg/fetch/pulls).
 
 Feel free to open an issue if you notice a bug, have an idea for a feature, or have a question about
 the code. Pull requests are also welcome.
 
-People are expected to follow the [Typelevel Code of Conduct](http://typelevel.org/conduct.html) when discussing fetch on the Github page, Gitter channel, or other venues.
+People are expected to follow the [Typelevel Code of Conduct](http://typelevel.org/conduct.html) when discussing Fetch on the Github page, Gitter channel, or other venues.
 
 If you are being harassed, please contact one of [us](AUTHORS.md#maintainers) immediately so that we can support you. In case you cannot get in touch with us please write an email to [47 Degrees](mailto:hello@47deg.com).
 
 ## How can I help?
 
-fetch follows a standard [fork and pull](https://help.github.com/articles/using-pull-requests/) model for contributions via GitHub pull requests.
+Fetch follows a standard [fork and pull](https://help.github.com/articles/using-pull-requests/) model for contributions via GitHub pull requests.
 
 The process is simple:
 

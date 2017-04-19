@@ -8,7 +8,7 @@ The maintainers of the project are:
 
 ## Contributors
 
-These are the people that have contributed to the fetch project:
+These are the people that have contributed to the Fetch project:
 
 * Adelbert Chang <[adelbertc](https://github.com/adelbertc)>
 * Alejandro Gómez <[dialelo](https://github.com/dialelo)>
