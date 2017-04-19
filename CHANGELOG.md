@@ -1,5 +1,19 @@
 # Changelog
 
+## 04/19/2017 - Version 0.6.1
+
+Release changes:
+
+* add batchingOnly convenience method ([#110](https://github.com/47deg/fetch/pull/110))
+* Update AUTHORS.md ([#111](https://github.com/47deg/fetch/pull/111))
+* Add curried apply to Fetch object ([#109](https://github.com/47deg/fetch/pull/109))
+* Allow sequential and parallel batches ([#113](https://github.com/47deg/fetch/pull/113))
+* 0.6.0 release ([#114](https://github.com/47deg/fetch/pull/114))
+* Reduce stack consumption ([#95](https://github.com/47deg/fetch/pull/95))
+* Integrates sbt-org-policies plugin ([#115](https://github.com/47deg/fetch/pull/115))
+* Auto-updating fetch version in docs ([#116](https://github.com/47deg/fetch/pull/116))
+
+
 ## 2017-03-17 - Version 0.6.0
 
 - Add `DataSource#batchingOnly` for batch-only data sources (thanks @aleczorab)
