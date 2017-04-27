@@ -23,5 +23,5 @@ The process is simple:
  5. Update the documentation
  6. Submit pull request
 
-You will be automatically included in the [AUTHORS.md](AUTHORS.md#contributors) file as contributor.
+You will be automatically included in the [AUTHORS.md](AUTHORS.md#contributors) file as contributor in the next release.
 If you encounter any confusion or frustration during the contribution process, please create a GitHub issue and we'll do our best to improve the process.

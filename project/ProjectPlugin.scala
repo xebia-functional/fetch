@@ -4,7 +4,9 @@ import sbt.Keys._
 import sbt._
 import sbtorgpolicies.OrgPoliciesPlugin
 import sbtorgpolicies.OrgPoliciesPlugin.autoImport._
+import sbtorgpolicies.runnable.syntax._
 import sbtorgpolicies.templates.badges._
+import scoverage.ScoverageKeys
 import tut.Plugin._
 
 object ProjectPlugin extends AutoPlugin {
@@ -52,8 +54,8 @@ object ProjectPlugin extends AutoPlugin {
       aggregate in doc := true)
 
     lazy val readmeSettings: Seq[Def.Setting[_]] = tutSettings ++ commonTutSettings ++ Seq(
-      tutSourceDirectory := (baseDirectory in LocalRootProject).value,
-      tutTargetDirectory := (baseDirectory in LocalRootProject).value / "target",
+      tutSourceDirectory := (baseDirectory in LocalRootProject).value / "tut",
+      tutTargetDirectory := baseDirectory.value.getParentFile,
       tutNameFilter := """README.md""".r
     )
 
@@ -66,7 +68,24 @@ object ProjectPlugin extends AutoPlugin {
     ) ++ commonCrossDependencies
   }
 
-  override def projectSettings: Seq[Def.Setting[_]] =
+  lazy val commandAliases: Seq[Def.Setting[_]] =
+    addCommandAlias("validate", ";clean;validateJS;validateJVM") ++
+      addCommandAlias("validateDocs", List("docs/tut", "readme/tut", "project root").asCmd) ++
+      addCommandAlias("validateCoverage", ";coverage;validate;coverageReport;coverageOff") ++
+      addCommandAlias("validateJVM", List(
+        "fetchJVM/compile",
+        "monixJVM/compile",
+        "fetchJVM/test",
+        "monixJVM/test",
+        "project root").asCmd) ++
+      addCommandAlias("validateJS", List(
+        "fetchJS/compile",
+        "monixJS/compile",
+        "fetchJS/test",
+        "monixJS/test",
+        "project root").asCmd)
+
+  override def projectSettings: Seq[Def.Setting[_]] = commandAliases ++
     Seq(
       description := "Simple & Efficient data access for Scala and Scala.js",
       orgProjectName := "Fetch",
@@ -83,6 +102,11 @@ object ProjectPlugin extends AutoPlugin {
         GitHubIssuesBadge.apply(_)
       ),
       orgSupportedScalaJSVersion := Some("0.6.15"),
+      orgScriptTaskListSetting := List(
+        orgValidateFiles.asRunnableItem,
+        "validateDocs".asRunnableItemFull,
+        "validateCoverage".asRunnableItemFull
+      ),
       orgUpdateDocFilesSetting += baseDirectory.value / "tut",
       scalaOrganization := "org.scala-lang",
       scalaVersion := "2.12.2",
@@ -102,6 +126,21 @@ object ProjectPlugin extends AutoPlugin {
           compilerPlugin(%%("paradise") cross CrossVersion.full) :: Nil
         case _ =>
           Nil
-      })
+      }),
+      ScoverageKeys.coverageFailOnMinimum := false
     ) ++ shellPromptSettings
+
+  implicit class CommandAliasOps(command: String) {
+
+    def asCmd: String =
+      if (command.contains("/")) s";project ${command.replaceAll("/", ";")}"
+      else s";$command"
+
+  }
+
+  implicit class CommandAliasListOps(commandList: List[String]) {
+
+    def asCmd: String = commandList.map(_.asCmd).mkString("")
+
+  }
 }
