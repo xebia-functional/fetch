@@ -1,0 +1,11 @@
+name: Fetch
+baseurl: /fetch
+description: Simple & Efficient data access for Scala and Scala.js
+highlighter: rouge
+docs: true
+collections:
+  tut:
+    output: true
+version: 0.6.2-SNAPSHOT
+org: 47 Degrees
+markdown: kramdown
