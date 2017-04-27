@@ -13,5 +13,5 @@ script:
 - sbt ++$TRAVIS_SCALA_VERSION orgScriptCI
 - sbt 'examples/test'
 after_success:
-- bash <(curl -s https://codecov.io/bash) -t 47609994-e0cd-4f3b-a28d-eb558142c3bb
+- bash <(curl -s https://codecov.io/bash)
 - sbt ++$TRAVIS_SCALA_VERSION orgAfterCISuccess
