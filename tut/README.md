@@ -102,7 +102,7 @@ import fetch.syntax._
 val fetchOne: Fetch[String] = fetchString(1)
 ```
 
-We'll run our fetches to the ambien `Id` monad in our examples. Note that in real-life scenarios you'll want to run a fetch to a concurrency monad such as `Future` or `Task`, synchronous execution of a fetch is only supported in Scala and not Scala.js and is meant for experimentation purposes.
+We'll run our fetches to the ambient `Id` monad in our examples. Note that in real-life scenarios you'll want to run a fetch to a concurrency monad such as `Future` or `Task`, synchronous execution of a fetch is only supported in Scala and not Scala.js and is meant for experimentation purposes.
 
 ```tut:silent
 import cats.Id
