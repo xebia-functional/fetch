@@ -106,7 +106,7 @@ Let's run it and wait for the fetch to complete:
 
 ```scala
 fetchOne.runA[Id]
-// [913] One ToString 1
+// [622] One ToString 1
 // res3: cats.Id[String] = 1
 ```
 
@@ -124,7 +124,7 @@ When executing the above fetch, note how the three identities get batched and th
 
 ```scala
 fetchThree.runA[Id]
-// [913] Many ToString NonEmptyList(3, 1, 2)
+// [622] Many ToString NonEmptyList(3, 1, 2)
 // res5: cats.Id[(String, String, String)] = (1,2,3)
 ```
 
@@ -165,8 +165,8 @@ Note how the two independent data fetches run in parallel, minimizing the latenc
 
 ```scala
 fetchMulti.runA[Id]
-// [914] One Length one
-// [913] One ToString 1
+// [623] One Length one
+// [622] One ToString 1
 // res7: cats.Id[(String, Int)] = (1,3)
 ```
 
@@ -185,7 +185,7 @@ While running it, notice that the data source is only queried once. The next tim
 
 ```scala
 fetchTwice.runA[Id]
-// [913] One ToString 1
+// [622] One ToString 1
 // res8: cats.Id[(String, String)] = (1,1)
 ```
 ## Fetch in the wild
@@ -193,6 +193,7 @@ fetchTwice.runA[Id]
 If you wish to add your library here please consider a PR to include it in the list below.
 
 [comment]: # (Start Copyright)
+
 # Copyright
 
 Fetch is designed and developed by 47 Degrees
