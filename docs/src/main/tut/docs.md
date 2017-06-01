@@ -31,13 +31,13 @@ To begin, add the following dependency to your SBT build file:
 [comment]: # (Start Replace)
 
 ```scala
-"com.47deg" %% "fetch" % "0.6.1"
+"com.47deg" %% "fetch" % "0.6.2"
 ```
 
 Or, if using Scala.js:
 
 ```scala
-"com.47deg" %%% "fetch" % "0.6.1"
+"com.47deg" %%% "fetch" % "0.6.2"
 ```
 
 [comment]: # (End Replace)
