@@ -11,7 +11,6 @@ The maintainers of the project are:
 These are the people that have contributed to the Fetch project:
 
 * Adelbert Chang <[adelbertc](https://github.com/adelbertc)>
-* Alejandro Gómez <[dialelo](https://github.com/dialelo)>
 * Alessandro Lacava <[lambdista](https://github.com/lambdista)>
 * Juan Pedro Moreno <[juanpedromoreno](https://github.com/juanpedromoreno)>
 * Maureen Elsberry  <[MaureenElsberry](https://github.com/MaureenElsberry)>
