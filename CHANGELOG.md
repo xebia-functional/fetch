@@ -1,5 +1,17 @@
 # Changelog
 
+## 06/01/2017 - Version 0.6.2
+
+Release changes:
+
+* Removes dup doc files ([#117](https://github.com/47deg/fetch/pull/117))
+* orgScriptCI task integration ([#118](https://github.com/47deg/fetch/pull/118))
+* Installs Travis to be able to publish the Microsite automatically ([#119](https://github.com/47deg/fetch/pull/119))
+* typo in README ([#120](https://github.com/47deg/fetch/pull/120))
+* Refactor interpreters + Change Fetch.traverse ([#123](https://github.com/47deg/fetch/pull/123))
+* Releases 0.6.2 ([#125](https://github.com/47deg/fetch/pull/125))
+
+
 ## 04/19/2017 - Version 0.6.1
 
 Release changes:
