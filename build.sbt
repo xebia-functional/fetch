@@ -4,12 +4,14 @@ pgpSecretRing := file(s"$gpgFolder/secring.gpg")
 
 addCommandAlias("makeDocs", ";docs/makeMicrosite")
 
-lazy val root = project.in(file("."))
+lazy val root = project
+  .in(file("."))
   .settings(name := "fetch")
   .settings(moduleName := "root")
   .aggregate(fetchJS, fetchJVM, fetchMonixJVM, fetchMonixJS, debugJVM, debugJS)
 
-lazy val fetch = crossProject.in(file("."))
+lazy val fetch = crossProject
+  .in(file("."))
   .settings(name := "fetch")
   .jsSettings(sharedJsSettings: _*)
   .crossDepSettings(commonCrossDependencies: _*)
@@ -17,7 +19,8 @@ lazy val fetch = crossProject.in(file("."))
 lazy val fetchJVM = fetch.jvm
 lazy val fetchJS  = fetch.js
 
-lazy val monix = crossProject.in(file("monix"))
+lazy val monix = crossProject
+  .in(file("monix"))
   .dependsOn(fetch)
   .settings(name := "fetch-monix")
   .jsSettings(sharedJsSettings: _*)

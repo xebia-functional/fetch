@@ -18,16 +18,10 @@ package fetch
 
 import scala.collection.immutable.Map
 
-import cats.{Applicative, ApplicativeError, Eval, Monad, MonadError, ~>}
-import cats.data.{EitherT, NonEmptyList, StateT, Writer}
+import cats.{Applicative, Eval}
+import cats.data.{NonEmptyList, StateT}
 import cats.free.Free
 import cats.instances.list._
-import cats.instances.map._
-import cats.instances.option._
-import cats.syntax.foldable._
-import cats.syntax.functor._
-import cats.syntax.list._
-import cats.syntax.traverse._
 import scala.concurrent.duration.Duration
 
 sealed trait Query[A] extends Product with Serializable
@@ -86,9 +80,8 @@ sealed abstract class FetchOp[A] extends Product with Serializable
 final case class FetchOne[I, A](id: I, ds: DataSource[I, A])
     extends FetchOp[A]
     with FetchQuery[I, A] {
-  override def missingIdentities(cache: DataSourceCache): List[I] = {
+  override def missingIdentities(cache: DataSourceCache): List[I] =
     cache.get[A](ds.identity(id)).fold(List(id))(_ => Nil)
-  }
   override def dataSource: DataSource[I, A] = ds
   override def identities: NonEmptyList[I]  = NonEmptyList(id, Nil)
 }
@@ -97,18 +90,19 @@ final case class FetchMany[I, A](ids: NonEmptyList[I], ds: DataSource[I, A])
     extends FetchOp[List[A]]
     with FetchQuery[I, A] {
 
-  override def missingIdentities(cache: DataSourceCache): List[I] = {
+  override def missingIdentities(cache: DataSourceCache): List[I] =
     ids.toList.distinct.filterNot(i => cache.contains(ds.identity(i)))
-  }
   override def dataSource: DataSource[I, A] = ds
   override def identities: NonEmptyList[I]  = ids
 }
+
 final case class Concurrent(queries: NonEmptyList[FetchQuery[Any, Any]])
     extends FetchOp[InMemoryCache]
     with FetchRequest
 
 final case class Join[A, B](fl: Fetch[A], fr: Fetch[B]) extends FetchOp[(A, B)]
-final case class Thrown[A](err: Throwable)              extends FetchOp[A]
+
+final case class Thrown[A](err: Throwable) extends FetchOp[A]
 
 object `package` {
   type DataSourceName     = String
@@ -179,20 +173,32 @@ object `package` {
      * Transform a list of fetches into a fetch of a list. It implies concurrent execution of fetches.
      */
     def sequence[I, A](ids: List[Fetch[A]]): Fetch[List[A]] =
-      Applicative[Fetch].sequence(ids)
+      fetchApplicative.sequence(ids)
 
     /**
      * Apply a fetch-returning function to every element in a list and return a Fetch of the list of
      * results. It implies concurrent execution of fetches.
      */
-    def traverse[A, B](ids: List[A])(f: A => Fetch[B]): Fetch[List[B]] =
-      Applicative[Fetch].traverse(ids)(f)
+    def traverse[A, B](ids: List[A])(f: A => Fetch[B]): Fetch[List[B]] = {
+      val L = cats.Traverse[List]
+      ids.grouped(50).toList match {
+        case Nil        => Fetch.pure(Nil)
+        case ids :: Nil => L.traverse(ids)(f)
+        case groups     =>
+          // equivalant to groups.flatTraverse(_.traverse(f))
+          L.foldRight[List[A], Fetch[List[B]]](groups, cats.Always(Fetch.pure(Nil))) {
+              (idGroup, evalFetchAcc) =>
+                fetchApplicative.map2Eval(L.traverse(idGroup)(f), evalFetchAcc)(_ ::: _)
+            }
+            .value
+      }
+    }
 
     /**
      * Apply the given function to the result of the two fetches. It implies concurrent execution of fetches.
      */
     def map2[A, B, C](f: (A, B) => C)(fa: Fetch[A], fb: Fetch[B]): Fetch[C] =
-      Applicative[Fetch].map2(fa, fb)(f)
+      fetchApplicative.map2(fa, fb)(f)
 
     /**
      * Join two fetches from any data sources and return a Fetch that returns a tuple with the two

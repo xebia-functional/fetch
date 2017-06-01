@@ -26,12 +26,12 @@ case class DocNest(indent: Int, doc: Document) extends Document
 case class DocCons(hd: Document, tl: Document) extends Document
 
 /**
-  * A basic pretty-printing library, based on Lindig's strict version
-  * of Wadler's adaptation of Hughes' pretty-printer.
-  *
-  * @author Michel Schinz
-  * @version 1.0
-  */
+ * A basic pretty-printing library, based on Lindig's strict version
+ * of Wadler's adaptation of Hughes' pretty-printer.
+ *
+ * @author Michel Schinz
+ * @version 1.0
+ */
 abstract class Document {
   def ::(hd: Document): Document  = DocCons(hd, this)
   def ::(hd: String): Document    = DocCons(DocText(hd), this)
@@ -39,9 +39,9 @@ abstract class Document {
   def :/:(hd: String): Document   = hd :: DocBreak :: this
 
   /**
-    * Format this document on `writer` and try to set line
-    * breaks so that the result fits in `width` columns.
-    */
+   * Format this document on `writer` and try to set line
+   * breaks so that the result fits in `width` columns.
+   */
   def format(width: Int, writer: Writer) {
     type FmtState = (Int, Boolean, Document)
 
@@ -116,9 +116,9 @@ object Document {
   def text(s: String): Document = DocText(s)
 
   /**
-    * A group, whose components will either be printed with all breaks
-    * rendered as spaces, or with all breaks rendered as line breaks.
-    */
+   * A group, whose components will either be printed with all breaks
+   * rendered as spaces, or with all breaks rendered as line breaks.
+   */
   def group(d: Document): Document = DocGroup(d)
 
   /** A nested document, which will be indented as specified. */

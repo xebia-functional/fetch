@@ -72,13 +72,11 @@ object debug {
       Document.text(s"[Fetch many] From `${ds.name}` with ids ${ids.toList}")
   }
 
-  def showMissing(ds: DataSourceName, ids: List[_]): Document = {
+  def showMissing(ds: DataSourceName, ids: List[_]): Document =
     Document.text(s"`${ds}` missing identities ${ids}")
-  }
 
-  def showRoundCount(err: FetchException): Document = {
+  def showRoundCount(err: FetchException): Document =
     Document.text(s", fetch interrupted after ${err.env.rounds.size} rounds")
-  }
 
   def showException(err: FetchException): Document = err match {
     case NotFound(env, q @ FetchOne(id, ds)) =>
@@ -93,18 +91,17 @@ object debug {
   }
 
   /* Given a [[fetch.env.Env]], describe it with a human-readable string. */
-  def describe(env: Env): String = {
+  def describe(env: Env): String =
     string(showEnv(env))
-  }
 
   /* Given a [[fetch.FetchException]], describe it with a human-readable string. */
   def describe(err: FetchException): String = {
     string(
       showException(err) :/:
         Document.nest(
-          2,
-          showEnv(err.env)
-        )
+        2,
+        showEnv(err.env)
+      )
     )
   }
 }

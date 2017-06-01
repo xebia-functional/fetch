@@ -16,7 +16,7 @@
 
 package cats.free
 
-import cats.{Id, ~>}
+import cats.{~>, Id}
 import cats.data.Coproduct
 
 import scala.annotation.tailrec
@@ -31,14 +31,14 @@ object FreeTopExt {
   }
 
   /**
-    * Is the first step a `Pure` ?
-    *
-    * Could be implemented using `resume` as :
-    * {{{
-    * val liftCoyoneda: F ~> Coyoneda[F, ?] = λ[(F ~> Coyoneda[F, ?])](Coyoneda.lift(_))
-    * free.compile[Coyoneda[F, ?]](liftCoyoneda).resume.toOption
-    * }}}
-    */
+   * Is the first step a `Pure` ?
+   *
+   * Could be implemented using `resume` as :
+   * {{{
+   * val liftCoyoneda: F ~> Coyoneda[F, ?] = λ[(F ~> Coyoneda[F, ?])](Coyoneda.lift(_))
+   * free.compile[Coyoneda[F, ?]](liftCoyoneda).resume.toOption
+   * }}}
+   */
   def inspectPure[F[_], A](free: Free[F, A]): Option[A] = free match {
     case Free.Pure(p)              => Some(p)
     case Free.Suspend(fa)          => None
@@ -53,9 +53,13 @@ object FreeTopExt {
     }
 
   def print[F[_], A](free: Free[F, A]): String = free match {
-    case Free.Pure(p)              => s"Pure($p)"
-    case Free.Suspend(fa)          => s"Suspend($fa)"
-    case Free.FlatMapped(free2, _) => s"FlatMapped(${print(free2)}, <fb => Free>)"
+    case Free.Pure(p)     => s"Pure($p)"
+    case Free.Suspend(fa) => s"Suspend($fa)"
+    case Free.FlatMapped(free2, _) =>
+      s"""FlatMapped(
+      |  ${print(free2)},
+      |  <fb => Free>)""".stripMargin
+
   }
 
 }

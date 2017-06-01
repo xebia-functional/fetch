@@ -19,9 +19,9 @@ package fetch
 import scala.collection.immutable._
 
 /**
-  * An environment that is passed along during the fetch rounds. It holds the
-  * cache and the list of rounds that have been executed.
-  */
+ * An environment that is passed along during the fetch rounds. It holds the
+ * cache and the list of rounds that have been executed.
+ */
 trait Env {
   def rounds: Seq[Round]
   def cache: DataSourceCache
@@ -29,8 +29,8 @@ trait Env {
 }
 
 /**
-  * A data structure that holds information about a fetch round.
-  */
+ * A data structure that holds information about a fetch round.
+ */
 case class Round(
     cache: DataSourceCache,
     request: FetchRequest,
@@ -42,8 +42,8 @@ case class Round(
 }
 
 /**
-  * A concrete implementation of `Env` used in the default Fetch interpreter.
-  */
+ * A concrete implementation of `Env` used in the default Fetch interpreter.
+ */
 case class FetchEnv(
     cache: DataSourceCache,
     rounds: Queue[Round] = Queue.empty

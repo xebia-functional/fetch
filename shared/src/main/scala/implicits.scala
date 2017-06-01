@@ -18,7 +18,7 @@ package fetch
 
 import cats.MonadError
 import cats.instances.future._
-import scala.concurrent.{Promise, Future, ExecutionContext}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 
 object implicits {
 

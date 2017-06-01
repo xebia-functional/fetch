@@ -17,12 +17,14 @@
 package fetch
 
 /**
-  * A `Cache` trait so the users of the library can provide their own cache.
-  */
+ * A `Cache` trait so the users of the library can provide their own cache.
+ */
 trait DataSourceCache {
   def update[A](k: DataSourceIdentity, v: A): DataSourceCache
 
   def get[A](k: DataSourceIdentity): Option[A]
+
+  def getWithDS[I, A](ds: DataSource[I, A]): I => Option[A] = id => get(ds.identity(id))
 
   def cacheResults[I, A](results: Map[I, A], ds: DataSource[I, A]): DataSourceCache = {
     results.foldLeft(this)({
@@ -34,8 +36,8 @@ trait DataSourceCache {
 }
 
 /**
-  * A cache that stores its elements in memory.
-  */
+ * A cache that stores its elements in memory.
+ */
 case class InMemoryCache(state: Map[DataSourceIdentity, Any]) extends DataSourceCache {
   override def get[A](k: DataSourceIdentity): Option[A] =
     state.get(k).asInstanceOf[Option[A]]
