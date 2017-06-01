@@ -7,7 +7,7 @@ import sbtorgpolicies.OrgPoliciesPlugin.autoImport._
 import sbtorgpolicies.runnable.syntax._
 import sbtorgpolicies.templates.badges._
 import scoverage.ScoverageKeys
-import tut.Plugin._
+import tut.TutPlugin.autoImport._
 
 object ProjectPlugin extends AutoPlugin {
 
@@ -44,8 +44,8 @@ object ProjectPlugin extends AutoPlugin {
     )
 
     lazy val commonTutSettings: Seq[Def.Setting[_]] = Seq(
-      tutScalacOptions ~= (_.filterNot(Set("-Ywarn-unused-import", "-Ywarn-dead-code"))),
-      tutScalacOptions ++= (scalaBinaryVersion.value match {
+      scalacOptions in Tut ~= (_.filterNot(Set("-Ywarn-unused-import", "-Ywarn-dead-code"))),
+      scalacOptions in Tut ++= (scalaBinaryVersion.value match {
         case "2.10" => Seq("-Xdivergence211")
         case _      => Nil
       })
@@ -54,7 +54,7 @@ object ProjectPlugin extends AutoPlugin {
     lazy val docsSettings: Seq[Def.Setting[_]] = micrositeSettings ++ commonTutSettings ++ Seq(
       aggregate in doc := true)
 
-    lazy val readmeSettings: Seq[Def.Setting[_]] = tutSettings ++ commonTutSettings ++ Seq(
+    lazy val readmeSettings: Seq[Def.Setting[_]] = commonTutSettings ++ Seq(
       tutSourceDirectory := (baseDirectory in LocalRootProject).value / "tut",
       tutTargetDirectory := baseDirectory.value.getParentFile,
       tutNameFilter := """README.md""".r
@@ -131,17 +131,4 @@ object ProjectPlugin extends AutoPlugin {
         ScoverageKeys.coverageFailOnMinimum := false
       ) ++ shellPromptSettings
 
-  implicit class CommandAliasOps(command: String) {
-
-    def asCmd: String =
-      if (command.contains("/")) s";project ${command.replaceAll("/", ";")}"
-      else s";$command"
-
-  }
-
-  implicit class CommandAliasListOps(commandList: List[String]) {
-
-    def asCmd: String = commandList.map(_.asCmd).mkString("")
-
-  }
 }
