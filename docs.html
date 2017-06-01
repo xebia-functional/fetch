@@ -1,4 +1,4 @@
-<html><head><meta charset="utf-8" /><meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" /><title>Fetch</title><meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="description" content="Simple &amp; Efficient data access for Scala and Scala.js" /><meta name="author" content="47 Degrees" /><meta name="og:image" content="/fetch/img/poster.png" /><meta name="og:title" content="Fetch" /><meta name="og:site_name" content="Fetch" /><meta name="og:url" content="http://47deg.github.io/fetch/" /><meta name="og:type" content="website" /><meta name="og:description" content="Simple &amp; Efficient data access for Scala and Scala.js" /><meta name="twitter:image" content="/fetch/img/poster.png" /><meta name="twitter:card" content="summary_large_image" /><meta name="twitter:site" content="" /><meta name="kazari-dependencies" content="" /><meta name="kazari-resolvers" content="" /><link rel="icon" type="image/png" href="/fetch/img/favicon.png" /><link rel="icon" type="image/png" sizes="16x16" href="/fetch/img/favicon16x16.png" /><link rel="icon" type="image/png" sizes="24x24" href="/fetch/img/favicon24x24.png" /><link rel="icon" type="image/png" sizes="32x32" href="/fetch/img/favicon32x32.png" /><link rel="icon" type="image/png" sizes="48x48" href="/fetch/img/favicon48x48.png" /><link rel="icon" type="image/png" sizes="57x57" href="/fetch/img/favicon57x57.png" /><link rel="icon" type="image/png" sizes="60x60" href="/fetch/img/favicon60x60.png" /><link rel="icon" type="image/png" sizes="64x64" href="/fetch/img/favicon64x64.png" /><link rel="icon" type="image/png" sizes="70x70" href="/fetch/img/favicon70x70.png" /><link rel="icon" type="image/png" sizes="72x72" href="/fetch/img/favicon72x72.png" /><link rel="icon" type="image/png" sizes="76x76" href="/fetch/img/favicon76x76.png" /><link rel="icon" type="image/png" sizes="96x96" href="/fetch/img/favicon96x96.png" /><link rel="icon" type="image/png" sizes="114x114" href="/fetch/img/favicon114x114.png" /><link rel="icon" type="image/png" sizes="120x120" href="/fetch/img/favicon120x120.png" /><link rel="icon" type="image/png" sizes="128x128" href="/fetch/img/favicon128x128.png" /><link rel="icon" type="image/png" sizes="144x144" href="/fetch/img/favicon144x144.png" /><link rel="icon" type="image/png" sizes="150x150" href="/fetch/img/favicon150x150.png" /><link rel="icon" type="image/png" sizes="152x152" href="/fetch/img/favicon152x152.png" /><link rel="icon" type="image/png" sizes="196x196" href="/fetch/img/favicon196x196.png" /><link rel="icon" type="image/png" sizes="310x310" href="/fetch/img/favicon310x310.png" /><link rel="icon" type="image/png" sizes="310x150" href="/fetch/img/favicon310x150.png" /><link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" /><link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" /><link rel="stylesheet" href="/fetch/highlight/styles/tomorrow.css" /><link rel="stylesheet" href="/fetch/css/style.css" /><link rel="stylesheet" href="/fetch/css/palette.css" /><link rel="stylesheet" href="/fetch/css/codemirror.css" /><link rel="stylesheet" href="/fetch/css/kazari-style.css" /><link rel="stylesheet" href="/fetch/css/solarized-dark.css" /></head><body class="docs"><div id="wrapper"><div id="sidebar-wrapper"><ul id="sidebar" class="sidebar-nav"><li class="sidebar-brand"><a href="/fetch/" class="brand"><div class="brand-wrapper"><span>Fetch</span></div></a></li><li><a href="/fetch/docs.html" class=" active "></a></li><li><a href="/fetch/" class=" active "></a></li><li><a href="/fetch/css/palette.css" class=" active "></a></li><li><a href="/fetch/css/style.css" class=" active "></a></li></ul></div><div id="page-content-wrapper"><div class="nav"><div class="container-fluid"><div class="row"><div class="col-lg-12"><div class="action-menu pull-left clearfix"><a href="#menu-toggle" id="menu-toggle"><i class="fa fa-bars" aria-hidden="true"></i></a></div><ul class="pull-right"><li id="gh-eyes-item" class="hidden-xs"><a href="https://github.com/47deg/fetch"><i class="fa fa-eye"></i><span>WATCH<span id="eyes" class="label label-default">--</span></span></a></li><li id="gh-stars-item" class="hidden-xs"><a href="https://github.com/47deg/fetch"><i class="fa fa-star-o"></i><span>STARS<span id="stars" class="label label-default">--</span></span></a></li><li><a href="#" onclick="shareSiteTwitter('Fetch Simple &amp; Efficient data access for Scala and Scala.js');"><i class="fa fa-twitter"></i></a></li><li><a href="#" onclick="shareSiteFacebook('Fetch Simple &amp; Efficient data access for Scala and Scala.js');"><i class="fa fa-facebook"></i></a></li><li><a href="#" onclick="shareSiteGoogle();"><i class="fa fa-google-plus"></i></a></li></ul></div></div></div></div><div id="content" data-github-owner="47deg" data-github-repo="fetch"><div class="content-wrapper"><section><h1 id="introduction">Introduction</h1>
+<html><head><title>Fetch</title><meta charset="utf-8" /><meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="author" content="47 Degrees" /><meta name="description" content="Simple &amp; Efficient data access for Scala and Scala.js" /><meta name="og:image" content="/fetch/img/poster.png" /><meta name="og:title" content="Fetch" /><meta name="og:site_name" content="Fetch" /><meta name="og:url" content="http://47deg.github.io/fetch/" /><meta name="og:type" content="website" /><meta name="og:description" content="Simple &amp; Efficient data access for Scala and Scala.js" /><link rel="icon" type="image/png" href="/fetch/img/favicon.png" /><meta name="twitter:title" content="Fetch" /><meta name="twitter:image" content="http://47deg.github.io/fetch/img/poster.png" /><meta name="twitter:description" content="Simple &amp; Efficient data access for Scala and Scala.js" /><meta name="twitter:card" content="summary_large_image" /><link rel="icon" type="image/png" sizes="16x16" href="/fetch/img/favicon16x16.png" /><link rel="icon" type="image/png" sizes="24x24" href="/fetch/img/favicon24x24.png" /><link rel="icon" type="image/png" sizes="32x32" href="/fetch/img/favicon32x32.png" /><link rel="icon" type="image/png" sizes="48x48" href="/fetch/img/favicon48x48.png" /><link rel="icon" type="image/png" sizes="57x57" href="/fetch/img/favicon57x57.png" /><link rel="icon" type="image/png" sizes="60x60" href="/fetch/img/favicon60x60.png" /><link rel="icon" type="image/png" sizes="64x64" href="/fetch/img/favicon64x64.png" /><link rel="icon" type="image/png" sizes="70x70" href="/fetch/img/favicon70x70.png" /><link rel="icon" type="image/png" sizes="72x72" href="/fetch/img/favicon72x72.png" /><link rel="icon" type="image/png" sizes="76x76" href="/fetch/img/favicon76x76.png" /><link rel="icon" type="image/png" sizes="96x96" href="/fetch/img/favicon96x96.png" /><link rel="icon" type="image/png" sizes="114x114" href="/fetch/img/favicon114x114.png" /><link rel="icon" type="image/png" sizes="120x120" href="/fetch/img/favicon120x120.png" /><link rel="icon" type="image/png" sizes="128x128" href="/fetch/img/favicon128x128.png" /><link rel="icon" type="image/png" sizes="144x144" href="/fetch/img/favicon144x144.png" /><link rel="icon" type="image/png" sizes="150x150" href="/fetch/img/favicon150x150.png" /><link rel="icon" type="image/png" sizes="152x152" href="/fetch/img/favicon152x152.png" /><link rel="icon" type="image/png" sizes="196x196" href="/fetch/img/favicon196x196.png" /><link rel="icon" type="image/png" sizes="310x310" href="/fetch/img/favicon310x310.png" /><link rel="icon" type="image/png" sizes="310x150" href="/fetch/img/favicon310x150.png" /><link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" /><link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" /><link rel="stylesheet" href="/fetch/highlight/styles/tomorrow.css" /><link rel="stylesheet" href="/fetch/css/style.css" /><link rel="stylesheet" href="/fetch/css/palette.css" /><link rel="stylesheet" href="/fetch/css/codemirror.css" /><link rel="stylesheet" href="/fetch/css/kazari-style.css" /><link rel="stylesheet" href="/fetch/css/monokai.css" /></head><body class="docs"><div id="wrapper"><div id="sidebar-wrapper"><ul id="sidebar" class="sidebar-nav"><li class="sidebar-brand"><a href="/fetch/" class="brand"><div class="brand-wrapper"><span>Fetch</span></div></a></li><li><a href="/fetch/docs.html" class=" active "></a></li><li><a href="/fetch/" class=" active "></a></li><li><a href="/fetch/css/palette.css" class=" active "></a></li><li><a href="/fetch/css/style.css" class=" active "></a></li></ul></div><div id="page-content-wrapper"><div class="nav"><div class="container-fluid"><div class="row"><div class="col-lg-12"><div class="action-menu pull-left clearfix"><a href="#menu-toggle" id="menu-toggle"><i class="fa fa-bars" aria-hidden="true"></i></a></div><ul class="pull-right"><li id="gh-eyes-item" class="hidden-xs"><a href="https://github.com/47deg/fetch"><i class="fa fa-eye"></i><span>WATCH<span id="eyes" class="label label-default">--</span></span></a></li><li id="gh-stars-item" class="hidden-xs"><a href="https://github.com/47deg/fetch"><i class="fa fa-star-o"></i><span>STARS<span id="stars" class="label label-default">--</span></span></a></li><li><a href="#" onclick="shareSiteTwitter('Fetch Simple &amp; Efficient data access for Scala and Scala.js');"><i class="fa fa-twitter"></i></a></li><li><a href="#" onclick="shareSiteFacebook('Fetch Simple &amp; Efficient data access for Scala and Scala.js');"><i class="fa fa-facebook"></i></a></li><li><a href="#" onclick="shareSiteGoogle();"><i class="fa fa-google-plus"></i></a></li></ul></div></div></div></div><div id="content" data-github-owner="47deg" data-github-repo="fetch"><div class="content-wrapper"><section><h1 id="introduction">Introduction</h1>
 
 <p>Fetch is a library that allows your data fetches to be written in a concise,
 composable way while executing efficiently. You don’t need to use any explicit
@@ -26,13 +26,13 @@ we read) concerns.</p>
 
 <p>To begin, add the following dependency to your SBT build file:</p>
 
-<div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="s">"com.47deg"</span> <span class="o">%%</span> <span class="s">"fetch"</span> <span class="o">%</span> <span class="s">"0.6.1"</span>
+<div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="s">"com.47deg"</span> <span class="o">%%</span> <span class="s">"fetch"</span> <span class="o">%</span> <span class="s">"0.6.2"</span>
 </code></pre>
 </div>
 
 <p>Or, if using Scala.js:</p>
 
-<div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="s">"com.47deg"</span> <span class="o">%%%</span> <span class="s">"fetch"</span> <span class="o">%</span> <span class="s">"0.6.1"</span>
+<div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="s">"com.47deg"</span> <span class="o">%%%</span> <span class="s">"fetch"</span> <span class="o">%</span> <span class="s">"0.6.2"</span>
 </code></pre>
 </div>
 
@@ -206,8 +206,8 @@ supported in the <code class="highlighter-rouge">fetch-monix</code> project, but
 <p>We can now run the fetch and see its result:</p>
 
 <div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="n">fetchUser</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Id</span><span class="o">]</span>
-<span class="c1">// ~~&gt; [289] One User 1
-// &lt;~~ [289] One User 1
+<span class="c1">// ~~&gt; [381] One User 1
+// &lt;~~ [381] One User 1
 // res3: cats.Id[User] = User(1,@one)
 </span></code></pre>
 </div>
@@ -226,10 +226,10 @@ supported in the <code class="highlighter-rouge">fetch-monix</code> project, but
 <p>When composing fetches with <code class="highlighter-rouge">flatMap</code> we are telling Fetch that the second one depends on the previous one, so it isn’t able to make any optimizations. When running the above fetch, we will query the user data source in two rounds: one for the user with id 1 and another for the user with id 2.</p>
 
 <div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="n">fetchTwoUsers</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Id</span><span class="o">]</span>
-<span class="c1">// ~~&gt; [289] One User 1
-// &lt;~~ [289] One User 1
-// ~~&gt; [289] One User 2
-// &lt;~~ [289] One User 2
+<span class="c1">// ~~&gt; [381] One User 1
+// &lt;~~ [381] One User 1
+// ~~&gt; [381] One User 2
+// &lt;~~ [381] One User 2
 // res4: cats.Id[(User, User)] = (User(1,@one),User(2,@two))
 </span></code></pre>
 </div>
@@ -249,8 +249,8 @@ help us tell the library that those fetches are independent, and thus can be bat
 <p>Note how both ids (1 and 2) are requested in a single query to the data source when executing the fetch.</p>
 
 <div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="n">fetchProduct</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Id</span><span class="o">]</span>
-<span class="c1">// ~~&gt; [289] Many Users NonEmptyList(2, 1)
-// &lt;~~ [289] Many Users NonEmptyList(2, 1)
+<span class="c1">// ~~&gt; [381] Many Users NonEmptyList(2, 1)
+// &lt;~~ [381] Many Users NonEmptyList(2, 1)
 // res6: cats.Id[(User, User)] = (User(1,@one),User(2,@two))
 </span></code></pre>
 </div>
@@ -266,8 +266,8 @@ help us tell the library that those fetches are independent, and thus can be bat
 <p>Note that when running the fetch, the identity 1 is only requested once even when it is needed by both fetches.</p>
 
 <div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="n">fetchDuped</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Id</span><span class="o">]</span>
-<span class="c1">// ~~&gt; [289] One User 1
-// &lt;~~ [289] One User 1
+<span class="c1">// ~~&gt; [381] One User 1
+// &lt;~~ [381] One User 1
 // res7: cats.Id[(User, User)] = (User(1,@one),User(1,@one))
 </span></code></pre>
 </div>
@@ -289,8 +289,8 @@ during the course of a fetch execution, which can lead to inconsistencies in the
 <p>The above fetch asks for the same identity multiple times. Let’s see what happens when executing it.</p>
 
 <div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="n">fetchCached</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Id</span><span class="o">]</span>
-<span class="c1">// ~~&gt; [289] One User 1
-// &lt;~~ [289] One User 1
+<span class="c1">// ~~&gt; [381] One User 1
+// &lt;~~ [381] One User 1
 // res8: cats.Id[(User, User)] = (User(1,@one),User(1,@one))
 </span></code></pre>
 </div>
@@ -310,14 +310,14 @@ which is run. Let’s look at the various ways we have of constructing queries.<
 are called. We can do so with <code class="highlighter-rouge">Query#sync</code>:</p>
 
 <div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="nc">Query</span><span class="o">.</span><span class="n">sync</span><span class="o">(</span><span class="mi">42</span><span class="o">)</span>
-<span class="c1">// res9: fetch.Query[Int] = Sync(cats.Later@401cf72a)
+<span class="c1">// res9: fetch.Query[Int] = Sync(cats.Later@4b70c948)
 </span></code></pre>
 </div>
 
 <p>You can also construct lazy queries that can evaluate synchronously passing a thunk to <code class="highlighter-rouge">Query#sync</code>:</p>
 
 <div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="nc">Query</span><span class="o">.</span><span class="n">sync</span><span class="o">({</span> <span class="n">println</span><span class="o">(</span><span class="s">"Computing 42"</span><span class="o">);</span> <span class="mi">42</span> <span class="o">})</span>
-<span class="c1">// res10: fetch.Query[Int] = Sync(cats.Later@2c4b493c)
+<span class="c1">// res10: fetch.Query[Int] = Sync(cats.Later@7e1a3c25)
 </span></code></pre>
 </div>
 
@@ -328,7 +328,7 @@ computation. You can lift an <code class="highlighter-rouge">Eval[A]</code> into
 <span class="c1">// import cats.Eval
 </span>
 <span class="nc">Query</span><span class="o">.</span><span class="n">eval</span><span class="o">(</span><span class="nc">Eval</span><span class="o">.</span><span class="n">always</span><span class="o">({</span> <span class="n">println</span><span class="o">(</span><span class="s">"Computing 42"</span><span class="o">);</span> <span class="mi">42</span> <span class="o">}))</span>
-<span class="c1">// res11: fetch.Query[Int] = Sync(cats.Always@123963ef)
+<span class="c1">// res11: fetch.Query[Int] = Sync(cats.Always@2c6beb39)
 </span></code></pre>
 </div>
 
@@ -342,7 +342,7 @@ callback or the errback are called.</p>
   <span class="nc">Thread</span><span class="o">.</span><span class="n">sleep</span><span class="o">(</span><span class="mi">100</span><span class="o">)</span>
   <span class="n">ok</span><span class="o">(</span><span class="mi">42</span><span class="o">)</span>
 <span class="o">})</span>
-<span class="c1">// res12: fetch.Query[Int] = Async($$Lambda$1686/633088190@3644f93d,Duration.Inf)
+<span class="c1">// res12: fetch.Query[Int] = Async($$Lambda$1683/1448727600@35562b41,Duration.Inf)
 </span></code></pre>
 </div>
 
@@ -432,10 +432,10 @@ let’s look at how we can combine more than one data source.</p>
 <p>We can now run the previous fetch, querying the posts data source first and the user data source afterwards.</p>
 
 <div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="n">fetchMulti</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Id</span><span class="o">]</span>
-<span class="c1">// ~~&gt; [289] One Post 1
-// &lt;~~ [289] One Post 1
-// ~~&gt; [289] One Post Topic Post(1,2,An article)
-// &lt;~~ [289] One Post Topic Post(1,2,An article)
+<span class="c1">// ~~&gt; [381] One Post 1
+// &lt;~~ [381] One Post 1
+// ~~&gt; [381] One Post Topic Post(1,2,An article)
+// &lt;~~ [381] One Post Topic Post(1,2,An article)
 // res16: cats.Id[(Post, PostTopic)] = (Post(1,2,An article),applicative)
 </span></code></pre>
 </div>
@@ -463,10 +463,10 @@ evaluated together.</p>
 <p>The above example combines data from two different sources, and the library knows they are independent.</p>
 
 <div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="n">fetchConcurrent</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Id</span><span class="o">]</span>
-<span class="c1">// ~~&gt; [289] One User 2
-// &lt;~~ [289] One User 2
-// ~~&gt; [289] One Post 1
-// &lt;~~ [289] One Post 1
+<span class="c1">// ~~&gt; [381] One User 2
+// &lt;~~ [381] One User 2
+// ~~&gt; [381] One Post 1
+// &lt;~~ [381] One Post 1
 // res17: cats.Id[(Post, User)] = (Post(1,2,An article),User(2,@two))
 </span></code></pre>
 </div>
@@ -487,10 +487,10 @@ future’s result in Scala.js.</p>
 <span class="c1">// import fetch.implicits._
 </span>
 <span class="nc">Await</span><span class="o">.</span><span class="n">result</span><span class="o">(</span><span class="n">fetchConcurrent</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Future</span><span class="o">],</span> <span class="nc">Duration</span><span class="o">.</span><span class="nc">Inf</span><span class="o">)</span>
-<span class="c1">// ~~&gt; [291] One User 2
-// ~~&gt; [292] One Post 1
-// &lt;~~ [291] One User 2
-// &lt;~~ [292] One Post 1
+<span class="c1">// ~~&gt; [386] One User 2
+// ~~&gt; [382] One Post 1
+// &lt;~~ [386] One User 2
+// &lt;~~ [382] One Post 1
 // res18: (Post, User) = (Post(1,2,An article),User(2,@two))
 </span></code></pre>
 </div>
@@ -518,8 +518,8 @@ data source and running fetches to different sources in parallel. Note that the 
 <p>Since <code class="highlighter-rouge">sequence</code> uses applicative operations internally, the library is able to perform optimizations across all the sequenced fetches.</p>
 
 <div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="n">fetchSequence</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Id</span><span class="o">]</span>
-<span class="c1">// ~~&gt; [289] Many Users NonEmptyList(1, 2, 3)
-// &lt;~~ [289] Many Users NonEmptyList(1, 2, 3)
+<span class="c1">// ~~&gt; [381] Many Users NonEmptyList(1, 2, 3)
+// &lt;~~ [381] Many Users NonEmptyList(1, 2, 3)
 // res20: cats.Id[List[User]] = List(User(1,@one), User(2,@two), User(3,@three))
 </span></code></pre>
 </div>
@@ -537,8 +537,8 @@ data source and running fetches to different sources in parallel. Note that the 
 <p>As you may have guessed, all the optimizations made by <code class="highlighter-rouge">sequence</code> still apply when using <code class="highlighter-rouge">traverse</code>.</p>
 
 <div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="n">fetchTraverse</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Id</span><span class="o">]</span>
-<span class="c1">// ~~&gt; [289] Many Users NonEmptyList(1, 2, 3)
-// &lt;~~ [289] Many Users NonEmptyList(1, 2, 3)
+<span class="c1">// ~~&gt; [381] Many Users NonEmptyList(1, 2, 3)
+// &lt;~~ [381] Many Users NonEmptyList(1, 2, 3)
 // res21: cats.Id[List[User]] = List(User(1,@one), User(2,@two), User(3,@three))
 </span></code></pre>
 </div>
@@ -583,8 +583,8 @@ in the cache.</p>
 <p>If only part of the data is cached, the cached data won’t be asked for:</p>
 
 <div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="n">fetchManyUsers</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Id</span><span class="o">](</span><span class="n">cache</span><span class="o">)</span>
-<span class="c1">// ~~&gt; [289] Many Users NonEmptyList(2, 3)
-// &lt;~~ [289] Many Users NonEmptyList(2, 3)
+<span class="c1">// ~~&gt; [381] Many Users NonEmptyList(2, 3)
+// &lt;~~ [381] Many Users NonEmptyList(2, 3)
 // res24: cats.Id[List[User]] = List(User(1,@dialelo), User(2,@two), User(3,@three))
 </span></code></pre>
 </div>
@@ -600,9 +600,9 @@ instead of <code class="highlighter-rouge">Fetch.run</code> or <code class="high
 data sources.</p>
 
 <div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="k">val</span> <span class="n">env</span> <span class="k">=</span> <span class="n">fetchManyUsers</span><span class="o">.</span><span class="n">runE</span><span class="o">[</span><span class="kt">Id</span><span class="o">]</span>
-<span class="c1">// ~~&gt; [289] Many Users NonEmptyList(1, 2, 3)
-// &lt;~~ [289] Many Users NonEmptyList(1, 2, 3)
-// env: cats.Id[fetch.FetchEnv] = FetchEnv(InMemoryCache(Map((User,1) -&gt; User(1,@one), (User,2) -&gt; User(2,@two), (User,3) -&gt; User(3,@three))),Queue(Round(InMemoryCache(Map()),Concurrent(NonEmptyList(FetchMany(NonEmptyList(1, 2, 3),User))),NonEmptyList(Map(1 -&gt; User(1,@one), 2 -&gt; User(2,@two), 3 -&gt; User(3,@three))),24758549412576,24758651498059)))
+<span class="c1">// ~~&gt; [381] Many Users NonEmptyList(1, 2, 3)
+// &lt;~~ [381] Many Users NonEmptyList(1, 2, 3)
+// env: cats.Id[fetch.FetchEnv] = FetchEnv(InMemoryCache(Map((User,1) -&gt; User(1,@one), (User,2) -&gt; User(2,@two), (User,3) -&gt; User(3,@three))),Queue(Round(InMemoryCache(Map()),Concurrent(NonEmptyList(FetchMany(NonEmptyList(1, 2, 3),User))),NonEmptyList(Map(1 -&gt; User(1,@one), 2 -&gt; User(2,@two), 3 -&gt; User(3,@three))),114471721897226,114471824539450)))
 </span>
 <span class="n">fetchManyUsers</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Id</span><span class="o">](</span><span class="n">env</span><span class="o">.</span><span class="n">cache</span><span class="o">)</span>
 <span class="c1">// res25: cats.Id[List[User]] = List(User(1,@one), User(2,@two), User(3,@three))
@@ -640,10 +640,10 @@ data sources.</p>
 <span class="c1">// fetchSameTwice: fetch.Fetch[(User, User)] = Free(...)
 </span>
 <span class="n">fetchSameTwice</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Id</span><span class="o">](</span><span class="nc">ForgetfulCache</span><span class="o">())</span>
-<span class="c1">// ~~&gt; [289] One User 1
-// &lt;~~ [289] One User 1
-// ~~&gt; [289] One User 1
-// &lt;~~ [289] One User 1
+<span class="c1">// ~~&gt; [381] One User 1
+// &lt;~~ [381] One User 1
+// ~~&gt; [381] One User 1
+// &lt;~~ [381] One User 1
 // res26: cats.Id[(User, User)] = (User(1,@one),User(1,@one))
 </span></code></pre>
 </div>
@@ -686,10 +686,10 @@ than two users:</p>
 <span class="c1">// fetchManyBatchedUsers: fetch.Fetch[List[User]] = Free(...)
 </span>
 <span class="n">fetchManyBatchedUsers</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Id</span><span class="o">]</span>
-<span class="c1">// ~~&gt; [289] Many Users NonEmptyList(1, 2)
-// &lt;~~ [289] Many Users NonEmptyList(1, 2)
-// ~~&gt; [289] Many Users NonEmptyList(3, 4)
-// &lt;~~ [289] Many Users NonEmptyList(3, 4)
+<span class="c1">// ~~&gt; [381] Many Users NonEmptyList(1, 2)
+// &lt;~~ [381] Many Users NonEmptyList(1, 2)
+// ~~&gt; [381] Many Users NonEmptyList(3, 4)
+// &lt;~~ [381] Many Users NonEmptyList(3, 4)
 // res28: cats.Id[List[User]] = List(User(1,@one), User(2,@two), User(3,@three), User(4,@four))
 </span></code></pre>
 </div>
@@ -727,10 +727,10 @@ than two users:</p>
 <span class="c1">// fetchManySeqBatchedUsers: fetch.Fetch[List[User]] = Free(...)
 </span>
 <span class="n">fetchManySeqBatchedUsers</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Id</span><span class="o">]</span>
-<span class="c1">// ~~&gt; [289] Many Users NonEmptyList(1, 2)
-// &lt;~~ [289] Many Users NonEmptyList(1, 2)
-// ~~&gt; [289] Many Users NonEmptyList(3, 4)
-// &lt;~~ [289] Many Users NonEmptyList(3, 4)
+<span class="c1">// ~~&gt; [381] Many Users NonEmptyList(1, 2)
+// &lt;~~ [381] Many Users NonEmptyList(1, 2)
+// ~~&gt; [381] Many Users NonEmptyList(3, 4)
+// &lt;~~ [381] Many Users NonEmptyList(3, 4)
 // res30: cats.Id[List[User]] = List(User(1,@one), User(2,@two), User(3,@three), User(4,@four))
 </span></code></pre>
 </div>
@@ -762,45 +762,45 @@ you want.</p>
 <div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="n">scala</span><span class="o">&gt;</span> <span class="n">fetchException</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Id</span><span class="o">]</span>
 <span class="n">fetch</span><span class="o">.</span><span class="nc">UnhandledException</span><span class="k">:</span> <span class="kt">java.lang.Exception:</span> <span class="kt">Oh</span> <span class="kt">noes</span>
   <span class="n">at</span> <span class="n">fetch</span><span class="o">.</span><span class="n">interpreters</span><span class="o">.</span><span class="nc">CoreInterpreter$$anon$1</span><span class="o">.</span><span class="nc">$anonfun$apply$1</span><span class="o">(</span><span class="nc">CoreInterpreter</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">45</span><span class="o">)</span>
-  <span class="n">at</span> <span class="n">fetch</span><span class="o">.</span><span class="n">interpreters</span><span class="o">.</span><span class="nc">CoreInterpreter$$anon$1$$Lambda$1553</span><span class="o">/</span><span class="mf">1441549270.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
+  <span class="n">at</span> <span class="n">fetch</span><span class="o">.</span><span class="n">interpreters</span><span class="o">.</span><span class="nc">CoreInterpreter$$anon$1$$Lambda$1550</span><span class="o">/</span><span class="mf">224462083.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">scala</span><span class="o">.</span><span class="nc">Function1</span><span class="o">.</span><span class="nc">$anonfun$andThen$1</span><span class="o">(</span><span class="nc">Function1</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">52</span><span class="o">)</span>
-  <span class="n">at</span> <span class="n">scala</span><span class="o">.</span><span class="nc">Function1$$Lambda$1550</span><span class="o">/</span><span class="mf">1834700448.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
+  <span class="n">at</span> <span class="n">scala</span><span class="o">.</span><span class="nc">Function1$$Lambda$1547</span><span class="o">/</span><span class="mf">1086800459.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateT</span><span class="o">.</span><span class="nc">$anonfun$run$1</span><span class="o">(</span><span class="nc">StateT</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">58</span><span class="o">)</span>
-  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateT$$Lambda$1541</span><span class="o">/</span><span class="mf">642642853.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
+  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateT$$Lambda$1538</span><span class="o">/</span><span class="mf">1146740419.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">fetch</span><span class="o">.</span><span class="n">unsafe</span><span class="o">.</span><span class="n">implicits$$anon$2</span><span class="o">.</span><span class="n">flatMap</span><span class="o">(</span><span class="n">unsafeImplicits</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">122</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateT</span><span class="o">.</span><span class="n">run</span><span class="o">(</span><span class="nc">StateT</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">58</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad</span><span class="o">.</span><span class="nc">$anonfun$tailRecM$2</span><span class="o">(</span><span class="nc">StateT</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">282</span><span class="o">)</span>
-  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad$$Lambda$1542</span><span class="o">/</span><span class="mf">707034253.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
+  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad$$Lambda$1539</span><span class="o">/</span><span class="mf">1759487189.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">package$$anon$1</span><span class="o">.</span><span class="n">tailRecM</span><span class="o">(</span><span class="n">package</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">36</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">fetch</span><span class="o">.</span><span class="n">unsafe</span><span class="o">.</span><span class="n">implicits$$anon$2</span><span class="o">.</span><span class="n">tailRecM</span><span class="o">(</span><span class="n">unsafeImplicits</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">106</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad</span><span class="o">.</span><span class="nc">$anonfun$tailRecM$1</span><span class="o">(</span><span class="nc">StateT</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">281</span><span class="o">)</span>
-  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad$$Lambda$1540</span><span class="o">/</span><span class="mf">730671688.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
+  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad$$Lambda$1537</span><span class="o">/</span><span class="mf">1501086101.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">scala</span><span class="o">.</span><span class="nc">Function1</span><span class="o">.</span><span class="nc">$anonfun$andThen$1</span><span class="o">(</span><span class="nc">Function1</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">52</span><span class="o">)</span>
-  <span class="n">at</span> <span class="n">scala</span><span class="o">.</span><span class="nc">Function1$$Lambda$1550</span><span class="o">/</span><span class="mf">1834700448.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
+  <span class="n">at</span> <span class="n">scala</span><span class="o">.</span><span class="nc">Function1$$Lambda$1547</span><span class="o">/</span><span class="mf">1086800459.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateT</span><span class="o">.</span><span class="nc">$anonfun$run$1</span><span class="o">(</span><span class="nc">StateT</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">58</span><span class="o">)</span>
-  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateT$$Lambda$1541</span><span class="o">/</span><span class="mf">642642853.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
+  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateT$$Lambda$1538</span><span class="o">/</span><span class="mf">1146740419.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">fetch</span><span class="o">.</span><span class="n">unsafe</span><span class="o">.</span><span class="n">implicits$$anon$2</span><span class="o">.</span><span class="n">flatMap</span><span class="o">(</span><span class="n">unsafeImplicits</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">122</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateT</span><span class="o">.</span><span class="n">run</span><span class="o">(</span><span class="nc">StateT</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">58</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad</span><span class="o">.</span><span class="nc">$anonfun$tailRecM$2</span><span class="o">(</span><span class="nc">StateT</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">282</span><span class="o">)</span>
-  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad$$Lambda$1542</span><span class="o">/</span><span class="mf">707034253.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
+  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad$$Lambda$1539</span><span class="o">/</span><span class="mf">1759487189.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">package$$anon$1</span><span class="o">.</span><span class="n">tailRecM</span><span class="o">(</span><span class="n">package</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">36</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">fetch</span><span class="o">.</span><span class="n">unsafe</span><span class="o">.</span><span class="n">implicits$$anon$2</span><span class="o">.</span><span class="n">tailRecM</span><span class="o">(</span><span class="n">unsafeImplicits</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">106</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad</span><span class="o">.</span><span class="nc">$anonfun$tailRecM$1</span><span class="o">(</span><span class="nc">StateT</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">281</span><span class="o">)</span>
-  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad$$Lambda$1540</span><span class="o">/</span><span class="mf">730671688.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
+  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad$$Lambda$1537</span><span class="o">/</span><span class="mf">1501086101.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">scala</span><span class="o">.</span><span class="nc">Function1</span><span class="o">.</span><span class="nc">$anonfun$andThen$1</span><span class="o">(</span><span class="nc">Function1</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">52</span><span class="o">)</span>
-  <span class="n">at</span> <span class="n">scala</span><span class="o">.</span><span class="nc">Function1$$Lambda$1550</span><span class="o">/</span><span class="mf">1834700448.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
+  <span class="n">at</span> <span class="n">scala</span><span class="o">.</span><span class="nc">Function1$$Lambda$1547</span><span class="o">/</span><span class="mf">1086800459.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateT</span><span class="o">.</span><span class="nc">$anonfun$run$1</span><span class="o">(</span><span class="nc">StateT</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">58</span><span class="o">)</span>
-  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateT$$Lambda$1541</span><span class="o">/</span><span class="mf">642642853.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
+  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateT$$Lambda$1538</span><span class="o">/</span><span class="mf">1146740419.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">fetch</span><span class="o">.</span><span class="n">unsafe</span><span class="o">.</span><span class="n">implicits$$anon$2</span><span class="o">.</span><span class="n">flatMap</span><span class="o">(</span><span class="n">unsafeImplicits</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">122</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateT</span><span class="o">.</span><span class="n">run</span><span class="o">(</span><span class="nc">StateT</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">58</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad</span><span class="o">.</span><span class="nc">$anonfun$tailRecM$2</span><span class="o">(</span><span class="nc">StateT</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">282</span><span class="o">)</span>
-  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad$$Lambda$1542</span><span class="o">/</span><span class="mf">707034253.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
+  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad$$Lambda$1539</span><span class="o">/</span><span class="mf">1759487189.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">package$$anon$1</span><span class="o">.</span><span class="n">tailRecM</span><span class="o">(</span><span class="n">package</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">36</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">fetch</span><span class="o">.</span><span class="n">unsafe</span><span class="o">.</span><span class="n">implicits$$anon$2</span><span class="o">.</span><span class="n">tailRecM</span><span class="o">(</span><span class="n">unsafeImplicits</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">106</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad</span><span class="o">.</span><span class="nc">$anonfun$tailRecM$1</span><span class="o">(</span><span class="nc">StateT</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">281</span><span class="o">)</span>
-  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad$$Lambda$1540</span><span class="o">/</span><span class="mf">730671688.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
+  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad$$Lambda$1537</span><span class="o">/</span><span class="mf">1501086101.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateT</span><span class="o">.</span><span class="nc">$anonfun$run$1</span><span class="o">(</span><span class="nc">StateT</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">58</span><span class="o">)</span>
-  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateT$$Lambda$1541</span><span class="o">/</span><span class="mf">642642853.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
+  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateT$$Lambda$1538</span><span class="o">/</span><span class="mf">1146740419.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">fetch</span><span class="o">.</span><span class="n">unsafe</span><span class="o">.</span><span class="n">implicits$$anon$2</span><span class="o">.</span><span class="n">flatMap</span><span class="o">(</span><span class="n">unsafeImplicits</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">122</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateT</span><span class="o">.</span><span class="n">run</span><span class="o">(</span><span class="nc">StateT</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">58</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateT</span><span class="o">.</span><span class="n">runA</span><span class="o">(</span><span class="nc">StateT</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">70</span><span class="o">)</span>
@@ -826,7 +826,7 @@ monad which, instead of evaluating the fetch eagerly, gives us an <code class="h
 <span class="c1">// import cats.Eval
 </span>
 <span class="k">val</span> <span class="n">safeResult</span><span class="k">:</span> <span class="kt">Eval</span><span class="o">[</span><span class="kt">Either</span><span class="o">[</span><span class="kt">FetchException</span>, <span class="kt">User</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">FetchMonadError</span><span class="o">[</span><span class="kt">Eval</span><span class="o">].</span><span class="n">attempt</span><span class="o">(</span><span class="n">fetchException</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Eval</span><span class="o">])</span>
-<span class="c1">// safeResult: cats.Eval[Either[fetch.FetchException,User]] = cats.Later@2d1abe2
+<span class="c1">// safeResult: cats.Eval[Either[fetch.FetchException,User]] = cats.Later@4da01f72
 </span>
 <span class="n">safeResult</span><span class="o">.</span><span class="n">value</span>
 <span class="c1">// res32: Either[fetch.FetchException,User] = Left(fetch.UnhandledException)
@@ -867,18 +867,18 @@ a fetch that fails after a couple rounds to see it in action:</p>
 <span class="c1">// import fetch.debug.describe
 </span>
 <span class="k">val</span> <span class="n">value</span><span class="k">:</span> <span class="kt">Either</span><span class="o">[</span><span class="kt">FetchException</span>, <span class="kt">String</span><span class="o">]</span> <span class="k">=</span> <span class="n">result</span><span class="o">.</span><span class="n">value</span>
-<span class="c1">// ~~&gt; [289] One User 1
-// &lt;~~ [289] One User 1
-// ~~&gt; [289] One User 2
-// &lt;~~ [289] One User 2
+<span class="c1">// ~~&gt; [381] One User 1
+// &lt;~~ [381] One User 1
+// ~~&gt; [381] One User 2
+// &lt;~~ [381] One User 2
 // value: Either[fetch.FetchException,String] = Left(fetch.UnhandledException)
 </span>
 <span class="n">println</span><span class="o">(</span><span class="n">value</span><span class="o">.</span><span class="n">fold</span><span class="o">(</span><span class="n">describe</span><span class="o">,</span> <span class="n">identity</span> <span class="k">_</span><span class="o">))</span>
 <span class="c1">// [Error] Unhandled `java.lang.Exception`: 'Oh noes', fetch interrupted after 2 rounds
-// Fetch execution took 0.209199 seconds
+// Fetch execution took 0.204124 seconds
 //   
-//     [Fetch one] From `User` with id 1 took 0.000104 seconds
-//     [Fetch one] From `User` with id 2 took 0.000103 seconds
+//     [Fetch one] From `User` with id 1 took 0.000102 seconds
+//     [Fetch one] From `User` with id 2 took 0.000102 seconds
 </span></code></pre>
 </div>
 
@@ -909,8 +909,8 @@ should be able to easily diagnose the failure. For ilustrating this scenario we�
 <p>And now we can execute the fetch and describe its execution:</p>
 
 <div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="k">val</span> <span class="n">value</span><span class="k">:</span> <span class="kt">Either</span><span class="o">[</span><span class="kt">FetchException</span>, <span class="kt">User</span><span class="o">]</span> <span class="k">=</span> <span class="n">result</span><span class="o">.</span><span class="n">value</span>
-<span class="c1">// ~~&gt; [289] One User 5
-// &lt;~~ [289] One User 5
+<span class="c1">// ~~&gt; [381] One User 5
+// &lt;~~ [381] One User 5
 // value: Either[fetch.FetchException,User] = Left(fetch.NotFound)
 </span>
 <span class="n">println</span><span class="o">(</span><span class="n">value</span><span class="o">.</span><span class="n">fold</span><span class="o">(</span><span class="n">describe</span><span class="o">,</span> <span class="k">_</span><span class="o">.</span><span class="n">toString</span><span class="o">))</span>
@@ -945,15 +945,15 @@ should be able to easily diagnose the failure. For ilustrating this scenario we�
 <span class="c1">// missingUsers: fetch.Fetch[List[User]] = Free(...)
 </span>
 <span class="k">val</span> <span class="n">result</span><span class="k">:</span> <span class="kt">Eval</span><span class="o">[</span><span class="kt">Either</span><span class="o">[</span><span class="kt">FetchException</span>, <span class="kt">List</span><span class="o">[</span><span class="kt">User</span><span class="o">]]]</span> <span class="k">=</span> <span class="n">missingUsers</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Eval</span><span class="o">].</span><span class="n">attempt</span>
-<span class="c1">// result: cats.Eval[Either[fetch.FetchException,List[User]]] = cats.Later@3c57e933
+<span class="c1">// result: cats.Eval[Either[fetch.FetchException,List[User]]] = cats.Later@63d4092
 </span></code></pre>
 </div>
 
 <p>And now we can execute the fetch and describe its execution:</p>
 
 <div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="k">val</span> <span class="n">value</span><span class="k">:</span> <span class="kt">Either</span><span class="o">[</span><span class="kt">FetchException</span>, <span class="kt">List</span><span class="o">[</span><span class="kt">User</span><span class="o">]]</span> <span class="k">=</span> <span class="n">result</span><span class="o">.</span><span class="n">value</span>
-<span class="c1">// ~~&gt; [289] Many Users NonEmptyList(3, 4, 5, 6)
-// &lt;~~ [289] Many Users NonEmptyList(3, 4, 5, 6)
+<span class="c1">// ~~&gt; [381] Many Users NonEmptyList(3, 4, 5, 6)
+// &lt;~~ [381] Many Users NonEmptyList(3, 4, 5, 6)
 // value: Either[fetch.FetchException,List[User]] = Left(fetch.MissingIdentities)
 </span>
 <span class="n">println</span><span class="o">(</span><span class="n">value</span><span class="o">.</span><span class="n">fold</span><span class="o">(</span><span class="n">describe</span><span class="o">,</span> <span class="k">_</span><span class="o">.</span><span class="n">toString</span><span class="o">))</span>
@@ -1015,45 +1015,45 @@ combinators active within <code class="highlighter-rouge">Fetch</code> instances
 <div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="n">scala</span><span class="o">&gt;</span> <span class="n">fetchFail</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Id</span><span class="o">]</span>
 <span class="n">fetch</span><span class="o">.</span><span class="nc">UnhandledException</span><span class="k">:</span> <span class="kt">java.lang.Exception:</span> <span class="kt">Something</span> <span class="kt">went</span> <span class="kt">terribly</span> <span class="kt">wrong</span>
   <span class="n">at</span> <span class="n">fetch</span><span class="o">.</span><span class="n">interpreters</span><span class="o">.</span><span class="nc">CoreInterpreter$$anon$1</span><span class="o">.</span><span class="nc">$anonfun$apply$1</span><span class="o">(</span><span class="nc">CoreInterpreter</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">45</span><span class="o">)</span>
-  <span class="n">at</span> <span class="n">fetch</span><span class="o">.</span><span class="n">interpreters</span><span class="o">.</span><span class="nc">CoreInterpreter$$anon$1$$Lambda$1553</span><span class="o">/</span><span class="mf">1441549270.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
+  <span class="n">at</span> <span class="n">fetch</span><span class="o">.</span><span class="n">interpreters</span><span class="o">.</span><span class="nc">CoreInterpreter$$anon$1$$Lambda$1550</span><span class="o">/</span><span class="mf">224462083.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">scala</span><span class="o">.</span><span class="nc">Function1</span><span class="o">.</span><span class="nc">$anonfun$andThen$1</span><span class="o">(</span><span class="nc">Function1</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">52</span><span class="o">)</span>
-  <span class="n">at</span> <span class="n">scala</span><span class="o">.</span><span class="nc">Function1$$Lambda$1550</span><span class="o">/</span><span class="mf">1834700448.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
+  <span class="n">at</span> <span class="n">scala</span><span class="o">.</span><span class="nc">Function1$$Lambda$1547</span><span class="o">/</span><span class="mf">1086800459.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateT</span><span class="o">.</span><span class="nc">$anonfun$run$1</span><span class="o">(</span><span class="nc">StateT</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">58</span><span class="o">)</span>
-  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateT$$Lambda$1541</span><span class="o">/</span><span class="mf">642642853.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
+  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateT$$Lambda$1538</span><span class="o">/</span><span class="mf">1146740419.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">fetch</span><span class="o">.</span><span class="n">unsafe</span><span class="o">.</span><span class="n">implicits$$anon$2</span><span class="o">.</span><span class="n">flatMap</span><span class="o">(</span><span class="n">unsafeImplicits</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">122</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateT</span><span class="o">.</span><span class="n">run</span><span class="o">(</span><span class="nc">StateT</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">58</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad</span><span class="o">.</span><span class="nc">$anonfun$tailRecM$2</span><span class="o">(</span><span class="nc">StateT</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">282</span><span class="o">)</span>
-  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad$$Lambda$1542</span><span class="o">/</span><span class="mf">707034253.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
+  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad$$Lambda$1539</span><span class="o">/</span><span class="mf">1759487189.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">package$$anon$1</span><span class="o">.</span><span class="n">tailRecM</span><span class="o">(</span><span class="n">package</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">36</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">fetch</span><span class="o">.</span><span class="n">unsafe</span><span class="o">.</span><span class="n">implicits$$anon$2</span><span class="o">.</span><span class="n">tailRecM</span><span class="o">(</span><span class="n">unsafeImplicits</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">106</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad</span><span class="o">.</span><span class="nc">$anonfun$tailRecM$1</span><span class="o">(</span><span class="nc">StateT</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">281</span><span class="o">)</span>
-  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad$$Lambda$1540</span><span class="o">/</span><span class="mf">730671688.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
+  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad$$Lambda$1537</span><span class="o">/</span><span class="mf">1501086101.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">scala</span><span class="o">.</span><span class="nc">Function1</span><span class="o">.</span><span class="nc">$anonfun$andThen$1</span><span class="o">(</span><span class="nc">Function1</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">52</span><span class="o">)</span>
-  <span class="n">at</span> <span class="n">scala</span><span class="o">.</span><span class="nc">Function1$$Lambda$1550</span><span class="o">/</span><span class="mf">1834700448.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
+  <span class="n">at</span> <span class="n">scala</span><span class="o">.</span><span class="nc">Function1$$Lambda$1547</span><span class="o">/</span><span class="mf">1086800459.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateT</span><span class="o">.</span><span class="nc">$anonfun$run$1</span><span class="o">(</span><span class="nc">StateT</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">58</span><span class="o">)</span>
-  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateT$$Lambda$1541</span><span class="o">/</span><span class="mf">642642853.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
+  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateT$$Lambda$1538</span><span class="o">/</span><span class="mf">1146740419.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">fetch</span><span class="o">.</span><span class="n">unsafe</span><span class="o">.</span><span class="n">implicits$$anon$2</span><span class="o">.</span><span class="n">flatMap</span><span class="o">(</span><span class="n">unsafeImplicits</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">122</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateT</span><span class="o">.</span><span class="n">run</span><span class="o">(</span><span class="nc">StateT</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">58</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad</span><span class="o">.</span><span class="nc">$anonfun$tailRecM$2</span><span class="o">(</span><span class="nc">StateT</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">282</span><span class="o">)</span>
-  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad$$Lambda$1542</span><span class="o">/</span><span class="mf">707034253.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
+  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad$$Lambda$1539</span><span class="o">/</span><span class="mf">1759487189.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">package$$anon$1</span><span class="o">.</span><span class="n">tailRecM</span><span class="o">(</span><span class="n">package</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">36</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">fetch</span><span class="o">.</span><span class="n">unsafe</span><span class="o">.</span><span class="n">implicits$$anon$2</span><span class="o">.</span><span class="n">tailRecM</span><span class="o">(</span><span class="n">unsafeImplicits</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">106</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad</span><span class="o">.</span><span class="nc">$anonfun$tailRecM$1</span><span class="o">(</span><span class="nc">StateT</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">281</span><span class="o">)</span>
-  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad$$Lambda$1540</span><span class="o">/</span><span class="mf">730671688.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
+  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad$$Lambda$1537</span><span class="o">/</span><span class="mf">1501086101.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">scala</span><span class="o">.</span><span class="nc">Function1</span><span class="o">.</span><span class="nc">$anonfun$andThen$1</span><span class="o">(</span><span class="nc">Function1</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">52</span><span class="o">)</span>
-  <span class="n">at</span> <span class="n">scala</span><span class="o">.</span><span class="nc">Function1$$Lambda$1550</span><span class="o">/</span><span class="mf">1834700448.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
+  <span class="n">at</span> <span class="n">scala</span><span class="o">.</span><span class="nc">Function1$$Lambda$1547</span><span class="o">/</span><span class="mf">1086800459.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateT</span><span class="o">.</span><span class="nc">$anonfun$run$1</span><span class="o">(</span><span class="nc">StateT</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">58</span><span class="o">)</span>
-  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateT$$Lambda$1541</span><span class="o">/</span><span class="mf">642642853.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
+  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateT$$Lambda$1538</span><span class="o">/</span><span class="mf">1146740419.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">fetch</span><span class="o">.</span><span class="n">unsafe</span><span class="o">.</span><span class="n">implicits$$anon$2</span><span class="o">.</span><span class="n">flatMap</span><span class="o">(</span><span class="n">unsafeImplicits</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">122</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateT</span><span class="o">.</span><span class="n">run</span><span class="o">(</span><span class="nc">StateT</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">58</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad</span><span class="o">.</span><span class="nc">$anonfun$tailRecM$2</span><span class="o">(</span><span class="nc">StateT</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">282</span><span class="o">)</span>
-  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad$$Lambda$1542</span><span class="o">/</span><span class="mf">707034253.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
+  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad$$Lambda$1539</span><span class="o">/</span><span class="mf">1759487189.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">package$$anon$1</span><span class="o">.</span><span class="n">tailRecM</span><span class="o">(</span><span class="n">package</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">36</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">fetch</span><span class="o">.</span><span class="n">unsafe</span><span class="o">.</span><span class="n">implicits$$anon$2</span><span class="o">.</span><span class="n">tailRecM</span><span class="o">(</span><span class="n">unsafeImplicits</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">106</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad</span><span class="o">.</span><span class="nc">$anonfun$tailRecM$1</span><span class="o">(</span><span class="nc">StateT</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">281</span><span class="o">)</span>
-  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad$$Lambda$1540</span><span class="o">/</span><span class="mf">730671688.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
+  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad$$Lambda$1537</span><span class="o">/</span><span class="mf">1501086101.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateT</span><span class="o">.</span><span class="nc">$anonfun$run$1</span><span class="o">(</span><span class="nc">StateT</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">58</span><span class="o">)</span>
-  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateT$$Lambda$1541</span><span class="o">/</span><span class="mf">642642853.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
+  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateT$$Lambda$1538</span><span class="o">/</span><span class="mf">1146740419.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">fetch</span><span class="o">.</span><span class="n">unsafe</span><span class="o">.</span><span class="n">implicits$$anon$2</span><span class="o">.</span><span class="n">flatMap</span><span class="o">(</span><span class="n">unsafeImplicits</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">122</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateT</span><span class="o">.</span><span class="n">run</span><span class="o">(</span><span class="nc">StateT</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">58</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateT</span><span class="o">.</span><span class="n">runA</span><span class="o">(</span><span class="nc">StateT</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">70</span><span class="o">)</span>
@@ -1075,10 +1075,10 @@ combinators active within <code class="highlighter-rouge">Fetch</code> instances
 <p>If the fetches are to the same data source they will be batched; if they aren’t, they will be evaluated at the same time.</p>
 
 <div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="n">fetchJoined</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Id</span><span class="o">]</span>
-<span class="c1">// ~~&gt; [289] One User 2
-// &lt;~~ [289] One User 2
-// ~~&gt; [289] One Post 1
-// &lt;~~ [289] One Post 1
+<span class="c1">// ~~&gt; [381] One User 2
+// &lt;~~ [381] One User 2
+// ~~&gt; [381] One Post 1
+// &lt;~~ [381] One Post 1
 // res44: cats.Id[(Post, User)] = (Post(1,2,An article),User(2,@two))
 </span></code></pre>
 </div>
@@ -1088,8 +1088,8 @@ combinators active within <code class="highlighter-rouge">Fetch</code> instances
 <p>Run directly any fetch with <code class="highlighter-rouge">fetch1.runA</code>.</p>
 
 <div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="n">getPost</span><span class="o">(</span><span class="mi">1</span><span class="o">).</span><span class="n">runA</span><span class="o">[</span><span class="kt">Id</span><span class="o">]</span>
-<span class="c1">// ~~&gt; [289] One Post 1
-// &lt;~~ [289] One Post 1
+<span class="c1">// ~~&gt; [381] One Post 1
+// &lt;~~ [381] One Post 1
 // res45: cats.Id[Post] = Post(1,2,An article)
 </span></code></pre>
 </div>
@@ -1099,9 +1099,9 @@ combinators active within <code class="highlighter-rouge">Fetch</code> instances
 <p>Run a fetch an get it’s runtime environment <code class="highlighter-rouge">fetch1.runE</code>.</p>
 
 <div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="n">getPost</span><span class="o">(</span><span class="mi">1</span><span class="o">).</span><span class="n">runE</span><span class="o">[</span><span class="kt">Id</span><span class="o">]</span>
-<span class="c1">// ~~&gt; [289] One Post 1
-// &lt;~~ [289] One Post 1
-// res46: cats.Id[fetch.FetchEnv] = FetchEnv(InMemoryCache(Map((Post,1) -&gt; Post(1,2,An article))),Queue(Round(InMemoryCache(Map()),FetchOne(1,Post),Post(1,2,An article),24771176670237,24771279668048)))
+<span class="c1">// ~~&gt; [381] One Post 1
+// &lt;~~ [381] One Post 1
+// res46: cats.Id[fetch.FetchEnv] = FetchEnv(InMemoryCache(Map((Post,1) -&gt; Post(1,2,An article))),Queue(Round(InMemoryCache(Map()),FetchOne(1,Post),Post(1,2,An article),114482783296439,114482885741700)))
 </span></code></pre>
 </div>
 
@@ -1110,9 +1110,9 @@ combinators active within <code class="highlighter-rouge">Fetch</code> instances
 <p>Run a fetch obtaining the environment and final value <code class="highlighter-rouge">fetch1.runF</code>.</p>
 
 <div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="n">getPost</span><span class="o">(</span><span class="mi">1</span><span class="o">).</span><span class="n">runF</span><span class="o">[</span><span class="kt">Id</span><span class="o">]</span>
-<span class="c1">// ~~&gt; [289] One Post 1
-// &lt;~~ [289] One Post 1
-// res47: cats.Id[(fetch.FetchEnv, Post)] = (FetchEnv(InMemoryCache(Map((Post,1) -&gt; Post(1,2,An article))),Queue(Round(InMemoryCache(Map()),FetchOne(1,Post),Post(1,2,An article),24771541762711,24771643792782))),Post(1,2,An article))
+<span class="c1">// ~~&gt; [381] One Post 1
+// &lt;~~ [381] One Post 1
+// res47: cats.Id[(fetch.FetchEnv, Post)] = (FetchEnv(InMemoryCache(Map((Post,1) -&gt; Post(1,2,An article))),Queue(Round(InMemoryCache(Map()),FetchOne(1,Post),Post(1,2,An article),114483137096504,114483239055692))),Post(1,2,An article))
 </span></code></pre>
 </div>
 
@@ -1152,45 +1152,45 @@ directly.</p>
 <div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="n">scala</span><span class="o">&gt;</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">[</span><span class="kt">Id</span><span class="o">](</span><span class="n">fetchFail</span><span class="o">)</span>
 <span class="n">fetch</span><span class="o">.</span><span class="nc">UnhandledException</span><span class="k">:</span> <span class="kt">java.lang.Exception:</span> <span class="kt">Something</span> <span class="kt">went</span> <span class="kt">terribly</span> <span class="kt">wrong</span>
   <span class="n">at</span> <span class="n">fetch</span><span class="o">.</span><span class="n">interpreters</span><span class="o">.</span><span class="nc">CoreInterpreter$$anon$1</span><span class="o">.</span><span class="nc">$anonfun$apply$1</span><span class="o">(</span><span class="nc">CoreInterpreter</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">45</span><span class="o">)</span>
-  <span class="n">at</span> <span class="n">fetch</span><span class="o">.</span><span class="n">interpreters</span><span class="o">.</span><span class="nc">CoreInterpreter$$anon$1$$Lambda$1553</span><span class="o">/</span><span class="mf">1441549270.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
+  <span class="n">at</span> <span class="n">fetch</span><span class="o">.</span><span class="n">interpreters</span><span class="o">.</span><span class="nc">CoreInterpreter$$anon$1$$Lambda$1550</span><span class="o">/</span><span class="mf">224462083.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">scala</span><span class="o">.</span><span class="nc">Function1</span><span class="o">.</span><span class="nc">$anonfun$andThen$1</span><span class="o">(</span><span class="nc">Function1</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">52</span><span class="o">)</span>
-  <span class="n">at</span> <span class="n">scala</span><span class="o">.</span><span class="nc">Function1$$Lambda$1550</span><span class="o">/</span><span class="mf">1834700448.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
+  <span class="n">at</span> <span class="n">scala</span><span class="o">.</span><span class="nc">Function1$$Lambda$1547</span><span class="o">/</span><span class="mf">1086800459.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateT</span><span class="o">.</span><span class="nc">$anonfun$run$1</span><span class="o">(</span><span class="nc">StateT</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">58</span><span class="o">)</span>
-  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateT$$Lambda$1541</span><span class="o">/</span><span class="mf">642642853.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
+  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateT$$Lambda$1538</span><span class="o">/</span><span class="mf">1146740419.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">fetch</span><span class="o">.</span><span class="n">unsafe</span><span class="o">.</span><span class="n">implicits$$anon$2</span><span class="o">.</span><span class="n">flatMap</span><span class="o">(</span><span class="n">unsafeImplicits</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">122</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateT</span><span class="o">.</span><span class="n">run</span><span class="o">(</span><span class="nc">StateT</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">58</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad</span><span class="o">.</span><span class="nc">$anonfun$tailRecM$2</span><span class="o">(</span><span class="nc">StateT</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">282</span><span class="o">)</span>
-  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad$$Lambda$1542</span><span class="o">/</span><span class="mf">707034253.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
+  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad$$Lambda$1539</span><span class="o">/</span><span class="mf">1759487189.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">package$$anon$1</span><span class="o">.</span><span class="n">tailRecM</span><span class="o">(</span><span class="n">package</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">36</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">fetch</span><span class="o">.</span><span class="n">unsafe</span><span class="o">.</span><span class="n">implicits$$anon$2</span><span class="o">.</span><span class="n">tailRecM</span><span class="o">(</span><span class="n">unsafeImplicits</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">106</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad</span><span class="o">.</span><span class="nc">$anonfun$tailRecM$1</span><span class="o">(</span><span class="nc">StateT</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">281</span><span class="o">)</span>
-  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad$$Lambda$1540</span><span class="o">/</span><span class="mf">730671688.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
+  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad$$Lambda$1537</span><span class="o">/</span><span class="mf">1501086101.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">scala</span><span class="o">.</span><span class="nc">Function1</span><span class="o">.</span><span class="nc">$anonfun$andThen$1</span><span class="o">(</span><span class="nc">Function1</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">52</span><span class="o">)</span>
-  <span class="n">at</span> <span class="n">scala</span><span class="o">.</span><span class="nc">Function1$$Lambda$1550</span><span class="o">/</span><span class="mf">1834700448.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
+  <span class="n">at</span> <span class="n">scala</span><span class="o">.</span><span class="nc">Function1$$Lambda$1547</span><span class="o">/</span><span class="mf">1086800459.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateT</span><span class="o">.</span><span class="nc">$anonfun$run$1</span><span class="o">(</span><span class="nc">StateT</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">58</span><span class="o">)</span>
-  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateT$$Lambda$1541</span><span class="o">/</span><span class="mf">642642853.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
+  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateT$$Lambda$1538</span><span class="o">/</span><span class="mf">1146740419.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">fetch</span><span class="o">.</span><span class="n">unsafe</span><span class="o">.</span><span class="n">implicits$$anon$2</span><span class="o">.</span><span class="n">flatMap</span><span class="o">(</span><span class="n">unsafeImplicits</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">122</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateT</span><span class="o">.</span><span class="n">run</span><span class="o">(</span><span class="nc">StateT</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">58</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad</span><span class="o">.</span><span class="nc">$anonfun$tailRecM$2</span><span class="o">(</span><span class="nc">StateT</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">282</span><span class="o">)</span>
-  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad$$Lambda$1542</span><span class="o">/</span><span class="mf">707034253.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
+  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad$$Lambda$1539</span><span class="o">/</span><span class="mf">1759487189.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">package$$anon$1</span><span class="o">.</span><span class="n">tailRecM</span><span class="o">(</span><span class="n">package</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">36</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">fetch</span><span class="o">.</span><span class="n">unsafe</span><span class="o">.</span><span class="n">implicits$$anon$2</span><span class="o">.</span><span class="n">tailRecM</span><span class="o">(</span><span class="n">unsafeImplicits</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">106</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad</span><span class="o">.</span><span class="nc">$anonfun$tailRecM$1</span><span class="o">(</span><span class="nc">StateT</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">281</span><span class="o">)</span>
-  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad$$Lambda$1540</span><span class="o">/</span><span class="mf">730671688.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
+  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad$$Lambda$1537</span><span class="o">/</span><span class="mf">1501086101.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">scala</span><span class="o">.</span><span class="nc">Function1</span><span class="o">.</span><span class="nc">$anonfun$andThen$1</span><span class="o">(</span><span class="nc">Function1</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">52</span><span class="o">)</span>
-  <span class="n">at</span> <span class="n">scala</span><span class="o">.</span><span class="nc">Function1$$Lambda$1550</span><span class="o">/</span><span class="mf">1834700448.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
+  <span class="n">at</span> <span class="n">scala</span><span class="o">.</span><span class="nc">Function1$$Lambda$1547</span><span class="o">/</span><span class="mf">1086800459.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateT</span><span class="o">.</span><span class="nc">$anonfun$run$1</span><span class="o">(</span><span class="nc">StateT</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">58</span><span class="o">)</span>
-  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateT$$Lambda$1541</span><span class="o">/</span><span class="mf">642642853.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
+  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateT$$Lambda$1538</span><span class="o">/</span><span class="mf">1146740419.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">fetch</span><span class="o">.</span><span class="n">unsafe</span><span class="o">.</span><span class="n">implicits$$anon$2</span><span class="o">.</span><span class="n">flatMap</span><span class="o">(</span><span class="n">unsafeImplicits</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">122</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateT</span><span class="o">.</span><span class="n">run</span><span class="o">(</span><span class="nc">StateT</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">58</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad</span><span class="o">.</span><span class="nc">$anonfun$tailRecM$2</span><span class="o">(</span><span class="nc">StateT</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">282</span><span class="o">)</span>
-  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad$$Lambda$1542</span><span class="o">/</span><span class="mf">707034253.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
+  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad$$Lambda$1539</span><span class="o">/</span><span class="mf">1759487189.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">package$$anon$1</span><span class="o">.</span><span class="n">tailRecM</span><span class="o">(</span><span class="n">package</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">36</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">fetch</span><span class="o">.</span><span class="n">unsafe</span><span class="o">.</span><span class="n">implicits$$anon$2</span><span class="o">.</span><span class="n">tailRecM</span><span class="o">(</span><span class="n">unsafeImplicits</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">106</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad</span><span class="o">.</span><span class="nc">$anonfun$tailRecM$1</span><span class="o">(</span><span class="nc">StateT</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">281</span><span class="o">)</span>
-  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad$$Lambda$1540</span><span class="o">/</span><span class="mf">730671688.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
+  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateTMonad$$Lambda$1537</span><span class="o">/</span><span class="mf">1501086101.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateT</span><span class="o">.</span><span class="nc">$anonfun$run$1</span><span class="o">(</span><span class="nc">StateT</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">58</span><span class="o">)</span>
-  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateT$$Lambda$1541</span><span class="o">/</span><span class="mf">642642853.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
+  <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateT$$Lambda$1538</span><span class="o">/</span><span class="mf">1146740419.</span><span class="n">apply</span><span class="o">(</span><span class="nc">Unknown</span> <span class="nc">Source</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">fetch</span><span class="o">.</span><span class="n">unsafe</span><span class="o">.</span><span class="n">implicits$$anon$2</span><span class="o">.</span><span class="n">flatMap</span><span class="o">(</span><span class="n">unsafeImplicits</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">122</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateT</span><span class="o">.</span><span class="n">run</span><span class="o">(</span><span class="nc">StateT</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">58</span><span class="o">)</span>
   <span class="n">at</span> <span class="n">cats</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="nc">StateT</span><span class="o">.</span><span class="n">runA</span><span class="o">(</span><span class="nc">StateT</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">70</span><span class="o">)</span>
@@ -1212,10 +1212,10 @@ directly.</p>
 <p>If the fetches are to the same data source they will be batched; if they aren’t, they will be evaluated at the same time.</p>
 
 <div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">[</span><span class="kt">Id</span><span class="o">](</span><span class="n">fetchJoined</span><span class="o">)</span>
-<span class="c1">// ~~&gt; [289] One User 2
-// &lt;~~ [289] One User 2
-// ~~&gt; [289] One Post 1
-// &lt;~~ [289] One Post 1
+<span class="c1">// ~~&gt; [381] One User 2
+// &lt;~~ [381] One User 2
+// ~~&gt; [381] One Post 1
+// &lt;~~ [381] One Post 1
 // res50: cats.Id[(Post, User)] = (Post(1,2,An article),User(2,@two))
 </span></code></pre>
 </div>
@@ -1232,8 +1232,8 @@ and batching when possible.</p>
 <p>Note that <code class="highlighter-rouge">Fetch#sequence</code> is not as general as the <code class="highlighter-rouge">sequence</code> method from <code class="highlighter-rouge">Traverse</code>, but performs the same optimizations.</p>
 
 <div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">[</span><span class="kt">Id</span><span class="o">](</span><span class="n">fetchSequence</span><span class="o">)</span>
-<span class="c1">// ~~&gt; [289] Many Users NonEmptyList(1, 2, 3)
-// &lt;~~ [289] Many Users NonEmptyList(1, 2, 3)
+<span class="c1">// ~~&gt; [381] Many Users NonEmptyList(1, 2, 3)
+// &lt;~~ [381] Many Users NonEmptyList(1, 2, 3)
 // res51: cats.Id[List[User]] = List(User(1,@one), User(2,@two), User(3,@three))
 </span></code></pre>
 </div>
@@ -1249,8 +1249,8 @@ and batching when possible.</p>
 <p>Note that <code class="highlighter-rouge">Fetch#traverse</code> is not as general as the <code class="highlighter-rouge">traverse</code> method from <code class="highlighter-rouge">Traverse</code>, but performs the same optimizations.</p>
 
 <div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">[</span><span class="kt">Id</span><span class="o">](</span><span class="n">fetchTraverse</span><span class="o">)</span>
-<span class="c1">// ~~&gt; [289] Many Users NonEmptyList(1, 2, 3)
-// &lt;~~ [289] Many Users NonEmptyList(1, 2, 3)
+<span class="c1">// ~~&gt; [381] Many Users NonEmptyList(1, 2, 3)
+// &lt;~~ [381] Many Users NonEmptyList(1, 2, 3)
 // res52: cats.Id[List[User]] = List(User(1,@one), User(2,@two), User(3,@three))
 </span></code></pre>
 </div>
@@ -1283,10 +1283,10 @@ as a more powerful alternative to the <code class="highlighter-rouge">product</c
 <p>Notice how the queries to posts are batched.</p>
 
 <div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="n">fetchThree</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Id</span><span class="o">]</span>
-<span class="c1">// ~~&gt; [289] Many Posts NonEmptyList(2, 1)
-// &lt;~~ [289] Many Posts NonEmptyList(2, 1)
-// ~~&gt; [289] One User 2
-// &lt;~~ [289] One User 2
+<span class="c1">// ~~&gt; [381] Many Posts NonEmptyList(2, 1)
+// &lt;~~ [381] Many Posts NonEmptyList(2, 1)
+// ~~&gt; [381] One User 2
+// &lt;~~ [381] One User 2
 // res54: cats.Id[(Post, User, Post)] = (Post(1,2,An article),User(2,@two),Post(2,3,Another article))
 </span></code></pre>
 </div>
@@ -1300,8 +1300,8 @@ fetches.</p>
 <span class="c1">// fetchFriends: fetch.Fetch[String] = Free(...)
 </span>
 <span class="n">fetchFriends</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Id</span><span class="o">]</span>
-<span class="c1">// ~~&gt; [289] Many Users NonEmptyList(2, 1)
-// &lt;~~ [289] Many Users NonEmptyList(2, 1)
+<span class="c1">// ~~&gt; [381] Many Users NonEmptyList(2, 1)
+// &lt;~~ [381] Many Users NonEmptyList(2, 1)
 // res55: cats.Id[String] = @one is friends with @two
 </span></code></pre>
 </div>
@@ -1314,8 +1314,8 @@ fetches.</p>
 <span class="c1">// fetchFriends: fetch.Fetch[String] = Free(...)
 </span>
 <span class="n">fetchFriends</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Id</span><span class="o">]</span>
-<span class="c1">// ~~&gt; [289] Many Users NonEmptyList(2, 1)
-// &lt;~~ [289] Many Users NonEmptyList(2, 1)
+<span class="c1">// ~~&gt; [381] Many Users NonEmptyList(2, 1)
+// &lt;~~ [381] Many Users NonEmptyList(2, 1)
 // res56: cats.Id[String] = @one is friends with @two
 </span></code></pre>
 </div>
@@ -1356,12 +1356,12 @@ contains an instance of <code class="highlighter-rouge">FetchMonadError[Future]<
 <p>For the sake of the examples we’ll use the global <code class="highlighter-rouge">ExecutionContext</code>.</p>
 
 <div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="nc">Await</span><span class="o">.</span><span class="n">result</span><span class="o">(</span><span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">[</span><span class="kt">Future</span><span class="o">](</span><span class="n">homePage</span><span class="o">),</span>  <span class="nc">Duration</span><span class="o">.</span><span class="nc">Inf</span><span class="o">)</span>
-<span class="c1">// ~~&gt; [292] Many Posts NonEmptyList(1, 2, 3)
-// &lt;~~ [292] Many Posts NonEmptyList(1, 2, 3)
-// ~~&gt; [290] Many Users NonEmptyList(2, 3)
-// ~~&gt; [292] Many Post Topics NonEmptyList(Post(2,3,Another article), Post(3,4,Yet another article))
-// &lt;~~ [290] Many Users NonEmptyList(2, 3)
-// &lt;~~ [292] Many Post Topics NonEmptyList(Post(2,3,Another article), Post(3,4,Yet another article))
+<span class="c1">// ~~&gt; [382] Many Posts NonEmptyList(1, 2, 3)
+// &lt;~~ [382] Many Posts NonEmptyList(1, 2, 3)
+// ~~&gt; [384] Many Users NonEmptyList(2, 3)
+// ~~&gt; [386] Many Post Topics NonEmptyList(Post(2,3,Another article), Post(3,4,Yet another article))
+// &lt;~~ [384] Many Users NonEmptyList(2, 3)
+// &lt;~~ [386] Many Post Topics NonEmptyList(Post(2,3,Another article), Post(3,4,Yet another article))
 // res59: (List[Post], Map[PostTopic,Int]) = (List(Post(2,3,Another article), Post(1,2,An article)),Map(monad -&gt; 1, applicative -&gt; 1))
 </span></code></pre>
 </div>
@@ -1388,18 +1388,18 @@ contains an instance of <code class="highlighter-rouge">FetchMonadError[Future]<
 <p>Note that running a fetch to a <code class="highlighter-rouge">Task</code> doesn’t trigger execution. We can interpret a task to a <code class="highlighter-rouge">Future</code> with the <code class="highlighter-rouge">Task#runAsync</code> method. We’ll use the global scheduler for now.</p>
 
 <div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="k">val</span> <span class="n">scheduler</span> <span class="k">=</span> <span class="nc">Scheduler</span><span class="o">.</span><span class="nc">Implicits</span><span class="o">.</span><span class="n">global</span>
-<span class="c1">// scheduler: monix.execution.Scheduler = monix.execution.schedulers.AsyncScheduler@758999d1
+<span class="c1">// scheduler: monix.execution.Scheduler = monix.execution.schedulers.AsyncScheduler@3c4e2b03
 </span>
 <span class="k">val</span> <span class="n">task</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">[</span><span class="kt">Task</span><span class="o">](</span><span class="n">homePage</span><span class="o">)</span>
-<span class="c1">// task: monix.eval.Task[(List[Post], Map[PostTopic,Int])] = Task.FlatMap(Task.FlatMap(Task.Now(cats.data.StateTMonad$$Lambda$1540/730671688@54fea643), cats.data.StateT$$Lambda$1541/642642853@1e7bfbf8), monix.eval.Task$$Lambda$1924/125254632@71f0544e)
+<span class="c1">// task: monix.eval.Task[(List[Post], Map[PostTopic,Int])] = Task.FlatMap(Task@2072183283, monix.eval.Task$$Lambda$1921/289279867@55393617)
 </span>
 <span class="nc">Await</span><span class="o">.</span><span class="n">result</span><span class="o">(</span><span class="n">task</span><span class="o">.</span><span class="n">runAsync</span><span class="o">(</span><span class="n">scheduler</span><span class="o">),</span> <span class="nc">Duration</span><span class="o">.</span><span class="nc">Inf</span><span class="o">)</span>
-<span class="c1">// ~~&gt; [292] Many Posts NonEmptyList(1, 2, 3)
-// &lt;~~ [292] Many Posts NonEmptyList(1, 2, 3)
-// ~~&gt; [290] Many Post Topics NonEmptyList(Post(2,3,Another article), Post(3,4,Yet another article))
-// ~~&gt; [291] Many Users NonEmptyList(2, 3)
-// &lt;~~ [290] Many Post Topics NonEmptyList(Post(2,3,Another article), Post(3,4,Yet another article))
-// &lt;~~ [291] Many Users NonEmptyList(2, 3)
+<span class="c1">// ~~&gt; [384] Many Posts NonEmptyList(1, 2, 3)
+// &lt;~~ [384] Many Posts NonEmptyList(1, 2, 3)
+// ~~&gt; [384] Many Post Topics NonEmptyList(Post(2,3,Another article), Post(3,4,Yet another article))
+// ~~&gt; [382] Many Users NonEmptyList(2, 3)
+// &lt;~~ [384] Many Post Topics NonEmptyList(Post(2,3,Another article), Post(3,4,Yet another article))
+// &lt;~~ [382] Many Users NonEmptyList(2, 3)
 // res61: (List[Post], Map[PostTopic,Int]) = (List(Post(2,3,Another article), Post(1,2,An article)),Map(monad -&gt; 1, applicative -&gt; 1))
 </span></code></pre>
 </div>
@@ -1409,15 +1409,15 @@ contains an instance of <code class="highlighter-rouge">FetchMonadError[Future]<
 <p>In the JVM, you may want to choose a <a href="https://monix.io/docs/2x/execution/scheduler.html#builders-on-the-jvm">scheduler tuned for IO workloads</a> to interpret fetches.</p>
 
 <div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="k">val</span> <span class="n">ioSched</span> <span class="k">=</span> <span class="nc">Scheduler</span><span class="o">.</span><span class="n">io</span><span class="o">(</span><span class="n">name</span><span class="o">=</span><span class="s">"io-scheduler"</span><span class="o">)</span>
-<span class="c1">// ioSched: monix.execution.schedulers.SchedulerService = monix.execution.schedulers.ExecutorScheduler$FromSimpleExecutor@265b3e87
+<span class="c1">// ioSched: monix.execution.schedulers.SchedulerService = monix.execution.schedulers.ExecutorScheduler$FromSimpleExecutor@51f51a19
 </span>
 <span class="nc">Await</span><span class="o">.</span><span class="n">result</span><span class="o">(</span><span class="n">task</span><span class="o">.</span><span class="n">runAsync</span><span class="o">(</span><span class="n">ioSched</span><span class="o">),</span> <span class="nc">Duration</span><span class="o">.</span><span class="nc">Inf</span><span class="o">)</span>
-<span class="c1">// ~~&gt; [296] Many Posts NonEmptyList(1, 2, 3)
-// &lt;~~ [296] Many Posts NonEmptyList(1, 2, 3)
-// ~~&gt; [298] Many Post Topics NonEmptyList(Post(2,3,Another article), Post(3,4,Yet another article))
-// ~~&gt; [299] Many Users NonEmptyList(2, 3)
-// &lt;~~ [298] Many Post Topics NonEmptyList(Post(2,3,Another article), Post(3,4,Yet another article))
-// &lt;~~ [299] Many Users NonEmptyList(2, 3)
+<span class="c1">// ~~&gt; [388] Many Posts NonEmptyList(1, 2, 3)
+// &lt;~~ [388] Many Posts NonEmptyList(1, 2, 3)
+// ~~&gt; [389] Many Post Topics NonEmptyList(Post(2,3,Another article), Post(3,4,Yet another article))
+// ~~&gt; [388] Many Users NonEmptyList(2, 3)
+// &lt;~~ [389] Many Post Topics NonEmptyList(Post(2,3,Another article), Post(3,4,Yet another article))
+// &lt;~~ [388] Many Users NonEmptyList(2, 3)
 // res62: (List[Post], Map[PostTopic,Int]) = (List(Post(2,3,Another article), Post(1,2,An article)),Map(monad -&gt; 1, applicative -&gt; 1))
 </span></code></pre>
 </div>
@@ -1506,15 +1506,15 @@ Note that Cats’ typeclass hierarchy is expressed with inheritance and methods 
 <p>We can now import the above implicit and run a fetch to our custom type, let’s give it a go:</p>
 
 <div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="k">val</span> <span class="n">task</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">(</span><span class="n">homePage</span><span class="o">)(</span><span class="n">taskFetchMonadError</span><span class="o">)</span>
-<span class="c1">// task: monix.eval.Task[(List[Post], Map[PostTopic,Int])] = Task.FlatMap(Task.FlatMap(Task.Now(cats.data.StateTMonad$$Lambda$1540/730671688@4d85ac49), cats.data.StateT$$Lambda$1541/642642853@2a6291fe), monix.eval.Task$$Lambda$1924/125254632@4d176960)
+<span class="c1">// task: monix.eval.Task[(List[Post], Map[PostTopic,Int])] = Task.FlatMap(Task@1313221152, monix.eval.Task$$Lambda$1921/289279867@6523ce91)
 </span>
 <span class="nc">Await</span><span class="o">.</span><span class="n">result</span><span class="o">(</span><span class="n">task</span><span class="o">.</span><span class="n">runAsync</span><span class="o">(</span><span class="n">scheduler</span><span class="o">),</span> <span class="nc">Duration</span><span class="o">.</span><span class="nc">Inf</span><span class="o">)</span>
-<span class="c1">// ~~&gt; [290] Many Posts NonEmptyList(1, 2, 3)
-// &lt;~~ [290] Many Posts NonEmptyList(1, 2, 3)
-// ~~&gt; [290] Many Post Topics NonEmptyList(Post(2,3,Another article), Post(3,4,Yet another article))
-// ~~&gt; [293] Many Users NonEmptyList(2, 3)
-// &lt;~~ [290] Many Post Topics NonEmptyList(Post(2,3,Another article), Post(3,4,Yet another article))
-// &lt;~~ [293] Many Users NonEmptyList(2, 3)
+<span class="c1">// ~~&gt; [384] Many Posts NonEmptyList(1, 2, 3)
+// &lt;~~ [384] Many Posts NonEmptyList(1, 2, 3)
+// ~~&gt; [384] Many Users NonEmptyList(2, 3)
+// ~~&gt; [382] Many Post Topics NonEmptyList(Post(2,3,Another article), Post(3,4,Yet another article))
+// &lt;~~ [384] Many Users NonEmptyList(2, 3)
+// &lt;~~ [382] Many Post Topics NonEmptyList(Post(2,3,Another article), Post(3,4,Yet another article))
 // res66: (List[Post], Map[PostTopic,Int]) = (List(Post(2,3,Another article), Post(1,2,An article)),Map(monad -&gt; 1, applicative -&gt; 1))
 </span></code></pre>
 </div>
@@ -1553,19 +1553,19 @@ visualize fetch executions using the environment.</p>
 <span class="c1">// import fetch.debug.describe
 </span>
 <span class="k">val</span> <span class="n">env</span> <span class="k">=</span> <span class="n">interestingFetch</span><span class="o">.</span><span class="n">runE</span><span class="o">[</span><span class="kt">Id</span><span class="o">]</span>
-<span class="c1">// ~~&gt; [289] Many Users NonEmptyList(1, 2)
-// &lt;~~ [289] Many Users NonEmptyList(1, 2)
-// ~~&gt; [289] One User 3
-// &lt;~~ [289] One User 3
-// ~~&gt; [289] Many Posts NonEmptyList(1, 2, 3)
-// &lt;~~ [289] Many Posts NonEmptyList(1, 2, 3)
-// env: cats.Id[fetch.FetchEnv] = FetchEnv(InMemoryCache(Map((Post,2) -&gt; Post(2,3,Another article), (User,2) -&gt; User(2,@two), (User,3) -&gt; User(3,@three), (User,1) -&gt; User(1,@one), (Post,3) -&gt; Post(3,4,Yet another article), (Post,1) -&gt; Post(1,2,An article))),Queue(Round(InMemoryCache(Map()),FetchMany(NonEmptyList(1, 2),User),NonEmptyList(User(1,@one), User(2,@two)),24784560814990,24784676453248), Round(InMemoryCache(Map((User,1) -&gt; User(1,@one), (User,2) -&gt; User(2,@two))),Concurrent(NonEmptyList(FetchOne(3,User), FetchMany(NonEmptyList(1, 2, 3),Post))),NonEmptyList(Map(3 -&gt; User(3,@three)), Map(1 -&gt; Post(1,2,An article), 2 -&gt; Post(2,3,Another article), 3 -&gt; Post(3,4,Yet another article))),24784677989519,24784888907680)))
+<span class="c1">// ~~&gt; [381] Many Users NonEmptyList(1, 2)
+// &lt;~~ [381] Many Users NonEmptyList(1, 2)
+// ~~&gt; [381] One User 3
+// &lt;~~ [381] One User 3
+// ~~&gt; [381] Many Posts NonEmptyList(1, 2, 3)
+// &lt;~~ [381] Many Posts NonEmptyList(1, 2, 3)
+// env: cats.Id[fetch.FetchEnv] = FetchEnv(InMemoryCache(Map((Post,2) -&gt; Post(2,3,Another article), (User,2) -&gt; User(2,@two), (User,3) -&gt; User(3,@three), (User,1) -&gt; User(1,@one), (Post,3) -&gt; Post(3,4,Yet another article), (Post,1) -&gt; Post(1,2,An article))),Queue(Round(InMemoryCache(Map()),FetchMany(NonEmptyList(1, 2),User),NonEmptyList(User(1,@one), User(2,@two)),114495442929488,114495564787396), Round(InMemoryCache(Map((User,1) -&gt; User(1,@one), (User,2) -&gt; User(2,@two))),Concurrent(NonEmptyList(FetchOne(3,User), FetchMany(NonEmptyList(1, 2, 3),Post))),NonEmptyList(Map(3 -&gt; User(3,@three)), Map(1 -&gt; Post(1,2,An article), 2 -&gt; Post(2,3,Another article), 3 -&gt; Post(3,4,Yet another article))),114495566549413,114495773698964)))
 </span>
 <span class="n">println</span><span class="o">(</span><span class="n">describe</span><span class="o">(</span><span class="n">env</span><span class="o">))</span>
-<span class="c1">// Fetch execution took 0.328093 seconds
+<span class="c1">// Fetch execution took 0.330769 seconds
 // 
-//   [Fetch many] From `User` with ids List(1, 2) took 0.000116 seconds
-//   [Concurrent] took 0.000211 seconds
+//   [Fetch many] From `User` with ids List(1, 2) took 0.000122 seconds
+//   [Concurrent] took 0.000207 seconds
 //     [Fetch one] From `User` with id 3
 //     [Fetch many] From `Post` with ids List(1, 2, 3)
 </span></code></pre>
@@ -1604,8 +1604,9 @@ visualize fetch executions using the environment.</p>
 languages:['scala','java','bash']
 });
 hljs.initHighlighting();
-             </script><script src="/fetch/js/automenu.js"></script><script src="/fetch/js/main.js"></script><script src="/fetch/js/kazari.js"></script><script>
+             </script><script src="/fetch/js/automenu.js"></script><script>((window.gitter = {}).chat = {}).options = {
+room: '47deg/fetch'};</script><script src="https://sidecar.gitter.im/dist/sidecar.v1.js"></script><script src="/fetch/js/main.js"></script><script src="/fetch/js/kazari.js"></script><script>
 $(document).ready(function() {
-	kazari.KazariPlugin().decorateCode('https://scala-evaluator-212.herokuapp.com/eval', 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.S2F6YXJp.Jl2eqMfw8IakJF93PjxTbrf-8YUJgX5OoOfy5JHE8Yw', '', 'solarized-dark')
+	kazari.KazariPlugin().decorateCode('https://scala-evaluator-212.herokuapp.com/eval', 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.S2F6YXJp.Jl2eqMfw8IakJF93PjxTbrf-8YUJgX5OoOfy5JHE8Yw', '', 'monokai')
 })
     </script></body></html>
