@@ -38,9 +38,8 @@ class FetchAsyncQueryTests extends AsyncFreeSpec with Matchers {
       Query.async((ok, fail) => {
         ok(Option(Article(id.id, "An article with id " + id.id)))
       })
-    override def fetchMany(ids: NonEmptyList[ArticleId]): Query[Map[ArticleId, Article]] = {
+    override def fetchMany(ids: NonEmptyList[ArticleId]): Query[Map[ArticleId, Article]] =
       batchingNotSupported(ids)
-    }
   }
 
   def article(id: Int): Fetch[Article] = Fetch(ArticleId(id))
@@ -54,9 +53,8 @@ class FetchAsyncQueryTests extends AsyncFreeSpec with Matchers {
       Query.async((ok, fail) => {
         ok(Option(Author(id.id, "@egg" + id.id)))
       })
-    override def fetchMany(ids: NonEmptyList[AuthorId]): Query[Map[AuthorId, Author]] = {
+    override def fetchMany(ids: NonEmptyList[AuthorId]): Query[Map[AuthorId, Author]] =
       batchingNotSupported(ids)
-    }
   }
 
   def author(a: Article): Fetch[Author] = Fetch(AuthorId(a.author))

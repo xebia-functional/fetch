@@ -37,9 +37,8 @@ object TestHelper {
   case class One(id: Int)
   implicit object OneSource extends DataSource[One, Int] {
     override def name = "OneSource"
-    override def fetchOne(id: One): Query[Option[Int]] = {
+    override def fetchOne(id: One): Query[Option[Int]] =
       Query.sync(Option(id.id))
-    }
     override def fetchMany(ids: NonEmptyList[One]): Query[Map[One, Int]] =
       Query.sync(ids.toList.map(one => (one, one.id)).toMap)
   }
@@ -244,6 +243,17 @@ class FetchTests extends AsyncFreeSpec with Matchers {
       .map(env => {
         env.rounds.size shouldEqual 2
       })
+  }
+
+  "Fetch's custom traverse doesn't cause stack overflows for long lists" in {
+    val length = 2000
+    val fetch  = Fetch.traverse(List.range(0, length))(one)
+
+    Fetch
+      .runEnv[Future](fetch)
+      .map { env =>
+        env.rounds.size shouldEqual 1
+      }
   }
 
   "Identities are deduped when batched" in {

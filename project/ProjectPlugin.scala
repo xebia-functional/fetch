@@ -17,7 +17,8 @@ object ProjectPlugin extends AutoPlugin {
 
   object autoImport {
 
-    lazy val commonCrossDependencies: Seq[ModuleID] = Seq(%%("cats-free"), %%("scalatest") % "test")
+    lazy val commonCrossDependencies: Seq[ModuleID] =
+      Seq(%%("cats-free"), %%("scalatest") % "test")
 
     lazy val monixCrossDependencies: Seq[ModuleID] = Seq(%%("monix-eval"), %%("monix-cats"))
 
@@ -72,63 +73,63 @@ object ProjectPlugin extends AutoPlugin {
     addCommandAlias("validate", ";clean;validateJS;validateJVM") ++
       addCommandAlias("validateDocs", List("docs/tut", "readme/tut", "project root").asCmd) ++
       addCommandAlias("validateCoverage", ";coverage;validate;coverageReport;coverageOff") ++
-      addCommandAlias("validateJVM", List(
-        "fetchJVM/compile",
-        "monixJVM/compile",
-        "fetchJVM/test",
-        "monixJVM/test",
-        "project root").asCmd) ++
-      addCommandAlias("validateJS", List(
-        "fetchJS/compile",
-        "monixJS/compile",
-        "fetchJS/test",
-        "monixJS/test",
-        "project root").asCmd)
+      addCommandAlias(
+        "validateJVM",
+        List(
+          "fetchJVM/compile",
+          "monixJVM/compile",
+          "fetchJVM/test",
+          "monixJVM/test",
+          "project root").asCmd) ++
+      addCommandAlias(
+        "validateJS",
+        List("fetchJS/compile", "monixJS/compile", "fetchJS/test", "monixJS/test", "project root").asCmd)
 
-  override def projectSettings: Seq[Def.Setting[_]] = commandAliases ++
-    Seq(
-      description := "Simple & Efficient data access for Scala and Scala.js",
-      orgProjectName := "Fetch",
-      startYear := Option(2016),
-      homepage := Option(url("http://47deg.github.io/fetch/")),
-      orgBadgeListSetting := List(
-        GitterBadge.apply(_),
-        TravisBadge.apply(_),
-        CodecovBadge.apply(_),
-        MavenCentralBadge.apply(_),
-        LicenseBadge.apply(_),
-        ScalaLangBadge.apply(_),
-        ScalaJSBadge.apply(_),
-        GitHubIssuesBadge.apply(_)
-      ),
-      orgSupportedScalaJSVersion := Some("0.6.15"),
-      orgScriptTaskListSetting := List(
-        orgValidateFiles.asRunnableItem,
-        "validateDocs".asRunnableItemFull,
-        "validateCoverage".asRunnableItemFull
-      ),
-      orgUpdateDocFilesSetting += baseDirectory.value / "tut",
-      scalaOrganization := "org.scala-lang",
-      scalaVersion := "2.12.2",
-      crossScalaVersions := List("2.10.6", "2.11.11", "2.12.2"),
-      resolvers += Resolver.sonatypeRepo("snapshots"),
-      scalacOptions := Seq(
-        "-unchecked",
-        "-deprecation",
-        "-feature",
-        "-Ywarn-dead-code",
-        "-language:higherKinds",
-        "-language:existentials",
-        "-language:postfixOps"
-      ),
-      libraryDependencies ++= (scalaBinaryVersion.value match {
-        case "2.10" =>
-          compilerPlugin(%%("paradise") cross CrossVersion.full) :: Nil
-        case _ =>
-          Nil
-      }),
-      ScoverageKeys.coverageFailOnMinimum := false
-    ) ++ shellPromptSettings
+  override def projectSettings: Seq[Def.Setting[_]] =
+    commandAliases ++
+      Seq(
+        description := "Simple & Efficient data access for Scala and Scala.js",
+        orgProjectName := "Fetch",
+        startYear := Option(2016),
+        homepage := Option(url("http://47deg.github.io/fetch/")),
+        orgBadgeListSetting := List(
+          GitterBadge.apply(_),
+          TravisBadge.apply(_),
+          CodecovBadge.apply(_),
+          MavenCentralBadge.apply(_),
+          LicenseBadge.apply(_),
+          ScalaLangBadge.apply(_),
+          ScalaJSBadge.apply(_),
+          GitHubIssuesBadge.apply(_)
+        ),
+        orgSupportedScalaJSVersion := Some("0.6.15"),
+        orgScriptTaskListSetting := List(
+          orgValidateFiles.asRunnableItem,
+          "validateDocs".asRunnableItemFull,
+          "validateCoverage".asRunnableItemFull
+        ),
+        orgUpdateDocFilesSetting += baseDirectory.value / "tut",
+        scalaOrganization := "org.scala-lang",
+        scalaVersion := "2.12.2",
+        crossScalaVersions := List("2.10.6", "2.11.11", "2.12.2"),
+        resolvers += Resolver.sonatypeRepo("snapshots"),
+        scalacOptions := Seq(
+          "-unchecked",
+          "-deprecation",
+          "-feature",
+          "-Ywarn-dead-code",
+          "-language:higherKinds",
+          "-language:existentials",
+          "-language:postfixOps"
+        ),
+        libraryDependencies ++= (scalaBinaryVersion.value match {
+          case "2.10" =>
+            compilerPlugin(%%("paradise") cross CrossVersion.full) :: Nil
+          case _ =>
+            Nil
+        }),
+        ScoverageKeys.coverageFailOnMinimum := false
+      ) ++ shellPromptSettings
 
   implicit class CommandAliasOps(command: String) {
 

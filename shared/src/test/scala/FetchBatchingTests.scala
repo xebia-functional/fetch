@@ -38,9 +38,10 @@ class FetchBatchingTests extends AsyncFreeSpec with Matchers {
   case class BatchedDataSeq(id: Int)
   implicit object MaxBatchSourceSeq extends DataSource[BatchedDataSeq, Int] {
     override def name = "BatchSourceSeq"
-    override def fetchOne(id: BatchedDataSeq): Query[Option[Int]] = {
-      Query.sync(Option(id.id))
-    }
+
+    override def fetchOne(id: BatchedDataSeq): Query[Option[Int]] =
+      Query.sync(Some(id.id))
+
     override def fetchMany(ids: NonEmptyList[BatchedDataSeq]): Query[Map[BatchedDataSeq, Int]] =
       Query.sync(ids.toList.map(one => (one, one.id)).toMap)
 
@@ -52,9 +53,10 @@ class FetchBatchingTests extends AsyncFreeSpec with Matchers {
   case class BatchedDataPar(id: Int)
   implicit object MaxBatchSourcePar extends DataSource[BatchedDataPar, Int] {
     override def name = "BatchSourcePar"
-    override def fetchOne(id: BatchedDataPar): Query[Option[Int]] = {
-      Query.sync(Option(id.id))
-    }
+
+    override def fetchOne(id: BatchedDataPar): Query[Option[Int]] =
+      Query.sync(Some(id.id))
+
     override def fetchMany(ids: NonEmptyList[BatchedDataPar]): Query[Map[BatchedDataPar, Int]] =
       Query.sync(ids.toList.map(one => (one, one.id)).toMap)
 
@@ -128,19 +130,19 @@ class FetchBatchingTests extends AsyncFreeSpec with Matchers {
 
   "Very deep fetches don't overflow stack or heap" in {
     import cats.syntax.traverse._
+    import cats.syntax.flatMap._
 
     val depth = 200
-    val fetch: Fetch[List[Int]] = (1 to depth).toList
-      .map((x) => (0 until 2).toList.traverse(fetchBatchedDataSeq))
-      .foldM(
-        List.empty[Int]
-      )((_, f) => f)
+    val list  = (1 to depth).toList
+    val fetch: Fetch[List[Int]] = list
+      .map(x => (0 until x).toList.traverse(fetchBatchedDataSeq))
+      .foldLeft(Fetch.pure(List.empty[Int]))(_ >> _)
 
     Fetch.runFetch[Future](fetch).map {
       case (env, res) =>
-        res shouldEqual List(0, 1)
-        totalFetched(env.rounds) shouldEqual 2
-        env.rounds.size shouldEqual 1
+        res shouldEqual (0 until depth).toList
+        totalFetched(env.rounds) shouldEqual depth
+        env.rounds.size shouldEqual depth
     }
   }
 }

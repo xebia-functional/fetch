@@ -18,11 +18,11 @@ package fetch.monixTask
 
 import fetch._
 
-import cats.{Eval, Now, Later, Always, Monad}
+import cats.{Always, Eval, Later, Now}
 
 import monix.cats._
 import monix.eval.Task
-import monix.execution.{Scheduler, Cancelable}
+import monix.execution.{Cancelable, Scheduler}
 
 import scala.concurrent.duration._
 
