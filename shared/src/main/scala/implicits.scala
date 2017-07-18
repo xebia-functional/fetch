@@ -29,8 +29,7 @@ object implicits {
   // Shared Timer object to schedule timeouts
   val timer: Timer = new Timer()
 
-
- implicit def fetchFutureFetchMonadError(implicit ec: ExecutionContext): FetchMonadError[Future] =
+  implicit def fetchFutureFetchMonadError(implicit ec: ExecutionContext): FetchMonadError[Future] =
     new FetchMonadError.FromMonadError[Future] {
       override def runQuery[A](j: Query[A]): Future[A] = j match {
 
@@ -43,38 +42,15 @@ object implicits {
           val p = Promise[A]()
 
           timeout match {
+
+            // Handle the case where there is a finite timeout requested
             case finite: FiniteDuration =>
 
               // Timer task that completes the future when the timeout occurs
               // if it didn't complete already
               val timerTask = new TimerTask() {
                 def run() : Unit = {
-                  p.synchronized {
-                    if(!p.isCompleted) {
-                      p.failure(new TimeoutException())
-                    }
-                  }
-                }
-              }
-
-              // Callback on success, has no effect if the timeout occured
-              val successComplete : Query.Callback[A] = {
-                a =>
-                p.synchronized {
-                  if(!p.isCompleted) {
-                    p.success(a)
-                  }
-                }
-              }
-
-              // Callback on failure, has no effect after timeout
-              val failureComplete : Query.Errback = {
-                err =>
-                p.synchronized {
-                  if(!p.isCompleted) {
-
-                    p.failure(err)
-                  }
+                  p.tryFailure(new TimeoutException())
                 }
               }
 
@@ -84,7 +60,7 @@ object implicits {
               // Execute the user's action
               ec.execute(new Runnable {
                 def run() = {
-                  ac(successComplete, failureComplete)
+                  ac(p.trySuccess _, p.tryFailure _)
                 }
               })
 
@@ -99,8 +75,6 @@ object implicits {
               })
 
           }
-
-
 
           p.future
         }
