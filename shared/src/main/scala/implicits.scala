@@ -21,7 +21,6 @@ import java.util.{Timer, TimerTask}
 import java.util.concurrent.TimeoutException
 import scala.concurrent.duration._
 import cats.instances.future._
-import cats.MonadError
 import scala.concurrent.{ExecutionContext, Future, Promise}
 
 object implicits {
@@ -33,11 +32,11 @@ object implicits {
     new FetchMonadError.FromMonadError[Future] {
       override def runQuery[A](j: Query[A]): Future[A] = j match {
 
-        case Sync(e) => {
+        case Sync(e) =>
           Future.successful({e.value})
-        }
 
-        case Async(ac, timeout) => {
+
+        case Async(ac, timeout) =>
 
           val p = Promise[A]()
 
@@ -59,8 +58,8 @@ object implicits {
 
               // Execute the user's action
               ec.execute(new Runnable {
-                def run() = {
-                  ac(p.trySuccess _, p.tryFailure _)
+                def run() : Unit = {
+                  ac(p.trySuccess, p.tryFailure)
                 }
               })
 
@@ -69,15 +68,15 @@ object implicits {
 
               // Execute the user's action
               ec.execute(new Runnable {
-                def run() = {
-                  ac(p.trySuccess _, p.tryFailure _)
+                def run() : Unit = {
+                  ac(p.trySuccess, p.tryFailure)
                 }
               })
 
           }
 
           p.future
-        }
+
         case Ap(qf, qx) =>
           runQuery(qf).zip(runQuery(qx)).map { case (f, x) => f(x) }
       }
