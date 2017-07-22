@@ -69,7 +69,7 @@ object implicits {
               // Execute the user's action
               ec.execute(new Runnable {
                 def run() : Unit = {
-                  ac(p.trySuccess, p.tryFailure)
+                  ac(p.trySuccess _, p.tryFailure)
                 }
               })
 
