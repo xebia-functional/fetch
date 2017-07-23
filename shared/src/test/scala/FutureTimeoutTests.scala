@@ -16,11 +16,9 @@
 
 import scala.concurrent._
 import scala.concurrent.duration._
-
 import org.scalatest._
-
 import cats.data.NonEmptyList
-import cats.instances.list._
+import scala.language.postfixOps
 import fetch._
 import fetch.implicits._
 
@@ -36,7 +34,7 @@ class FutureTimeoutTests extends AsyncFlatSpec with Matchers with OptionValues w
 
   // A sample datasource with configurable delay and timeout
 
-  case class ConfigurableTimeoutDatasource(timeout: FiniteDuration, delay: FiniteDuration) extends DataSource[ArticleId, Article] {
+  case class ConfigurableTimeoutDatasource(timeout: Duration, delay: Duration) extends DataSource[ArticleId, Article] {
     override def name = "ArticleFuture"
     override def fetchOne(id: ArticleId): Query[Option[Article]] =
       Query.async((ok, fail) => {
@@ -62,18 +60,28 @@ class FutureTimeoutTests extends AsyncFlatSpec with Matchers with OptionValues w
     }
   }
 
-    it should "not fail with timeout when a datasource does complete in time" in {
+  it should "not fail with timeout when a datasource does complete in time" in {
 
-      implicit val dsWillTimeout = ConfigurableTimeoutDatasource(750 milliseconds, 250 milliseconds)
+    implicit val dsWillTimeout = ConfigurableTimeoutDatasource(750 milliseconds, 250 milliseconds)
 
-      def article(id: Int): Fetch[Article] = Fetch(ArticleId(id))
+    def article(id: Int): Fetch[Article] = Fetch(ArticleId(id))
 
-      val fetch: Fetch[Article] = article(1)
-      val fut: Future[Article] = Fetch.run[Future](fetch)
+    val fetch: Fetch[Article] = article(1)
+    val fut: Future[Article] = Fetch.run[Future](fetch)
 
-      fut.map{_ shouldEqual Article(1, "An article with id 1")}
-    }
+    fut.map{_ shouldEqual Article(1, "An article with id 1")}
+  }
 
+  it should "not fail with timeout when infinite timeout specified" in {
 
+    implicit val dsWillTimeout = ConfigurableTimeoutDatasource(Duration.Inf, 250 milliseconds)
+
+    def article(id: Int): Fetch[Article] = Fetch(ArticleId(id))
+
+    val fetch: Fetch[Article] = article(1)
+    val fut: Future[Article] = Fetch.run[Future](fetch)
+
+    fut.map{_ shouldEqual Article(1, "An article with id 1")}
+  }
 
 }
