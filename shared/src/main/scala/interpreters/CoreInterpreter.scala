@@ -97,7 +97,8 @@ object CoreInterpreter {
 
     def getResultList(resMap: Map[Any, Any]): M[(FetchEnv, List[Any])] =
       ids
-        .traverseU(id => resMap.get(id).orElse(cache.getWithDS(ds)(id)).toValidNel(id))
+        // .traverseU(id => resMap.get(id).orElse(cache.getWithDS(ds)(id)).toValidNel(id))
+        .traverse(id => resMap.get(id).orElse(cache.getWithDS(ds)(id)).toValidNel(id))
         .fold[M[(FetchEnv, List[Any])]](
           missingIds => M.raiseError(MissingIdentities(env, Map(ds.name -> missingIds.toList))),
           results => {
@@ -141,9 +142,9 @@ object CoreInterpreter {
       (Long, NonEmptyList[(AnyQuery, AnyResult)])] =
       queries.traverse(runFetchQueryAsMap).flatMap { results =>
         val endRound = System.nanoTime()
-        errorOrAllFound(queries, results)
-          .map(zipped => (endRound, zipped.widen[(AnyQuery, AnyResult)]))
-          .fold(M.raiseError, M.pure) // M.fromEither
+        M.fromEither(
+          errorOrAllFound(queries, results)
+          .map(zipped => (endRound, zipped.widen[(AnyQuery, AnyResult)])))
       }
 
     def runFetchQueryAsMap[I, A](op: FetchQuery[I, A]): M[Map[I, A]] =
@@ -163,7 +164,7 @@ object CoreInterpreter {
       val queriesAndResults = NonEmptyList.fromListUnsafe(queries.toList zip results.toList)
 
       val missingIdentitiesOrOK: Validated[Map[DataSourceName, List[Any]], Unit] =
-        queriesAndResults.traverseU_ {
+        queriesAndResults.traverse_ {
           case (FetchOne(id, ds), resultMap) =>
             Either.cond(resultMap.size == 1, (), Map(ds.name -> List(id))).toValidated
           case (FetchMany(as, ds), resultMap) =>
@@ -178,7 +179,8 @@ object CoreInterpreter {
         }
 
       missingIdentitiesOrOK
-        .as(queriesAndResults)
+        // .as(queriesAndResults)
+        .map(_ => queriesAndResults)
         .leftMap(missingIds => MissingIdentities(env, missingIds))
         .toEither
     }
@@ -230,10 +232,10 @@ object CoreInterpreter {
       val ds = query.dataSource
       query.identities
         .reduceMap(id =>
-          idOrResult(id, ds).bimap(NonEmptyList(_, Nil), NonEmptyList(_, Nil)).toIor)
+          idOrResult(id, ds).bimap(NonEmptyList.one, NonEmptyList.one).toIor)
         .leftMap {
-          case NonEmptyList(id, Nil) => NonEmptyList(FetchOne(id, ds), Nil)
-          case ids                   => NonEmptyList(FetchMany(ids, ds), Nil)
+          case NonEmptyList(id, Nil) => NonEmptyList.one(FetchOne(id, ds))
+          case ids                   => NonEmptyList.one(FetchMany(ids, ds))
         }
     }
   }

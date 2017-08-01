@@ -35,7 +35,7 @@ object MaxBatchSizePhase {
 
   private[this] def manyInBatches[I, A](many: FetchMany[I, A]): NonEmptyList[FetchMany[I, A]] = {
     val FetchMany(ids, ds) = many
-    ds.maxBatchSize.fold(NonEmptyList.of(many)) { batchSize =>
+    ds.maxBatchSize.fold(NonEmptyList.one(many)) { batchSize =>
       ids.unsafeListOp {
         _.grouped(batchSize)
           .map(batchIds => FetchMany[I, A](NonEmptyList.fromListUnsafe(batchIds), ds))
@@ -48,13 +48,14 @@ object MaxBatchSizePhase {
     val batchedFetches = manyInBatches(many)
     many.ds.batchExecution match {
       case _ if many.ds.maxBatchSize.isEmpty =>
-        Free.liftF(many)
+        Free.liftF[FetchOp, List[A]](many)
       case Sequential =>
-        batchedFetches.reduceMapM[Fetch, List[A]](Free.liftF(_))
+        batchedFetches.reduceMapM(Free.liftF[FetchOp, List[A]](_))
       case Parallel =>
         val queries = batchedFetches.asInstanceOf[NonEmptyList[FetchQuery[Any, Any]]]
         Free.liftF(Concurrent(queries)).map { results =>
-          many.ids.toList.mapFilter(id => results.get(many.ds.identity(id)))
+          // many.ids.toList.mapFilter(id => results.get(many.ds.identity(id)))
+          many.ids.toList.flatMap(id => results.get(many.ds.identity(id)))
         }
     }
   }
@@ -69,15 +70,15 @@ object MaxBatchSizePhase {
           val batches = manyInBatches(many)
           many.ds.batchExecution match {
             case Parallel   => Ior.left(batches)
-            case Sequential => Ior.right(NonEmptyList.of(batches))
+            case Sequential => Ior.right(NonEmptyList.one(batches))
           }
         case other =>
-          Ior.left(NonEmptyList.of(other))
+          Ior.left(NonEmptyList.one(other))
       }
 
     val batches: NonEmptyList[Batch] =
       parIorSeqBatches.map(transposeNelsUnequalLengths) match {
-        case Ior.Left(par)       => NonEmptyList.of(par)
+        case Ior.Left(par)       => NonEmptyList.one(par)
         case Ior.Right(seqs)     => seqs
         case Ior.Both(par, seqs) => NonEmptyList(par <+> seqs.head, seqs.tail)
       }
@@ -91,7 +92,7 @@ object MaxBatchSizePhase {
     type NEL[A] = NonEmptyList[A]
     // return one transposed line and the rest of the still untransposed lines
     def oneLine(nelnel: NEL[NEL[A]]): (NEL[A], List[NEL[A]]) =
-      nelnel.reduceMap(nel => (NonEmptyList.of(nel.head), nel.tail.toNel.toList))
+      nelnel.reduceMap(nel => (NonEmptyList.one(nel.head), nel.tail.toNel.toList))
 
     // keep transposing until oneLine returns an empty list as "rest lines"
     // List[NEL[A]] == Option[NEL[NEL[A]]]

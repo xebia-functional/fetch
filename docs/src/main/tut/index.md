@@ -75,16 +75,16 @@ implicit object ToStringSource extends DataSource[Int, String]{
   override def name = "ToString"
 
   override def fetchOne(id: Int): Query[Option[String]] = {
-    Query.sync({
+    Query.sync {
       println(s"[${Thread.currentThread.getId}] One ToString $id")
       Option(id.toString)
-    })
+    }
   }
   override def fetchMany(ids: NonEmptyList[Int]): Query[Map[Int, String]] = {
-    Query.sync({
+    Query.sync {
       println(s"[${Thread.currentThread.getId}] Many ToString $ids")
       ids.toList.map(i => (i, i.toString)).toMap
-    })
+    }
   }
 }
 

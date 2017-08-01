@@ -20,7 +20,6 @@ import fetch._
 
 import cats.{Always, Eval, Later, Now}
 
-import monix.cats._
 import monix.eval.Task
 import monix.execution.{Cancelable, Scheduler}
 

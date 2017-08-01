@@ -18,9 +18,12 @@ object ProjectPlugin extends AutoPlugin {
   object autoImport {
 
     lazy val commonCrossDependencies: Seq[ModuleID] =
-      Seq(%%("cats-free"), %%("scalatest") % "test")
+      // Seq(%%("cats-free"), %%("scalatest") % "test")
+      Seq("org.typelevel" %% "cats-free" % "1.0.0-MF", %%("scalatest") % "test")
 
-    lazy val monixCrossDependencies: Seq[ModuleID] = Seq(%%("monix-eval"), %%("monix-cats"))
+    lazy val monixCrossDependencies: Seq[ModuleID] =
+      // Seq(%%("monix-eval"), %%("monix-cats"))
+      "io.monix" %% "monix" % "3.0.0-SNAPSHOT" :: Nil
 
     lazy val micrositeSettings: Seq[Def.Setting[_]] = Seq(
       micrositeName := "Fetch",
@@ -110,8 +113,8 @@ object ProjectPlugin extends AutoPlugin {
         ),
         orgUpdateDocFilesSetting += baseDirectory.value / "tut",
         scalaOrganization := "org.scala-lang",
-        scalaVersion := "2.12.2",
-        crossScalaVersions := List("2.10.6", "2.11.11", "2.12.2"),
+        scalaVersion := "2.12.3",
+        crossScalaVersions := List("2.11.11", "2.12.3"),
         resolvers += Resolver.sonatypeRepo("snapshots"),
         scalacOptions := Seq(
           "-unchecked",
@@ -120,15 +123,9 @@ object ProjectPlugin extends AutoPlugin {
           "-Ywarn-dead-code",
           "-language:higherKinds",
           "-language:existentials",
-          "-language:postfixOps"
-        ),
-        libraryDependencies ++= (scalaBinaryVersion.value match {
-          case "2.10" =>
-            compilerPlugin(%%("paradise") cross CrossVersion.full) :: Nil
-          case _ =>
-            Nil
-        }),
-        ScoverageKeys.coverageFailOnMinimum := false
+          "-language:postfixOps",
+          "-Ypartial-unification"
+        )
       ) ++ shellPromptSettings
 
 }

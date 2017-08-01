@@ -64,9 +64,9 @@ class FetchReportingTests extends AsyncFreeSpec with Matchers {
   }
 
   "Single fetches combined with cartesian are run in one round" in {
-    import cats.syntax.cartesian._
+    import cats.syntax.apply._
 
-    val fetch: Fetch[(Int, List[Int])] = (one(1) |@| many(3)).tupled
+    val fetch: Fetch[(Int, List[Int])] = (one(1), many(3)).tupled
     val fut                            = Fetch.runEnv[Future](fetch)
 
     fut.map(_.rounds.size shouldEqual 1)

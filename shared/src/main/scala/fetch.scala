@@ -23,6 +23,7 @@ import cats.data.{NonEmptyList, StateT}
 import cats.free.Free
 import cats.instances.list._
 import scala.concurrent.duration.Duration
+import scala.concurrent.{ExecutionContext, Future}
 
 sealed trait Query[A] extends Product with Serializable
 
@@ -48,6 +49,14 @@ object Query {
       timeout: Duration = Duration.Inf
   ): Query[A] = Async(action, timeout)
 
+  def fromFuture[A](fa: Future[A])(implicit ec: ExecutionContext): Query[A] =
+    async { (ok, fail) =>
+      fa.onComplete {
+        case scala.util.Success(a) => ok(a)
+        case scala.util.Failure(e) => fail(e)
+      }
+    }
+
   implicit val fetchQueryApplicative: Applicative[Query] = new Applicative[Query] {
     def pure[A](x: A): Query[A] = Sync(Eval.now(x))
     def ap[A, B](ff: Query[A => B])(fa: Query[A]): Query[B] =
@@ -67,7 +76,6 @@ case class UnhandledException(env: Env, err: Throwable) extends FetchException
 sealed trait FetchRequest extends Product with Serializable
 
 sealed trait FetchQuery[I, A] extends FetchRequest {
-  def missingIdentities(cache: DataSourceCache): List[I]
   def dataSource: DataSource[I, A]
   def identities: NonEmptyList[I]
 }
@@ -80,18 +88,13 @@ sealed abstract class FetchOp[A] extends Product with Serializable
 final case class FetchOne[I, A](id: I, ds: DataSource[I, A])
     extends FetchOp[A]
     with FetchQuery[I, A] {
-  override def missingIdentities(cache: DataSourceCache): List[I] =
-    cache.get[A](ds.identity(id)).fold(List(id))(_ => Nil)
   override def dataSource: DataSource[I, A] = ds
-  override def identities: NonEmptyList[I]  = NonEmptyList(id, Nil)
+  override def identities: NonEmptyList[I]  = NonEmptyList.one(id)
 }
 
 final case class FetchMany[I, A](ids: NonEmptyList[I], ds: DataSource[I, A])
     extends FetchOp[List[A]]
     with FetchQuery[I, A] {
-
-  override def missingIdentities(cache: DataSourceCache): List[I] =
-    ids.toList.distinct.filterNot(i => cache.contains(ds.identity(i)))
   override def dataSource: DataSource[I, A] = ds
   override def identities: NonEmptyList[I]  = ids
 }
@@ -149,39 +152,32 @@ object `package` {
      * to the `Fetch` monad. When executing the fetch the data source will be
      * queried and the fetch will return its result.
      */
-    def apply[I, A](i: I)(
-        implicit DS: DataSource[I, A]
-    ): Fetch[A] =
+    def apply[I, A](i: I)(implicit DS: DataSource[I, A]): Fetch[A] =
       Free.liftF(FetchOne[I, A](i, DS))
 
     /**
      * Given multiple values with a related `DataSource` lift them to the `Fetch` monad.
      */
     def multiple[I, A](i: I, is: I*)(implicit DS: DataSource[I, A]): Fetch[List[A]] =
-      Free.liftF(FetchMany(NonEmptyList(i, is.toList), DS))
-
-    /**
-     * Given a non empty list of `FetchQuery`s, lift it to the `Fetch` monad. When executing
-     * the fetch, data sources will be queried and the fetch will return an `InMemoryCache`
-     * containing the results.
-     */
-    private[fetch] def concurrently(
-        queries: NonEmptyList[FetchQuery[Any, Any]]): Fetch[InMemoryCache] =
-      Free.liftF(Concurrent(queries))
+      // Free.liftF(FetchMany(NonEmptyList(i, is.toList), DS))
+      Free.liftF[FetchOp, List[A]](FetchMany(NonEmptyList(i, is.toList), DS))
 
     /**
      * Transform a list of fetches into a fetch of a list. It implies concurrent execution of fetches.
      */
     def sequence[I, A](ids: List[Fetch[A]]): Fetch[List[A]] =
-      fetchApplicative.sequence(ids)
+      traverse(ids)(identity)
 
     /**
      * Apply a fetch-returning function to every element in a list and return a Fetch of the list of
      * results. It implies concurrent execution of fetches.
      */
-    def traverse[A, B](ids: List[A])(f: A => Fetch[B]): Fetch[List[B]] = {
+    def traverse[A, B](ids: List[A])(f: A => Fetch[B]): Fetch[List[B]] =
+      traverseGrouped(ids, 50)(f)
+
+    def traverseGrouped[A, B](ids: List[A], groupLength: Int)(f: A => Fetch[B]): Fetch[List[B]] = {
       val L = cats.Traverse[List]
-      ids.grouped(50).toList match {
+      ids.grouped(groupLength).toList match {
         case Nil        => Fetch.pure(Nil)
         case ids :: Nil => L.traverse(ids)(f)
         case groups     =>
@@ -205,7 +201,8 @@ object `package` {
      * results. It implies concurrent execution of fetches.
      */
     def join[A, B](fl: Fetch[A], fr: Fetch[B]): Fetch[(A, B)] =
-      Free.liftF(Join(fl, fr))
+      // Free.liftF(Join(fl, fr))
+      Free.liftF[FetchOp, (A, B)](Join(fl, fr))
 
     class FetchRunner[M[_]] {
       def apply[A](
