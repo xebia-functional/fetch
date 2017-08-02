@@ -22,6 +22,9 @@ object ProjectPlugin extends AutoPlugin {
 
     lazy val monixCrossDependencies: Seq[ModuleID] = Seq(%%("monix-eval"), %%("monix-cats"))
 
+    lazy val twitterUtilDependencies: Seq[ModuleID] = Seq(
+      "com.twitter" %% "util-core" % "6.45.0",%%("catbird-util"))
+
     lazy val micrositeSettings: Seq[Def.Setting[_]] = Seq(
       micrositeName := "Fetch",
       micrositeDescription := "Simple & Efficient data access for Scala and Scala.js",
@@ -78,8 +81,10 @@ object ProjectPlugin extends AutoPlugin {
         List(
           "fetchJVM/compile",
           "monixJVM/compile",
+          "twitterJVM/compile",
           "fetchJVM/test",
           "monixJVM/test",
+          "twitterJVM/test",
           "project root").asCmd) ++
       addCommandAlias(
         "validateJS",
