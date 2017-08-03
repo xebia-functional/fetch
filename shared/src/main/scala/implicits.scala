@@ -33,8 +33,7 @@ object implicits {
       override def runQuery[A](j: Query[A]): Future[A] = j match {
 
         case Sync(e) =>
-          Future.successful({e.value})
-
+          Future({e.value})
 
         case Async(ac, timeout) =>
 
