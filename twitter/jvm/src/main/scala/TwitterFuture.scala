@@ -20,8 +20,16 @@ import fetch._
 
 object implicits {
 
+  import cats._
   import com.twitter.util.{Future, FuturePool, Promise}
   import io.catbird.util._
+
+  def evalToRerunnable[A](e: Eval[A]): Rerunnable[A] = e match {
+    case Now(x)       => Rerunnable.const(x)
+    case l: Later[A]  => Rerunnable.fromFuture({ Future(l.value) })
+    case a: Always[A] => Rerunnable({ a.value })
+    case e            => Rerunnable.fromFuture(Future(e.value))
+  }
 
   implicit def fetchRerunableMonadError: FetchMonadError[Rerunnable] =
     new FetchMonadError.FromMonadError[Rerunnable] {
