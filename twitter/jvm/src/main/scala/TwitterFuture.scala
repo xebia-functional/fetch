@@ -31,7 +31,7 @@ object implicits {
     case e            => Rerunnable.fromFuture(Future(e.value))
   }
 
-  implicit def fetchRerunableMonadError: FetchMonadError[Rerunnable] =
+  implicit def fetchRerunnableMonadError: FetchMonadError[Rerunnable] =
     new FetchMonadError.FromMonadError[Rerunnable] {
       override def runQuery[A](j: Query[A]): Rerunnable[A] = j match {
         case Sync(e) ⇒ Rerunnable { e.value }
