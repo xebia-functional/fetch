@@ -18,10 +18,8 @@ import scala.concurrent._
 import scala.concurrent.duration._
 import org.scalatest._
 import cats.data.NonEmptyList
-import scala.language.postfixOps
 import fetch._
 import fetch.implicits._
-
 
 class FutureTimeoutTests extends AsyncFlatSpec with Matchers with OptionValues with Inside with Inspectors {
 
@@ -32,13 +30,25 @@ class FutureTimeoutTests extends AsyncFlatSpec with Matchers with OptionValues w
     def author: Int = id + 1
   }
 
+  def article(id: Int)(implicit DS: DataSource[ArticleId, Article]): Fetch[Article] =
+    Fetch(ArticleId(id))
+
+  // Simulate Thread.sleep for the purposes of making this test work in Scala.js
+
+  def sleep(ms: Long): Unit = {
+    println("start sleep")
+    val expTime = System.nanoTime + ms*1000000
+    while(System.nanoTime < expTime) {}
+    println("sleep finished")
+  }
+
   // A sample datasource with configurable delay and timeout
 
   case class ConfigurableTimeoutDatasource(timeout: Duration, delay: Duration) extends DataSource[ArticleId, Article] {
     override def name = "ArticleFuture"
     override def fetchOne(id: ArticleId): Query[Option[Article]] =
       Query.async((ok, fail) => {
-        Thread.sleep(delay.toMillis)
+        sleep(delay.toMillis)
         ok(Option(Article(id.id, "An article with id " + id.id)))
       }, timeout)
     override def fetchMany(ids: NonEmptyList[ArticleId]): Query[Map[ArticleId, Article]] =
@@ -48,8 +58,6 @@ class FutureTimeoutTests extends AsyncFlatSpec with Matchers with OptionValues w
   "fetchfuture" should "fail with timeout when a datasource does not complete in time" in {
 
     implicit val dsWillTimeout = ConfigurableTimeoutDatasource(250 milliseconds, 750 milliseconds)
-
-    def article(id: Int): Fetch[Article] = Fetch(ArticleId(id))
 
     val fetch: Fetch[Article] = article(1)
     val fut: Future[Article] = Fetch.run[Future](fetch)
@@ -64,8 +72,6 @@ class FutureTimeoutTests extends AsyncFlatSpec with Matchers with OptionValues w
 
     implicit val dsWillTimeout = ConfigurableTimeoutDatasource(750 milliseconds, 250 milliseconds)
 
-    def article(id: Int): Fetch[Article] = Fetch(ArticleId(id))
-
     val fetch: Fetch[Article] = article(1)
     val fut: Future[Article] = Fetch.run[Future](fetch)
 
@@ -75,8 +81,6 @@ class FutureTimeoutTests extends AsyncFlatSpec with Matchers with OptionValues w
   it should "not fail with timeout when infinite timeout specified" in {
 
     implicit val dsWillTimeout = ConfigurableTimeoutDatasource(Duration.Inf, 250 milliseconds)
-
-    def article(id: Int): Fetch[Article] = Fetch(ArticleId(id))
 
     val fetch: Fetch[Article] = article(1)
     val fut: Future[Article] = Fetch.run[Future](fetch)
