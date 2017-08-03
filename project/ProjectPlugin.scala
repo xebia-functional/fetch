@@ -22,8 +22,7 @@ object ProjectPlugin extends AutoPlugin {
 
     lazy val monixCrossDependencies: Seq[ModuleID] = Seq(%%("monix-eval"), %%("monix-cats"))
 
-    lazy val twitterUtilDependencies: Seq[ModuleID] = Seq(
-      "com.twitter" %% "util-core" % "6.45.0",%%("catbird-util"))
+    lazy val twitterUtilDependencies: Seq[ModuleID] = Seq(%%("catbird-util"))
 
     lazy val micrositeSettings: Seq[Def.Setting[_]] = Seq(
       micrositeName := "Fetch",
