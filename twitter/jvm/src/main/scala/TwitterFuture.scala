@@ -17,11 +17,12 @@
 package fetch.twitterFuture
 
 import fetch._
+import scala.concurrent.duration.FiniteDuration
 
 object implicits {
 
   import cats._
-  import com.twitter.util.{Future, FuturePool, Promise}
+  import com.twitter.util.{Duration, Future, FuturePool, Promise, Timer}
   import io.catbird.util._
 
   def evalToRerunnable[A](e: Eval[A]): Rerunnable[A] = e match {
@@ -31,29 +32,41 @@ object implicits {
     case e            => Rerunnable.fromFuture(Future(e.value))
   }
 
-  implicit def fetchRerunnableMonadError: FetchMonadError[Rerunnable] =
+  implicit def fetchRerunnableMonadError(
+      implicit pool: FuturePool = FuturePool.interruptibleUnboundedPool
+  ): FetchMonadError[Rerunnable] =
     new FetchMonadError.FromMonadError[Rerunnable] {
       override def runQuery[A](j: Query[A]): Rerunnable[A] = j match {
         case Sync(e) ⇒ Rerunnable { e.value }
         case Async(ac, timeout) ⇒
           Rerunnable.fromFuture {
             val p: Promise[A] = Promise()
-            FuturePool.unboundedPool(ac(p setValue _, p setException _))
-            p
+            pool(ac(p setValue _, p setException _))
+            timeout match {
+              case _: FiniteDuration =>
+                p.raiseWithin(Duration(timeout.length, timeout.unit))(Timer.Nil)
+              case _ => p
+            }
           }
         case Ap(qf, qx) ⇒
           runQuery(qf).product(Rerunnable(qx)) map { case (f, x) ⇒ f(x) }
       }
     }
 
-  implicit def fetchTwFutureMonadError: FetchMonadError[Future] =
+  implicit def fetchTwFutureMonadError(
+      implicit pool: FuturePool = FuturePool.interruptibleUnboundedPool
+  ): FetchMonadError[Future] =
     new FetchMonadError.FromMonadError[Future] {
       override def runQuery[A](j: Query[A]): Future[A] = j match {
         case Sync(e) ⇒ Future(e.value)
         case Async(ac, timeout) ⇒
           val p: Promise[A] = Promise()
-          FuturePool.unboundedPool(ac(p setValue _, p setException _))
-          p
+          pool(ac(p setValue _, p setException _))
+          timeout match {
+            case _: FiniteDuration =>
+              p.raiseWithin(Duration(timeout.length, timeout.unit))(Timer.Nil)
+            case _ => p
+          }
         case Ap(qf, qx) ⇒
           runQuery(qf).join(runQuery(qx)).map { case (f, x) ⇒ f(x) }
       }
