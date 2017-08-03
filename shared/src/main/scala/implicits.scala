@@ -16,7 +16,6 @@
 
 package fetch
 
-
 import java.util.{Timer, TimerTask}
 import java.util.concurrent.TimeoutException
 import scala.concurrent.duration._
@@ -53,23 +52,19 @@ object implicits {
               }
 
               // Start the timeout Timer
-              implicits.timer.schedule(timerTask, timeout.toMillis)
+              timer.schedule(timerTask, timeout.toMillis)
 
               // Execute the user's action
-              ec.execute(new Runnable {
-                def run() : Unit = {
-                  ac(p.trySuccess, p.tryFailure)
-                }
+              ec.execute(() => {
+                ac(p.trySuccess, p.tryFailure)
               })
 
             // No timeout 
             case _ =>
 
               // Execute the user's action
-              ec.execute(new Runnable {
-                def run() : Unit = {
-                  ac(p.trySuccess _, p.tryFailure)
-                }
+              ec.execute(() => {
+                ac(p.trySuccess, p.tryFailure)
               })
 
           }
