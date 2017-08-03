@@ -21,6 +21,8 @@ import cats.data.NonEmptyList
 import fetch._
 import fetch.implicits._
 
+// Note that this test cannot run on Scala.js
+
 class FutureTimeoutTests extends AsyncFlatSpec with Matchers with OptionValues with Inside with Inspectors {
 
   implicit override def executionContext : ExecutionContext = ExecutionContext.Implicits.global
@@ -33,22 +35,13 @@ class FutureTimeoutTests extends AsyncFlatSpec with Matchers with OptionValues w
   def article(id: Int)(implicit DS: DataSource[ArticleId, Article]): Fetch[Article] =
     Fetch(ArticleId(id))
 
-  // Simulate Thread.sleep for the purposes of making this test work in Scala.js
-
-  def sleep(ms: Long): Unit = {
-    println("start sleep")
-    val expTime = System.nanoTime + ms*1000000
-    while(System.nanoTime < expTime) {}
-    println("sleep finished")
-  }
-
   // A sample datasource with configurable delay and timeout
 
   case class ConfigurableTimeoutDatasource(timeout: Duration, delay: Duration) extends DataSource[ArticleId, Article] {
     override def name = "ArticleFuture"
     override def fetchOne(id: ArticleId): Query[Option[Article]] =
       Query.async((ok, fail) => {
-        sleep(delay.toMillis)
+        Thread.sleep(delay.toMillis)
         ok(Option(Article(id.id, "An article with id " + id.id)))
       }, timeout)
     override def fetchMany(ids: NonEmptyList[ArticleId]): Query[Map[ArticleId, Article]] =
