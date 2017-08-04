@@ -55,16 +55,20 @@ object implicits {
               timer.schedule(timerTask, timeout.toMillis)
 
               // Execute the user's action
-              ec.execute(() => {
-                ac(p.trySuccess, p.tryFailure)
+              ec.execute(new Runnable {
+                def run() : Unit = {
+                  ac(p.trySuccess, p.tryFailure)
+                }
               })
 
             // No timeout 
             case _ =>
 
               // Execute the user's action
-              ec.execute(() => {
-                ac(p.trySuccess, p.tryFailure)
+              ec.execute(new Runnable {
+                def run() : Unit = {
+                  ac(p.trySuccess, p.tryFailure)
+                }
               })
 
           }
