@@ -115,7 +115,7 @@ object ProjectPlugin extends AutoPlugin {
         orgUpdateDocFilesSetting += baseDirectory.value / "tut",
         scalaOrganization := "org.scala-lang",
         scalaVersion := "2.12.2",
-        crossScalaVersions := List("2.10.6", "2.11.11", "2.12.2"),
+        crossScalaVersions := List("2.11.11", "2.12.2"),
         resolvers += Resolver.sonatypeRepo("snapshots"),
         scalacOptions := Seq(
           "-unchecked",
@@ -126,12 +126,6 @@ object ProjectPlugin extends AutoPlugin {
           "-language:existentials",
           "-language:postfixOps"
         ),
-        libraryDependencies ++= (scalaBinaryVersion.value match {
-          case "2.10" =>
-            compilerPlugin(%%("paradise") cross CrossVersion.full) :: Nil
-          case _ =>
-            Nil
-        }),
         ScoverageKeys.coverageFailOnMinimum := false
       ) ++ shellPromptSettings
 
