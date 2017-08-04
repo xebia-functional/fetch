@@ -96,4 +96,35 @@ class FetchTwitterFutureSpec extends FlatSpec with Matchers {
       "@egg2"))
   }
 
+  "evalToRunnable" should "convert an Eval into a Runnable" in {
+    var dontDoThisAtHome: Int = 1000
+    def evalFun: Int = {
+      dontDoThisAtHome += 1
+      dontDoThisAtHome
+    }
+
+    // this invokes evalFun as soon as the Now is created. subsequent
+    // calls to the rerunnable return the memoized value
+    val now       = Now(evalFun)
+    val rNow      = evalToRerunnable(now)
+    val nowAnswer = dontDoThisAtHome
+    Await.result(rNow.run) should be(nowAnswer)
+    Await.result(rNow.run) should be(nowAnswer)
+
+    // this invokes evalFun on first run. subsequent calls to the
+    // run return the memoized value
+    def laterValue: Int = evalFun
+    val later           = Later(laterValue)
+    val rLater          = evalToRerunnable(later)
+    val laterAnswer     = dontDoThisAtHome
+    Await.result(rLater.run) should be(laterAnswer + 1)
+    Await.result(rLater.run) should be(laterAnswer + 1)
+
+    // each time rerunnable run is invoked evalFun is called
+    val always       = Always(evalFun)
+    val rAlways      = evalToRerunnable(always)
+    val alwaysAnswer = dontDoThisAtHome
+    Await.result(rAlways.run) should be(alwaysAnswer + 1)
+    Await.result(rAlways.run) should be(alwaysAnswer + 2)
+  }
 }
