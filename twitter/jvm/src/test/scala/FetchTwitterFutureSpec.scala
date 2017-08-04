@@ -33,8 +33,18 @@ class FetchTwitterFutureSpec extends FlatSpec with Matchers {
     def author: Int = id + 1
   }
 
-  implicit object ArticleFuture extends DataSource[ArticleId, Article] {
-    override def name = "ArticleFuture"
+  object ArticleSync extends DataSource[ArticleId, Article] {
+    override def name = "ArticleAsync"
+    override def fetchOne(id: ArticleId): Query[Option[Article]] =
+      Query.sync({
+        Option(Article(id.id, "An article with id " + id.id))
+      })
+    override def fetchMany(ids: NonEmptyList[ArticleId]): Query[Map[ArticleId, Article]] =
+      batchingNotSupported(ids)
+  }
+
+  object ArticleAsync extends DataSource[ArticleId, Article] {
+    override def name = "ArticleAsync"
     override def fetchOne(id: ArticleId): Query[Option[Article]] =
       Query.async((ok, fail) ⇒ {
         ok(Option(Article(id.id, "An article with id " + id.id)))
@@ -43,7 +53,7 @@ class FetchTwitterFutureSpec extends FlatSpec with Matchers {
       batchingNotSupported(ids)
   }
 
-  def article(id: Int): Fetch[Article] = Fetch(ArticleId(id))
+  def article(id: Int): Fetch[Article] = Fetch(ArticleId(id))(ArticleAsync)
 
   case class AuthorId(id: Int)
   case class Author(id: Int, name: String)
@@ -61,7 +71,7 @@ class FetchTwitterFutureSpec extends FlatSpec with Matchers {
   def author(a: Article): Fetch[Author] = Fetch(AuthorId(a.author))
 
   "TwFutureMonadError" should "execute an async fetch on a Future" in {
-    val fetch: Fetch[Article]    = Fetch(ArticleId(1))
+    val fetch: Fetch[Article]    = Fetch(ArticleId(1))(ArticleAsync)
     val article: Future[Article] = Fetch.run[Future](fetch)
     Await.result(article, 100.milliseconds) shouldEqual (Article(1, "An article with id 1"))
   }
@@ -75,9 +85,20 @@ class FetchTwitterFutureSpec extends FlatSpec with Matchers {
       1,
       "An article with id 1"), Author(2, "@egg2"))
   }
+  it should "execute a sync fetch" in {
+    val fetch: Fetch[Article] = Fetch(ArticleId(1))(ArticleSync)
+    Await.result(Fetch.run[Future](fetch), 100.milliseconds) shouldEqual (Article(
+      1,
+      "An article with id 1"))
+  }
 
   "RerunnableMonadError" should "lift and execute an async fetch into a Rerunnable" in {
-    val fetch: Fetch[Article]        = Fetch(ArticleId(1))
+    val fetch: Fetch[Article]        = Fetch(ArticleId(1))(ArticleAsync)
+    val article: Rerunnable[Article] = Fetch.run[Rerunnable](fetch)
+    Await.result(article.run, 100.milliseconds) shouldEqual (Article(1, "An article with id 1"))
+  }
+  it should "run a sync fetch" in {
+    val fetch: Fetch[Article]        = Fetch(ArticleId(1))(ArticleSync)
     val article: Rerunnable[Article] = Fetch.run[Rerunnable](fetch)
     Await.result(article.run, 100.milliseconds) shouldEqual (Article(1, "An article with id 1"))
   }
