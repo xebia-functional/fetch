@@ -22,47 +22,6 @@ import cats.{Applicative, Eval}
 import cats.data.{NonEmptyList, StateT}
 import cats.free.Free
 import cats.instances.list._
-import scala.concurrent.duration.Duration
-import scala.concurrent.{ExecutionContext, Future}
-
-sealed trait Query[A] extends Product with Serializable
-
-/** A query that can be satisfied synchronously. **/
-final case class Sync[A](action: Eval[A]) extends Query[A]
-
-/** A query that can only be satisfied asynchronously. **/
-final case class Async[A](action: (Query.Callback[A], Query.Errback) => Unit, timeout: Duration)
-    extends Query[A]
-
-final case class Ap[A, B](ff: Query[A => B], fa: Query[A]) extends Query[B]
-
-object Query {
-  type Callback[A] = A => Unit
-  type Errback     = Throwable => Unit
-
-  def eval[A](e: Eval[A]): Query[A] = Sync(e)
-
-  def sync[A](th: => A): Query[A] = Sync(Eval.later(th))
-
-  def async[A](
-      action: (Callback[A], Errback) => Unit,
-      timeout: Duration = Duration.Inf
-  ): Query[A] = Async(action, timeout)
-
-  def fromFuture[A](fa: Future[A])(implicit ec: ExecutionContext): Query[A] =
-    async { (ok, fail) =>
-      fa.onComplete {
-        case scala.util.Success(a) => ok(a)
-        case scala.util.Failure(e) => fail(e)
-      }
-    }
-
-  implicit val fetchQueryApplicative: Applicative[Query] = new Applicative[Query] {
-    def pure[A](x: A): Query[A] = Sync(Eval.now(x))
-    def ap[A, B](ff: Query[A => B])(fa: Query[A]): Query[B] =
-      Ap(ff, fa)
-  }
-}
 
 trait FetchException extends Throwable with Product with Serializable {
   def env: Env
@@ -122,6 +81,9 @@ object `package` {
 
     def ap[A, B](ff: Fetch[A => B])(fa: Fetch[A]): Fetch[B] =
       Fetch.join(ff, fa).map({ case (f, a) => f(a) })
+
+    override def map[A, B](fa: Fetch[A])(f: A => B): Fetch[B] =
+      fa.map(f)
 
     override def product[A, B](fa: Fetch[A], fb: Fetch[B]): Fetch[(A, B)] =
       Fetch.join(fa, fb)
@@ -204,7 +166,7 @@ object `package` {
       // Free.liftF(Join(fl, fr))
       Free.liftF[FetchOp, (A, B)](Join(fl, fr))
 
-    class FetchRunner[M[_]] {
+    private[fetch] class FetchRunner[M[_]](private val dummy: Boolean = true) extends AnyVal {
       def apply[A](
           fa: Fetch[A],
           cache: DataSourceCache = InMemoryCache.empty
@@ -220,7 +182,7 @@ object `package` {
      */
     def runFetch[M[_]]: FetchRunner[M] = new FetchRunner[M]
 
-    class FetchRunnerEnv[M[_]] {
+    private[fetch] class FetchRunnerEnv[M[_]](private val dummy: Boolean = true) extends AnyVal {
       def apply[A](
           fa: Fetch[A],
           cache: DataSourceCache = InMemoryCache.empty
@@ -235,7 +197,7 @@ object `package` {
      */
     def runEnv[M[_]]: FetchRunnerEnv[M] = new FetchRunnerEnv[M]
 
-    class FetchRunnerA[M[_]] {
+    private[fetch] class FetchRunnerA[M[_]](private val dummy: Boolean = true) extends AnyVal {
       def apply[A](
           fa: Fetch[A],
           cache: DataSourceCache = InMemoryCache.empty
@@ -251,11 +213,11 @@ object `package` {
     def run[M[_]]: FetchRunnerA[M] = new FetchRunnerA[M]
   }
 
-  private[fetch] implicit class DataSourceCast[A, B](val ds: DataSource[A, B]) extends AnyVal {
+  private[fetch] implicit class DataSourceCast[A, B](private val ds: DataSource[A, B]) extends AnyVal {
     def castDS[C, D]: DataSource[C, D] = ds.asInstanceOf[DataSource[C, D]]
   }
 
-  private[fetch] implicit class NonEmptyListDetourList[A](val nel: NonEmptyList[A])
+  private[fetch] implicit class NonEmptyListDetourList[A](private val nel: NonEmptyList[A])
       extends AnyVal {
     def unsafeListOp[B](f: List[A] => List[B]): NonEmptyList[B] =
       NonEmptyList.fromListUnsafe(f(nel.toList))

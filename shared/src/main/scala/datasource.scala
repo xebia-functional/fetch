@@ -31,7 +31,7 @@ trait DataSource[I, A] {
   /** The name of the data source.
    */
   def name: DataSourceName
-  override def toString: String = name
+  override def toString: String = "DataSource:" + name
 
   /**
    * Derive a `DataSourceIdentity` from an identity, suitable for storing the result
@@ -44,7 +44,7 @@ trait DataSource[I, A] {
   def fetchOne(id: I): Query[Option[A]]
 
   /** Fetch many identities, returning a mapping from identities to results. If an
-   * identity wasn't found won't appear in the keys.
+   * identity wasn't found, it won't appear in the keys.
    */
   def fetchMany(ids: NonEmptyList[I]): Query[Map[I, A]]
 
@@ -60,7 +60,7 @@ trait DataSource[I, A] {
   }
 
   def batchingOnly(id: I): Query[Option[A]] =
-    fetchMany(NonEmptyList.of(id)).map(_ get id)
+    fetchMany(NonEmptyList.one(id)).map(_ get id)
 
   def maxBatchSize: Option[Int] = None
 

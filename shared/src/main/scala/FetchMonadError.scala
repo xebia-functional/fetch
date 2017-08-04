@@ -27,7 +27,6 @@ object FetchMonadError {
 
   abstract class FromMonadError[M[_]](implicit ME: MonadError[M, Throwable])
       extends FetchMonadError[M] {
-    def runQuery[A](q: Query[A]): M[A]
 
     def pure[A](x: A): M[A] =
       ME.pure(x)
