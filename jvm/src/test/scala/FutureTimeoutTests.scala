@@ -20,7 +20,6 @@ import scala.concurrent._
 import scala.concurrent.duration._
 import org.scalatest._
 import cats.data.NonEmptyList
-import fetch._
 import fetch.implicits._
 
 // Note that this test cannot run on Scala.js
@@ -35,9 +34,7 @@ class FutureTimeoutTests
   implicit override def executionContext: ExecutionContext = ExecutionContext.Implicits.global
 
   case class ArticleId(id: Int)
-  case class Article(id: Int, content: String) {
-    def author: Int = id + 1
-  }
+  case class Article(id: Int, content: String)
 
   def article(id: Int)(implicit DS: DataSource[ArticleId, Article]): Fetch[Article] =
     Fetch(ArticleId(id))
@@ -56,7 +53,7 @@ class FutureTimeoutTests
       batchingNotSupported(ids)
   }
 
-  "fetchfuture" should "fail with timeout when a datasource does not complete in time" in {
+  "FetchMonadError[Future]" should "fail with timeout when a datasource does not complete in time" in {
 
     implicit val dsWillTimeout = ConfigurableTimeoutDatasource(250 milliseconds, 750 milliseconds)
 

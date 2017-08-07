@@ -25,7 +25,7 @@ import scala.concurrent.{ExecutionContext, Future, Promise}
 object implicits {
 
   // Shared Timer object to schedule timeouts
-  lazy val timer: Timer = new Timer(true)
+  private[fetch] lazy val timer: Timer = new Timer(true)
 
   implicit def fetchFutureFetchMonadError(implicit ec: ExecutionContext): FetchMonadError[Future] =
     new FetchMonadError.FromMonadError[Future] {
