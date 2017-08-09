@@ -28,6 +28,16 @@ class FetchTwitterFutureSpec extends FlatSpec with Matchers {
 
   import fetch.twitterFuture.implicits._
 
+  case class One(id: Int)
+  implicit object OneSource extends DataSource[One, Int] {
+    override def name = "OneSource"
+    override def fetchOne(id: One): Query[Option[Int]] =
+      Query.sync(Option(id.id))
+    override def fetchMany(ids: NonEmptyList[One]): Query[Map[One, Int]] =
+      Query.sync(ids.toList.map(one => (one, one.id)).toMap)
+  }
+  def one(id: Int): Fetch[Int] = Fetch(One(id))
+
   case class ArticleId(id: Int)
   case class Article(id: Int, content: String) {
     def author: Int = id + 1
@@ -91,6 +101,14 @@ class FetchTwitterFutureSpec extends FlatSpec with Matchers {
       1,
       "An article with id 1"))
   }
+  it should "be used as an applicative" in {
+    import cats.syntax.cartesian._
+
+    val fetch: Fetch[Int] = (one(1) |@| one(2) |@| one(3)).map(_ + _ + _)
+    val fut               = Fetch.run[Future](fetch)
+
+    fut.map(_ shouldEqual 6)
+  }
 
   "RerunnableMonadError" should "lift and execute an async fetch into a Rerunnable" in {
     val fetch: Fetch[Article]        = Fetch(ArticleId(1))(ArticleAsync)
@@ -115,6 +133,14 @@ class FetchTwitterFutureSpec extends FlatSpec with Matchers {
     Await.result(rr.run, 100.milliseconds) shouldEqual (Article(1, "An article with id 1"), Author(
       2,
       "@egg2"))
+  }
+  it should "be used as an applicative" in {
+    import cats.syntax.cartesian._
+
+    val fetch: Fetch[Int] = (one(1) |@| one(2) |@| one(3)).map(_ + _ + _)
+    val fut               = Fetch.run[Rerunnable](fetch)
+
+    fut.map(_ shouldEqual 6)
   }
 
   "evalToRunnable" should "convert an Eval into a Runnable" in {
