@@ -37,7 +37,7 @@ object implicits {
   ): FetchMonadError[Rerunnable] =
     new FetchMonadError.FromMonadError[Rerunnable] {
       override def runQuery[A](j: Query[A]): Rerunnable[A] = j match {
-        case Sync(e) ⇒ Rerunnable { e.value }
+        case Sync(e) ⇒ evalToRerunnable(e)
         case Async(ac, timeout) ⇒
           Rerunnable.fromFuture {
             val p: Promise[A] = Promise()
