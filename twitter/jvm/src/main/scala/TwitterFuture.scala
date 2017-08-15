@@ -49,7 +49,7 @@ object implicits {
             }
           }
         case Ap(qf, qx) ⇒
-          runQuery(qf).product(Rerunnable(qx)) map { case (f, x) ⇒ f(x) }
+          runQuery(qf).product(runQuery(qx)) map { case (f, x) => f(x) }
       }
     }
 
@@ -68,7 +68,7 @@ object implicits {
             case _ => p
           }
         case Ap(qf, qx) ⇒
-          runQuery(qf).join(runQuery(qx)).map { case (f, x) ⇒ f(x) }
+          ap(runQuery(qf))(runQuery(qx))
       }
     }
 

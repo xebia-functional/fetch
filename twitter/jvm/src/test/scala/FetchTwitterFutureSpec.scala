@@ -104,8 +104,8 @@ class FetchTwitterFutureSpec extends FlatSpec with Matchers {
   it should "be used as an applicative" in {
     import cats.syntax.cartesian._
 
-    val fetch: Fetch[Int] = (one(1) |@| one(2) |@| one(3)).map(_ + _ + _)
-    val fut               = Fetch.run[Future](fetch)
+    val fetch = (one(1) |@| one(2) |@| one(3)).map(_ + _ + _)
+    val fut   = Fetch.run[Future](fetch)
 
     fut.map(_ shouldEqual 6)
   }
@@ -135,6 +135,14 @@ class FetchTwitterFutureSpec extends FlatSpec with Matchers {
       "@egg2"))
   }
   it should "be used as an applicative" in {
+    import cats.syntax.cartesian._
+
+    val fetch: Fetch[Int] = (one(1) |@| one(2) |@| one(3)).map(_ + _ + _)
+    val fut               = Fetch.run[Rerunnable](fetch)
+
+    fut.map(_ shouldEqual 6)
+  }
+  it should "be usable as an applicative" in {
     import cats.syntax.cartesian._
 
     val fetch: Fetch[Int] = (one(1) |@| one(2) |@| one(3)).map(_ + _ + _)
