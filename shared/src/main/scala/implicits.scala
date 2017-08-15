@@ -25,7 +25,7 @@ import scala.concurrent.{ExecutionContext, Future, Promise}
 object implicits {
 
   // Shared Timer object to schedule timeouts
-  private[fetch] lazy val timer: Timer = new Timer(true)
+  private[fetch] lazy val timer: Timer = new Timer("fetch-future-timeout-daemon", true)
 
   implicit def fetchFutureFetchMonadError(implicit ec: ExecutionContext): FetchMonadError[Future] =
     new FetchMonadError.FromMonadError[Future] {
@@ -37,6 +37,10 @@ object implicits {
         case Async(ac, timeout) =>
 
           val p = Promise[A]()
+
+          val runnable = new Runnable {
+            def run() : Unit = ac(p.trySuccess, p.tryFailure)
+          }
 
           timeout match {
 
@@ -55,22 +59,13 @@ object implicits {
               timer.schedule(timerTask, timeout.toMillis)
 
               // Execute the user's action
-              ec.execute(new Runnable {
-                def run() : Unit = {
-                  ac(p.trySuccess, p.tryFailure)
-                }
-              })
+              ec.execute(runnable)
 
             // No timeout 
             case _ =>
 
               // Execute the user's action
-              ec.execute(new Runnable {
-                def run() : Unit = {
-                  ac(p.trySuccess, p.tryFailure)
-                }
-              })
-
+              ec.execute(runnable)
           }
 
           p.future
