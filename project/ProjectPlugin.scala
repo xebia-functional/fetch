@@ -22,6 +22,8 @@ object ProjectPlugin extends AutoPlugin {
 
     lazy val monixCrossDependencies: Seq[ModuleID] = Seq(%%("monix-eval"), %%("monix-cats"))
 
+    lazy val twitterUtilDependencies: Seq[ModuleID] = Seq(%%("catbird-util"))
+
     lazy val micrositeSettings: Seq[Def.Setting[_]] = Seq(
       micrositeName := "Fetch",
       micrositeDescription := "Simple & Efficient data access for Scala and Scala.js",
@@ -78,8 +80,10 @@ object ProjectPlugin extends AutoPlugin {
         List(
           "fetchJVM/compile",
           "monixJVM/compile",
+          "twitterJVM/compile",
           "fetchJVM/test",
           "monixJVM/test",
+          "twitterJVM/test",
           "project root").asCmd) ++
       addCommandAlias(
         "validateJS",
@@ -111,7 +115,7 @@ object ProjectPlugin extends AutoPlugin {
         orgUpdateDocFilesSetting += baseDirectory.value / "tut",
         scalaOrganization := "org.scala-lang",
         scalaVersion := "2.12.2",
-        crossScalaVersions := List("2.10.6", "2.11.11", "2.12.2"),
+        crossScalaVersions := List("2.11.11", "2.12.2"),
         resolvers += Resolver.sonatypeRepo("snapshots"),
         scalacOptions := Seq(
           "-unchecked",
@@ -122,12 +126,6 @@ object ProjectPlugin extends AutoPlugin {
           "-language:existentials",
           "-language:postfixOps"
         ),
-        libraryDependencies ++= (scalaBinaryVersion.value match {
-          case "2.10" =>
-            compilerPlugin(%%("paradise") cross CrossVersion.full) :: Nil
-          case _ =>
-            Nil
-        }),
         ScoverageKeys.coverageFailOnMinimum := false
       ) ++ shellPromptSettings
 
