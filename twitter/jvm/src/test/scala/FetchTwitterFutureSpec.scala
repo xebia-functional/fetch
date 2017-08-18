@@ -56,7 +56,7 @@ class FetchTwitterFutureSpec extends FlatSpec with Matchers {
   object ArticleAsync extends DataSource[ArticleId, Article] {
     override def name = "ArticleAsync"
     override def fetchOne(id: ArticleId): Query[Option[Article]] =
-      Query.async((ok, fail) ⇒ {
+      Query.async((ok, fail) => {
         ok(Option(Article(id.id, "An article with id " + id.id)))
       })
     override def fetchMany(ids: NonEmptyList[ArticleId]): Query[Map[ArticleId, Article]] =
@@ -71,7 +71,7 @@ class FetchTwitterFutureSpec extends FlatSpec with Matchers {
   implicit object AuthorFuture extends DataSource[AuthorId, Author] {
     override def name = "AuthorFuture"
     override def fetchOne(id: AuthorId): Query[Option[Author]] =
-      Query.async((ok, fail) ⇒ {
+      Query.async((ok, fail) => {
         ok(Option(Author(id.id, "@egg" + id.id)))
       })
     override def fetchMany(ids: NonEmptyList[AuthorId]): Query[Map[AuthorId, Author]] =
@@ -87,8 +87,8 @@ class FetchTwitterFutureSpec extends FlatSpec with Matchers {
   }
   it should "allow for several async datasources to be combined" in {
     val fetch: Fetch[(Article, Author)] = for {
-      art    ← article(1)
-      author ← author(art)
+      art    <- article(1)
+      author <- author(art)
     } yield (art, author)
 
     Await.result(Fetch.run[Future](fetch), 100.milliseconds) shouldEqual (Article(
@@ -122,8 +122,8 @@ class FetchTwitterFutureSpec extends FlatSpec with Matchers {
   }
   it should "allow for several async datasources to be combined" in {
     val fetch: Fetch[(Article, Author)] = for {
-      art    ← article(1)
-      author ← author(art)
+      art    <- article(1)
+      author <- author(art)
     } yield (art, author)
 
     val rr: Rerunnable[(Article, Author)] = Fetch.run[Rerunnable](fetch)
