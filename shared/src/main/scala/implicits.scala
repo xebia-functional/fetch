@@ -32,27 +32,24 @@ object implicits {
       override def runQuery[A](j: Query[A]): Future[A] = j match {
 
         case Sync(e) =>
-          Future({e.value})
+          Future({ e.value })
 
         case Async(ac, timeout) =>
-
           val p = Promise[A]()
 
           val runnable = new Runnable {
-            def run() : Unit = ac(p.trySuccess, p.tryFailure)
+            def run(): Unit = ac(p.trySuccess, p.tryFailure)
           }
 
           timeout match {
 
             // Handle the case where there is a finite timeout requested
             case finite: FiniteDuration =>
-
               // Timer task that completes the future when the timeout occurs
               // if it didn't complete already
               val timerTask = new TimerTask() {
-                def run() : Unit = {
+                def run(): Unit =
                   p.tryFailure(new TimeoutException())
-                }
               }
 
               // Start the timeout Timer
@@ -61,9 +58,8 @@ object implicits {
               // Execute the user's action
               ec.execute(runnable)
 
-            // No timeout 
+            // No timeout
             case _ =>
-
               // Execute the user's action
               ec.execute(runnable)
           }
@@ -73,7 +69,6 @@ object implicits {
         case Ap(qf, qx) =>
           runQuery(qf).zip(runQuery(qx)).map { case (f, x) => f(x) }
       }
-
 
     }
 }
