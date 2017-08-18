@@ -21,7 +21,7 @@ lazy val fetchJS  = fetch.js
 
 lazy val monix = crossProject
   .in(file("monix"))
-  .dependsOn(fetch)
+  .dependsOn(fetch % "compile->compile;test->test")
   .settings(name := "fetch-monix")
   .jsSettings(sharedJsSettings: _*)
   .crossDepSettings(commonCrossDependencies ++ monixCrossDependencies: _*)
@@ -40,7 +40,7 @@ lazy val debugJS  = debug.js
 
 lazy val twitter = crossProject
   .in(file("twitter"))
-  .dependsOn(fetch)
+  .dependsOn(fetch % "compile->compile;test->test")
   .crossDepSettings(commonCrossDependencies ++ twitterUtilDependencies: _*)
 
 lazy val twitterJVM = twitter.jvm

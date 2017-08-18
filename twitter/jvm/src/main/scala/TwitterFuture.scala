@@ -16,14 +16,16 @@
 
 package fetch.twitterFuture
 
+import cats.{Always, Eval, Later, Now}
+import com.twitter.util.{Duration, Future, FuturePool, JavaTimer, Promise, Timer}
+import io.catbird.util._
 import fetch._
 import scala.concurrent.duration.FiniteDuration
 
 object implicits {
 
-  import cats._
-  import com.twitter.util.{Duration, Future, FuturePool, Promise, Timer}
-  import io.catbird.util._
+  private[fetch] val timeoutTimer =
+    new JavaTimer(true, Some("fetch-twitter-future-timeout-daemon"))
 
   def evalToRerunnable[A](e: Eval[A]): Rerunnable[A] = e match {
     case Now(x)       => Rerunnable.const(x)
@@ -36,18 +38,10 @@ object implicits {
       implicit pool: FuturePool = FuturePool.interruptibleUnboundedPool
   ): FetchMonadError[Rerunnable] =
     new FetchMonadError.FromMonadError[Rerunnable] {
-      override def runQuery[A](j: Query[A]): Rerunnable[A] = j match {
+      override def runQuery[A](q: Query[A]): Rerunnable[A] = q match {
         case Sync(e) => evalToRerunnable(e)
-        case Async(ac, timeout) =>
-          Rerunnable.fromFuture {
-            val p: Promise[A] = Promise()
-            pool(ac(p setValue _, p setException _))
-            timeout match {
-              case _: FiniteDuration =>
-                p.raiseWithin(Duration(timeout.length, timeout.unit))(Timer.Nil)
-              case _ => p
-            }
-          }
+        case Async(_, _) =>
+          Rerunnable.fromFuture { fetchTwFutureMonadError(pool).runQuery(q) }
         case Ap(qf, qx) =>
           runQuery(qf).product(runQuery(qx)) map { case (f, x) => f(x) }
       }
@@ -57,14 +51,14 @@ object implicits {
       implicit pool: FuturePool = FuturePool.interruptibleUnboundedPool
   ): FetchMonadError[Future] =
     new FetchMonadError.FromMonadError[Future] {
-      override def runQuery[A](j: Query[A]): Future[A] = j match {
+      override def runQuery[A](q: Query[A]): Future[A] = q match {
         case Sync(e) => Future(e.value)
         case Async(ac, timeout) =>
           val p: Promise[A] = Promise()
           pool(ac(p setValue _, p setException _))
           timeout match {
             case _: FiniteDuration =>
-              p.raiseWithin(Duration(timeout.length, timeout.unit))(Timer.Nil)
+              p.raiseWithin(Duration(timeout.length, timeout.unit))(timeoutTimer)
             case _ => p
           }
         case Ap(qf, qx) =>
