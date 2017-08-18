@@ -18,12 +18,10 @@ object ProjectPlugin extends AutoPlugin {
   object autoImport {
 
     lazy val commonCrossDependencies: Seq[ModuleID] =
-      // Seq(%%("cats-free"), %%("scalatest") % "test")
-      Seq("org.typelevel" %% "cats-free" % "1.0.0-MF", %%("scalatest") % "test")
+      Seq(%%("cats-free", "1.0.0-MF"), %%("scalatest") % "test")
 
     lazy val monixCrossDependencies: Seq[ModuleID] =
-      // Seq(%%("monix-eval"), %%("monix-cats"))
-      "io.monix" %% "monix" % "3.0.0-SNAPSHOT" :: Nil
+      %%("monix-eval", "3.0.0-b20be32") :: Nil
 
     lazy val micrositeSettings: Seq[Def.Setting[_]] = Seq(
       micrositeName := "Fetch",
