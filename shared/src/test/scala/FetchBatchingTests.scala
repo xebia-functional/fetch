@@ -16,19 +16,14 @@
 
 package fetch
 
-import scala.concurrent._
-import scala.concurrent.duration._
-
-import org.scalatest._
-
-import cats.MonadError
+import scala.concurrent.{ExecutionContext, Future}
+import org.scalatest.{AsyncFreeSpec, Matchers}
 import cats.data.NonEmptyList
 import cats.instances.list._
-
-import fetch._
-import fetch.implicits._
 import cats.syntax.cartesian._
 import cats.syntax.foldable._
+import fetch._
+import fetch.implicits._
 
 class FetchBatchingTests extends AsyncFreeSpec with Matchers {
   import TestHelper._

@@ -16,22 +16,16 @@
 
 package fetch
 
-import scala.concurrent._
-import scala.concurrent.duration._
-
-import org.scalatest._
-
-import cats.MonadError
-import cats.data.NonEmptyList
+import scala.concurrent.{ExecutionContext, Future}
+import org.scalatest.{AsyncFreeSpec, Matchers}
 import cats.instances.list._
-
 import fetch._
 import fetch.implicits._
 
 class FetchReportingTests extends AsyncFreeSpec with Matchers {
   import TestHelper._
 
-  val ME = implicitly[FetchMonadError[Future]]
+  val ME = FetchMonadError[Future]
 
   implicit override def executionContext = ExecutionContext.Implicits.global
 
