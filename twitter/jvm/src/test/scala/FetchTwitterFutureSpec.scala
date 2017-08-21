@@ -16,72 +16,20 @@
 
 package fetch.twitterFuture
 
-import cats._, data._
-import cats.implicits._
+import cats.Eval
+import cats.syntax.cartesian._
 import fetch._
+import fetch.twitterFuture.implicits._
 import io.catbird.util._
-import org.scalatest._
+import org.scalatest.{FlatSpec, Matchers}
 import com.twitter.util.{Await, Future}
 import com.twitter.conversions.time._
 
 class FetchTwitterFutureSpec extends FlatSpec with Matchers {
-
-  import fetch.twitterFuture.implicits._
-
-  case class One(id: Int)
-  implicit object OneSource extends DataSource[One, Int] {
-    override def name = "OneSource"
-    override def fetchOne(id: One): Query[Option[Int]] =
-      Query.sync(Option(id.id))
-    override def fetchMany(ids: NonEmptyList[One]): Query[Map[One, Int]] =
-      Query.sync(ids.toList.map(one => (one, one.id)).toMap)
-  }
-  def one(id: Int): Fetch[Int] = Fetch(One(id))
-
-  case class ArticleId(id: Int)
-  case class Article(id: Int, content: String) {
-    def author: Int = id + 1
-  }
-
-  object ArticleSync extends DataSource[ArticleId, Article] {
-    override def name = "ArticleAsync"
-    override def fetchOne(id: ArticleId): Query[Option[Article]] =
-      Query.sync({
-        Option(Article(id.id, "An article with id " + id.id))
-      })
-    override def fetchMany(ids: NonEmptyList[ArticleId]): Query[Map[ArticleId, Article]] =
-      batchingNotSupported(ids)
-  }
-
-  object ArticleAsync extends DataSource[ArticleId, Article] {
-    override def name = "ArticleAsync"
-    override def fetchOne(id: ArticleId): Query[Option[Article]] =
-      Query.async((ok, fail) => {
-        ok(Option(Article(id.id, "An article with id " + id.id)))
-      })
-    override def fetchMany(ids: NonEmptyList[ArticleId]): Query[Map[ArticleId, Article]] =
-      batchingNotSupported(ids)
-  }
-
-  def article(id: Int): Fetch[Article] = Fetch(ArticleId(id))(ArticleAsync)
-
-  case class AuthorId(id: Int)
-  case class Author(id: Int, name: String)
-
-  implicit object AuthorFuture extends DataSource[AuthorId, Author] {
-    override def name = "AuthorFuture"
-    override def fetchOne(id: AuthorId): Query[Option[Author]] =
-      Query.async((ok, fail) => {
-        ok(Option(Author(id.id, "@egg" + id.id)))
-      })
-    override def fetchMany(ids: NonEmptyList[AuthorId]): Query[Map[AuthorId, Author]] =
-      batchingNotSupported(ids)
-  }
-
-  def author(a: Article): Fetch[Author] = Fetch(AuthorId(a.author))
+  import TestHelper._
 
   "TwFutureMonadError" should "execute an async fetch on a Future" in {
-    val fetch: Fetch[Article]    = Fetch(ArticleId(1))(ArticleAsync)
+    val fetch: Fetch[Article]    = TestHelper.article(1)
     val article: Future[Article] = Fetch.run[Future](fetch)
     Await.result(article, 100.milliseconds) shouldEqual (Article(1, "An article with id 1"))
   }
@@ -96,10 +44,8 @@ class FetchTwitterFutureSpec extends FlatSpec with Matchers {
       "An article with id 1"), Author(2, "@egg2"))
   }
   it should "execute a sync fetch" in {
-    val fetch: Fetch[Article] = Fetch(ArticleId(1))(ArticleSync)
-    Await.result(Fetch.run[Future](fetch), 100.milliseconds) shouldEqual (Article(
-      1,
-      "An article with id 1"))
+    val fetch: Fetch[Int] = one(1)
+    Await.result(Fetch.run[Future](fetch), 100.milliseconds) shouldEqual (1)
   }
   it should "be used as an applicative" in {
     import cats.syntax.cartesian._
@@ -111,14 +57,14 @@ class FetchTwitterFutureSpec extends FlatSpec with Matchers {
   }
 
   "RerunnableMonadError" should "lift and execute an async fetch into a Rerunnable" in {
-    val fetch: Fetch[Article]        = Fetch(ArticleId(1))(ArticleAsync)
+    val fetch: Fetch[Article]        = TestHelper.article(1)
     val article: Rerunnable[Article] = Fetch.run[Rerunnable](fetch)
     Await.result(article.run, 100.milliseconds) shouldEqual (Article(1, "An article with id 1"))
   }
   it should "run a sync fetch" in {
-    val fetch: Fetch[Article]        = Fetch(ArticleId(1))(ArticleSync)
-    val article: Rerunnable[Article] = Fetch.run[Rerunnable](fetch)
-    Await.result(article.run, 100.milliseconds) shouldEqual (Article(1, "An article with id 1"))
+    val fetch: Fetch[Int]   = one(1)
+    val rr: Rerunnable[Int] = Fetch.run[Rerunnable](fetch)
+    Await.result(rr.run, 100.milliseconds) shouldEqual (1)
   }
   it should "allow for several async datasources to be combined" in {
     val fetch: Fetch[(Article, Author)] = for {
@@ -160,7 +106,7 @@ class FetchTwitterFutureSpec extends FlatSpec with Matchers {
 
     // this invokes evalFun as soon as the Now is created. subsequent
     // calls to the rerunnable return the memoized value
-    val now       = Now(evalFun)
+    val now       = Eval.now(evalFun)
     val rNow      = evalToRerunnable(now)
     val nowAnswer = dontDoThisAtHome
     Await.result(rNow.run) should be(nowAnswer)
@@ -169,14 +115,14 @@ class FetchTwitterFutureSpec extends FlatSpec with Matchers {
     // this invokes evalFun on first run. subsequent calls to the
     // run return the memoized value
     def laterValue: Int = evalFun
-    val later           = Later(laterValue)
+    val later           = Eval.later(laterValue)
     val rLater          = evalToRerunnable(later)
     val laterAnswer     = dontDoThisAtHome
     Await.result(rLater.run) should be(laterAnswer + 1)
     Await.result(rLater.run) should be(laterAnswer + 1)
 
     // each time rerunnable run is invoked evalFun is called
-    val always       = Always(evalFun)
+    val always       = Eval.always(evalFun)
     val rAlways      = evalToRerunnable(always)
     val alwaysAnswer = dontDoThisAtHome
     Await.result(rAlways.run) should be(alwaysAnswer + 1)
