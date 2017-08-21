@@ -114,8 +114,8 @@ object ProjectPlugin extends AutoPlugin {
         ),
         orgUpdateDocFilesSetting += baseDirectory.value / "tut",
         scalaOrganization := "org.scala-lang",
-        scalaVersion := "2.12.2",
-        crossScalaVersions := List("2.11.11", "2.12.2"),
+        scalaVersion := "2.12.3",
+        crossScalaVersions := List("2.11.11", "2.12.3"),
         resolvers += Resolver.sonatypeRepo("snapshots"),
         scalacOptions := Seq(
           "-unchecked",
