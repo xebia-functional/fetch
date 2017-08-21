@@ -14,32 +14,25 @@
  * limitations under the License.
  */
 
-package fetch.twitterFuture
+package fetch.monixTask
 
-import io.catbird.util.Rerunnable
-import com.twitter.util.{ExecutorServiceFuturePool, FuturePool}
-import scala.concurrent.{Future => ScalaFuture, ExecutionContext}
+import monix.eval.Task
+import monix.execution.Scheduler
+import scala.concurrent.{ExecutionContext, Future}
 import org.scalatest.{AsyncFlatSpec, Matchers}
-
 import fetch.{FetchMonadError, FetchMonadErrorTimeoutSpec}
-import fetch.twitterFuture.implicits._
+import fetch.monixTask.implicits._
 
-class RerunnableTimeoutSpec
+// Note that this test cannot run on Scala.js
+
+class FetchTaskTimeoutTests
     extends AsyncFlatSpec
     with Matchers
-    with FetchMonadErrorTimeoutSpec[Rerunnable] {
+    with FetchMonadErrorTimeoutSpec[Task] {
 
-  implicit val pool: FuturePool = FuturePool.interruptibleUnboundedPool
+  implicit override val executionContext: Scheduler = Scheduler.Implicits.global
 
-  implicit override val executionContext: ExecutionContext = {
-    val executor = pool.asInstanceOf[ExecutorServiceFuturePool].executor
-    ExecutionContext.fromExecutorService(executor)
-  }
+  def runAsFuture[A](task: Task[A]): Future[A] = task.runAsync
 
-  def runAsFuture[A](rerun: Rerunnable[A]): ScalaFuture[A] =
-    Convert.twitterToScalaFuture(rerun.run)
-
-  def fetchMonadError: FetchMonadError[Rerunnable] =
-    FetchMonadError[Rerunnable]
-
+  def fetchMonadError: FetchMonadError[Task] = FetchMonadError[Task]
 }

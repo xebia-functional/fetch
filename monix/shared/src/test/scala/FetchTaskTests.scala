@@ -14,21 +14,20 @@
  * limitations under the License.
  */
 
+package fetch.monixTask
+
 import monix.eval.Task
 import monix.execution.Scheduler
-
-import org.scalatest._
-
+import org.scalatest.{AsyncFreeSpec, Matchers}
 import cats.data.NonEmptyList
 import cats.instances.list._
+import scala.concurrent.Future
 
 import fetch._
 import fetch.monixTask.implicits._
 
-import scala.concurrent.Future
-
 class FetchTaskTests extends AsyncFreeSpec with Matchers {
-  implicit override def executionContext = Scheduler.Implicits.global
+  implicit override val executionContext = Scheduler.Implicits.global
 
   case class ArticleId(id: Int)
   case class Article(id: Int, content: String) {

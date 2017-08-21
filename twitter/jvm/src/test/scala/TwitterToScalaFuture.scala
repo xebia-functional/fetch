@@ -14,22 +14,22 @@
  * limitations under the License.
  */
 
-package fetch
+package fetch.twitterFuture
 
-import scala.concurrent.{ExecutionContext, Future}
-import org.scalatest.{AsyncFlatSpec, Matchers}
-import fetch.implicits._
+import com.twitter.util.{Future => TwitterFuture, Return, Throw}
+import scala.concurrent.{Future => ScalaFuture, Promise => ScalaPromise, ExecutionContext}
 
-// Note that this test cannot run on Scala.js
+object Convert {
 
-class FutureTimeoutTests
-    extends AsyncFlatSpec
-    with Matchers
-    with FetchMonadErrorTimeoutSpec[Future] {
+  /** https://twitter.github.io/util/guide/util-cookbook/futures.html */
+  def twitterToScalaFuture[A](tf: TwitterFuture[A])(
+      implicit ec: ExecutionContext): ScalaFuture[A] = {
+    val promise: ScalaPromise[A] = ScalaPromise()
+    tf.respond {
+      case Return(value)    => promise.trySuccess(value)
+      case Throw(exception) => promise.tryFailure(exception)
+    }
+    promise.future
+  }
 
-  implicit override val executionContext: ExecutionContext = ExecutionContext.Implicits.global
-
-  def runAsFuture[A](fa: Future[A]): Future[A] = fa
-
-  def fetchMonadError: FetchMonadError[Future] = FetchMonadError[Future]
 }
