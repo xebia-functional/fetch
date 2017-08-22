@@ -13,6 +13,7 @@ These are the people that have contributed to the Fetch project:
 * Adelbert Chang <[adelbertc](https://github.com/adelbertc)>
 * Alessandro Lacava <[lambdista](https://github.com/lambdista)>
 * Chris Vale <[chris-vale-ck](https://github.com/chris-vale-ck)>
+* Fede Fernández <[fedefernandez](https://github.com/fedefernandez)>
 * Juan Pedro Moreno <[juanpedromoreno](https://github.com/juanpedromoreno)>
 * Justin Heyes-Jones <[justinhj](https://github.com/justinhj)>
 * Maureen Elsberry  <[MaureenElsberry](https://github.com/MaureenElsberry)>
