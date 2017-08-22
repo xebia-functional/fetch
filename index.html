@@ -91,7 +91,7 @@ is only supported in Scala and not Scala.js and is meant for experimentation pur
 <p>Let’s run it and wait for the fetch to complete:</p>
 
 <div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="n">fetchOne</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Id</span><span class="o">]</span>
-<span class="c1">// [560] One ToString 1
+<span class="c1">// [540] One ToString 1
 // res2: cats.Id[String] = 1
 </span></code></pre>
 </div>
@@ -111,7 +111,7 @@ is only supported in Scala and not Scala.js and is meant for experimentation pur
 <p>When executing the above fetch, note how the three identities get batched and the data source is only queried once.</p>
 
 <div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="n">fetchThree</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Id</span><span class="o">]</span>
-<span class="c1">// [560] Many ToString NonEmptyList(3, 1, 2)
+<span class="c1">// [540] Many ToString NonEmptyList(3, 1, 2)
 // res4: cats.Id[(String, String, String)] = (1,2,3)
 </span></code></pre>
 </div>
@@ -152,8 +152,8 @@ is only supported in Scala and not Scala.js and is meant for experimentation pur
 <p>Note how the two independent data fetches run in parallel, minimizing the latency cost of querying the two data sources.</p>
 
 <div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="n">fetchMulti</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Id</span><span class="o">]</span>
-<span class="c1">// [570] One Length one
-// [560] One ToString 1
+<span class="c1">// [551] One Length one
+// [540] One ToString 1
 // res6: cats.Id[(String, Int)] = (1,3)
 </span></code></pre>
 </div>
@@ -172,7 +172,7 @@ is only supported in Scala and not Scala.js and is meant for experimentation pur
 <p>While running it, notice that the data source is only queried once. The next time the identity is requested it’s served from the cache.</p>
 
 <div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="n">fetchTwice</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Id</span><span class="o">]</span>
-<span class="c1">// [560] One ToString 1
+<span class="c1">// [540] One ToString 1
 // res7: cats.Id[(String, String)] = (1,1)
 </span></code></pre>
 </div>
