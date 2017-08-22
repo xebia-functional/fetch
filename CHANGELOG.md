@@ -14,6 +14,20 @@ Release changes:
 * Change delay in flaky timeout test ([#134](https://github.com/47deg/fetch/pull/134))
 
 
+## 08/22/2017 - Version 0.6.3
+
+Release changes:
+
+* Add timeout capability to Future implementation of FetchMonadError ([#127](https://github.com/47deg/fetch/pull/127))
+* adds commercial support statement ([#129](https://github.com/47deg/fetch/pull/129))
+* Add twitter future support ([#128](https://github.com/47deg/fetch/pull/128))
+* Enforce consistent arrow symbols using scalafmt ([#130](https://github.com/47deg/fetch/pull/130))
+* Generalize timeout tests. Fix twitter timeout. ([#131](https://github.com/47deg/fetch/pull/131))
+* Move and reuse TestHelper ([#132](https://github.com/47deg/fetch/pull/132))
+* Release v0.6.3 ([#133](https://github.com/47deg/fetch/pull/133))
+* Change delay in flaky timeout test ([#134](https://github.com/47deg/fetch/pull/134))
+
+
 ## 06/01/2017 - Version 0.6.2
 
 Release changes:
