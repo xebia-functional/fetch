@@ -37,7 +37,7 @@ trait FetchMonadErrorTimeoutSpec[F[_]] { self: AsyncFlatSpecLike with Matchers =
 
   "FetchMonadError" should "fail with timeout when a Query does not complete in time" in {
     recoverToSucceededIf[TimeoutException] {
-      runAsFuture { fetchMonadError.runQuery(delayQuery(100.millis, 300.millis)) }
+      runAsFuture { fetchMonadError.runQuery(delayQuery(100.millis, 600.millis)) }
     }
   }
 
