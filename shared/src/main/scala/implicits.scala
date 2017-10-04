@@ -16,29 +16,59 @@
 
 package fetch
 
-import cats.MonadError
+import java.util.{Timer, TimerTask}
+import java.util.concurrent.TimeoutException
+import scala.concurrent.duration._
 import cats.instances.future._
 import scala.concurrent.{ExecutionContext, Future, Promise}
 
 object implicits {
 
-  implicit def fetchFutureFetchMonadError(
-      implicit ec: ExecutionContext
-  ): FetchMonadError[Future] =
+  // Shared Timer object to schedule timeouts
+  private[fetch] lazy val timer: Timer = new Timer("fetch-future-timeout-daemon", true)
+
+  implicit def fetchFutureFetchMonadError(implicit ec: ExecutionContext): FetchMonadError[Future] =
     new FetchMonadError.FromMonadError[Future] {
       override def runQuery[A](j: Query[A]): Future[A] = j match {
-        case Sync(e) => Future(e.value)
-        case Async(ac, timeout) => {
+
+        case Sync(e) =>
+          Future({ e.value })
+
+        case Async(ac, timeout) =>
           val p = Promise[A]()
 
-          ec.execute(new Runnable {
-            def run() = ac(p.trySuccess _, p.tryFailure _)
-          })
+          val runnable = new Runnable {
+            def run(): Unit = ac(p.trySuccess, p.tryFailure)
+          }
+
+          timeout match {
+
+            // Handle the case where there is a finite timeout requested
+            case finite: FiniteDuration =>
+              // Timer task that completes the future when the timeout occurs
+              // if it didn't complete already
+              val timerTask = new TimerTask() {
+                def run(): Unit =
+                  p.tryFailure(new TimeoutException())
+              }
+
+              // Start the timeout Timer
+              timer.schedule(timerTask, timeout.toMillis)
+
+              // Execute the user's action
+              ec.execute(runnable)
+
+            // No timeout
+            case _ =>
+              // Execute the user's action
+              ec.execute(runnable)
+          }
 
           p.future
-        }
+
         case Ap(qf, qx) =>
           runQuery(qf).zip(runQuery(qx)).map { case (f, x) => f(x) }
       }
+
     }
 }

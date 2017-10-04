@@ -14,53 +14,21 @@
  * limitations under the License.
  */
 
+package fetch.monixTask
+
 import monix.eval.Task
 import monix.execution.Scheduler
-
-import org.scalatest._
-
-import cats.data.NonEmptyList
+import org.scalatest.{AsyncFreeSpec, Matchers}
 import cats.instances.list._
+import scala.concurrent.Future
 
 import fetch._
 import fetch.monixTask.implicits._
 
-import scala.concurrent.Future
-
 class FetchTaskTests extends AsyncFreeSpec with Matchers {
-  implicit override def executionContext = Scheduler.Implicits.global
+  import TestHelper._
 
-  case class ArticleId(id: Int)
-  case class Article(id: Int, content: String) {
-    def author: Int = id + 1
-  }
-
-  implicit object ArticleFuture extends DataSource[ArticleId, Article] {
-    override def name = "ArticleFuture"
-    override def fetchOne(id: ArticleId): Query[Option[Article]] =
-      Query.async((ok, fail) => {
-        ok(Option(Article(id.id, "An article with id " + id.id)))
-      })
-    override def fetchMany(ids: NonEmptyList[ArticleId]): Query[Map[ArticleId, Article]] =
-      batchingNotSupported(ids)
-  }
-
-  def article(id: Int): Fetch[Article] = Fetch(ArticleId(id))
-
-  case class AuthorId(id: Int)
-  case class Author(id: Int, name: String)
-
-  implicit object AuthorFuture extends DataSource[AuthorId, Author] {
-    override def name = "AuthorFuture"
-    override def fetchOne(id: AuthorId): Query[Option[Author]] =
-      Query.async((ok, fail) => {
-        ok(Option(Author(id.id, "@egg" + id.id)))
-      })
-    override def fetchMany(ids: NonEmptyList[AuthorId]): Query[Map[AuthorId, Author]] =
-      batchingNotSupported(ids)
-  }
-
-  def author(a: Article): Fetch[Author] = Fetch(AuthorId(a.author))
+  implicit override val executionContext = Scheduler.Implicits.global
 
   "We can interpret an async fetch into a task" in {
     val fetch: Fetch[Article] = article(1)

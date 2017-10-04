@@ -16,12 +16,9 @@
 
 package fetch
 
-import scala.concurrent._
-import scala.concurrent.duration._
+import scala.concurrent.{ExecutionContext, Future}
+import org.scalatest.{AsyncFreeSpec, Matchers}
 
-import org.scalatest._
-
-import cats.MonadError
 import cats.data.NonEmptyList
 import cats.instances.list._
 import cats.syntax.apply._
@@ -29,79 +26,10 @@ import cats.syntax.apply._
 import fetch._
 import fetch.implicits._
 
-object TestHelper {
-  import fetch.syntax._
-
-  case class DidNotFound() extends Throwable
-
-  case class One(id: Int)
-  implicit object OneSource extends DataSource[One, Int] {
-    override def name = "OneSource"
-    override def fetchOne(id: One): Query[Option[Int]] =
-      Query.sync(Option(id.id))
-    override def fetchMany(ids: NonEmptyList[One]): Query[Map[One, Int]] =
-      Query.sync(ids.toList.map(one => (one, one.id)).toMap)
-  }
-  def one(id: Int): Fetch[Int] = Fetch(One(id))
-
-  case class AnotherOne(id: Int)
-  implicit object AnotheroneSource extends DataSource[AnotherOne, Int] {
-    override def name = "AnotherOneSource"
-    override def fetchOne(id: AnotherOne): Query[Option[Int]] =
-      Query.sync(Option(id.id))
-    override def fetchMany(ids: NonEmptyList[AnotherOne]): Query[Map[AnotherOne, Int]] =
-      Query.sync(ids.toList.map(anotherone => (anotherone, anotherone.id)).toMap)
-  }
-  def anotherOne(id: Int): Fetch[Int] = Fetch(AnotherOne(id))
-
-  case class Many(n: Int)
-  implicit object ManySource extends DataSource[Many, List[Int]] {
-    override def name = "ManySource"
-    override def fetchOne(id: Many): Query[Option[List[Int]]] =
-      Query.sync(Option(0 until id.n toList))
-    override def fetchMany(ids: NonEmptyList[Many]): Query[Map[Many, List[Int]]] =
-      Query.sync(ids.toList.map(m => (m, 0 until m.n toList)).toMap)
-  }
-  def many(id: Int): Fetch[List[Int]] = Fetch(Many(id))
-
-  case class Never()
-  implicit object NeverSource extends DataSource[Never, Int] {
-    override def name = "NeverSource"
-    override def fetchOne(id: Never): Query[Option[Int]] =
-      Query.sync(None)
-    override def fetchMany(ids: NonEmptyList[Never]): Query[Map[Never, Int]] =
-      Query.sync(Map.empty[Never, Int])
-  }
-
-  def requestFetches(r: FetchRequest): Int =
-    r match {
-      case FetchOne(_, _)       => 1
-      case FetchMany(ids, _)    => ids.toList.size
-      case Concurrent(requests) => requests.toList.map(requestFetches).sum
-    }
-
-  def totalFetched(rs: Seq[Round]): Int =
-    rs.map((round: Round) => requestFetches(round.request)).toList.sum
-
-  def requestBatches(r: FetchRequest): Int =
-    r match {
-      case FetchOne(_, _)    => 0
-      case FetchMany(ids, _) => 1
-      case Concurrent(requests) =>
-        requests.toList.count {
-          case FetchMany(_, _) => true
-          case _               => false
-        }
-    }
-
-  def totalBatches(rs: Seq[Round]): Int =
-    rs.map((round: Round) => requestBatches(round.request)).toList.sum
-}
-
 class FetchTests extends AsyncFreeSpec with Matchers {
   import TestHelper._
 
-  val ME = implicitly[FetchMonadError[Future]]
+  val ME = FetchMonadError[Future]
 
   implicit override def executionContext = ExecutionContext.Implicits.global
 
