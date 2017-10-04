@@ -31,6 +31,7 @@ trait DataSource[I, A] {
   /** The name of the data source.
    */
   def name: DataSourceName
+
   override def toString: String = "DataSource:" + name
 
   /**
@@ -55,7 +56,6 @@ trait DataSource[I, A] {
     val fetchOneWithId: I => Query[Option[(I, A)]] = id =>
       fetchOne(id).map(_.tupleLeft(id))
 
-    // ids.toList.traverseFilter(fetchOneWithId).map(_.toMap)
     ids.toList.traverse(fetchOneWithId).map(_.collect { case Some(x) => x }.toMap)
   }
 

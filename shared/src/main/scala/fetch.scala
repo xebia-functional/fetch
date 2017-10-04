@@ -121,7 +121,6 @@ object `package` {
      * Given multiple values with a related `DataSource` lift them to the `Fetch` monad.
      */
     def multiple[I, A](i: I, is: I*)(implicit DS: DataSource[I, A]): Fetch[List[A]] =
-      // Free.liftF(FetchMany(NonEmptyList(i, is.toList), DS))
       Free.liftF[FetchOp, List[A]](FetchMany(NonEmptyList(i, is.toList), DS))
 
     /**
@@ -163,7 +162,6 @@ object `package` {
      * results. It implies concurrent execution of fetches.
      */
     def join[A, B](fl: Fetch[A], fr: Fetch[B]): Fetch[(A, B)] =
-      // Free.liftF(Join(fl, fr))
       Free.liftF[FetchOp, (A, B)](Join(fl, fr))
 
     private[fetch] class FetchRunner[M[_]](private val dummy: Boolean = true) extends AnyVal {
