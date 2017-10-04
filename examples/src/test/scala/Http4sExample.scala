@@ -15,6 +15,7 @@
  */
 
 import cats.data.NonEmptyList
+import cats.effect.IO
 import cats.instances.list._
 import cats.syntax.traverse._
 import io.circe._
@@ -26,7 +27,6 @@ import org.scalatest.{AsyncWordSpec, Matchers}
 import scala.concurrent.{ExecutionContext, Future}
 import fetch._
 import fetch.implicits._
-import fs2.Task
 
 class Http4sExample extends AsyncWordSpec with Matchers {
   implicit override def executionContext: ExecutionContext = ExecutionContext.Implicits.global
@@ -51,7 +51,7 @@ class Http4sExample extends AsyncWordSpec with Matchers {
 
   // http4s client which is used by the datasources
 
-  val client = PooledHttp1Client()
+  val client = PooledHttp1Client[IO]()
 
   // a DataSource that can fetch Users with their UserId.
 
@@ -70,15 +70,15 @@ class Http4sExample extends AsyncWordSpec with Matchers {
 
     // fetchById and fetchByIds would probably be defined in some other module
 
-    def fetchById(id: UserId): Task[Option[User]] = {
+    def fetchById(id: UserId): IO[Option[User]] = {
       val url = s"https://jsonplaceholder.typicode.com/users?id=${id.id}"
-      client.expect(url)(jsonOf[List[User]]).map(_.headOption)
+      client.expect(url)(jsonOf[IO, List[User]]).map(_.headOption)
     }
 
-    def fetchByIds(ids: NonEmptyList[UserId]): Task[List[User]] = {
+    def fetchByIds(ids: NonEmptyList[UserId]): IO[List[User]] = {
       val filterIds = ids.map("id=" + _.id).toList.mkString("&")
       val url       = s"https://jsonplaceholder.typicode.com/users?$filterIds"
-      client.expect(url)(jsonOf[List[User]])
+      client.expect(url)(jsonOf[IO, List[User]])
     }
   }
 
@@ -95,15 +95,15 @@ class Http4sExample extends AsyncWordSpec with Matchers {
         fetchByIds(ids).unsafeRunAsync(_.fold(fail, ok))
       }
 
-    def fetchById(id: UserId): Task[List[Post]] = {
+    def fetchById(id: UserId): IO[List[Post]] = {
       val url = s"https://jsonplaceholder.typicode.com/posts?userId=${id.id}"
-      client.expect(url)(jsonOf[List[Post]])
+      client.expect(url)(jsonOf[IO, List[Post]])
     }
 
-    def fetchByIds(ids: NonEmptyList[UserId]): Task[Map[UserId, List[Post]]] = {
+    def fetchByIds(ids: NonEmptyList[UserId]): IO[Map[UserId, List[Post]]] = {
       val filterIds = ids.map("userId=" + _.id).toList.mkString("&")
       val url       = s"https://jsonplaceholder.typicode.com/posts?$filterIds"
-      client.expect(url)(jsonOf[List[Post]]).map(_.groupBy(_.userId).toMap)
+      client.expect(url)(jsonOf[IO, List[Post]]).map(_.groupBy(_.userId).toMap)
     }
   }
 
@@ -136,7 +136,7 @@ class Http4sExample extends AsyncWordSpec with Matchers {
     val fetch: Fetch[List[(User, List[Post])]] =
       for {
         users <- List(UserId(1), UserId(2)).traverse(user)
-        usersWithPosts <- users.traverseU { user =>
+        usersWithPosts <- users.traverse { user =>
           postsForUser(user.id).map(posts => (user, posts))
         }
       } yield usersWithPosts
