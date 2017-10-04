@@ -21,7 +21,7 @@ object ProjectPlugin extends AutoPlugin {
       Seq(%%("cats-free", "1.0.0-MF"), %%("scalatest") % "test")
 
     lazy val monixCrossDependencies: Seq[ModuleID] =
-      %%("monix-eval", "3.0.0-b20be32") :: Nil
+      %%("monix-eval", "3.0.0-M1") :: Nil
 
     lazy val micrositeSettings: Seq[Def.Setting[_]] = Seq(
       micrositeName := "Fetch",
@@ -62,11 +62,11 @@ object ProjectPlugin extends AutoPlugin {
     )
 
     lazy val examplesSettings: Seq[Def.Setting[_]] = libraryDependencies ++= Seq(
-      %%("circe-generic"),
-      %%("doobie-core-cats"),
-      %%("doobie-h2-cats"),
-      %%("http4s-blaze-client"),
-      %%("http4s-circe")
+      %%("circe-generic", "0.9.0-M1"),
+      %%("doobie-core", "0.5.0-M8"),
+      %%("doobie-h2", "0.5.0-M8"),
+      %%("http4s-blaze-client", "0.18.0-M2"),
+      %%("http4s-circe", "0.18.0-M2")
     ) ++ commonCrossDependencies
   }
 
@@ -103,7 +103,7 @@ object ProjectPlugin extends AutoPlugin {
           ScalaJSBadge.apply(_),
           GitHubIssuesBadge.apply(_)
         ),
-        orgSupportedScalaJSVersion := Some("0.6.15"),
+        orgSupportedScalaJSVersion := Some("0.6.20"),
         orgScriptTaskListSetting := List(
           orgValidateFiles.asRunnableItem,
           "validateDocs".asRunnableItemFull,
