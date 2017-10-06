@@ -40,6 +40,7 @@ lazy val debugJS  = debug.js
 
 lazy val twitter = crossProject
   .in(file("twitter"))
+  .settings(name := "fetch-twitter")
   .dependsOn(fetch % "compile->compile;test->test")
   .crossDepSettings(commonCrossDependencies ++ twitterUtilDependencies: _*)
 
