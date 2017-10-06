@@ -3,3 +3,5 @@ target/
 _site/*
 docs/src/jekyll/_site/
 docs/src/jekyll/*.md
+/secring.gpg
+
