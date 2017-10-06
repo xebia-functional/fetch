@@ -54,7 +54,6 @@ object MaxBatchSizePhase {
       case Parallel =>
         val queries = batchedFetches.asInstanceOf[NonEmptyList[FetchQuery[Any, Any]]]
         Free.liftF(Concurrent(queries)).map { results =>
-          // many.ids.toList.mapFilter(id => results.get(many.ds.identity(id)))
           many.ids.toList.flatMap(id => results.get(many.ds.identity(id)))
         }
     }

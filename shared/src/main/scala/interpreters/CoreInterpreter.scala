@@ -20,13 +20,11 @@ package interpreters
 import scala.collection.immutable._
 
 import cats.{~>, Monad, MonadError}
-import cats.data.{Ior, NonEmptyList, StateT, Validated}
+import cats.data.{Ior, IorNel, NonEmptyList, StateT, Validated}
 import cats.free.Free
 import cats.implicits._
 
 object CoreInterpreter {
-
-  type IorNel[L, R] = Ior[NonEmptyList[L], R] // available in next Cats Version
 
   def apply[M[_]](
       implicit M: FetchMonadError[M]
@@ -97,7 +95,6 @@ object CoreInterpreter {
 
     def getResultList(resMap: Map[Any, Any]): M[(FetchEnv, List[Any])] =
       ids
-        // .traverseU(id => resMap.get(id).orElse(cache.getWithDS(ds)(id)).toValidNel(id))
         .traverse(id => resMap.get(id).orElse(cache.getWithDS(ds)(id)).toValidNel(id))
         .fold[M[(FetchEnv, List[Any])]](
           missingIds => M.raiseError(MissingIdentities(env, Map(ds.name -> missingIds.toList))),
@@ -179,8 +176,7 @@ object CoreInterpreter {
         }
 
       missingIdentitiesOrOK
-        // .as(queriesAndResults)
-        .map(_ => queriesAndResults)
+        .as(queriesAndResults)
         .leftMap(missingIds => MissingIdentities(env, missingIds))
         .toEither
     }
