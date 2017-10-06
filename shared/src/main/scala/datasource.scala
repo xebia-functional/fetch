@@ -16,10 +16,11 @@
 
 package fetch
 
-import cats.data.{NonEmptyList, OptionT}
+import cats.data.NonEmptyList
 import cats.instances.list._
+import cats.instances.option._
 import cats.syntax.functor._
-import cats.syntax.traverseFilter._
+import cats.syntax.traverse._
 
 /**
  * A `DataSource` is the recipe for fetching a certain identity `I`, which yields
@@ -30,7 +31,8 @@ trait DataSource[I, A] {
   /** The name of the data source.
    */
   def name: DataSourceName
-  override def toString: String = name
+
+  override def toString: String = "DataSource:" + name
 
   /**
    * Derive a `DataSourceIdentity` from an identity, suitable for storing the result
@@ -43,7 +45,7 @@ trait DataSource[I, A] {
   def fetchOne(id: I): Query[Option[A]]
 
   /** Fetch many identities, returning a mapping from identities to results. If an
-   * identity wasn't found won't appear in the keys.
+   * identity wasn't found, it won't appear in the keys.
    */
   def fetchMany(ids: NonEmptyList[I]): Query[Map[I, A]]
 
@@ -52,13 +54,13 @@ trait DataSource[I, A] {
    */
   def batchingNotSupported(ids: NonEmptyList[I]): Query[Map[I, A]] = {
     val fetchOneWithId: I => Query[Option[(I, A)]] = id =>
-      OptionT(fetchOne(id)).map(res => (id, res)).value
+      fetchOne(id).map(_.tupleLeft(id))
 
-    ids.toList.traverseFilter(fetchOneWithId).map(_.toMap)
+    ids.toList.traverse(fetchOneWithId).map(_.collect { case Some(x) => x }.toMap)
   }
 
   def batchingOnly(id: I): Query[Option[A]] =
-    fetchMany(NonEmptyList.of(id)).map(_ get id)
+    fetchMany(NonEmptyList.one(id)).map(_ get id)
 
   def maxBatchSize: Option[Int] = None
 

@@ -24,7 +24,7 @@ import cats.implicits._
 
 import fetch.interpreters._
 
-trait FetchInterpreters {
+private[fetch] trait FetchInterpreters {
 
   def interpreter[M[_]: FetchMonadError]: FetchOp ~> FetchInterpreter[M]#f =
     ParallelJoinPhase.apply

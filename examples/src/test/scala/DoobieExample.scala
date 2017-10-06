@@ -15,13 +15,13 @@
  */
 
 import cats.data.NonEmptyList
+import cats.effect.IO
 import cats.instances.list._
 import cats.syntax.cartesian._
 import cats.syntax.traverse._
-import doobie.imports.{Query => _, _}
-import doobie.h2.h2transactor._
-import fs2.Task
-import fs2.interop.cats._
+import doobie.{Query => _, _}
+import doobie.h2.H2Transactor
+import doobie.implicits._
 import org.scalatest.{AsyncWordSpec, Matchers}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -32,8 +32,8 @@ import fetch.implicits._
 class DoobieExample extends AsyncWordSpec with Matchers {
   implicit override def executionContext = ExecutionContext.Implicits.global
 
-  val createTransactor: Task[Transactor[Task]] =
-    H2Transactor[Task]("jdbc:h2:mem:test;DB_CLOSE_DELAY=-1", "sa", "")
+  val createTransactor: IO[Transactor[IO]] =
+    H2Transactor[IO]("jdbc:h2:mem:test;DB_CLOSE_DELAY=-1", "sa", "")
 
   case class AuthorId(id: Int)
   case class Author(id: Int, name: String)
@@ -55,12 +55,10 @@ class DoobieExample extends AsyncWordSpec with Matchers {
       case (name, id) => Author(id + 1, name)
     }
 
-  val xa: Transactor[Task] = (for {
+  val xa: Transactor[IO] = (for {
     xa <- createTransactor
     _  <- (dropTable *> createTable *> authors.traverse(addAuthor)).transact(xa)
-  } yield xa).unsafeRunSync.toOption.getOrElse(
-    throw new Exception("Could not create test database and/or transactor")
-  )
+  } yield xa).unsafeRunSync()
 
   implicit val authorDS = new DataSource[AuthorId, Author] {
     override def name = "AuthorDoobie"

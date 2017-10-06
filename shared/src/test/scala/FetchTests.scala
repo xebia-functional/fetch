@@ -21,7 +21,7 @@ import org.scalatest.{AsyncFreeSpec, Matchers}
 
 import cats.data.NonEmptyList
 import cats.instances.list._
-import cats.syntax.cartesian._
+import cats.syntax.apply._
 
 import fetch._
 import fetch.implicits._
@@ -131,7 +131,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   "We can use Fetch as a cartesian" in {
     import cats.syntax.cartesian._
 
-    val fetch: Fetch[(Int, List[Int])] = (one(1) |@| many(3)).tupled
+    val fetch: Fetch[(Int, List[Int])] = (one(1), many(3)).tupled
     val fut                            = Fetch.run[Future](fetch)
 
     fut.map(_ shouldEqual (1, List(0, 1, 2)))
@@ -140,7 +140,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   "We can use Fetch as an applicative" in {
     import cats.syntax.cartesian._
 
-    val fetch: Fetch[Int] = (one(1) |@| one(2) |@| one(3)).map(_ + _ + _)
+    val fetch: Fetch[Int] = (one(1), one(2), one(3)).mapN(_ + _ + _)
     val fut               = Fetch.run[Future](fetch)
 
     fut.map(_ shouldEqual 6)

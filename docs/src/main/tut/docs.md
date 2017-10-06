@@ -133,16 +133,11 @@ val userDatabase: Map[UserId, User] = Map(
 implicit object UserSource extends DataSource[UserId, User]{
   override def name = "User"
 
-  override def fetchOne(id: UserId): Query[Option[User]] = {
-    Query.sync({
-	  latency(userDatabase.get(id), s"One User $id")
-    })
-  }
-  override def fetchMany(ids: NonEmptyList[UserId]): Query[Map[UserId, User]] = {
-    Query.sync({
-	  latency(userDatabase.filterKeys(ids.toList.contains), s"Many Users $ids")
-    })
-  }
+  override def fetchOne(id: UserId): Query[Option[User]] =
+    Query.sync(latency(userDatabase.get(id), s"One User $id"))
+
+  override def fetchMany(ids: NonEmptyList[UserId]): Query[Map[UserId, User]] =
+    Query.sync(latency(userDatabase.filterKeys(ids.toList.toSet), s"Many Users $ids"))
 }
 ```
 
@@ -162,12 +157,11 @@ of `fetchMany`. Note that it will use the `fetchOne` implementation for requesti
 implicit object UnbatchedSource extends DataSource[Int, Int]{
   override def name = "Unbatched"
 
-  override def fetchOne(id: Int): Query[Option[Int]] = {
+  override def fetchOne(id: Int): Query[Option[Int]] =
     Query.sync(Option(id))
-  }
-  override def fetchMany(ids: NonEmptyList[Int]): Query[Map[Int, Int]] = {
+
+  override def fetchMany(ids: NonEmptyList[Int]): Query[Map[Int, Int]] =
     batchingNotSupported(ids)
-  }
 }
 ```
 
@@ -183,7 +177,7 @@ implicit object OnlyBatchedSource extends DataSource[Int, Int]{
     batchingOnly(id)
 
   override def fetchMany(ids: NonEmptyList[Int]): Query[Map[Int, Int]] =
-    Query.sync(ids.toList.map((x) => (x, x)).toMap)
+    Query.sync(ids.map(x => (x, x)).toList.toMap)
 }
 ```
 
@@ -362,16 +356,11 @@ val postDatabase: Map[PostId, Post] = Map(
 implicit object PostSource extends DataSource[PostId, Post]{
   override def name = "Post"
 
-  override def fetchOne(id: PostId): Query[Option[Post]] = {
-    Query.sync({
-	  latency(postDatabase.get(id), s"One Post $id")
-    })
-  }
-  override def fetchMany(ids: NonEmptyList[PostId]): Query[Map[PostId, Post]] = {
-    Query.sync({
-	  latency(postDatabase.filterKeys(ids.toList.contains), s"Many Posts $ids")
-    })
-  }
+  override def fetchOne(id: PostId): Query[Option[Post]] =
+    Query.sync(latency(postDatabase.get(id), s"One Post $id"))
+
+  override def fetchMany(ids: NonEmptyList[PostId]): Query[Map[PostId, Post]] =
+    Query.sync(latency(postDatabase.filterKeys(ids.toList.toSet), s"Many Posts $ids"))
 }
 
 def getPost(id: PostId): Fetch[Post] = Fetch(id)
@@ -395,18 +384,17 @@ We'll implement a data source for retrieving a post topic given a post id.
 implicit object PostTopicSource extends DataSource[Post, PostTopic]{
   override def name = "Post topic"
 
-  override def fetchOne(id: Post): Query[Option[PostTopic]] = {
-    Query.sync({
+  override def fetchOne(id: Post): Query[Option[PostTopic]] =
+    Query.sync {
       val topic = if (id.id % 2 == 0) "monad" else "applicative"
       latency(Option(topic), s"One Post Topic $id")
-    })
-  }
-  override def fetchMany(ids: NonEmptyList[Post]): Query[Map[Post, PostTopic]] = {
-    Query.sync({
-	  val result = ids.toList.map(id => (id, if (id.id % 2 == 0) "monad" else "applicative")).toMap
+    }
+
+  override def fetchMany(ids: NonEmptyList[Post]): Query[Map[Post, PostTopic]] =
+    Query.sync {
+	    val result = ids.toList.map(id => (id, if (id.id % 2 == 0) "monad" else "applicative")).toMap
       latency(result, s"Many Post Topics $ids")
-    })
-  }
+    }
 }
 
 def getPostTopic(post: Post): Fetch[PostTopic] = Fetch(post)
@@ -511,6 +499,7 @@ As you may have guessed, all the optimizations made by `sequence` still apply wh
 fetchTraverse.runA[Id]
 ```
 
+*Note:* When traversing / sequencing long `List`s or other traversables, you should use `Fetch.traverse(xs)(f)` instead of `xs.traverse(f)` as the optimization of very deeply nested fetch structures (such as those created by traversing a lot of elements) can overflow the stack. `Fetch.traverse` creates a fetch structure which is easier to optimize.
 
 # Caching
 
@@ -617,16 +606,11 @@ implicit object BatchedUserSource extends DataSource[UserId, User]{
 
   override def maxBatchSize: Option[Int] = Some(2)
 
-  override def fetchOne(id: UserId): Query[Option[User]] = {
-    Query.sync({
-	  latency(userDatabase.get(id), s"One User $id")
-    })
-  }
-  override def fetchMany(ids: NonEmptyList[UserId]): Query[Map[UserId, User]] = {
-    Query.sync({
-	  latency(userDatabase.filterKeys(ids.toList.contains), s"Many Users $ids")
-    })
-  }
+  override def fetchOne(id: UserId): Query[Option[User]] =
+    Query.sync(latency(userDatabase.get(id), s"One User $id"))
+
+  override def fetchMany(ids: NonEmptyList[UserId]): Query[Map[UserId, User]] =
+    Query.sync(latency(userDatabase.filterKeys(ids.toList.toSet), s"Many Users $ids"))
 }
 
 def getBatchedUser(id: Int): Fetch[User] = Fetch(id)(BatchedUserSource)
@@ -644,7 +628,7 @@ fetchManyBatchedUsers.runA[Id]
 
 ## Batch execution strategy
 
-In the presence of multiple concurrent batches, we can choose between a sequential or parallel execution strategy. By default they will be run in parallel, but you can tweak it by overriding `DataSource#batchExection`.
+In the presence of multiple concurrent batches, we can choose between a sequential or parallel execution strategy. By default batches will be run in parallel, but you can tweak this behaviour by overriding `DataSource#batchExection`.
 
 ```tut:silent
 implicit object SequentialUserSource extends DataSource[UserId, User]{
@@ -654,16 +638,11 @@ implicit object SequentialUserSource extends DataSource[UserId, User]{
 
   override def batchExecution: ExecutionType = Sequential
 
-  override def fetchOne(id: UserId): Query[Option[User]] = {
-    Query.sync({
-	  latency(userDatabase.get(id), s"One User $id")
-    })
-  }
-  override def fetchMany(ids: NonEmptyList[UserId]): Query[Map[UserId, User]] = {
-    Query.sync({
-	  latency(userDatabase.filterKeys(ids.toList.contains), s"Many Users $ids")
-    })
-  }
+  override def fetchOne(id: UserId): Query[Option[User]] =
+    Query.sync(latency(userDatabase.get(id), s"One User $id"))
+
+  override def fetchMany(ids: NonEmptyList[UserId]): Query[Map[UserId, User]] =
+    Query.sync(latency(userDatabase.filterKeys(ids.toList.toSet), s"Many Users $ids"))
 }
 
 def getSequentialUser(id: Int): Fetch[User] = Fetch(id)(SequentialUserSource)
@@ -968,8 +947,6 @@ and batching when possible.
 val fetchSequence: Fetch[List[User]] = Fetch.sequence(List(getUser(1), getUser(2), getUser(3)))
 ```
 
-Note that `Fetch#sequence` is not as general as the `sequence` method from `Traverse`, but performs the same optimizations.
-
 ```tut:book
 Fetch.run[Id](fetchSequence)
 ```
@@ -982,7 +959,7 @@ The `Fetch#traverse` combinator is a combination of `map` and `sequence`.
 val fetchTraverse: Fetch[List[User]] = Fetch.traverse(List(1, 2, 3))(getUser)
 ```
 
-Note that `Fetch#traverse` is not as general as the `traverse` method from `Traverse`, but performs the same optimizations.
+Note that `Fetch#traverse` is not as general as the `traverse` method from `Traverse`, but the resulting `Fetch` can be parallelized more safely if the number of elements is very large.
 
 ```tut:book
 Fetch.run[Id](fetchTraverse)
@@ -1003,14 +980,14 @@ we wouldn't have information about the independency of multiple fetches.
 
 ### Applicative
 
-The `|@|` operator allows us to combine multiple independent fetches, even when they
+The tuple apply syntax allows us to combine multiple independent fetches, even when they
 are from different types, and apply a pure function to their results. We can use it
 as a more powerful alternative to the `product` method or `Fetch#join`:
 
 ```tut:silent
-import cats.syntax.cartesian._
+import cats.syntax.apply._
 
-val fetchThree: Fetch[(Post, User, Post)] = (getPost(1) |@| getUser(2) |@| getPost(2)).tupled
+val fetchThree: Fetch[(Post, User, Post)] = (getPost(1), getUser(2), getPost(2)).tupled
 ```
 
 Notice how the queries to posts are batched.
@@ -1023,9 +1000,9 @@ More interestingly, we can use it to apply a pure function to the results of var
 fetches.
 
 ```tut:book
-val fetchFriends: Fetch[String] = (getUser(1) |@| getUser(2)).map({ (one, other) =>
+val fetchFriends: Fetch[String] = (getUser(1), getUser(2)).mapN { (one, other) =>
   s"${one.username} is friends with ${other.username}"
-})
+}
 
 fetchFriends.runA[Id]
 ```
@@ -1033,9 +1010,9 @@ fetchFriends.runA[Id]
 The above example is equivalent to the following using the `Fetch#join` method:
 
 ```tut:book
-val fetchFriends: Fetch[String] = Fetch.join(getUser(1), getUser(2)).map({ case (one, other) =>
+val fetchFriends: Fetch[String] = Fetch.join(getUser(1), getUser(2)).map { case (one, other) =>
   s"${one.username} is friends with ${other.username}"
-})
+}
 
 fetchFriends.runA[Id]
 ```
@@ -1065,7 +1042,7 @@ val postTopics: Fetch[Map[PostTopic, Int]] = for {
   countByTopic = (posts zip topics).groupBy(_._2).mapValues(_.size)
 } yield countByTopic
 
-val homePage = (postsByAuthor |@| postTopics).tupled
+val homePage = (postsByAuthor, postTopics).tupled
 ```
 
 ## Future
@@ -1152,7 +1129,7 @@ def queryToTask[A](q: Query[A]): Task[A] = q match {
   case Sync(e) => evalToTask(e)
   case Async(action, timeout) => {
     val task: Task[A] = Task.create((scheduler, callback) => {
-	  scheduler.execute(new Runnable {
+	    scheduler.execute(new Runnable {
         def run() = action(callback.onSuccess, callback.onError)
       })
 
@@ -1184,8 +1161,6 @@ Note that Cats' typeclass hierarchy is expressed with inheritance and methods fr
 We make use of the `FromMonadError` class below, making it easer to implement `FetchMonadError[Task]` given a `MonadError[Task, Throwable]` which we can get from the _monix-cats_ projects.
 
 ```tut:silent
-import monix.cats._
-
 implicit val taskFetchMonadError: FetchMonadError[Task] =
   new FetchMonadError.FromMonadError[Task] {
     override def runQuery[A](q: Query[A]): Task[A] = queryToTask[A](q)
@@ -1225,7 +1200,7 @@ visualize fetch executions using the environment.
 ```tut:silent
 val batched: Fetch[List[User]] = Fetch.multiple(1, 2)(UserSource)
 val cached: Fetch[User] = getUser(2)
-val concurrent: Fetch[(List[User], List[Post])] = (List(1, 2, 3).traverse(getUser) |@| List(1, 2, 3).traverse(getPost)).tupled
+val concurrent: Fetch[(List[User], List[Post])] = (List(1, 2, 3).traverse(getUser), List(1, 2, 3).traverse(getPost)).tupled
 
 val interestingFetch = for {
   users <- batched

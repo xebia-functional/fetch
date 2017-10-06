@@ -21,40 +21,32 @@ import scala.collection.immutable._
 import scala.annotation.tailrec
 
 import cats.{~>, Id}
-import cats.data.{Coproduct, NonEmptyList}
+import cats.data.{EitherK, NonEmptyList}
 import cats.free.Free
 import cats.implicits._
 
-import cats.free.FreeTopExt
+import cats.free.fetch.FreeExt
 
 object ParallelJoinPhase {
   lazy val apply: FetchOp ~> Fetch = {
     λ[FetchOp ~> Fetch] {
-      case join @ Join(fl, fr) =>
-        val fetchJoin    = Free.liftF(join)
-        val indepQueries = combineQueries(independentQueries(fetchJoin))
-        parallelJoin(fetchJoin, indepQueries)
+      case join @ Join(fl, fr) => parallelJoin(Free.liftF[FetchOp, (Any, Any)](join))
       case other => Free.liftF(other)
     }
   }
 
   private[this] def parallelJoin[A, B](
       fetchJoin: Fetch[(A, B)],
-      queries: List[FetchQuery[_, _]],
       oldCache: InMemoryCache = InMemoryCache.empty
-  ): Fetch[(A, B)] = {
-    combineQueries(queries).asInstanceOf[List[FetchQuery[Any, Any]]].toNel.fold(fetchJoin) {
-      queriesNel =>
+  ): Fetch[(A, B)] =
+    combineQueries(independentQueries(fetchJoin)).asInstanceOf[List[FetchQuery[Any, Any]]].toNel match {
+      case None => fetchJoin
+      case Some(queriesNel) =>
         Free.liftF(Concurrent(queriesNel)).flatMap { newCache =>
-          val cache            = newCache |+| oldCache
-          val simplerFetchJoin = simplify(cache)(fetchJoin)
-          val indepQueries     = independentQueries(simplerFetchJoin)
-          indepQueries.toNel.fold(simplerFetchJoin) { queries =>
-            parallelJoin(simplerFetchJoin, queries.toList, cache)
-          }
+          val cache = newCache |+| oldCache
+          parallelJoin(simplify(cache)(fetchJoin), cache)
         }
     }
-  }
 
   private[this] def independentQueries(f: Fetch[_]): List[FetchQuery[_, _]] =
     independentQueriesRec(f, Nil)
@@ -68,7 +60,7 @@ object ParallelJoinPhase {
     // independent queries, but this also has the consequence that pure
     // values can be executed multiple times.
     //  eg : Fetch.pure(5).map { i => println("hello"); i * 2 }
-    FreeTopExt.inspect(f.step) match {
+    FreeExt.getSuspend(f.step) match {
       case Some(Join(ffl, ffr)) =>
         val nacc = independentQueries(ffl)
         independentQueriesRec(ffr, acc ++ nacc)
@@ -83,25 +75,25 @@ object ParallelJoinPhase {
    * executed and can be replaced by cached results.
    */
   private[this] def simplify(cache: InMemoryCache): Fetch ~> Fetch = {
-    val interpreter: FetchOp ~> Coproduct[FetchOp, Id, ?] =
-      new (FetchOp ~> Coproduct[FetchOp, Id, ?]) {
-        def apply[X](fetchOp: FetchOp[X]): Coproduct[FetchOp, Id, X] = fetchOp match {
+    val interpreter: FetchOp ~> EitherK[FetchOp, Id, ?] =
+      new (FetchOp ~> EitherK[FetchOp, Id, ?]) {
+        def apply[X](fetchOp: FetchOp[X]): EitherK[FetchOp, Id, X] = fetchOp match {
           case one @ FetchOne(id, ds) =>
-            Coproduct[FetchOp, Id, X](cache.get[X](ds.identity(id)).toRight(one))
+            EitherK[FetchOp, Id, X](cache.get[X](ds.identity(id)).toRight(one))
           case many @ FetchMany(ids, ds) =>
             val fetched = ids.traverse(id => cache.get(ds.identity(id)))
-            Coproduct[FetchOp, Id, X](fetched.map(_.toList).toRight(many))
+            EitherK[FetchOp, Id, X](fetched.map(_.toList).toRight(many))
           case join @ Join(fl, fr) =>
-            val sfl      = FreeTopExt.modify(fl)(this)
-            val sfr      = FreeTopExt.modify(fr)(this)
-            val optTuple = (FreeTopExt.inspectPure(sfl) |@| FreeTopExt.inspectPure(sfr)).tupled
-            Coproduct[FetchOp, Id, X](optTuple.toRight(Join(sfl, sfr)))
+            val sfl      = FreeExt.modifySuspend(fl)(this)
+            val sfr      = FreeExt.modifySuspend(fr)(this)
+            val optTuple = (FreeExt.getPure(sfl), FreeExt.getPure(sfr)).tupled
+            EitherK[FetchOp, Id, X](optTuple.toRight(Join(sfl, sfr)))
           case other =>
-            Coproduct.leftc(other)
+            EitherK.leftc(other)
         }
       }
 
-    λ[Fetch ~> Fetch](FreeTopExt.modify(_)(interpreter))
+    λ[Fetch ~> Fetch](FreeExt.modifySuspend(_)(interpreter))
   }
 
   /**
@@ -110,7 +102,7 @@ object ParallelJoinPhase {
    */
   private[this] def combineQueries(qs: List[FetchQuery[_, _]]): List[FetchQuery[_, _]] =
     qs.foldMap[Map[DataSource[_, _], NonEmptyList[Any]]] {
-        case FetchOne(id, ds)   => Map(ds -> NonEmptyList.of(id))
+        case FetchOne(id, ds)   => Map(ds -> NonEmptyList.one(id))
         case FetchMany(ids, ds) => Map(ds -> ids)
       }
       .mapValues { nel =>

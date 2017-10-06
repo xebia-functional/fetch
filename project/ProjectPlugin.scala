@@ -20,7 +20,8 @@ object ProjectPlugin extends AutoPlugin {
     lazy val commonCrossDependencies: Seq[ModuleID] =
       Seq(%%("cats-free"), %%("scalatest") % "test")
 
-    lazy val monixCrossDependencies: Seq[ModuleID] = Seq(%%("monix-eval"), %%("monix-cats"))
+    lazy val monixCrossDependencies: Seq[ModuleID] =
+      %%("monix-eval", "3.0.0-M1") :: Nil
 
     lazy val twitterUtilDependencies: Seq[ModuleID] = Seq(%%("catbird-util"))
 
@@ -64,8 +65,8 @@ object ProjectPlugin extends AutoPlugin {
 
     lazy val examplesSettings: Seq[Def.Setting[_]] = libraryDependencies ++= Seq(
       %%("circe-generic"),
-      %%("doobie-core-cats"),
-      %%("doobie-h2-cats"),
+      %%("doobie-core", "0.5.0-M8"),
+      %%("doobie-h2", "0.5.0-M8"),
       %%("http4s-blaze-client"),
       %%("http4s-circe")
     ) ++ commonCrossDependencies
@@ -106,7 +107,7 @@ object ProjectPlugin extends AutoPlugin {
           ScalaJSBadge.apply(_),
           GitHubIssuesBadge.apply(_)
         ),
-        orgSupportedScalaJSVersion := Some("0.6.15"),
+        orgSupportedScalaJSVersion := Some("0.6.20"),
         orgScriptTaskListSetting := List(
           orgValidateFiles.asRunnableItem,
           "validateDocs".asRunnableItemFull,
@@ -124,7 +125,8 @@ object ProjectPlugin extends AutoPlugin {
           "-Ywarn-dead-code",
           "-language:higherKinds",
           "-language:existentials",
-          "-language:postfixOps"
+          "-language:postfixOps",
+          "-Ypartial-unification"
         ),
         ScoverageKeys.coverageFailOnMinimum := false
       ) ++ shellPromptSettings

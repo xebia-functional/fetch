@@ -14,20 +14,21 @@
  * limitations under the License.
  */
 
-package cats.free
+package cats.free.fetch
 
 import cats.{~>, Id}
-import cats.data.Coproduct
+import cats.data.EitherK
+import cats.free.Free
 
 import scala.annotation.tailrec
 
-object FreeTopExt {
+object FreeExt {
 
   @tailrec
-  def inspect[F[_]](free: Free[F, _]): Option[F[_]] = free match {
+  def getSuspend[F[_]](free: Free[F, _]): Option[F[_]] = free match {
     case Free.Pure(p)              => None
     case Free.Suspend(fa)          => Some(fa)
-    case Free.FlatMapped(free2, _) => inspect(free2)
+    case Free.FlatMapped(free2, _) => getSuspend(free2)
   }
 
   /**
@@ -39,17 +40,17 @@ object FreeTopExt {
    * free.compile[Coyoneda[F, ?]](liftCoyoneda).resume.toOption
    * }}}
    */
-  def inspectPure[F[_], A](free: Free[F, A]): Option[A] = free match {
+  def getPure[F[_], A](free: Free[F, A]): Option[A] = free match {
     case Free.Pure(p)              => Some(p)
     case Free.Suspend(fa)          => None
     case Free.FlatMapped(free2, _) => None
   }
 
-  def modify[F[_], A](free: Free[F, A])(f: F ~> Coproduct[F, Id, ?]): Free[F, A] =
+  def modifySuspend[F[_], A](free: Free[F, A])(f: F ~> EitherK[F, Id, ?]): Free[F, A] =
     free match {
       case pure @ Free.Pure(_)          => pure
       case Free.Suspend(fa)             => f(fa).run.fold(Free.liftF(_), Free.Pure(_))
-      case Free.FlatMapped(free2, cont) => Free.FlatMapped(modify(free2)(f), cont).step
+      case Free.FlatMapped(free2, cont) => Free.FlatMapped(modifySuspend(free2)(f), cont).step
     }
 
   def print[F[_], A](free: Free[F, A]): String = free match {
@@ -59,7 +60,6 @@ object FreeTopExt {
       s"""FlatMapped(
       |  ${print(free2)},
       |  <fb => Free>)""".stripMargin
-
   }
 
 }
