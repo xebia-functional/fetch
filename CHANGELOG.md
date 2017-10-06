@@ -7,6 +7,16 @@ Release changes:
 * Update dependencies (Cats 1.0.0-MF) ([#137](https://github.com/47deg/fetch/pull/137))
 * update name of twitter module ([#138](https://github.com/47deg/fetch/pull/138))
 * Release Fetch v0.7.0 ([#139](https://github.com/47deg/fetch/pull/139))
+* Release 0.7.0 ([#140](https://github.com/47deg/fetch/pull/140))
+
+
+## 10/06/2017 - Version 0.7.0
+
+Release changes:
+
+* Update dependencies (Cats 1.0.0-MF) ([#137](https://github.com/47deg/fetch/pull/137))
+* update name of twitter module ([#138](https://github.com/47deg/fetch/pull/138))
+* Release Fetch v0.7.0 ([#139](https://github.com/47deg/fetch/pull/139))
 
 
 ## 08/22/2017 - Version 0.6.3
