@@ -65,8 +65,8 @@ object ProjectPlugin extends AutoPlugin {
 
     lazy val examplesSettings: Seq[Def.Setting[_]] = libraryDependencies ++= Seq(
       %%("circe-generic"),
-      %%("doobie-core", "0.5.0-M8"),
-      %%("doobie-h2", "0.5.0-M8"),
+      %%("doobie-core", "0.5.0-M9"),
+      %%("doobie-h2", "0.5.0-M9"),
       %%("http4s-blaze-client"),
       %%("http4s-circe")
     ) ++ commonCrossDependencies
