@@ -20,8 +20,9 @@ import scala.concurrent.{ExecutionContext, Future}
 import org.scalatest.{AsyncFreeSpec, Matchers}
 import cats.data.NonEmptyList
 import cats.instances.list._
-import cats.syntax.cartesian._
+import cats.syntax.semigroupal._
 import cats.syntax.foldable._
+import cats.syntax.apply._
 import fetch._
 import fetch.implicits._
 
