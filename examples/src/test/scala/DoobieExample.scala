@@ -17,7 +17,7 @@
 import cats.data.NonEmptyList
 import cats.effect.IO
 import cats.instances.list._
-import cats.syntax.cartesian._
+import cats.syntax.apply._
 import cats.syntax.traverse._
 import doobie.{Query => _, _}
 import doobie.h2.H2Transactor

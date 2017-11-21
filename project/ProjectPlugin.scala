@@ -21,7 +21,7 @@ object ProjectPlugin extends AutoPlugin {
       Seq(%%("cats-free"), %%("scalatest") % "test")
 
     lazy val monixCrossDependencies: Seq[ModuleID] =
-      %%("monix-eval", "3.0.0-M1") :: Nil
+      %%("monix-eval", "3.0.0-M2") :: Nil
 
     lazy val twitterUtilDependencies: Seq[ModuleID] = Seq(%%("catbird-util"))
 
@@ -65,8 +65,8 @@ object ProjectPlugin extends AutoPlugin {
 
     lazy val examplesSettings: Seq[Def.Setting[_]] = libraryDependencies ++= Seq(
       %%("circe-generic"),
-      %%("doobie-core", "0.5.0-M8"),
-      %%("doobie-h2", "0.5.0-M8"),
+      %%("doobie-core", "0.5.0-M9"),
+      %%("doobie-h2", "0.5.0-M9"),
       %%("http4s-blaze-client"),
       %%("http4s-circe")
     ) ++ commonCrossDependencies
@@ -115,8 +115,8 @@ object ProjectPlugin extends AutoPlugin {
         ),
         orgUpdateDocFilesSetting += baseDirectory.value / "tut",
         scalaOrganization := "org.scala-lang",
-        scalaVersion := "2.12.3",
-        crossScalaVersions := List("2.11.11", "2.12.3"),
+        scalaVersion := "2.12.4",
+        crossScalaVersions := List("2.11.12", "2.12.4"),
         resolvers += Resolver.sonatypeRepo("snapshots"),
         scalacOptions := Seq(
           "-unchecked",
