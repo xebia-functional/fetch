@@ -15,13 +15,13 @@ For Scala 2.11.x and 2.12.x:
 [comment]: # (Start Replace)
 
 ```scala
-"com.47deg" %% "fetch" % "0.7.0"
+"com.47deg" %% "fetch" % "0.7.1"
 ```
 
 Or, if using Scala.js (0.6.x):
 
 ```scala
-"com.47deg" %%% "fetch" % "0.7.0"
+"com.47deg" %%% "fetch" % "0.7.1"
 ```
 
 [comment]: # (End Replace)
