@@ -1,5 +1,13 @@
 # Changelog
 
+## 11/21/2017 - Version 0.7.1
+
+Release changes:
+
+* Cleanup CHANGELOG after failed release ([#141](https://github.com/47deg/fetch/pull/141))
+* Upgrades to cats 1.0.0-RC1 ([#143](https://github.com/47deg/fetch/pull/143))
+
+
 ## 10/06/2017 - Version 0.7.0
 
 Release changes:
