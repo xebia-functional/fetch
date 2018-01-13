@@ -25,7 +25,7 @@ object ProjectPlugin extends AutoPlugin {
 
     lazy val twitterUtilDependencies: Seq[ModuleID] = Seq(%%("catbird-util"))
 
-    lazy val javaUtilDependencies: Seq[ModuleID] = Nil
+    lazy val javaCrossDependencies: Seq[ModuleID] = Nil
 
     lazy val micrositeSettings: Seq[Def.Setting[_]] = Seq(
       micrositeName := "Fetch",

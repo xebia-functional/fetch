@@ -50,7 +50,7 @@ lazy val java = crossProject
   .in(file("java"))
   .settings(name := "fetch-java")
   .dependsOn(fetch % "compile->compile;test->test")
-  .crossDepSettings(commonCrossDependencies ++ javaUtilDependencies: _*)
+  .crossDepSettings(commonCrossDependencies ++ javaCrossDependencies: _*)
 
 lazy val javaJVM = java.jvm
 
