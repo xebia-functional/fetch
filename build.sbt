@@ -46,6 +46,14 @@ lazy val twitter = crossProject
 
 lazy val twitterJVM = twitter.jvm
 
+lazy val java = crossProject
+  .in(file("java"))
+  .settings(name := "fetch-java")
+  .dependsOn(fetch % "compile->compile;test->test")
+  .crossDepSettings(commonCrossDependencies ++ javaUtilDependencies: _*)
+
+lazy val javaJVM = java.jvm
+
 lazy val examples = (project in file("examples"))
   .settings(name := "fetch-examples")
   .dependsOn(fetchJVM)
