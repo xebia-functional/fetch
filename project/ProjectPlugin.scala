@@ -25,6 +25,8 @@ object ProjectPlugin extends AutoPlugin {
 
     lazy val twitterUtilDependencies: Seq[ModuleID] = Seq(%%("catbird-util"))
 
+    lazy val javaUtilDependencies: Seq[ModuleID] = Nil
+
     lazy val micrositeSettings: Seq[Def.Setting[_]] = Seq(
       micrositeName := "Fetch",
       micrositeDescription := "Simple & Efficient data access for Scala and Scala.js",
@@ -80,9 +82,11 @@ object ProjectPlugin extends AutoPlugin {
         "validateJVM",
         List(
           "fetchJVM/compile",
+          "javaJVM/compile",
           "monixJVM/compile",
           "twitterJVM/compile",
           "fetchJVM/test",
+          "javaJVM/test",
           "monixJVM/test",
           "twitterJVM/test",
           "project root").asCmd) ++
