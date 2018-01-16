@@ -8,7 +8,7 @@ lazy val root = project
   .in(file("."))
   .settings(name := "fetch")
   .settings(moduleName := "root")
-  .aggregate(fetchJS, fetchJVM, fetchMonixJVM, fetchMonixJS, debugJVM, debugJS, twitterJVM)
+  .aggregate(fetchJS, fetchJVM, javaJVM, fetchMonixJVM, fetchMonixJS, debugJVM, debugJS, twitterJVM)
 
 lazy val fetch = crossProject
   .in(file("."))
