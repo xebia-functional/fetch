@@ -196,6 +196,6 @@ If you wish to add your library here please consider a PR to include it in the l
 
 Fetch is designed and developed by 47 Degrees
 
-Copyright (C) 2016-2017 47 Degrees. <http://47deg.com>
+Copyright (C) 2016-2018 47 Degrees. <http://47deg.com>
 
 [comment]: # (End Copyright)
