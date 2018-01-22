@@ -158,7 +158,7 @@ def fetchLength(s: String): Fetch[Int] = Fetch(s)
 And now we can easily receive data from the two sources in a single fetch. 
 
 ```scala
-val fetchMulti: Fetch[(String, Int)] = (fetchString(1) |@| fetchLength("one")).tupled
+val fetchMulti: Fetch[(String, Int)] = (fetchString(1), fetchLength("one")).tupled
 ```
 
 Note how the two independent data fetches run in parallel, minimizing the latency cost of querying the two data sources.
@@ -197,6 +197,6 @@ If you wish to add your library here please consider a PR to include it in the l
 
 Fetch is designed and developed by 47 Degrees
 
-Copyright (C) 2016-2017 47 Degrees. <http://47deg.com>
+Copyright (C) 2016-2018 47 Degrees. <http://47deg.com>
 
 [comment]: # (End Copyright)
