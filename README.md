@@ -115,9 +115,9 @@ fetchOne.runA[Id]
 Multiple fetches to the same data source are automatically batched. For illustrating it, we are going to compose three independent fetch results as a tuple.
 
 ```scala
-import cats.syntax.cartesian._
+import cats.syntax.apply._
 
-val fetchThree: Fetch[(String, String, String)] = (fetchString(1) |@| fetchString(2) |@| fetchString(3)).tupled
+val fetchThree: Fetch[(String, String, String)] = (fetchString(1), fetchString(2), fetchString(3)).tupled
 ```
 
 When executing the above fetch, note how the three identities get batched and the data source is only queried once.
