@@ -1,5 +1,13 @@
 # Changelog
 
+## 01/23/2018 - Version 0.7.2
+
+Release changes:
+
+* Update dependencies, especially to cats 1.0.1 ([#146](https://github.com/47deg/fetch/pull/146))
+* Releases 0.7.2 for cats 1.0.1 with #146 ([#147](https://github.com/47deg/fetch/pull/147))
+
+
 ## 11/21/2017 - Version 0.7.1
 
 Release changes:
