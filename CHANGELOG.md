@@ -1,5 +1,13 @@
 # Changelog
 
+## 06/13/2018 - Version 0.7.3
+
+Release changes:
+
+* Updated sbt-org-policies version to 0.9.1 ([#150](https://github.com/47deg/fetch/pull/150))
+* Release Fetch v0.7.3  ([#151](https://github.com/47deg/fetch/pull/151))
+
+
 ## 01/23/2018 - Version 0.7.2
 
 Release changes:
