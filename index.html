@@ -1,18 +1,16 @@
-<html><head><title>Fetch</title><meta charset="utf-8" /><meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="author" content="47 Degrees" /><meta name="description" content="Simple &amp; Efficient data access for Scala and Scala.js" /><meta name="og:image" content="/fetch/img/poster.png" /><meta name="og:title" content="Fetch" /><meta name="og:site_name" content="Fetch" /><meta name="og:url" content="http://47deg.github.io/fetch/" /><meta name="og:type" content="website" /><meta name="og:description" content="Simple &amp; Efficient data access for Scala and Scala.js" /><link rel="icon" type="image/png" href="/fetch/img/favicon.png" /><meta name="twitter:title" content="Fetch" /><meta name="twitter:image" content="http://47deg.github.io/fetch/img/poster.png" /><meta name="twitter:description" content="Simple &amp; Efficient data access for Scala and Scala.js" /><meta name="twitter:card" content="summary_large_image" /><link rel="icon" type="image/png" sizes="16x16" href="/fetch/img/favicon16x16.png" /><link rel="icon" type="image/png" sizes="24x24" href="/fetch/img/favicon24x24.png" /><link rel="icon" type="image/png" sizes="32x32" href="/fetch/img/favicon32x32.png" /><link rel="icon" type="image/png" sizes="48x48" href="/fetch/img/favicon48x48.png" /><link rel="icon" type="image/png" sizes="57x57" href="/fetch/img/favicon57x57.png" /><link rel="icon" type="image/png" sizes="60x60" href="/fetch/img/favicon60x60.png" /><link rel="icon" type="image/png" sizes="64x64" href="/fetch/img/favicon64x64.png" /><link rel="icon" type="image/png" sizes="70x70" href="/fetch/img/favicon70x70.png" /><link rel="icon" type="image/png" sizes="72x72" href="/fetch/img/favicon72x72.png" /><link rel="icon" type="image/png" sizes="76x76" href="/fetch/img/favicon76x76.png" /><link rel="icon" type="image/png" sizes="96x96" href="/fetch/img/favicon96x96.png" /><link rel="icon" type="image/png" sizes="114x114" href="/fetch/img/favicon114x114.png" /><link rel="icon" type="image/png" sizes="120x120" href="/fetch/img/favicon120x120.png" /><link rel="icon" type="image/png" sizes="128x128" href="/fetch/img/favicon128x128.png" /><link rel="icon" type="image/png" sizes="144x144" href="/fetch/img/favicon144x144.png" /><link rel="icon" type="image/png" sizes="150x150" href="/fetch/img/favicon150x150.png" /><link rel="icon" type="image/png" sizes="152x152" href="/fetch/img/favicon152x152.png" /><link rel="icon" type="image/png" sizes="196x196" href="/fetch/img/favicon196x196.png" /><link rel="icon" type="image/png" sizes="310x310" href="/fetch/img/favicon310x310.png" /><link rel="icon" type="image/png" sizes="310x150" href="/fetch/img/favicon310x150.png" /><link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" /><link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" /><link rel="stylesheet" href="/fetch/highlight/styles/tomorrow.css" /><link rel="stylesheet" href="/fetch/css/style.css" /><link rel="stylesheet" href="/fetch/css/palette.css" /><link rel="stylesheet" href="/fetch/css/codemirror.css" /><link rel="stylesheet" href="/fetch/css/kazari-style.css" /><link rel="stylesheet" href="/fetch/css/monokai.css" /></head><body><header id="site-header"><div class="navbar-wrapper"><div class="container"><div class="row"><div class="col-xs-6"><a href="/fetch/" class="brand"><div class="icon-wrapper"><span>Fetch</span></div></a></div><div class="col-xs-6"><nav class="text-right"><ul class=""><li><a href="https://github.com/47deg/fetch"><i class="fa fa-github"></i><span class="hidden-xs">GitHub</span></a></li><li><a href="/fetch/docs.html"><i class="fa fa-file-text"></i><span class="hidden-xs">Documentation</span></a></li></ul></nav></div></div></div></div><div class="jumbotron"><div class="container"><h1 class="text-center">Simple &amp; Efficient data access for Scala and Scala.js</h1><h2></h2><p class="text-center"><a href="https://github.com/47deg/fetch" class="btn btn-outline-inverse">View on GitHub</a></p></div></div><div><ul class="horizontalNav">        </ul></div></header><main id="site-main"><section class="use"><div class="container"><div id="content"><h2 id="installation">Installation</h2>
+<html><head><title>Fetch</title><meta charset="utf-8" /><meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="author" content="47 Degrees" /><meta name="description" content="Simple &amp; Efficient data access for Scala and Scala.js" /><meta name="og:image" content="/fetch/img/poster.png" /><meta name="og:title" content="Fetch" /><meta name="og:site_name" content="Fetch" /><meta name="og:url" content="http://47deg.github.io/fetch/" /><meta name="og:type" content="website" /><meta name="og:description" content="Simple &amp; Efficient data access for Scala and Scala.js" /><link rel="icon" type="image/png" href="/fetch/img/favicon.png" /><meta name="twitter:title" content="Fetch" /><meta name="twitter:image" content="http://47deg.github.io/fetch/img/poster.png" /><meta name="twitter:description" content="Simple &amp; Efficient data access for Scala and Scala.js" /><meta name="twitter:card" content="summary_large_image" /><link rel="icon" type="image/png" sizes="16x16" href="/fetch/img/favicon16x16.png" /><link rel="icon" type="image/png" sizes="24x24" href="/fetch/img/favicon24x24.png" /><link rel="icon" type="image/png" sizes="32x32" href="/fetch/img/favicon32x32.png" /><link rel="icon" type="image/png" sizes="48x48" href="/fetch/img/favicon48x48.png" /><link rel="icon" type="image/png" sizes="57x57" href="/fetch/img/favicon57x57.png" /><link rel="icon" type="image/png" sizes="60x60" href="/fetch/img/favicon60x60.png" /><link rel="icon" type="image/png" sizes="64x64" href="/fetch/img/favicon64x64.png" /><link rel="icon" type="image/png" sizes="70x70" href="/fetch/img/favicon70x70.png" /><link rel="icon" type="image/png" sizes="72x72" href="/fetch/img/favicon72x72.png" /><link rel="icon" type="image/png" sizes="76x76" href="/fetch/img/favicon76x76.png" /><link rel="icon" type="image/png" sizes="96x96" href="/fetch/img/favicon96x96.png" /><link rel="icon" type="image/png" sizes="114x114" href="/fetch/img/favicon114x114.png" /><link rel="icon" type="image/png" sizes="120x120" href="/fetch/img/favicon120x120.png" /><link rel="icon" type="image/png" sizes="128x128" href="/fetch/img/favicon128x128.png" /><link rel="icon" type="image/png" sizes="144x144" href="/fetch/img/favicon144x144.png" /><link rel="icon" type="image/png" sizes="150x150" href="/fetch/img/favicon150x150.png" /><link rel="icon" type="image/png" sizes="152x152" href="/fetch/img/favicon152x152.png" /><link rel="icon" type="image/png" sizes="196x196" href="/fetch/img/favicon196x196.png" /><link rel="icon" type="image/png" sizes="310x310" href="/fetch/img/favicon310x310.png" /><link rel="icon" type="image/png" sizes="310x150" href="/fetch/img/favicon310x150.png" /><link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" /><link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" /><link rel="stylesheet" href="/fetch/highlight/styles/tomorrow.css" /><link rel="stylesheet" href="/fetch/css/style.css" /><link rel="stylesheet" href="/fetch/css/palette.css" /><link rel="stylesheet" href="/fetch/css/codemirror.css" /></head><body><header id="site-header"><div class="navbar-wrapper"><div class="container"><div class="row"><div class="col-xs-6"><a href="/fetch/" class="brand"><div class="icon-wrapper"><span>Fetch</span></div></a></div><div class="col-xs-6"><nav class="text-right"><ul class=""><li><a href="https://github.com/47deg/fetch"><i class="fa fa-github"></i><span class="hidden-xs">GitHub</span></a></li><li><a href="/fetch/docs.html"><i class="fa fa-file-text"></i><span class="hidden-xs">Documentation</span></a></li></ul></nav></div></div></div></div><div class="jumbotron"><div class="container"><h1 class="text-center">Simple &amp; Efficient data access for Scala and Scala.js</h1><h2></h2><p class="text-center"><a href="https://github.com/47deg/fetch" class="btn btn-outline-inverse">View on GitHub</a></p></div></div><div><ul class="horizontalNav">        </ul></div></header><main id="site-main"><section class="use"><div class="container"><div id="content"><h2 id="installation">Installation</h2>
 
 <p>Add the following dependency to your project’s build file.</p>
 
 <p>For Scala 2.11.x and 2.12.x:</p>
 
-<div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="s">"com.47deg"</span> <span class="o">%%</span> <span class="s">"fetch"</span> <span class="o">%</span> <span class="s">"0.6.3"</span>
-</code></pre>
-</div>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="s">"com.47deg"</span> <span class="o">%%</span> <span class="s">"fetch"</span> <span class="o">%</span> <span class="s">"0.7.3"</span>
+</code></pre></div></div>
 
 <p>Or, if using Scala.js (0.6.x):</p>
 
-<div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="s">"com.47deg"</span> <span class="o">%%%</span> <span class="s">"fetch"</span> <span class="o">%</span> <span class="s">"0.6.3"</span>
-</code></pre>
-</div>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="s">"com.47deg"</span> <span class="o">%%%</span> <span class="s">"fetch"</span> <span class="o">%</span> <span class="s">"0.7.3"</span>
+</code></pre></div></div>
 
 <h2 id="remote-data">Remote data</h2>
 
@@ -30,21 +28,20 @@ has a latency cost, such as databases or web services.</p>
 <li><code>Result</code> is the type of data we want to fetch</li>
 </ol>
 
-<div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="k">import</span> <span class="nn">cats.data.NonEmptyList</span>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="nn">cats.data.NonEmptyList</span>
 
 <span class="k">trait</span> <span class="nc">DataSource</span><span class="o">[</span><span class="kt">Identity</span>, <span class="kt">Result</span><span class="o">]{</span>
   <span class="k">def</span> <span class="n">name</span><span class="k">:</span> <span class="kt">String</span>
   <span class="k">def</span> <span class="n">fetchOne</span><span class="o">(</span><span class="n">id</span><span class="k">:</span> <span class="kt">Identity</span><span class="o">)</span><span class="k">:</span> <span class="kt">Query</span><span class="o">[</span><span class="kt">Option</span><span class="o">[</span><span class="kt">Result</span><span class="o">]]</span>
   <span class="k">def</span> <span class="n">fetchMany</span><span class="o">(</span><span class="n">ids</span><span class="k">:</span> <span class="kt">NonEmptyList</span><span class="o">[</span><span class="kt">Identity</span><span class="o">])</span><span class="k">:</span> <span class="kt">Query</span><span class="o">[</span><span class="kt">Map</span><span class="o">[</span><span class="kt">Identity</span>, <span class="kt">Result</span><span class="o">]]</span>
 <span class="o">}</span>
-</code></pre>
-</div>
+</code></pre></div></div>
 
 <p>Note that when we create a query we can compute its result right away, defer its evaluation or make it asynchronous. Returning <code class="highlighter-rouge">Query</code> instances from the fetch methods allows us to abstract from the target result type and to run it synchronously or asynchronously.</p>
 
 <p>We’ll implement a dummy data source that can convert integers to strings. For convenience, we define a <code class="highlighter-rouge">fetchString</code> function that lifts identities (<code class="highlighter-rouge">Int</code> in our dummy data source) to a <code class="highlighter-rouge">Fetch</code>.</p>
 
-<div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="k">import</span> <span class="nn">cats.data.NonEmptyList</span>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="nn">cats.data.NonEmptyList</span>
 <span class="k">import</span> <span class="nn">cats.instances.list._</span>
 <span class="k">import</span> <span class="nn">fetch._</span>
 
@@ -52,49 +49,45 @@ has a latency cost, such as databases or web services.</p>
   <span class="k">override</span> <span class="k">def</span> <span class="n">name</span> <span class="k">=</span> <span class="s">"ToString"</span>
 
   <span class="k">override</span> <span class="k">def</span> <span class="n">fetchOne</span><span class="o">(</span><span class="n">id</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span><span class="k">:</span> <span class="kt">Query</span><span class="o">[</span><span class="kt">Option</span><span class="o">[</span><span class="kt">String</span><span class="o">]]</span> <span class="k">=</span> <span class="o">{</span>
-    <span class="nc">Query</span><span class="o">.</span><span class="n">sync</span><span class="o">({</span>
+    <span class="nc">Query</span><span class="o">.</span><span class="n">sync</span> <span class="o">{</span>
       <span class="n">println</span><span class="o">(</span><span class="n">s</span><span class="s">"[${Thread.currentThread.getId}] One ToString $id"</span><span class="o">)</span>
       <span class="nc">Option</span><span class="o">(</span><span class="n">id</span><span class="o">.</span><span class="n">toString</span><span class="o">)</span>
-    <span class="o">})</span>
+    <span class="o">}</span>
   <span class="o">}</span>
   <span class="k">override</span> <span class="k">def</span> <span class="n">fetchMany</span><span class="o">(</span><span class="n">ids</span><span class="k">:</span> <span class="kt">NonEmptyList</span><span class="o">[</span><span class="kt">Int</span><span class="o">])</span><span class="k">:</span> <span class="kt">Query</span><span class="o">[</span><span class="kt">Map</span><span class="o">[</span><span class="kt">Int</span>, <span class="kt">String</span><span class="o">]]</span> <span class="k">=</span> <span class="o">{</span>
-    <span class="nc">Query</span><span class="o">.</span><span class="n">sync</span><span class="o">({</span>
+    <span class="nc">Query</span><span class="o">.</span><span class="n">sync</span> <span class="o">{</span>
       <span class="n">println</span><span class="o">(</span><span class="n">s</span><span class="s">"[${Thread.currentThread.getId}] Many ToString $ids"</span><span class="o">)</span>
       <span class="n">ids</span><span class="o">.</span><span class="n">toList</span><span class="o">.</span><span class="n">map</span><span class="o">(</span><span class="n">i</span> <span class="k">=&gt;</span> <span class="o">(</span><span class="n">i</span><span class="o">,</span> <span class="n">i</span><span class="o">.</span><span class="n">toString</span><span class="o">)).</span><span class="n">toMap</span>
-    <span class="o">})</span>
+    <span class="o">}</span>
   <span class="o">}</span>
 <span class="o">}</span>
 
 <span class="k">def</span> <span class="n">fetchString</span><span class="o">(</span><span class="n">n</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">(</span><span class="n">n</span><span class="o">)</span> <span class="c1">// or, more explicitly: Fetch(n)(ToStringSource)
-</span></code></pre>
-</div>
+</span></code></pre></div></div>
 
 <h2 id="creating-and-running-a-fetch">Creating and running a fetch</h2>
 
 <p>Now that we can convert <code class="highlighter-rouge">Int</code> values to <code class="highlighter-rouge">Fetch[String]</code>, let’s try creating a fetch.</p>
 
-<div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="k">val</span> <span class="n">fetchOne</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span> <span class="k">=</span> <span class="n">fetchString</span><span class="o">(</span><span class="mi">1</span><span class="o">)</span>
-</code></pre>
-</div>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">val</span> <span class="n">fetchOne</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span> <span class="k">=</span> <span class="n">fetchString</span><span class="o">(</span><span class="mi">1</span><span class="o">)</span>
+</code></pre></div></div>
 
 <p>We’ll run our fetches to the ambient <code class="highlighter-rouge">Id</code> monad in our examples, let’s do some imports.</p>
 
-<div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="k">import</span> <span class="nn">cats.Id</span>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="nn">cats.Id</span>
 <span class="k">import</span> <span class="nn">fetch.unsafe.implicits._</span>
 <span class="k">import</span> <span class="nn">fetch.syntax._</span>
-</code></pre>
-</div>
+</code></pre></div></div>
 
 <p>Note that in real-life scenarios you’ll want to run a fetch to a concurrency monad, synchronous execution of a fetch
 is only supported in Scala and not Scala.js and is meant for experimentation purposes.</p>
 
 <p>Let’s run it and wait for the fetch to complete:</p>
 
-<div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="n">fetchOne</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Id</span><span class="o">]</span>
-<span class="c1">// [540] One ToString 1
-// res2: cats.Id[String] = 1
-</span></code></pre>
-</div>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">fetchOne</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Id</span><span class="o">]</span>
+<span class="c1">// [187] One ToString 1
+// res0: cats.Id[String] = 1
+</span></code></pre></div></div>
 
 <p>As you can see in the previous example, the <code class="highlighter-rouge">ToStringSource</code> is queried once to get the value of 1.</p>
 
@@ -102,19 +95,17 @@ is only supported in Scala and not Scala.js and is meant for experimentation pur
 
 <p>Multiple fetches to the same data source are automatically batched. For illustrating it, we are going to compose three independent fetch results as a tuple.</p>
 
-<div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="k">import</span> <span class="nn">cats.syntax.cartesian._</span>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="nn">cats.syntax.apply._</span>
 
-<span class="k">val</span> <span class="n">fetchThree</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[(</span><span class="kt">String</span>, <span class="kt">String</span>, <span class="kt">String</span><span class="o">)]</span> <span class="k">=</span> <span class="o">(</span><span class="n">fetchString</span><span class="o">(</span><span class="mi">1</span><span class="o">)</span> <span class="o">|@|</span> <span class="n">fetchString</span><span class="o">(</span><span class="mi">2</span><span class="o">)</span> <span class="o">|@|</span> <span class="n">fetchString</span><span class="o">(</span><span class="mi">3</span><span class="o">)).</span><span class="n">tupled</span>
-</code></pre>
-</div>
+<span class="k">val</span> <span class="n">fetchThree</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[(</span><span class="kt">String</span>, <span class="kt">String</span>, <span class="kt">String</span><span class="o">)]</span> <span class="k">=</span> <span class="o">(</span><span class="n">fetchString</span><span class="o">(</span><span class="mi">1</span><span class="o">),</span> <span class="n">fetchString</span><span class="o">(</span><span class="mi">2</span><span class="o">),</span> <span class="n">fetchString</span><span class="o">(</span><span class="mi">3</span><span class="o">)).</span><span class="n">tupled</span>
+</code></pre></div></div>
 
 <p>When executing the above fetch, note how the three identities get batched and the data source is only queried once.</p>
 
-<div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="n">fetchThree</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Id</span><span class="o">]</span>
-<span class="c1">// [540] Many ToString NonEmptyList(3, 1, 2)
-// res4: cats.Id[(String, String, String)] = (1,2,3)
-</span></code></pre>
-</div>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">fetchThree</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Id</span><span class="o">]</span>
+<span class="c1">// [187] Many ToString NonEmptyList(3, 1, 2)
+// res1: cats.Id[(String, String, String)] = (1,2,3)
+</span></code></pre></div></div>
 
 <h2 id="parallelism">Parallelism</h2>
 
@@ -122,7 +113,7 @@ is only supported in Scala and not Scala.js and is meant for experimentation pur
 
 <p>This time, instead of creating the results with <code class="highlighter-rouge">Query#sync</code> we are going to do it with <code class="highlighter-rouge">Query#async</code> for emulating an asynchronous data source.</p>
 
-<div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="k">implicit</span> <span class="k">object</span> <span class="nc">LengthSource</span> <span class="k">extends</span> <span class="nc">DataSource</span><span class="o">[</span><span class="kt">String</span>, <span class="kt">Int</span><span class="o">]{</span>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">implicit</span> <span class="k">object</span> <span class="nc">LengthSource</span> <span class="k">extends</span> <span class="nc">DataSource</span><span class="o">[</span><span class="kt">String</span>, <span class="kt">Int</span><span class="o">]{</span>
   <span class="k">override</span> <span class="k">def</span> <span class="n">name</span> <span class="k">=</span> <span class="s">"Length"</span>
 
   <span class="k">override</span> <span class="k">def</span> <span class="n">fetchOne</span><span class="o">(</span><span class="n">id</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span><span class="k">:</span> <span class="kt">Query</span><span class="o">[</span><span class="kt">Option</span><span class="o">[</span><span class="kt">Int</span><span class="o">]]</span> <span class="k">=</span> <span class="o">{</span>
@@ -140,42 +131,37 @@ is only supported in Scala and not Scala.js and is meant for experimentation pur
 <span class="o">}</span>
 
 <span class="k">def</span> <span class="n">fetchLength</span><span class="o">(</span><span class="n">s</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Fetch</span><span class="o">(</span><span class="n">s</span><span class="o">)</span>
-</code></pre>
-</div>
+</code></pre></div></div>
 
 <p>And now we can easily receive data from the two sources in a single fetch.</p>
 
-<div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="k">val</span> <span class="n">fetchMulti</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[(</span><span class="kt">String</span>, <span class="kt">Int</span><span class="o">)]</span> <span class="k">=</span> <span class="o">(</span><span class="n">fetchString</span><span class="o">(</span><span class="mi">1</span><span class="o">)</span> <span class="o">|@|</span> <span class="n">fetchLength</span><span class="o">(</span><span class="s">"one"</span><span class="o">)).</span><span class="n">tupled</span>
-</code></pre>
-</div>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">val</span> <span class="n">fetchMulti</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[(</span><span class="kt">String</span>, <span class="kt">Int</span><span class="o">)]</span> <span class="k">=</span> <span class="o">(</span><span class="n">fetchString</span><span class="o">(</span><span class="mi">1</span><span class="o">),</span> <span class="n">fetchLength</span><span class="o">(</span><span class="s">"one"</span><span class="o">)).</span><span class="n">tupled</span>
+</code></pre></div></div>
 
 <p>Note how the two independent data fetches run in parallel, minimizing the latency cost of querying the two data sources.</p>
 
-<div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="n">fetchMulti</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Id</span><span class="o">]</span>
-<span class="c1">// [551] One Length one
-// [540] One ToString 1
-// res6: cats.Id[(String, Int)] = (1,3)
-</span></code></pre>
-</div>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">fetchMulti</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Id</span><span class="o">]</span>
+<span class="c1">// [190] One Length one
+// [187] One ToString 1
+// res2: cats.Id[(String, Int)] = (1,3)
+</span></code></pre></div></div>
 
 <h2 id="caching">Caching</h2>
 
 <p>When fetching an identity, subsequent fetches for the same identity are cached. Let’s try creating a fetch that asks for the same identity twice.</p>
 
-<div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="k">val</span> <span class="n">fetchTwice</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[(</span><span class="kt">String</span>, <span class="kt">String</span><span class="o">)]</span> <span class="k">=</span> <span class="k">for</span> <span class="o">{</span>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">val</span> <span class="n">fetchTwice</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[(</span><span class="kt">String</span>, <span class="kt">String</span><span class="o">)]</span> <span class="k">=</span> <span class="k">for</span> <span class="o">{</span>
   <span class="n">one</span> <span class="k">&lt;-</span> <span class="n">fetchString</span><span class="o">(</span><span class="mi">1</span><span class="o">)</span>
   <span class="n">two</span> <span class="k">&lt;-</span> <span class="n">fetchString</span><span class="o">(</span><span class="mi">1</span><span class="o">)</span>
 <span class="o">}</span> <span class="k">yield</span> <span class="o">(</span><span class="n">one</span><span class="o">,</span> <span class="n">two</span><span class="o">)</span>
-</code></pre>
-</div>
+</code></pre></div></div>
 
 <p>While running it, notice that the data source is only queried once. The next time the identity is requested it’s served from the cache.</p>
 
-<div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="n">fetchTwice</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Id</span><span class="o">]</span>
-<span class="c1">// [540] One ToString 1
-// res7: cats.Id[(String, String)] = (1,1)
-</span></code></pre>
-</div>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">fetchTwice</span><span class="o">.</span><span class="n">runA</span><span class="o">[</span><span class="kt">Id</span><span class="o">]</span>
+<span class="c1">// [187] One ToString 1
+// res3: cats.Id[(String, String)] = (1,1)
+</span></code></pre></div></div>
 
 <hr />
 
@@ -191,8 +177,4 @@ languages:['scala','java','bash']
 });
 hljs.initHighlighting();
              </script><script src="/fetch/js/automenu.js"></script><script>((window.gitter = {}).chat = {}).options = {
-room: '47deg/fetch'};</script><script src="https://sidecar.gitter.im/dist/sidecar.v1.js"></script><script src="/fetch/js/kazari.js"></script><script>
-$(document).ready(function() {
-	kazari.KazariPlugin().decorateCode('https://scala-evaluator-212.herokuapp.com/eval', 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.S2F6YXJp.Jl2eqMfw8IakJF93PjxTbrf-8YUJgX5OoOfy5JHE8Yw', '', 'monokai')
-})
-    </script></body></html>
+room: '47deg/fetch'};</script><script src="https://sidecar.gitter.im/dist/sidecar.v1.js"></script></body></html>
