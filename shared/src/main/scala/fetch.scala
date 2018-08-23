@@ -22,6 +22,7 @@ import cats.{Applicative, Eval}
 import cats.data.{NonEmptyList, StateT}
 import cats.free.Free
 import cats.instances.list._
+import cats.effect.IO
 
 trait FetchException extends Throwable with Product with Serializable {
   def env: Env
@@ -30,6 +31,9 @@ case class NotFound(env: Env, request: FetchOne[_, _]) extends FetchException
 case class MissingIdentities(env: Env, missing: Map[DataSourceName, List[Any]])
     extends FetchException
 case class UnhandledException(env: Env, err: Throwable) extends FetchException
+case class ThrowException(rr: Throwable) extends FetchException {
+  def env = ???
+}
 
 /** Requests in Fetch Free monad. */
 sealed trait FetchRequest extends Product with Serializable
@@ -209,6 +213,11 @@ object `package` {
      * Run a `Fetch` with the given cache, the result in the monad `M`.
      */
     def run[M[_]]: FetchRunnerA[M] = new FetchRunnerA[M]
+
+    /**
+      * Run a `Fetch` into an `IO`.
+      */
+    def runIO: FetchRunnerA[IO] = new FetchRunnerA[IO]
   }
 
   private[fetch] implicit class DataSourceCast[A, B](private val ds: DataSource[A, B]) extends AnyVal {
