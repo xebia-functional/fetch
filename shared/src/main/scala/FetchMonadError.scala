@@ -16,31 +16,32 @@
 
 package fetch
 
+import cats.effect.Effect
 import cats.MonadError
 
-trait FetchMonadError[M[_]] extends MonadError[M, FetchException] {
+trait FetchMonadError[M[_]] extends Effect[M] {
   def runQuery[A](q: Query[A]): M[A]
 }
 
 object FetchMonadError {
   def apply[M[_]](implicit ME: FetchMonadError[M]): FetchMonadError[M] = ME
 
-  abstract class FromMonadError[M[_]](implicit ME: MonadError[M, Throwable])
-      extends FetchMonadError[M] {
+  // abstract class FromMonadError[M[_]](implicit ME: MonadError[M, Throwable])
+  //     extends FetchMonadError[M] {
 
-    def pure[A](x: A): M[A] =
-      ME.pure(x)
+  //   def pure[A](x: A): M[A] =
+  //     ME.pure(x)
 
-    def flatMap[A, B](fa: M[A])(f: A => M[B]): M[B] =
-      ME.flatMap(fa)(f)
+  //   def flatMap[A, B](fa: M[A])(f: A => M[B]): M[B] =
+  //     ME.flatMap(fa)(f)
 
-    def tailRecM[A, B](a: A)(f: A => M[Either[A, B]]): M[B] =
-      ME.tailRecM(a)(f)
+  //   def tailRecM[A, B](a: A)(f: A => M[Either[A, B]]): M[B] =
+  //     ME.tailRecM(a)(f)
 
-    def handleErrorWith[A](fa: M[A])(f: FetchException => M[A]): M[A] =
-      ME.handleErrorWith(fa)({ case fe: FetchException => f(fe) })
+  //   def handleErrorWith[A](fa: M[A])(f: FetchException => M[A]): M[A] =
+  //     ME.handleErrorWith(fa)({ case fe: FetchException => f(fe) })
 
-    def raiseError[A](e: FetchException): M[A] =
-      ME.raiseError(e)
-  }
+  //   def raiseError[A](e: FetchException): M[A] =
+  //     ME.raiseError(e)
+  // }
 }

@@ -25,7 +25,7 @@ import fetch.implicits._
 class FetchReportingTests extends AsyncFreeSpec with Matchers {
   import TestHelper._
 
-  val ME = FetchMonadError[Future]
+  // val ME = FetchMonadError[Future]
 
   // implicit override def executionContext = ExecutionContext.Implicits.global
 
