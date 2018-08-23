@@ -25,32 +25,32 @@ import org.scalatest.{AsyncFlatSpecLike, Matchers}
 
 trait FetchMonadErrorTimeoutSpec[F[_]] { self: AsyncFlatSpecLike with Matchers =>
 
-  def runAsFuture[A](fa: F[A]): Future[A]
+  // def runAsFuture[A](fa: F[A]): Future[A]
 
-  def fetchMonadError: FetchMonadError[F]
+  // def fetchMonadError: FetchMonadError[F]
 
-  def delayQuery(timeout: Duration, delay: FiniteDuration): Query[Option[Int]] =
-    Query.async((ok, fail) => {
-      Thread.sleep(delay.toMillis)
-      ok(Some(1))
-    }, timeout)
+  // def delayQuery(timeout: Duration, delay: FiniteDuration): Query[Option[Int]] =
+  //   Query.async((ok, fail) => {
+  //     Thread.sleep(delay.toMillis)
+  //     ok(Some(1))
+  //   }, timeout)
 
-  "FetchMonadError" should "fail with timeout when a Query does not complete in time" in {
-    recoverToSucceededIf[TimeoutException] {
-      runAsFuture { fetchMonadError.runQuery(delayQuery(100.millis, 600.millis)) }
-    }
-  }
+  // "FetchMonadError" should "fail with timeout when a Query does not complete in time" in {
+  //   recoverToSucceededIf[TimeoutException] {
+  //     runAsFuture { fetchMonadError.runQuery(delayQuery(100.millis, 600.millis)) }
+  //   }
+  // }
 
-  it should "not fail with timeout when a Query does complete in time" in {
-    runAsFuture {
-      fetchMonadError.runQuery(delayQuery(300.millis, 100.millis))
-    }.map(_ shouldEqual Some(1))
-  }
+  // it should "not fail with timeout when a Query does complete in time" in {
+  //   runAsFuture {
+  //     fetchMonadError.runQuery(delayQuery(300.millis, 100.millis))
+  //   }.map(_ shouldEqual Some(1))
+  // }
 
-  it should "not fail with timeout when infinite timeout specified" in {
-    runAsFuture {
-      fetchMonadError.runQuery(delayQuery(Duration.Inf, 100.millis))
-    }.map(_ shouldEqual Some(1))
-  }
+  // it should "not fail with timeout when infinite timeout specified" in {
+  //   runAsFuture {
+  //     fetchMonadError.runQuery(delayQuery(Duration.Inf, 100.millis))
+  //   }.map(_ shouldEqual Some(1))
+  // }
 
 }

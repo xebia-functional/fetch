@@ -23,62 +23,62 @@ import fetch.implicits._
 class FetchAsyncQueryTests extends AsyncFreeSpec with Matchers {
   import TestHelper._
 
-  implicit override def executionContext = ExecutionContext.Implicits.global
+  // implicit override def executionContext = ExecutionContext.Implicits.global
 
-  "We can interpret an async fetch into a future" in {
-    val fetch: Fetch[Article] = article(1)
-    val fut: Future[Article]  = Fetch.run[Future](fetch)
-    fut.map(_ shouldEqual Article(1, "An article with id 1"))
-  }
+  // "We can interpret an async fetch into a future" in {
+  //   val fetch: Fetch[Article] = article(1)
+  //   val fut: Future[Article]  = Fetch.run[Future](fetch)
+  //   fut.map(_ shouldEqual Article(1, "An article with id 1"))
+  // }
 
-  "We can combine several async data sources and interpret a fetch into a future" in {
-    val fetch: Fetch[(Article, Author)] = for {
-      art    <- article(1)
-      author <- author(art)
-    } yield (art, author)
+  // "We can combine several async data sources and interpret a fetch into a future" in {
+  //   val fetch: Fetch[(Article, Author)] = for {
+  //     art    <- article(1)
+  //     author <- author(art)
+  //   } yield (art, author)
 
-    val fut: Future[(Article, Author)] = Fetch.run[Future](fetch)
+  //   val fut: Future[(Article, Author)] = Fetch.run[Future](fetch)
 
-    fut.map(_ shouldEqual (Article(1, "An article with id 1"), Author(2, "@egg2")))
-  }
+  //   fut.map(_ shouldEqual (Article(1, "An article with id 1"), Author(2, "@egg2")))
+  // }
 
-  "We can use combinators in a for comprehension and interpret a fetch from async sources into a future" in {
-    val fetch: Fetch[List[Article]] = for {
-      articles <- Fetch.traverse(List(1, 1, 2))(article)
-    } yield articles
+  // "We can use combinators in a for comprehension and interpret a fetch from async sources into a future" in {
+  //   val fetch: Fetch[List[Article]] = for {
+  //     articles <- Fetch.traverse(List(1, 1, 2))(article)
+  //   } yield articles
 
-    val fut: Future[List[Article]] = Fetch.run[Future](fetch)
+  //   val fut: Future[List[Article]] = Fetch.run[Future](fetch)
 
-    fut.map(
-      _ shouldEqual List(
-        Article(1, "An article with id 1"),
-        Article(1, "An article with id 1"),
-        Article(2, "An article with id 2")
-      )
-    )
-  }
+  //   fut.map(
+  //     _ shouldEqual List(
+  //       Article(1, "An article with id 1"),
+  //       Article(1, "An article with id 1"),
+  //       Article(2, "An article with id 2")
+  //     )
+  //   )
+  // }
 
-  "We can use combinators and multiple sources in a for comprehension and interpret a fetch from async sources into a future" in {
-    val fetch = for {
-      articles <- Fetch.traverse(List(1, 1, 2))(article)
-      authors  <- Fetch.traverse(articles)(author)
-    } yield (articles, authors)
+  // "We can use combinators and multiple sources in a for comprehension and interpret a fetch from async sources into a future" in {
+  //   val fetch = for {
+  //     articles <- Fetch.traverse(List(1, 1, 2))(article)
+  //     authors  <- Fetch.traverse(articles)(author)
+  //   } yield (articles, authors)
 
-    val fut: Future[(List[Article], List[Author])] = Fetch.run[Future](fetch, InMemoryCache.empty)
+  //   val fut: Future[(List[Article], List[Author])] = Fetch.run[Future](fetch, InMemoryCache.empty)
 
-    fut.map(
-      _ shouldEqual (
-        List(
-          Article(1, "An article with id 1"),
-          Article(1, "An article with id 1"),
-          Article(2, "An article with id 2")
-        ),
-        List(
-          Author(2, "@egg2"),
-          Author(2, "@egg2"),
-          Author(3, "@egg3")
-        )
-      )
-    )
-  }
+  //   fut.map(
+  //     _ shouldEqual (
+  //       List(
+  //         Article(1, "An article with id 1"),
+  //         Article(1, "An article with id 1"),
+  //         Article(2, "An article with id 2")
+  //       ),
+  //       List(
+  //         Author(2, "@egg2"),
+  //         Author(2, "@egg2"),
+  //         Author(3, "@egg3")
+  //       )
+  //     )
+  //   )
+  // }
 }
