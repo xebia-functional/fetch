@@ -19,6 +19,7 @@ package interpreters
 
 import scala.collection.immutable._
 
+import cats.effect.IO
 import cats.{~>, Monad, MonadError}
 import cats.data.{Ior, IorNel, NonEmptyList, StateT, Validated}
 import cats.free.Free
@@ -26,9 +27,7 @@ import cats.implicits._
 
 object CoreInterpreter {
 
-  def apply[M[_]](
-      implicit M: FetchMonadError[M]
-  ): FetchOp ~> FetchInterpreter[M]#f =
+  def apply[M[_]]: FetchOp ~> FetchInterpreter[M]#f =
     new (FetchOp ~> FetchInterpreter[M]#f) {
       def apply[A](fa: FetchOp[A]): FetchInterpreter[M]#f[A] =
         fa match {
@@ -38,9 +37,9 @@ object CoreInterpreter {
               fr.foldMap[FetchInterpreter[M]#f](this))
 
           case other =>
-            StateT[M, FetchEnv, A] { env: FetchEnv =>
+            StateT[IO, FetchEnv, A] { env: FetchEnv =>
               other match {
-                case Thrown(e)              => M.raiseError(UnhandledException(e))
+                case Thrown(e)              => IO.raiseError(UnhandledException(e))
                 case one @ FetchOne(_, _)   => processOne(one, env)
                 case many @ FetchMany(_, _) => processMany(many, env)
                 case conc @ Concurrent(_)   => processConcurrent(conc, env)
@@ -53,29 +52,27 @@ object CoreInterpreter {
   private[this] def processOne[M[_], A](
       one: FetchOne[Any, A],
       env: FetchEnv
-  )(
-      implicit M: FetchMonadError[M]
-  ): M[(FetchEnv, A)] = {
+  ): IO[(FetchEnv, A)] = {
     val FetchOne(id, ds) = one
     val startRound       = System.nanoTime()
     env.cache
       .get[A](ds.identity(id))
-      .fold[M[(FetchEnv, A)]](
-        M.runQuery(ds.fetchOne(id)).flatMap { (res: Option[A]) =>
+      .fold[IO[(FetchEnv, A)]](
+        ds.fetchOne(id).flatMap { (res: Option[A]) =>
           val endRound = System.nanoTime()
-          res.fold[M[(FetchEnv, A)]] {
+          res.fold[IO[(FetchEnv, A)]] {
             // could not get result from datasource
-            M.raiseError(NotFound(one))
+            IO.raiseError(NotFound(one))
           } { result =>
             // found result (and update cache)
             val newCache = env.cache.update(ds.identity(id), result)
             val round    = Round(env.cache, one, result, startRound, endRound)
-            M.pure(env.evolve(round, newCache) -> result)
+            IO(env.evolve(round, newCache) -> result)
           }
         }
       ) { cached =>
         // get result from cache
-        M.pure(env -> cached)
+        IO(env -> cached)
       }
   }
 
@@ -83,26 +80,25 @@ object CoreInterpreter {
       many: FetchMany[Any, Any],
       env: FetchEnv
   )(
-      implicit M: FetchMonadError[M],
-      ev: List[Any] =:= A
-  ): M[(FetchEnv, A)] = {
+      implicit ev: List[Any] =:= A
+  ): IO[(FetchEnv, A)] = {
     val FetchMany(ids, ds) = many
     val startRound         = System.nanoTime()
     val cache              = env.cache
 
-    def fetchIds(ids: NonEmptyList[Any], cachedResults: Map[Any, Any]): M[Map[Any, Any]] =
-      M.runQuery(ds.fetchMany(ids)).map(_ ++ cachedResults)
+    def fetchIds(ids: NonEmptyList[Any], cachedResults: Map[Any, Any]): IO[Map[Any, Any]] =
+      ds.fetchMany(ids).map(_ ++ cachedResults)
 
-    def getResultList(resMap: Map[Any, Any]): M[(FetchEnv, List[Any])] =
+    def getResultList(resMap: Map[Any, Any]): IO[(FetchEnv, List[Any])] =
       ids
         .traverse(id => resMap.get(id).orElse(cache.getWithDS(ds)(id)).toValidNel(id))
-        .fold[M[(FetchEnv, List[Any])]](
-          missingIds => M.raiseError(MissingIdentities(Map(ds.name -> missingIds.toList))),
+        .fold[IO[(FetchEnv, List[Any])]](
+          missingIds => IO.raiseError(MissingIdentities(Map(ds.name -> missingIds.toList))),
           results => {
             val endRound = System.nanoTime()
             val newCache = cache.cacheResults(resMap, ds)
             val round    = Round(cache, many, results, startRound, endRound)
-            M.pure(env.evolve(round, newCache) -> results.toList)
+            IO(env.evolve(round, newCache) -> results.toList)
           }
         )
 
@@ -114,8 +110,8 @@ object CoreInterpreter {
             Ior.left(NonEmptyList(id -> res, Nil)))
       }
       .leftMap(_.toList.toMap)
-      .fold[M[(FetchEnv, List[Any])]](
-        resultMap => M.pure(env -> ids.map(resultMap).toList),
+      .fold[IO[(FetchEnv, List[Any])]](
+        resultMap => IO(env -> ids.map(resultMap).toList),
         uncachedIds => fetchIds(uncachedIds, Map.empty).flatMap(getResultList),
         (partResults, uncachedIds) => fetchIds(uncachedIds, partResults).flatMap(getResultList)
       )
@@ -125,9 +121,7 @@ object CoreInterpreter {
   private[this] def processConcurrent[M[_]](
       concurrent: Concurrent,
       env: FetchEnv
-  )(
-      implicit M: FetchMonadError[M]
-  ): M[(FetchEnv, InMemoryCache)] = {
+  ): IO[(FetchEnv, InMemoryCache)] = {
 
     val startRound = System.nanoTime()
     val cache      = env.cache
@@ -135,21 +129,21 @@ object CoreInterpreter {
     type AnyQuery  = FetchQuery[Any, Any]
     type AnyResult = Map[Any, Any]
 
-    def executeQueries(queries: NonEmptyList[FetchQuery[Any, Any]]): M[
+    def executeQueries(queries: NonEmptyList[FetchQuery[Any, Any]]): IO[
       (Long, NonEmptyList[(AnyQuery, AnyResult)])] =
       queries.traverse(runFetchQueryAsMap).flatMap { results =>
         val endRound = System.nanoTime()
-        M.fromEither(
+        IO.fromEither(
           errorOrAllFound(queries, results)
           .map(zipped => (endRound, zipped.widen[(AnyQuery, AnyResult)])))
       }
 
-    def runFetchQueryAsMap[I, A](op: FetchQuery[I, A]): M[Map[I, A]] =
+    def runFetchQueryAsMap[I, A](op: FetchQuery[I, A]): IO[Map[I, A]] =
       op match {
         case FetchOne(a, ds) =>
-          M.runQuery(ds.fetchOne(a)).map(_.fold(Map.empty[I, A])(r => Map(a -> r)))
+          ds.fetchOne(a).map(_.fold(Map.empty[I, A])(r => Map(a -> r)))
         case FetchMany(as, ds) =>
-          M.runQuery(ds.fetchMany(as))
+          ds.fetchMany(as)
       }
 
     // return a MissingIdentities error or a NonEmptyList with all
@@ -184,7 +178,7 @@ object CoreInterpreter {
     def executeQueriesAndEndRound(
         queries: NonEmptyList[AnyQuery],
         cachedResults: Map[DataSourceIdentity, Any]
-    ): M[(FetchEnv, InMemoryCache)] =
+    ): IO[(FetchEnv, InMemoryCache)] =
       executeQueries(queries).map {
         case (endRound, queriesAndResults) =>
           val queries = queriesAndResults.map(_._1)
@@ -210,7 +204,7 @@ object CoreInterpreter {
       .map(_.toList.toMap)
       .fold(
         queries => executeQueriesAndEndRound(queries, Map.empty),
-        resMap => M.pure((env, InMemoryCache(resMap))),
+        resMap => IO((env, InMemoryCache(resMap))),
         (queries, resMap) => executeQueriesAndEndRound(queries, resMap)
       )
   }

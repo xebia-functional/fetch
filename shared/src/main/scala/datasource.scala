@@ -16,6 +16,7 @@
 
 package fetch
 
+import cats.effect.IO
 import cats.data.NonEmptyList
 import cats.instances.list._
 import cats.instances.option._
@@ -42,24 +43,24 @@ trait DataSource[I, A] {
 
   /** Fetch one identity, returning a None if it wasn't found.
    */
-  def fetchOne(id: I): Query[Option[A]]
+  def fetchOne(id: I): IO[Option[A]]
 
   /** Fetch many identities, returning a mapping from identities to results. If an
    * identity wasn't found, it won't appear in the keys.
    */
-  def fetchMany(ids: NonEmptyList[I]): Query[Map[I, A]]
+  def fetchMany(ids: NonEmptyList[I]): IO[Map[I, A]]
 
   /** Use `fetchOne` for implementing of `fetchMany`. Use only when the data
    * source doesn't support batching.
    */
-  def batchingNotSupported(ids: NonEmptyList[I]): Query[Map[I, A]] = {
-    val fetchOneWithId: I => Query[Option[(I, A)]] = id =>
+  def batchingNotSupported(ids: NonEmptyList[I]): IO[Map[I, A]] = {
+    val fetchOneWithId: I => IO[Option[(I, A)]] = id =>
       fetchOne(id).map(_.tupleLeft(id))
 
     ids.toList.traverse(fetchOneWithId).map(_.collect { case Some(x) => x }.toMap)
   }
 
-  def batchingOnly(id: I): Query[Option[A]] =
+  def batchingOnly(id: I): IO[Option[A]] =
     fetchMany(NonEmptyList.one(id)).map(_ get id)
 
   def maxBatchSize: Option[Int] = None

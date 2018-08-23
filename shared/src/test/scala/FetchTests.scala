@@ -31,58 +31,26 @@ import fetch.implicits._
 class FetchTests extends FreeSpec with Matchers {
   import TestHelper._
 
-  implicit def ioMonadError(implicit ME: Effect[IO])= new FetchMonadError[IO] {
-    def pure[A](x: A): IO[A] = ME.pure(x)
-
-    def handleErrorWith[A](fa: IO[A])(f: Throwable => IO[A]): IO[A] =
-      ME.handleErrorWith(fa)(f)
-
-    def raiseError[A](e: Throwable): IO[A] =
-      ME.raiseError(e)
-
-    def suspend[A](thunk: => IO[A]): IO[A] =
-      ME.suspend(thunk)
-
-    def flatMap[A, B](fa: IO[A])(f: A => IO[B]): IO[B] =
-      fa.flatMap(f)
-
-    def tailRecM[A, B](a: A)(f: A => IO[Either[A, B]]): IO[B] =
-      ME.tailRecM(a)(f)
-
-    def async[A](k: (Either[Throwable, A] => Unit) => Unit): IO[A] =
-      ME.async(k)
-
-    def runAsync[A](fa: IO[A])(cb: Either[Throwable, A] => IO[Unit]): IO[Unit] =
-      ME.runAsync(fa)(cb)
-
-    def runQuery[A](q: Query[A]): IO[A] =
-      q match {
-        case Sync(a) => IO(a.value)
-        case Async(ac, timeout) => ???
-        case Ap(ff, fa) => ???
-      }
-  }
-
   "We can lift plain values to Fetch" in {
     val fetch: Fetch[Int] = Fetch.pure(42)
-    Fetch.runIO(fetch).unsafeRunSync shouldEqual 42
+    Fetch.run(fetch).unsafeRunSync shouldEqual 42
   }
 
   "Data sources with errors throw fetch failures" in {
     val fetch: Fetch[Int] = Fetch(Never())
-    val io                = Fetch.runIO(fetch)
+    val io                = Fetch.run(fetch)
 
     io.attempt
       .map(either =>
         either should matchPattern {
-          case Left(NotFound(env, FetchOne(Never(), _))) =>
+          case Left(NotFound(FetchOne(Never(), _))) =>
         })
     .unsafeRunSync
   }
 
   "Data sources with errors throw fetch failures that can be handled" in {
     val fetch: Fetch[Int] = Fetch(Never())
-    val io                = Fetch.runIO(fetch)
+    val io                = Fetch.run(fetch)
 
     io.handleErrorWith(err => IO(42))
       .unsafeRunSync shouldEqual 42
