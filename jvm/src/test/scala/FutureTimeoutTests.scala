@@ -27,9 +27,9 @@ class FutureTimeoutTests
     with Matchers
     with FetchMonadErrorTimeoutSpec[Future] {
 
-  implicit override val executionContext: ExecutionContext = ExecutionContext.Implicits.global
+  // implicit override val executionContext: ExecutionContext = ExecutionContext.Implicits.global
 
-  def runAsFuture[A](fa: Future[A]): Future[A] = fa
+  // def runAsFuture[A](fa: Future[A]): Future[A] = fa
 
-  def fetchMonadError: FetchMonadError[Future] = FetchMonadError[Future]
+  // def fetchMonadError: FetchMonadError[Future] = FetchMonadError[Future]
 }

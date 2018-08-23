@@ -20,7 +20,7 @@ import org.scalatest.{FreeSpec, Matchers}
 
 import cats._
 import cats.implicits._
-import cats.effect.IO
+import cats.effect.{Effect, IO}
 import cats.data.NonEmptyList
 import cats.instances.list._
 import cats.syntax.apply._
@@ -31,20 +31,29 @@ import fetch.implicits._
 class FetchTests extends FreeSpec with Matchers {
   import TestHelper._
 
-  implicit def ioMonadError(implicit ME: Monad[IO])= new FetchMonadError[IO] {
+  implicit def ioMonadError(implicit ME: Effect[IO])= new FetchMonadError[IO] {
     def pure[A](x: A): IO[A] = ME.pure(x)
 
-    def handleErrorWith[A](fa: IO[A])(f: FetchException => IO[A]): IO[A] =
-      fa.handleErrorWith((t) => f(ThrowException(t)))
+    def handleErrorWith[A](fa: IO[A])(f: Throwable => IO[A]): IO[A] =
+      ME.handleErrorWith(fa)(f)
 
-    def raiseError[A](e: FetchException): IO[A] =
-      IO.raiseError(e)
+    def raiseError[A](e: Throwable): IO[A] =
+      ME.raiseError(e)
+
+    def suspend[A](thunk: => IO[A]): IO[A] =
+      ME.suspend(thunk)
 
     def flatMap[A, B](fa: IO[A])(f: A => IO[B]): IO[B] =
       fa.flatMap(f)
 
     def tailRecM[A, B](a: A)(f: A => IO[Either[A, B]]): IO[B] =
       ME.tailRecM(a)(f)
+
+    def async[A](k: (Either[Throwable, A] => Unit) => Unit): IO[A] =
+      ME.async(k)
+
+    def runAsync[A](fa: IO[A])(cb: Either[Throwable, A] => IO[Unit]): IO[Unit] =
+      ME.runAsync(fa)(cb)
 
     def runQuery[A](q: Query[A]): IO[A] =
       q match {
