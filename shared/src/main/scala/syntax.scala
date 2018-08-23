@@ -38,22 +38,22 @@ object syntax {
     def join[B](fb: Fetch[B]): Fetch[(A, B)] =
       Fetch.join(fa, fb)
 
-    def runF[M[_]: FetchMonadError]: M[(FetchEnv, A)] =
-      Fetch.runFetch[M](fa, InMemoryCache.empty)
+  //   def runF[M[_]: FetchMonadError]: M[(FetchEnv, A)] =
+  //     Fetch.runFetch[M](fa, InMemoryCache.empty)
 
-    def runE[M[_]: FetchMonadError]: M[FetchEnv] =
-      Fetch.runEnv[M](fa, InMemoryCache.empty)
+  //   def runE[M[_]: FetchMonadError]: M[FetchEnv] =
+  //     Fetch.runEnv[M](fa, InMemoryCache.empty)
 
-    def runA[M[_]: FetchMonadError]: M[A] =
-      Fetch.run[M](fa, InMemoryCache.empty)
+  //   def runA[M[_]: FetchMonadError]: M[A] =
+  //     Fetch.run[M](fa, InMemoryCache.empty)
 
-    def runF[M[_]: FetchMonadError](cache: DataSourceCache): M[(FetchEnv, A)] =
-      Fetch.runFetch[M](fa, cache)
+  //   def runF[M[_]: FetchMonadError](cache: DataSourceCache): M[(FetchEnv, A)] =
+  //     Fetch.runFetch[M](fa, cache)
 
-    def runE[M[_]: FetchMonadError](cache: DataSourceCache): M[FetchEnv] =
-      Fetch.runEnv[M](fa, cache)
+  //   def runE[M[_]: FetchMonadError](cache: DataSourceCache): M[FetchEnv] =
+  //     Fetch.runEnv[M](fa, cache)
 
-    def runA[M[_]: FetchMonadError](cache: DataSourceCache): M[A] =
-      Fetch.run[M](fa, cache)
+  //   def runA[M[_]: FetchMonadError](cache: DataSourceCache): M[A] =
+  //     Fetch.run[M](fa, cache)
   }
 }

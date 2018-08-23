@@ -18,6 +18,7 @@ package fetch
 
 import scala.collection.immutable._
 
+import cats.effect.IO
 import cats.~>
 import cats.free.Free
 import cats.implicits._
@@ -26,10 +27,10 @@ import fetch.interpreters._
 
 private[fetch] trait FetchInterpreters {
 
-  def interpreter[M[_]: FetchMonadError]: FetchOp ~> FetchInterpreter[M]#f =
+  def interpreter: FetchOp ~> FetchInterpreter[IO]#f =
     ParallelJoinPhase.apply
       .andThen[Fetch](Free.foldMap(MaxBatchSizePhase.apply))
-      .andThen[FetchInterpreter[M]#f](
-        Free.foldMap[FetchOp, FetchInterpreter[M]#f](CoreInterpreter[M]))
+      .andThen[FetchInterpreter[IO]#f](
+        Free.foldMap[FetchOp, FetchInterpreter[IO]#f](CoreInterpreter[IO]))
 
 }

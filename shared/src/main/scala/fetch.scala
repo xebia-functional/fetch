@@ -73,7 +73,7 @@ object `package` {
   type Fetch[A] = Free[FetchOp, A]
 
   type FetchInterpreter[M[_]] = {
-    type f[x] = StateT[M, FetchEnv, x]
+    type f[x] = StateT[IO, FetchEnv, x]
   }
 
   implicit val fetchApplicative: Applicative[Fetch] = new Applicative[Fetch] {
@@ -168,9 +168,7 @@ object `package` {
       def apply[A](
           fa: Fetch[A],
           cache: DataSourceCache = InMemoryCache.empty
-      )(
-          implicit MM: FetchMonadError[M]
-      ): M[(FetchEnv, A)] =
+      ): IO[(FetchEnv, A)] =
         fa.foldMap[FetchInterpreter[M]#f](interpreter).run(FetchEnv(cache))
     }
 
@@ -184,10 +182,8 @@ object `package` {
       def apply[A](
           fa: Fetch[A],
           cache: DataSourceCache = InMemoryCache.empty
-      )(
-          implicit MM: FetchMonadError[M]
-      ): M[FetchEnv] =
-        fa.foldMap[FetchInterpreter[M]#f](interpreter).runS(FetchEnv(cache))
+      ): IO[FetchEnv] =
+        fa.foldMap[FetchInterpreter[IO]#f](interpreter).runS(FetchEnv(cache))
     }
 
     /**
@@ -199,10 +195,8 @@ object `package` {
       def apply[A](
           fa: Fetch[A],
           cache: DataSourceCache = InMemoryCache.empty
-      )(
-          implicit MM: FetchMonadError[M]
-      ): M[A] =
-        fa.foldMap[FetchInterpreter[M]#f](interpreter).runA(FetchEnv(cache))
+      ): IO[A] =
+        fa.foldMap[FetchInterpreter[IO]#f](interpreter).runA(FetchEnv(cache))
     }
 
     /**
