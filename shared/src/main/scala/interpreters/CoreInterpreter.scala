@@ -40,7 +40,7 @@ object CoreInterpreter {
           case other =>
             StateT[M, FetchEnv, A] { env: FetchEnv =>
               other match {
-                case Thrown(e)              => M.raiseError(UnhandledException(env, e))
+                case Thrown(e)              => M.raiseError(UnhandledException(e))
                 case one @ FetchOne(_, _)   => processOne(one, env)
                 case many @ FetchMany(_, _) => processMany(many, env)
                 case conc @ Concurrent(_)   => processConcurrent(conc, env)
@@ -65,7 +65,7 @@ object CoreInterpreter {
           val endRound = System.nanoTime()
           res.fold[M[(FetchEnv, A)]] {
             // could not get result from datasource
-            M.raiseError(NotFound(env, one))
+            M.raiseError(NotFound(one))
           } { result =>
             // found result (and update cache)
             val newCache = env.cache.update(ds.identity(id), result)
@@ -97,7 +97,7 @@ object CoreInterpreter {
       ids
         .traverse(id => resMap.get(id).orElse(cache.getWithDS(ds)(id)).toValidNel(id))
         .fold[M[(FetchEnv, List[Any])]](
-          missingIds => M.raiseError(MissingIdentities(env, Map(ds.name -> missingIds.toList))),
+          missingIds => M.raiseError(MissingIdentities(Map(ds.name -> missingIds.toList))),
           results => {
             val endRound = System.nanoTime()
             val newCache = cache.cacheResults(resMap, ds)
@@ -177,7 +177,7 @@ object CoreInterpreter {
 
       missingIdentitiesOrOK
         .as(queriesAndResults)
-        .leftMap(missingIds => MissingIdentities(env, missingIds))
+        .leftMap(missingIds => MissingIdentities(missingIds))
         .toEither
     }
 
