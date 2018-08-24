@@ -16,44 +16,44 @@
 
 package fetch
 
-object syntax {
+// object syntax {
 
-  /** Implicit syntax to lift any value to the context of Fetch via pure */
-  implicit class FetchIdSyntax[A](val a: A) extends AnyVal {
+//   /** Implicit syntax to lift any value to the context of Fetch via pure */
+//   implicit class FetchIdSyntax[A](val a: A) extends AnyVal {
 
-    def fetch: Fetch[A] =
-      Fetch.pure(a)
-  }
+//     def fetch: Fetch[A] =
+//       Fetch.pure(a)
+//   }
 
-  /** Implicit syntax to lift exception to Fetch errors */
-  implicit class FetchExceptionSyntax(val a: Throwable) extends AnyVal {
+//   /** Implicit syntax to lift exception to Fetch errors */
+//   implicit class FetchExceptionSyntax(val a: Throwable) extends AnyVal {
 
-    def fetch[B]: Fetch[B] =
-      Fetch.error[B](a)
-  }
+//     def fetch[B]: Fetch[B] =
+//       Fetch.error[B](a)
+//   }
 
-  /** Implicit syntax for Fetch ops in Free based Fetches */
-  implicit class FetchSyntax[A](val fa: Fetch[A]) extends AnyVal {
+//   /** Implicit syntax for Fetch ops in Free based Fetches */
+//   implicit class FetchSyntax[A](val fa: Fetch[A]) extends AnyVal {
 
-    def join[B](fb: Fetch[B]): Fetch[(A, B)] =
-      Fetch.join(fa, fb)
+//     def join[B](fb: Fetch[B]): Fetch[(A, B)] =
+//       Fetch.join(fa, fb)
 
-  //   def runF[M[_]: FetchMonadError]: M[(FetchEnv, A)] =
-  //     Fetch.runFetch[M](fa, InMemoryCache.empty)
+//   //   def runF[M[_]: FetchMonadError]: M[(FetchEnv, A)] =
+//   //     Fetch.runFetch[M](fa, InMemoryCache.empty)
 
-  //   def runE[M[_]: FetchMonadError]: M[FetchEnv] =
-  //     Fetch.runEnv[M](fa, InMemoryCache.empty)
+//   //   def runE[M[_]: FetchMonadError]: M[FetchEnv] =
+//   //     Fetch.runEnv[M](fa, InMemoryCache.empty)
 
-  //   def runA[M[_]: FetchMonadError]: M[A] =
-  //     Fetch.run[M](fa, InMemoryCache.empty)
+//   //   def runA[M[_]: FetchMonadError]: M[A] =
+//   //     Fetch.run[M](fa, InMemoryCache.empty)
 
-  //   def runF[M[_]: FetchMonadError](cache: DataSourceCache): M[(FetchEnv, A)] =
-  //     Fetch.runFetch[M](fa, cache)
+//   //   def runF[M[_]: FetchMonadError](cache: DataSourceCache): M[(FetchEnv, A)] =
+//   //     Fetch.runFetch[M](fa, cache)
 
-  //   def runE[M[_]: FetchMonadError](cache: DataSourceCache): M[FetchEnv] =
-  //     Fetch.runEnv[M](fa, cache)
+//   //   def runE[M[_]: FetchMonadError](cache: DataSourceCache): M[FetchEnv] =
+//   //     Fetch.runEnv[M](fa, cache)
 
-  //   def runA[M[_]: FetchMonadError](cache: DataSourceCache): M[A] =
-  //     Fetch.run[M](fa, cache)
-  }
-}
+//   //   def runA[M[_]: FetchMonadError](cache: DataSourceCache): M[A] =
+//   //     Fetch.run[M](fa, cache)
+//   }
+// }

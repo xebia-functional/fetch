@@ -23,7 +23,7 @@ import fetch._
 import fetch.implicits._
 
 class FetchSyntaxTests extends AsyncFreeSpec with Matchers {
-  import fetch.syntax._
+  // import fetch.syntax._
   import TestHelper._
 
   // val ME = FetchMonadError[Future]
