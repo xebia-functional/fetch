@@ -22,7 +22,7 @@ import cats.{Applicative, Eval}
 import cats.data.{NonEmptyList, StateT}
 import cats.free.Free
 import cats.instances.list._
-import cats.effect.IO
+import cats.effect.Effect
 
 // todo: include Env
 trait FetchException extends Throwable with Product with Serializable
@@ -59,7 +59,7 @@ final case class FetchMany[I, A](ids: NonEmptyList[I], ds: DataSource[I, A])
 }
 
 final case class Concurrent(queries: NonEmptyList[FetchQuery[Any, Any]])
-    extends FetchOp[InMemoryCache]
+    extends FetchOp[Nothing] // todo: don't use cache here
     with FetchRequest
 
 final case class Join[A, B](fl: Fetch[A], fr: Fetch[B]) extends FetchOp[(A, B)]
@@ -73,7 +73,7 @@ object `package` {
   type Fetch[A] = Free[FetchOp, A]
 
   type FetchInterpreter[M[_]] = {
-    type f[x] = StateT[IO, FetchEnv, x]
+    type f[x] = StateT[M, FetchEnv, x]
   }
 
   implicit val fetchApplicative: Applicative[Fetch] = new Applicative[Fetch] {
@@ -114,8 +114,8 @@ object `package` {
      * to the `Fetch` monad. When executing the fetch the data source will be
      * queried and the fetch will return its result.
      */
-    def apply[I, A](i: I)(implicit DS: DataSource[I, A]): Fetch[A] =
-      Free.liftF(FetchOne[I, A](i, DS))
+    def apply[I, A](i: I)(implicit ds: DataSource[I, A]): Fetch[A] =
+      Free.liftF(FetchOne[I, A](i, ds))
 
     /**
      * Given multiple values with a related `DataSource` lift them to the `Fetch` monad.
@@ -164,50 +164,19 @@ object `package` {
     def join[A, B](fl: Fetch[A], fr: Fetch[B]): Fetch[(A, B)] =
       Free.liftF[FetchOp, (A, B)](Join(fl, fr))
 
-    private[fetch] class FetchRunner[M[_]](private val dummy: Boolean = true) extends AnyVal {
+    private[fetch] class FetchRunnerA[M[_]](val dummy: Boolean = true) extends AnyVal {
       def apply[A](
-          fa: Fetch[A],
-          cache: DataSourceCache = InMemoryCache.empty
-      ): IO[(FetchEnv, A)] =
-        fa.foldMap[FetchInterpreter[M]#f](interpreter).run(FetchEnv(cache))
+          fa: Fetch[A]
+      )(
+        implicit M: Effect[M]
+      ): M[A] =
+        M.pure(???)
     }
 
     /**
-     * Run a `Fetch` with the given cache, returning a pair of the final environment and result
-     * in the monad `M`.
-     */
-    def runFetch[M[_]]: FetchRunner[M] = new FetchRunner[M]
-
-    private[fetch] class FetchRunnerEnv[M[_]](private val dummy: Boolean = true) extends AnyVal {
-      def apply[A](
-          fa: Fetch[A],
-          cache: DataSourceCache = InMemoryCache.empty
-      ): IO[FetchEnv] =
-        fa.foldMap[FetchInterpreter[IO]#f](interpreter).runS(FetchEnv(cache))
-    }
-
-    /**
-     * Run a `Fetch` with the given cache, returning the final environment in the monad `M`.
-     */
-    def runEnv[M[_]]: FetchRunnerEnv[M] = new FetchRunnerEnv[M]
-
-    private[fetch] class FetchRunnerA[M[_]](private val dummy: Boolean = true) extends AnyVal {
-      def apply[A](
-          fa: Fetch[A],
-          cache: DataSourceCache = InMemoryCache.empty
-      ): IO[A] =
-        fa.foldMap[FetchInterpreter[IO]#f](interpreter).runA(FetchEnv(cache))
-    }
-
-    /**
-     * Run a `Fetch` with the given cache, the result in the monad `M`.
+     * Run a `Fetch`, the result in the monad `M`.
      */
     def run[M[_]]: FetchRunnerA[M] = new FetchRunnerA[M]
-
-    /**
-      * Run a `Fetch` into an `IO`.
-      */
-    def runIO: FetchRunnerA[IO] = new FetchRunnerA[IO]
   }
 
   private[fetch] implicit class DataSourceCast[A, B](private val ds: DataSource[A, B]) extends AnyVal {

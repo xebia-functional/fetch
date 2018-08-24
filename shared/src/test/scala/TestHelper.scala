@@ -16,7 +16,8 @@
 
 package fetch
 
-import cats.effect.IO
+import cats.effect.Effect
+import cats.implicits._
 import cats.data.NonEmptyList
 
 object TestHelper {
@@ -56,10 +57,12 @@ object TestHelper {
   case class Never()
   implicit object NeverSource extends DataSource[Never, Int] {
     override def name = "NeverSource"
-    override def fetchOne(id: Never): IO[Option[Int]] =
-      IO(None)
-    override def fetchMany(ids: NonEmptyList[Never]): IO[Map[Never, Int]] =
-      IO(Map.empty[Never, Int])
+
+    override def fetchOne[F[_]](id: Never)(implicit A: Effect[F]): F[Option[Int]] =
+      A.pure(None : Option[Int])
+
+    override def fetchMany[F[_]](ids: NonEmptyList[Never])(implicit A: Effect[F]): F[Map[Never, Int]] =
+      A.pure(Map.empty[Never, Int])
   }
 
   // Async DataSources

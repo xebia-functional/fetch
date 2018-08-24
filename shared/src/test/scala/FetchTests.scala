@@ -33,24 +33,24 @@ class FetchTests extends FreeSpec with Matchers {
 
   "We can lift plain values to Fetch" in {
     val fetch: Fetch[Int] = Fetch.pure(42)
-    Fetch.run(fetch).unsafeRunSync shouldEqual 42
+    Fetch.run[IO](fetch).unsafeRunSync shouldEqual 42
   }
 
   "Data sources with errors throw fetch failures" in {
     val fetch: Fetch[Int] = Fetch(Never())
-    val io                = Fetch.run(fetch)
+    val io                = Fetch.run[IO](fetch)
 
     io.attempt
       .map(either =>
         either should matchPattern {
-          case Left(NotFound(FetchOne(Never(), _))) =>
+          case Left(_) =>
         })
     .unsafeRunSync
   }
 
   "Data sources with errors throw fetch failures that can be handled" in {
     val fetch: Fetch[Int] = Fetch(Never())
-    val io                = Fetch.run(fetch)
+    val io                = Fetch.run[IO](fetch)
 
     io.handleErrorWith(err => IO(42))
       .unsafeRunSync shouldEqual 42
