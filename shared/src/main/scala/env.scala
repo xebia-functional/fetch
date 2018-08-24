@@ -32,7 +32,6 @@ trait Env {
  * A data structure that holds information about a fetch round.
  */
 case class Round(
-    request: FetchRequest,
     response: Any,
     start: Long,
     end: Long

@@ -22,17 +22,15 @@ import cats.data.NonEmptyList
 
 object TestHelper {
 
-  case class DidNotFound() extends Throwable
-
-  // case class One(id: Int)
-  // implicit object OneSource extends DataSource[One, Int] {
-  //   override def name = "OneSource"
-  //   override def fetchOne(id: One): Query[Option[Int]] =
-  //     Query.sync(Option(id.id))
-  //   override def fetchMany(ids: NonEmptyList[One]): Query[Map[One, Int]] =
-  //     Query.sync(ids.toList.map(one => (one, one.id)).toMap)
-  // }
-  // def one(id: Int): Fetch[Int] = Fetch(One(id))
+  case class One(id: Int)
+  implicit object OneSource extends DataSource[One, Int] {
+    override def name = "OneSource"
+    override def fetchOne[F[_] : Effect](id: One): F[Option[Int]] =
+      Effect[F].delay(Option(id.id))
+    override def fetchMany[F[_] : Effect](ids: NonEmptyList[One]): F[Map[One, Int]] =
+      Effect[F].delay(ids.toList.map(one => (one, one.id)).toMap)
+  }
+  def one(id: Int): Fetch[Int] = Fetch(One(id))
 
   // case class AnotherOne(id: Int)
   // implicit object AnotheroneSource extends DataSource[AnotherOne, Int] {
@@ -44,25 +42,26 @@ object TestHelper {
   // }
   // def anotherOne(id: Int): Fetch[Int] = Fetch(AnotherOne(id))
 
-  // case class Many(n: Int)
-  // implicit object ManySource extends DataSource[Many, List[Int]] {
-  //   override def name = "ManySource"
-  //   override def fetchOne(id: Many): Query[Option[List[Int]]] =
-  //     Query.sync(Option(0 until id.n toList))
-  //   override def fetchMany(ids: NonEmptyList[Many]): Query[Map[Many, List[Int]]] =
-  //     Query.sync(ids.toList.map(m => (m, 0 until m.n toList)).toMap)
-  // }
-  // def many(id: Int): Fetch[List[Int]] = Fetch(Many(id))
+  case class Many(n: Int)
+  implicit object ManySource extends DataSource[Many, List[Int]] {
+    override def name = "ManySource"
+    override def fetchOne[F[_] : Effect](id: Many): F[Option[List[Int]]] =
+      Effect[F].delay(Option(0 until id.n toList))
+
+    override def fetchMany[F[_] : Effect](ids: NonEmptyList[Many]): F[Map[Many, List[Int]]] =
+      Effect[F].delay(ids.toList.map(m => (m, 0 until m.n toList)).toMap)
+  }
+  def many(id: Int): Fetch[List[Int]] = Fetch(Many(id))
 
   case class Never()
   implicit object NeverSource extends DataSource[Never, Int] {
     override def name = "NeverSource"
 
-    override def fetchOne[F[_]](id: Never)(implicit A: Effect[F]): F[Option[Int]] =
-      A.pure(None : Option[Int])
+    override def fetchOne[F[_] : Effect](id: Never): F[Option[Int]] =
+      Effect[F].pure(None : Option[Int])
 
-    override def fetchMany[F[_]](ids: NonEmptyList[Never])(implicit A: Effect[F]): F[Map[Never, Int]] =
-      A.pure(Map.empty[Never, Int])
+    override def fetchMany[F[_] : Effect](ids: NonEmptyList[Never]): F[Map[Never, Int]] =
+      Effect[F].pure(Map.empty[Never, Int])
   }
 
   // Async DataSources

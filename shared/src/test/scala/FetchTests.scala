@@ -36,25 +36,27 @@ class FetchTests extends FreeSpec with Matchers {
     Fetch.run[IO](fetch).unsafeRunSync shouldEqual 42
   }
 
-  "Data sources with errors throw fetch failures" in {
-    val fetch: Fetch[Int] = Fetch(Never())
-    val io                = Fetch.run[IO](fetch)
+  // Errors
 
-    io.attempt
-      .map(either =>
-        either should matchPattern {
-          case Left(_) =>
-        })
-    .unsafeRunSync
-  }
+  // "Data sources with errors throw fetch failures" in {
+  //   val fetch: Fetch[Int] = Fetch(Never())
+  //   val io                = Fetch.run[IO](fetch)
 
-  "Data sources with errors throw fetch failures that can be handled" in {
-    val fetch: Fetch[Int] = Fetch(Never())
-    val io                = Fetch.run[IO](fetch)
+  //   io.attempt
+  //     .map(either =>
+  //       either should matchPattern {
+  //         case Left(NotFound(Never(), _)) =>
+  //       })
+  //   .unsafeRunSync
+  // }
 
-    io.handleErrorWith(err => IO(42))
-      .unsafeRunSync shouldEqual 42
-  }
+  // "Data sources with errors throw fetch failures that can be handled" in {
+  //   val fetch: Fetch[Int] = Fetch(Never())
+  //   val io                = Fetch.run[IO](fetch)
+
+  //   io.handleErrorWith(err => IO(42))
+  //     .unsafeRunSync shouldEqual 42
+  // }
 
   // "Data sources with errors and cached values throw fetch failures with the cache" in {
   //   val fetch: Fetch[Int] = Fetch(Never())
@@ -93,23 +95,25 @@ class FetchTests extends FreeSpec with Matchers {
   //   ME.handleErrorWith(fut)(err => Future.successful(42)).map(_ shouldEqual 42)
   // }
 
-  // "We can lift values which have a Data Source to Fetch" in {
-  //   Fetch.run[Future](one(1)).map(_ shouldEqual 1)
-  // }
+  // Fetch ops
 
-  // "We can map over Fetch values" in {
-  //   val fetch = one(1).map(_ + 1)
-  //   Fetch.run[Future](fetch).map(_ shouldEqual 2)
-  // }
+  "We can lift values which have a Data Source to Fetch" in {
+    Fetch.run[IO](one(1)).unsafeRunSync shouldEqual 1
+  }
 
-  // "We can use fetch inside a for comprehension" in {
-  //   val fetch = for {
-  //     o <- one(1)
-  //     t <- one(2)
-  //   } yield (o, t)
+  "We can map over Fetch values" in {
+    val fetch = one(1).map(_ + 1)
+    Fetch.run[IO](fetch).unsafeRunSync shouldEqual 2
+  }
 
-  //   Fetch.run[Future](fetch).map(_ shouldEqual (1, 2))
-  // }
+  "We can use fetch inside a for comprehension" in {
+    val fetch = for {
+      o <- one(1)
+      t <- one(2)
+    } yield (o, t)
+
+    Fetch.run[IO](fetch).unsafeRunSync shouldEqual (1, 2)
+  }
 
   // "Monadic bind implies sequential execution" in {
   //   val fetch = for {
@@ -120,22 +124,21 @@ class FetchTests extends FreeSpec with Matchers {
   //   Fetch.runEnv[Future](fetch).map(_.rounds.size shouldEqual 2)
   // }
 
-  // "We can mix data sources" in {
-  //   val fetch: Fetch[(Int, List[Int])] = for {
-  //     o <- one(1)
-  //     m <- many(3)
-  //   } yield (o, m)
+  "We can mix data sources" in {
+    val fetch: Fetch[(Int, List[Int])] = for {
+      o <- one(1)
+      m <- many(3)
+    } yield (o, m)
 
-  //   Fetch.run[Future](fetch).map(_ shouldEqual (1, List(0, 1, 2)))
-  // }
+    Fetch.run[IO](fetch).unsafeRunSync shouldEqual (1, List(0, 1, 2))
+  }
 
   // "We can use Fetch as a cartesian" in {
   //   import cats.syntax.cartesian._
 
   //   val fetch: Fetch[(Int, List[Int])] = (one(1), many(3)).tupled
-  //   val fut                            = Fetch.run[Future](fetch)
 
-  //   fut.map(_ shouldEqual (1, List(0, 1, 2)))
+  //   Fetch.run[IO](fetch) shouldEqual (1, List(0, 1, 2))
   // }
 
   // "We can use Fetch as an applicative" in {

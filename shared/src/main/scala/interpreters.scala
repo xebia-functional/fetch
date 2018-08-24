@@ -27,6 +27,4 @@ import fetch.interpreters._
 
 private[fetch] trait FetchInterpreters {
 
-  def interpreter[M[_]](implicit M: Effect[M]): FetchOp ~> FetchInterpreter[M]#f =
-    ???
 }
