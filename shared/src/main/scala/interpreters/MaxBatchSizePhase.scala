@@ -26,91 +26,91 @@ import cats.implicits._
 
 object MaxBatchSizePhase {
 
-  val apply: FetchOp ~> Fetch =
-    λ[FetchOp ~> Fetch] {
-      case many @ FetchMany(_, _) => batchMany(many)
-      case conc @ Concurrent(_)   => batchConcurrent(conc)
-      case op                     => Free.liftF(op)
-    }
+  // val apply: FetchOp ~> Fetch =
+  //   λ[FetchOp ~> Fetch] {
+  //     case many @ FetchMany(_, _) => batchMany(many)
+  //     case conc @ Concurrent(_)   => batchConcurrent(conc)
+  //     case op                     => Free.liftF(op)
+  //   }
 
-  private[this] def manyInBatches[I, A](many: FetchMany[I, A]): NonEmptyList[FetchMany[I, A]] = {
-    val FetchMany(ids, ds) = many
-    ds.maxBatchSize.fold(NonEmptyList.one(many)) { batchSize =>
-      ids.unsafeListOp {
-        _.grouped(batchSize)
-          .map(batchIds => FetchMany[I, A](NonEmptyList.fromListUnsafe(batchIds), ds))
-          .toList
-      }
-    }
-  }
+  // private[this] def manyInBatches[I, A](many: FetchMany[I, A]): NonEmptyList[FetchMany[I, A]] = {
+  //   val FetchMany(ids, ds) = many
+  //   ds.maxBatchSize.fold(NonEmptyList.one(many)) { batchSize =>
+  //     ids.unsafeListOp {
+  //       _.grouped(batchSize)
+  //         .map(batchIds => FetchMany[I, A](NonEmptyList.fromListUnsafe(batchIds), ds))
+  //         .toList
+  //     }
+  //   }
+  // }
 
-  private[this] def batchMany[I, A](many: FetchMany[I, A]): Fetch[List[A]] = {
-    val batchedFetches = manyInBatches(many)
-    many.ds.batchExecution match {
-      case _ if many.ds.maxBatchSize.isEmpty =>
-        Free.liftF[FetchOp, List[A]](many)
-      case Sequential =>
-        batchedFetches.reduceMapM(Free.liftF[FetchOp, List[A]](_))
-      case Parallel =>
-        val queries = batchedFetches.asInstanceOf[NonEmptyList[FetchQuery[Any, Any]]]
-        Free.liftF(Concurrent(queries)).map { results =>
-          many.ids.toList.flatMap(id => results.get(many.ds.identity(id)))
-        }
-    }
-  }
+  // private[this] def batchMany[I, A](many: FetchMany[I, A]): Fetch[List[A]] = {
+  //   val batchedFetches = manyInBatches(many)
+  //   many.ds.batchExecution match {
+  //     case _ if many.ds.maxBatchSize.isEmpty =>
+  //       Free.liftF[FetchOp, List[A]](many)
+  //     case Sequential =>
+  //       batchedFetches.reduceMapM(Free.liftF[FetchOp, List[A]](_))
+  //     case Parallel =>
+  //       val queries = batchedFetches.asInstanceOf[NonEmptyList[FetchQuery[Any, Any]]]
+  //       Free.liftF(Concurrent(queries)).map { results =>
+  //         many.ids.toList.flatMap(id => results.get(many.ds.identity(id)))
+  //       }
+  //   }
+  // }
 
-  private[this] def batchConcurrent(conc: Concurrent): Fetch[InMemoryCache] = {
-    type Batch = NonEmptyList[FetchQuery[Any, Any]]
-    val Concurrent(fetches) = conc
+  // private[this] def batchConcurrent(conc: Concurrent): Fetch[InMemoryCache] = {
+  //   type Batch = NonEmptyList[FetchQuery[Any, Any]]
+  //   val Concurrent(fetches) = conc
 
-    val parIorSeqBatches: Ior[Batch, NonEmptyList[Batch]] =
-      fetches.reduceMap {
-        case many @ FetchMany(_, ds) =>
-          val batches = manyInBatches(many)
-          many.ds.batchExecution match {
-            case Parallel   => Ior.left(batches)
-            case Sequential => Ior.right(NonEmptyList.one(batches))
-          }
-        case other =>
-          Ior.left(NonEmptyList.one(other))
-      }
+  //   val parIorSeqBatches: Ior[Batch, NonEmptyList[Batch]] =
+  //     fetches.reduceMap {
+  //       case many @ FetchMany(_, ds) =>
+  //         val batches = manyInBatches(many)
+  //         many.ds.batchExecution match {
+  //           case Parallel   => Ior.left(batches)
+  //           case Sequential => Ior.right(NonEmptyList.one(batches))
+  //         }
+  //       case other =>
+  //         Ior.left(NonEmptyList.one(other))
+  //     }
 
-    val batches: NonEmptyList[Batch] =
-      parIorSeqBatches.map(transposeNelsUnequalLengths) match {
-        case Ior.Left(par)       => NonEmptyList.one(par)
-        case Ior.Right(seqs)     => seqs
-        case Ior.Both(par, seqs) => NonEmptyList(par <+> seqs.head, seqs.tail)
-      }
+  //   val batches: NonEmptyList[Batch] =
+  //     parIorSeqBatches.map(transposeNelsUnequalLengths) match {
+  //       case Ior.Left(par)       => NonEmptyList.one(par)
+  //       case Ior.Right(seqs)     => seqs
+  //       case Ior.Both(par, seqs) => NonEmptyList(par <+> seqs.head, seqs.tail)
+  //     }
 
-    batches.map(Concurrent(_)).reduceMapM[Fetch, InMemoryCache](Free.liftF(_))
-  }
+  //   batches.map(Concurrent(_)).reduceMapM[Fetch, InMemoryCache](Free.liftF(_))
+  // }
 
-  private[fetch] def transposeNelsUnequalLengths[A](
-      nestedNel: NonEmptyList[NonEmptyList[A]]
-  ): NonEmptyList[NonEmptyList[A]] = {
-    type NEL[A] = NonEmptyList[A]
-    // return one transposed line and the rest of the still untransposed lines
-    def oneLine(nelnel: NEL[NEL[A]]): (NEL[A], List[NEL[A]]) =
-      nelnel.reduceMap(nel => (NonEmptyList.one(nel.head), nel.tail.toNel.toList))
+  // private[fetch] def transposeNelsUnequalLengths[A](
+  //     nestedNel: NonEmptyList[NonEmptyList[A]]
+  // ): NonEmptyList[NonEmptyList[A]] = {
+  //   type NEL[A] = NonEmptyList[A]
+  //   // return one transposed line and the rest of the still untransposed lines
+  //   def oneLine(nelnel: NEL[NEL[A]]): (NEL[A], List[NEL[A]]) =
+  //     nelnel.reduceMap(nel => (NonEmptyList.one(nel.head), nel.tail.toNel.toList))
 
-    // keep transposing until oneLine returns an empty list as "rest lines"
-    // List[NEL[A]] == Option[NEL[NEL[A]]]
-    unfoldNonEmpty[NEL, NEL[A], NEL[NEL[A]]](nestedNel) { nel =>
-      val (line, rest) = oneLine(nel)
-      (line, rest.toNel)
-    }
-  }
+  //   // keep transposing until oneLine returns an empty list as "rest lines"
+  //   // List[NEL[A]] == Option[NEL[NEL[A]]]
+  //   unfoldNonEmpty[NEL, NEL[A], NEL[NEL[A]]](nestedNel) { nel =>
+  //     val (line, rest) = oneLine(nel)
+  //     (line, rest.toNel)
+  //   }
+  // }
 
-  private[fetch] def unfoldNonEmpty[F[_], A, B](seed: B)(
-      f: B => (A, Option[B]))(implicit F: Applicative[F], S: Semigroup[F[A]]): F[A] = {
-    def loop(seed: B)(xs: F[A]): F[A] = f(seed) match {
-      case (a, Some(b)) => loop(b)(S.combine(xs, F.pure(a)))
-      case (a, None)    => S.combine(xs, F.pure(a))
-    }
+  // private[fetch] def unfoldNonEmpty[F[_], A, B](seed: B)(
+  //     f: B => (A, Option[B]))(implicit F: Applicative[F], S: Semigroup[F[A]]): F[A] = {
+  //   def loop(seed: B)(xs: F[A]): F[A] = f(seed) match {
+  //     case (a, Some(b)) => loop(b)(S.combine(xs, F.pure(a)))
+  //     case (a, None)    => S.combine(xs, F.pure(a))
+  //   }
 
-    f(seed) match {
-      case (a, Some(b)) => loop(b)(F.pure(a))
-      case (a, None)    => F.pure(a)
-    }
-  }
+  //   f(seed) match {
+  //     case (a, Some(b)) => loop(b)(F.pure(a))
+  //     case (a, None)    => F.pure(a)
+  //   }
+  // }
 }
