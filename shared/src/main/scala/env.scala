@@ -24,7 +24,6 @@ import scala.collection.immutable._
  */
 trait Env {
   def rounds: Seq[Round]
-//  def cache: DataSourceCache
   def evolve(newRound: Round): Env
 }
 

@@ -23,6 +23,8 @@ import cats.data.{NonEmptyList, StateT}
 import cats.free.Free
 import cats.instances.list._
 import cats.effect.Effect
+import cats.effect.concurrent.{Ref }
+import cats.syntax.all._
 
 
 object `package` {
@@ -97,6 +99,33 @@ object `package` {
       }
     }
 
+    private[fetch] class FetchRunnerEnv[M[_]](val dummy: Boolean = true) extends AnyVal {
+      def apply[A](
+        fa: Fetch[A]
+      )(
+        implicit E: Effect[M],
+        MM: Monad[M]
+      ): M[Env] =
+        for {
+          env <- Ref.of[M, Env](FetchEnv())
+          result <- runFetchWithEnv[A, M](fa, env)
+          e <- env.get
+        } yield e
+    }
+
+    private def runFetchWithEnv[A, M[_] : Effect](fa: Fetch[A], env: Ref[M, Env]): M[(Env, A)] = fa match {
+      case Done(a) => env.get.flatMap((e) => Effect[M].pure((e, a)))
+      case Blocked(r, cont) => {
+        r match {
+          case FetchOne(id, ds) => for {
+            result <- fetchOne(id, ds.castDS[Any, A])
+            _      <- env.update(_.evolve(Round(result, 0, 0 ))) // TODO: accurate timers
+            next <- runFetchWithEnv(cont(result), env)
+          } yield next
+        }
+      }
+    }
+
     private[fetch] class FetchRunner[M[_]](val dummy: Boolean = true) extends AnyVal {
       def apply[A](
           fa: Fetch[A]
@@ -115,6 +144,11 @@ object `package` {
         }
       }
     }
+
+    /**
+      * Run a `Fetch`, the result in the monad `M`.
+      */
+    def runEnv[M[_]]: FetchRunnerEnv[M] = new FetchRunnerEnv[M]
 
     /**
      * Run a `Fetch`, the result in the monad `M`.
