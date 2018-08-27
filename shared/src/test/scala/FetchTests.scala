@@ -141,29 +141,28 @@ class FetchTests extends FreeSpec with Matchers {
 
   // Execution model
 
-  // "Monadic bind implies sequential execution" in {
-  //   val fetch = for {
-  //     o <- one(1)
-  //     t <- one(2)
-  //   } yield (o, t)
-  //   val io = Fetch.run[IO]
+  "Monadic bind implies sequential execution" in {
+    val fetch = for {
+      o <- one(1)
+      t <- one(2)
+    } yield (o, t)
+    val io = Fetch.runEnv[IO](fetch)
 
-  //   Fetch.runEnv[Future](fetch).map(_.rounds.size shouldEqual 2)
-  // }
+    io.unsafeRunSync.rounds.size shouldEqual 2
+  }
 
   // "Traversals are implicitly batched" in {
-  //   import cats.syntax.traverse._
+  //   import cats.instances.list._
+  //   import cats.syntax.all._
 
   //   val fetch: Fetch[List[Int]] = for {
   //     manies <- many(3)
   //     ones   <- manies.traverse(one)
   //   } yield ones
 
-  //   Fetch
-  //     .runEnv[Future](fetch)
-  //     .map(env => {
-  //       env.rounds.size shouldEqual 2
-  //     })
+  //   val io = Fetch.runEnv[IO](fetch)
+
+  //   io.unsafeRunSync.rounds.size shouldEqual 2
   // }
 
   // "Fetch's custom traverse doesn't cause stack overflows for long lists" in {

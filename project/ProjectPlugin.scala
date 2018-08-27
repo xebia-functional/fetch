@@ -18,7 +18,9 @@ object ProjectPlugin extends AutoPlugin {
   object autoImport {
 
     lazy val commonCrossDependencies: Seq[ModuleID] =
-      Seq(%%("cats-free"), %%("cats-effect"), %%("scalatest") % "test")
+      Seq(%%("cats-free"),
+        "org.typelevel" %% "cats-effect" % "1.0.0-RC3",
+        %%("scalatest") % "test")
 
     lazy val monixCrossDependencies: Seq[ModuleID] =
       %%("monix-eval") :: Nil
