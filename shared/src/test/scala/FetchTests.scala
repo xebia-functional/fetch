@@ -36,65 +36,6 @@ class FetchTests extends FreeSpec with Matchers {
     Fetch.run[IO](fetch).unsafeRunSync shouldEqual 42
   }
 
-  // Errors
-
-  // "Data sources with errors throw fetch failures" in {
-  //   val fetch: Fetch[Int] = Fetch(Never())
-  //   val io                = Fetch.run[IO](fetch)
-
-  //   io.attempt
-  //     .map(either =>
-  //       either should matchPattern {
-  //         case Left(NotFound(Never(), _)) =>
-  //       })
-  //   .unsafeRunSync
-  // }
-
-  // "Data sources with errors throw fetch failures that can be handled" in {
-  //   val fetch: Fetch[Int] = Fetch(Never())
-  //   val io                = Fetch.run[IO](fetch)
-
-  //   io.handleErrorWith(err => IO(42))
-  //     .unsafeRunSync shouldEqual 42
-  // }
-
-  // "Data sources with errors and cached values throw fetch failures with the cache" in {
-  //   val fetch: Fetch[Int] = Fetch(Never())
-  //   val cache = InMemoryCache(
-  //     OneSource.identity(One(1)) -> 1
-  //   )
-
-  //   ME.attempt(Fetch.run[Future](fetch, cache)).map {
-  //     case Left(NotFound(env, _)) => env.cache shouldEqual cache
-  //     case _                      => fail("Cache should be populated")
-  //   }
-  // }
-
-  // "Data sources with errors won't fail if they're cached" in {
-  //   val fetch: Fetch[Int] = Fetch(Never())
-  //   val cache = InMemoryCache(
-  //     NeverSource.identity(Never()) -> 1
-  //   )
-  //   Fetch.run[Future](fetch, cache).map(_ shouldEqual 1)
-  // }
-
-  // "We can lift errors to Fetch" in {
-  //   val fetch: Fetch[Int] = Fetch.error(DidNotFound())
-
-  //   ME.attempt(Fetch.run[Future](fetch)).map {
-  //     case Left(UnhandledException(_, DidNotFound())) => assert(true)
-  //     case _                                          => fail("Should've thrown NotFound exception")
-  //   }
-  // }
-
-  // "We can lift handle and recover from errors in Fetch" in {
-  //   import cats.syntax.applicativeError._
-
-  //   val fetch: Fetch[Int] = Fetch.error(DidNotFound())
-  //   val fut               = Fetch.run[Future](fetch)
-  //   ME.handleErrorWith(fut)(err => Future.successful(42)).map(_ shouldEqual 42)
-  // }
-
   // Fetch ops
 
   "We can lift values which have a Data Source to Fetch" in {
@@ -115,15 +56,6 @@ class FetchTests extends FreeSpec with Matchers {
     Fetch.run[IO](fetch).unsafeRunSync shouldEqual (1, 2)
   }
 
-  // "Monadic bind implies sequential execution" in {
-  //   val fetch = for {
-  //     o <- one(1)
-  //     t <- one(2)
-  //   } yield (o, t)
-
-  //   Fetch.runEnv[Future](fetch).map(_.rounds.size shouldEqual 2)
-  // }
-
   "We can mix data sources" in {
     val fetch: Fetch[(Int, List[Int])] = for {
       o <- one(1)
@@ -133,33 +65,90 @@ class FetchTests extends FreeSpec with Matchers {
     Fetch.run[IO](fetch).unsafeRunSync shouldEqual (1, List(0, 1, 2))
   }
 
-  // "We can use Fetch as a cartesian" in {
-  //   import cats.syntax.cartesian._
+  "We can use Fetch as a cartesian" in {
+    import cats.syntax.all._
 
-  //   val fetch: Fetch[(Int, List[Int])] = (one(1), many(3)).tupled
+    val fetch: Fetch[(Int, List[Int])] = (one(1), many(3)).tupled
+    val io                             = Fetch.run[IO](fetch)
 
-  //   Fetch.run[IO](fetch) shouldEqual (1, List(0, 1, 2))
-  // }
+    io.unsafeRunSync shouldEqual (1, List(0, 1, 2))
+  }
 
-  // "We can use Fetch as an applicative" in {
-  //   import cats.syntax.cartesian._
+  "We can use Fetch as an applicative" in {
+    import cats.syntax.all._
 
-  //   val fetch: Fetch[Int] = (one(1), one(2), one(3)).mapN(_ + _ + _)
-  //   val fut               = Fetch.run[Future](fetch)
+    val fetch: Fetch[Int] = (one(1), one(2), one(3)).mapN(_ + _ + _)
+    val io                = Fetch.run[IO](fetch)
 
-  //   fut.map(_ shouldEqual 6)
-  // }
+    io.unsafeRunSync shouldEqual 6
+  }
 
-  // "We can traverse over a list with a Fetch for each element" in {
-  //   import cats.syntax.traverse._
+  "We can traverse over a list with a Fetch for each element" in {
+    import cats.instances.list._
+    import cats.syntax.all._
 
-  //   val fetch: Fetch[List[Int]] = for {
-  //     manies <- many(3)
-  //     ones   <- manies.traverse(one)
-  //   } yield ones
+    val fetch: Fetch[List[Int]] = for {
+      manies <- many(3)
+      ones   <- manies.traverse(one)
+    } yield ones
+    val io = Fetch.run[IO](fetch)
 
-  //   val fut = Fetch.run[Future](fetch)
-  //   fut.map(_ shouldEqual List(0, 1, 2))
+    io.unsafeRunSync shouldEqual List(0, 1, 2)
+  }
+
+  "We can depend on previous computations of Fetch values" in {
+    val fetch: Fetch[Int] = for {
+      o <- one(1)
+      t <- one(o + 1)
+    } yield o + t
+
+    val io = Fetch.run[IO](fetch)
+
+    io.unsafeRunSync shouldEqual 3
+  }
+
+  "We can collect a list of Fetch into one" in {
+    import cats.instances.list._
+    import cats.syntax.all._
+
+    val sources: List[Fetch[Int]] = List(one(1), one(2), one(3))
+    val fetch: Fetch[List[Int]]   = sources.sequence
+    val io                        = Fetch.run[IO](fetch)
+
+    io.unsafeRunSync shouldEqual List(1, 2, 3)
+  }
+
+  "We can collect a list of Fetches with heterogeneous sources" in {
+    import cats.instances.list._
+    import cats.syntax.all._
+
+    val sources: List[Fetch[Int]] = List(one(1), one(2), one(3), anotherOne(4), anotherOne(5))
+    val fetch: Fetch[List[Int]]   = sources.sequence
+    val io                        = Fetch.run[IO](fetch)
+
+    io.unsafeRunSync shouldEqual List(1, 2, 3, 4, 5)
+  }
+
+  "We can collect the results of a traversal" in {
+    import cats.instances.list._
+    import cats.syntax.all._
+
+    val fetch = List(1, 2, 3).traverse(one)
+    val io    = Fetch.run[IO](fetch)
+
+    io.unsafeRunSync shouldEqual List(1, 2, 3)
+  }
+
+  // Execution model
+
+  // "Monadic bind implies sequential execution" in {
+  //   val fetch = for {
+  //     o <- one(1)
+  //     t <- one(2)
+  //   } yield (o, t)
+  //   val io = Fetch.run[IO]
+
+  //   Fetch.runEnv[Future](fetch).map(_.rounds.size shouldEqual 2)
   // }
 
   // "Traversals are implicitly batched" in {
@@ -225,48 +214,6 @@ class FetchTests extends FreeSpec with Matchers {
   //     .map(env => {
   //       totalBatches(env.rounds) shouldEqual 0
   //     })
-  // }
-
-  // "If a fetch fails in the left hand of a product the product will fail" in {
-  //   val fetch: Fetch[(Int, List[Int])] = Fetch.join(Fetch.error(DidNotFound()), many(3))
-  //   val fut                            = Fetch.run[Future](fetch)
-
-  //   ME.attempt(Fetch.run[Future](fetch)).map {
-  //     case Left(UnhandledException(_, DidNotFound())) => assert(true)
-  //     case _                                          => fail("Should've thrown NotFound exception")
-  //   }
-  // }
-
-  // "If a fetch fails in the right hand of a product the product will fail" in {
-  //   val fetch: Fetch[(List[Int], Int)] = Fetch.join(many(3), Fetch.error(DidNotFound()))
-  //   val fut                            = Fetch.run[Future](fetch)
-
-  //   ME.attempt(Fetch.run[Future](fetch)).map {
-  //     case Left(UnhandledException(_, DidNotFound())) => assert(true)
-  //     case _                                          => fail("Should've thrown NotFound exception")
-  //   }
-  // }
-
-  // "If there is a missing identity in the left hand of a product the product will fail" in {
-  //   val fetch: Fetch[(Int, List[Int])] = Fetch.join(Fetch(Never()), many(3))
-  //   val fut                            = Fetch.run[Future](fetch)
-
-  //   ME.attempt(Fetch.run[Future](fetch)).map {
-  //     case Left(MissingIdentities(_, missing)) =>
-  //       missing shouldEqual Map(NeverSource.name -> List(Never()))
-  //     case _ => fail("Should've thrown a fetch failure")
-  //   }
-  // }
-
-  // "If there is a missing identity in the right hand of a product the product will fail" in {
-  //   val fetch: Fetch[(List[Int], Int)] = Fetch.join(many(3), Fetch(Never()))
-  //   val fut                            = Fetch.run[Future](fetch)
-
-  //   ME.attempt(fut).map {
-  //     case Left(MissingIdentities(_, missing)) =>
-  //       missing shouldEqual Map(NeverSource.name -> List(Never()))
-  //     case _ => fail("Should've thrown a fetch failure")
-  //   }
   // }
 
   // "The product of concurrent fetches implies everything fetched concurrently" in {
@@ -378,28 +325,6 @@ class FetchTests extends FreeSpec with Matchers {
   //       totalBatches(rounds) shouldEqual 1
   //     })
   // }
-  // "We can depend on previous computations of Fetch values" in {
-  //   val fetch: Fetch[Int] = for {
-  //     o <- one(1)
-  //     t <- one(o + 1)
-  //   } yield o + t
-
-  //   Fetch.run[Future](fetch).map(_ shouldEqual 3)
-  // }
-
-  // "We can collect a list of Fetch into one" in {
-  //   val sources: List[Fetch[Int]] = List(one(1), one(2), one(3))
-  //   val fetch: Fetch[List[Int]]   = Fetch.sequence(sources)
-
-  //   Fetch.run[Future](fetch).map(_ shouldEqual List(1, 2, 3))
-  // }
-
-  // "We can collect a list of Fetches with heterogeneous sources" in {
-  //   val sources: List[Fetch[Int]] = List(one(1), one(2), one(3), anotherOne(4), anotherOne(5))
-  //   val fetch: Fetch[List[Int]]   = Fetch.sequence(sources)
-
-  //   Fetch.run[Future](fetch).map(_ shouldEqual List(1, 2, 3, 4, 5))
-  // }
 
   // "Sequenced fetches are run concurrently" in {
   //   val sources: List[Fetch[Int]] = List(one(1), one(2), one(3), anotherOne(4), anotherOne(5))
@@ -447,12 +372,6 @@ class FetchTests extends FreeSpec with Matchers {
   //     rounds.size shouldEqual 1
   //     totalFetched(rounds) shouldEqual 2
   //   })
-  // }
-
-  // "We can collect the results of a traversal" in {
-  //   val fetch = Fetch.traverse(List(1, 2, 3))(one)
-
-  //   Fetch.run[Future](fetch).map(_ shouldEqual List(1, 2, 3))
   // }
 
   // "Traversals are batched" in {
@@ -542,6 +461,25 @@ class FetchTests extends FreeSpec with Matchers {
   //     rounds.size shouldEqual 0
   //   })
   // }
+
+  // "Pure Fetches should be ignored in the parallel optimization" in {
+  //   val fetch: Fetch[(Int, Int)] = Fetch.join(
+  //     one(1),
+  //     for {
+  //       a <- Fetch.pure(2)
+  //       b <- one(3)
+  //     } yield a + b
+  //   )
+
+  //   Fetch.runFetch[Future](fetch).map {
+  //     case (env, res) =>
+  //       res shouldEqual (1, 5)
+  //       totalFetched(env.rounds) shouldEqual 2
+  //       env.rounds.size shouldEqual 1
+  //   }
+  // }
+
+  // Caching
 
   // case class MyCache(state: Map[Any, Any] = Map.empty[Any, Any]) extends DataSourceCache {
   //   override def get[A](k: DataSourceIdentity): Option[A] = state.get(k).asInstanceOf[Option[A]]
@@ -640,20 +578,104 @@ class FetchTests extends FreeSpec with Matchers {
   //   }
   // }
 
-  // "Pure Fetches should be ignored in the parallel optimization" in {
-  //   val fetch: Fetch[(Int, Int)] = Fetch.join(
-  //     one(1),
-  //     for {
-  //       a <- Fetch.pure(2)
-  //       b <- one(3)
-  //     } yield a + b
+  // Errors
+
+  // "Data sources with errors throw fetch failures" in {
+  //   val fetch: Fetch[Int] = Fetch(Never())
+  //   val io                = Fetch.run[IO](fetch)
+
+  //   io.attempt
+  //     .map(either =>
+  //       either should matchPattern {
+  //         case Left(NotFound(Never(), _)) =>
+  //       })
+  //   .unsafeRunSync
+  // }
+
+  // "Data sources with errors throw fetch failures that can be handled" in {
+  //   val fetch: Fetch[Int] = Fetch(Never())
+  //   val io                = Fetch.run[IO](fetch)
+
+  //   io.handleErrorWith(err => IO(42))
+  //     .unsafeRunSync shouldEqual 42
+  // }
+
+  // "Data sources with errors and cached values throw fetch failures with the cache" in {
+  //   val fetch: Fetch[Int] = Fetch(Never())
+  //   val cache = InMemoryCache(
+  //     OneSource.identity(One(1)) -> 1
   //   )
 
-  //   Fetch.runFetch[Future](fetch).map {
-  //     case (env, res) =>
-  //       res shouldEqual (1, 5)
-  //       totalFetched(env.rounds) shouldEqual 2
-  //       env.rounds.size shouldEqual 1
+  //   ME.attempt(Fetch.run[Future](fetch, cache)).map {
+  //     case Left(NotFound(env, _)) => env.cache shouldEqual cache
+  //     case _                      => fail("Cache should be populated")
+  //   }
+  // }
+
+  // "Data sources with errors won't fail if they're cached" in {
+  //   val fetch: Fetch[Int] = Fetch(Never())
+  //   val cache = InMemoryCache(
+  //     NeverSource.identity(Never()) -> 1
+  //   )
+  //   Fetch.run[Future](fetch, cache).map(_ shouldEqual 1)
+  // }
+
+  // "We can lift errors to Fetch" in {
+  //   val fetch: Fetch[Int] = Fetch.error(DidNotFound())
+
+  //   ME.attempt(Fetch.run[Future](fetch)).map {
+  //     case Left(UnhandledException(_, DidNotFound())) => assert(true)
+  //     case _                                          => fail("Should've thrown NotFound exception")
+  //   }
+  // }
+
+  // "We can lift handle and recover from errors in Fetch" in {
+  //   import cats.syntax.applicativeError._
+
+  //   val fetch: Fetch[Int] = Fetch.error(DidNotFound())
+  //   val fut               = Fetch.run[Future](fetch)
+  //   ME.handleErrorWith(fut)(err => Future.successful(42)).map(_ shouldEqual 42)
+  // }
+
+  // "If a fetch fails in the left hand of a product the product will fail" in {
+  //   val fetch: Fetch[(Int, List[Int])] = Fetch.join(Fetch.error(DidNotFound()), many(3))
+  //   val fut                            = Fetch.run[Future](fetch)
+
+  //   ME.attempt(Fetch.run[Future](fetch)).map {
+  //     case Left(UnhandledException(_, DidNotFound())) => assert(true)
+  //     case _                                          => fail("Should've thrown NotFound exception")
+  //   }
+  // }
+
+  // "If a fetch fails in the right hand of a product the product will fail" in {
+  //   val fetch: Fetch[(List[Int], Int)] = Fetch.join(many(3), Fetch.error(DidNotFound()))
+  //   val fut                            = Fetch.run[Future](fetch)
+
+  //   ME.attempt(Fetch.run[Future](fetch)).map {
+  //     case Left(UnhandledException(_, DidNotFound())) => assert(true)
+  //     case _                                          => fail("Should've thrown NotFound exception")
+  //   }
+  // }
+
+  // "If there is a missing identity in the left hand of a product the product will fail" in {
+  //   val fetch: Fetch[(Int, List[Int])] = Fetch.join(Fetch(Never()), many(3))
+  //   val fut                            = Fetch.run[Future](fetch)
+
+  //   ME.attempt(Fetch.run[Future](fetch)).map {
+  //     case Left(MissingIdentities(_, missing)) =>
+  //       missing shouldEqual Map(NeverSource.name -> List(Never()))
+  //     case _ => fail("Should've thrown a fetch failure")
+  //   }
+  // }
+
+  // "If there is a missing identity in the right hand of a product the product will fail" in {
+  //   val fetch: Fetch[(List[Int], Int)] = Fetch.join(many(3), Fetch(Never()))
+  //   val fut                            = Fetch.run[Future](fetch)
+
+  //   ME.attempt(fut).map {
+  //     case Left(MissingIdentities(_, missing)) =>
+  //       missing shouldEqual Map(NeverSource.name -> List(Never()))
+  //     case _ => fail("Should've thrown a fetch failure")
   //   }
   // }
 }

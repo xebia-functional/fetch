@@ -49,6 +49,18 @@ object `package` {
     }
   }
 
+  implicit val fetchApplicative: Applicative[Fetch] = new Applicative[Fetch] {
+    def pure[A](a: A): Fetch[A] = Done(a)
+
+    def ap[A, B](ff: Fetch[A => B])(fa: Fetch[A]): Fetch[B] = (ff, fa) match {
+      case (Done(f), Done(a)) => Done(f(a))
+      case (Done(f), Blocked(r, cont)) => Blocked(r, (result) => map(cont(result))(f))
+      case (Blocked(r, cont), Done(a)) => Blocked(r, (result) => map(cont(result))((f) => f(a)))
+      case (Blocked(r, cont), Blocked(r2, cont2)) =>
+        ???
+    }
+  }
+
   implicit val fetchFlatmap: Monad[Fetch] = new Monad[Fetch] {
     def pure[A](x: A): Fetch[A] =
       Done(x)
