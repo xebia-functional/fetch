@@ -32,15 +32,15 @@ object TestHelper {
   }
   def one(id: Int): Fetch[Int] = Fetch(One(id))
 
-  // case class AnotherOne(id: Int)
-  // implicit object AnotheroneSource extends DataSource[AnotherOne, Int] {
-  //   override def name = "AnotherOneSource"
-  //   override def fetchOne(id: AnotherOne): Query[Option[Int]] =
-  //     Query.sync(Option(id.id))
-  //   override def fetchMany(ids: NonEmptyList[AnotherOne]): Query[Map[AnotherOne, Int]] =
-  //     Query.sync(ids.toList.map(anotherone => (anotherone, anotherone.id)).toMap)
-  // }
-  // def anotherOne(id: Int): Fetch[Int] = Fetch(AnotherOne(id))
+  case class AnotherOne(id: Int)
+  implicit object AnotheroneSource extends DataSource[AnotherOne, Int] {
+    override def name = "AnotherOneSource"
+    override def fetchOne[F[_] : Effect](id: AnotherOne): F[Option[Int]] =
+      Effect[F].delay(Option(id.id))
+    override def fetchMany[F[_] : Effect](ids: NonEmptyList[AnotherOne]): F[Map[AnotherOne, Int]] =
+      Effect[F].delay(ids.toList.map(anotherone => (anotherone, anotherone.id)).toMap)
+  }
+  def anotherOne(id: Int): Fetch[Int] = Fetch(AnotherOne(id))
 
   case class Many(n: Int)
   implicit object ManySource extends DataSource[Many, List[Int]] {
