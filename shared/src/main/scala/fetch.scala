@@ -124,7 +124,7 @@ object `package` {
           case Blocked(br, cont : Fetch[A]) =>
             Unfetch(
               IO.pure(
-                Blocked(br, flatMap(cont)(f).asInstanceOf[Fetch[B]])
+                Blocked(br, flatMap(cont)(f))
               )
             )
         }
