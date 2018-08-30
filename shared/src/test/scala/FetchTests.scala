@@ -20,7 +20,7 @@ import org.scalatest.{FreeSpec, Matchers}
 
 import cats._
 import cats.implicits._
-import cats.effect.{Effect, IO}
+import cats.effect._
 import cats.data.NonEmptyList
 import cats.instances.list._
 import cats.syntax.apply._
@@ -28,23 +28,67 @@ import cats.syntax.apply._
 import fetch._
 import fetch.implicits._
 
+import scala.concurrent.ExecutionContext
+import scala.concurrent.duration._
+
 class FetchTests extends FreeSpec with Matchers {
   import TestHelper._
 
+  implicit def executionContext: ExecutionContext = ExecutionContext.Implicits.global
+  implicit val timer: Timer[IO] = IO.timer(executionContext)
+  implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
+
+  // data sources
+
+  case class One(id: Int)
+  implicit object OneSource extends DataSource[One, Int] {
+    override def name = "OneSource"
+
+    override def fetchOne[F[_] : ConcurrentEffect](id: One): F[Option[Int]] =
+      ConcurrentEffect[F].delay(Option(id.id))
+
+    override def fetchMany[F[_] : ConcurrentEffect](ids: NonEmptyList[One]): F[Map[One, Int]] =
+      ConcurrentEffect[F].delay(ids.toList.map(one => (one, one.id)).toMap)
+  }
+  def one(id: Int): Fetch[Int] = Fetch(One(id))
+
+  case class Many(n: Int)
+  implicit object ManySource extends DataSource[Many, List[Int]] {
+    override def name = "ManySource"
+    override def fetchOne[F[_] : ConcurrentEffect](id: Many): F[Option[List[Int]]] =
+      ConcurrentEffect[F].delay(Option(0 until id.n toList))
+
+    override def fetchMany[F[_] : ConcurrentEffect](ids: NonEmptyList[Many]): F[Map[Many, List[Int]]] =
+      ConcurrentEffect[F].delay(ids.toList.map(m => (m, 0 until m.n toList)).toMap)
+  }
+  def many(id: Int): Fetch[List[Int]] = Fetch(Many(id))
+
+  case class AnotherOne(id: Int)
+  implicit object AnotheroneSource extends DataSource[AnotherOne, Int] {
+    override def name = "AnotherOneSource"
+    override def fetchOne[F[_] : ConcurrentEffect](id: AnotherOne): F[Option[Int]] =
+      ConcurrentEffect[F].delay(Option(id.id))
+    override def fetchMany[F[_] : ConcurrentEffect](ids: NonEmptyList[AnotherOne]): F[Map[AnotherOne, Int]] =
+      ConcurrentEffect[F].delay(ids.toList.map(anotherone => (anotherone, anotherone.id)).toMap)
+  }
+  def anotherOne(id: Int): Fetch[Int] = Fetch(AnotherOne(id))
+
+  // Tests
+
   "We can lift plain values to Fetch" in {
     val fetch: Fetch[Int] = Fetch.pure(42)
-    Fetch.run[IO](fetch).unsafeRunSync shouldEqual 42
+    Fetch.run(fetch).unsafeRunSync shouldEqual 42
   }
 
   // Fetch ops
 
   "We can lift values which have a Data Source to Fetch" in {
-    Fetch.run[IO](one(1)).unsafeRunSync shouldEqual 1
+    Fetch.run(one(1)).unsafeRunSync shouldEqual 1
   }
 
   "We can map over Fetch values" in {
     val fetch = one(1).map(_ + 1)
-    Fetch.run[IO](fetch).unsafeRunSync shouldEqual 2
+    Fetch.run(fetch).unsafeRunSync shouldEqual 2
   }
 
   "We can use fetch inside a for comprehension" in {
@@ -53,7 +97,7 @@ class FetchTests extends FreeSpec with Matchers {
       t <- one(2)
     } yield (o, t)
 
-    Fetch.run[IO](fetch).unsafeRunSync shouldEqual (1, 2)
+    Fetch.run(fetch).unsafeRunSync shouldEqual (1, 2)
   }
 
   "We can mix data sources" in {
@@ -62,14 +106,14 @@ class FetchTests extends FreeSpec with Matchers {
       m <- many(3)
     } yield (o, m)
 
-    Fetch.run[IO](fetch).unsafeRunSync shouldEqual (1, List(0, 1, 2))
+    Fetch.run(fetch).unsafeRunSync shouldEqual (1, List(0, 1, 2))
   }
 
   "We can use Fetch as a cartesian" in {
     import cats.syntax.all._
 
     val fetch: Fetch[(Int, List[Int])] = (one(1), many(3)).tupled
-    val io                             = Fetch.run[IO](fetch)
+    val io                             = Fetch.run(fetch)
 
     io.unsafeRunSync shouldEqual (1, List(0, 1, 2))
   }
@@ -78,7 +122,7 @@ class FetchTests extends FreeSpec with Matchers {
     import cats.syntax.all._
 
     val fetch: Fetch[Int] = (one(1), one(2), one(3)).mapN(_ + _ + _)
-    val io                = Fetch.run[IO](fetch)
+    val io                = Fetch.run(fetch)
 
     io.unsafeRunSync shouldEqual 6
   }
@@ -91,7 +135,7 @@ class FetchTests extends FreeSpec with Matchers {
       manies <- many(3)
       ones   <- manies.traverse(one)
     } yield ones
-    val io = Fetch.run[IO](fetch)
+    val io = Fetch.run(fetch)
 
     io.unsafeRunSync shouldEqual List(0, 1, 2)
   }
@@ -102,7 +146,7 @@ class FetchTests extends FreeSpec with Matchers {
       t <- one(o + 1)
     } yield o + t
 
-    val io = Fetch.run[IO](fetch)
+    val io = Fetch.run(fetch)
 
     io.unsafeRunSync shouldEqual 3
   }
@@ -113,7 +157,7 @@ class FetchTests extends FreeSpec with Matchers {
 
     val sources: List[Fetch[Int]] = List(one(1), one(2), one(3))
     val fetch: Fetch[List[Int]]   = sources.sequence
-    val io                        = Fetch.run[IO](fetch)
+    val io                        = Fetch.run(fetch)
 
     io.unsafeRunSync shouldEqual List(1, 2, 3)
   }
@@ -124,7 +168,7 @@ class FetchTests extends FreeSpec with Matchers {
 
     val sources: List[Fetch[Int]] = List(one(1), one(2), one(3), anotherOne(4), anotherOne(5))
     val fetch: Fetch[List[Int]]   = sources.sequence
-    val io                        = Fetch.run[IO](fetch)
+    val io                        = Fetch.run(fetch)
 
     io.unsafeRunSync shouldEqual List(1, 2, 3, 4, 5)
   }
@@ -134,22 +178,22 @@ class FetchTests extends FreeSpec with Matchers {
     import cats.syntax.all._
 
     val fetch = List(1, 2, 3).traverse(one)
-    val io    = Fetch.run[IO](fetch)
+    val io    = Fetch.run(fetch)
 
     io.unsafeRunSync shouldEqual List(1, 2, 3)
   }
 
   // Execution model
 
-  "Monadic bind implies sequential execution" in {
-    val fetch = for {
-      o <- one(1)
-      t <- one(2)
-    } yield (o, t)
-    val io = Fetch.runEnv[IO](fetch)
+  // "Monadic bind implies sequential execution" in {
+  //   val fetch = for {
+  //     o <- one(1)
+  //     t <- one(2)
+  //   } yield (o, t)
+  //   val io = Fetch.runEnv[IO](fetch)
 
-    io.unsafeRunSync.rounds.size shouldEqual 2
-  }
+  //   io.unsafeRunSync.rounds.size shouldEqual 2
+  // }
 
   // "Traversals are implicitly batched" in {
   //   import cats.instances.list._
@@ -160,20 +204,10 @@ class FetchTests extends FreeSpec with Matchers {
   //     ones   <- manies.traverse(one)
   //   } yield ones
 
+  //   println("TRAV! ")
   //   val io = Fetch.runEnv[IO](fetch)
 
   //   io.unsafeRunSync.rounds.size shouldEqual 2
-  // }
-
-  // "Fetch's custom traverse doesn't cause stack overflows for long lists" in {
-  //   val length = 2000
-  //   val fetch  = Fetch.traverse(List.range(0, length))(one)
-
-  //   Fetch
-  //     .runEnv[Future](fetch)
-  //     .map { env =>
-  //       env.rounds.size shouldEqual 1
-  //     }
   // }
 
   // "Identities are deduped when batched" in {

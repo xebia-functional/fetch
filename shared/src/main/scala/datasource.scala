@@ -16,7 +16,7 @@
 
 package fetch
 
-import cats.effect.Effect
+import cats.effect.ConcurrentEffect
 import cats.data.NonEmptyList
 import cats.instances.list._
 import cats.instances.option._
@@ -43,24 +43,24 @@ trait DataSource[I, A] {
 
   /** Fetch one identity, returning a None if it wasn't found.
    */
-  def fetchOne[F[_] : Effect](id: I): F[Option[A]]
+  def fetchOne[F[_] : ConcurrentEffect](id: I): F[Option[A]]
 
   /** Fetch many identities, returning a mapping from identities to results. If an
    * identity wasn't found, it won't appear in the keys.
    */
-  def fetchMany[F[_] : Effect](ids: NonEmptyList[I]): F[Map[I, A]]
+  def fetchMany[F[_] : ConcurrentEffect](ids: NonEmptyList[I]): F[Map[I, A]]
 
   /** Use `fetchOne` for implementing of `fetchMany`. Use only when the data
    * source doesn't support batching.
    */
-  def batchingNotSupported[F[_] : Effect](ids: NonEmptyList[I]): F[Map[I, A]] = {
+  def batchingNotSupported[F[_] : ConcurrentEffect](ids: NonEmptyList[I]): F[Map[I, A]] = {
     val fetchOneWithId: I => F[Option[(I, A)]] = id =>
       fetchOne(id).map(_.tupleLeft(id))
 
     ids.toList.traverse(fetchOneWithId).map(_.collect { case Some(x) => x }.toMap)
   }
 
-  def batchingOnly[F[_] : Effect](id: I): F[Option[A]] =
+  def batchingOnly[F[_] : ConcurrentEffect](id: I): F[Option[A]] =
     fetchMany(NonEmptyList.one(id)).map(_ get id)
 
   def maxBatchSize: Option[Int] = None
