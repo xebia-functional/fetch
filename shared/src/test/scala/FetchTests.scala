@@ -185,30 +185,32 @@ class FetchTests extends FreeSpec with Matchers {
 
   // Execution model
 
-  // "Monadic bind implies sequential execution" in {
-  //   val fetch = for {
-  //     o <- one(1)
-  //     t <- one(2)
-  //   } yield (o, t)
-  //   val io = Fetch.runEnv[IO](fetch)
+  "Monadic bind implies sequential execution" in {
+    val fetch = for {
+      o <- one(1)
+      t <- one(2)
+    } yield (o, t)
 
-  //   io.unsafeRunSync.rounds.size shouldEqual 2
-  // }
+    val io = Fetch.runEnv(fetch)
+    val (env, result) = io.unsafeRunSync
 
-  // "Traversals are implicitly batched" in {
-  //   import cats.instances.list._
-  //   import cats.syntax.all._
+    env.rounds.size shouldEqual 2
+  }
 
-  //   val fetch: Fetch[List[Int]] = for {
-  //     manies <- many(3)
-  //     ones   <- manies.traverse(one)
-  //   } yield ones
+  "Traversals are implicitly batched" in {
+    import cats.instances.list._
+    import cats.syntax.all._
 
-  //   println("TRAV! ")
-  //   val io = Fetch.runEnv[IO](fetch)
+    val fetch: Fetch[List[Int]] = for {
+      manies <- many(3)
+      ones   <- manies.traverse(one)
+    } yield ones
 
-  //   io.unsafeRunSync.rounds.size shouldEqual 2
-  // }
+    val io = Fetch.runEnv(fetch)
+    val (env, result) = io.unsafeRunSync
+
+    env.rounds.size shouldEqual 2
+  }
 
   // "Identities are deduped when batched" in {
   //   import cats.syntax.traverse._
@@ -229,15 +231,17 @@ class FetchTests extends FreeSpec with Matchers {
   //     })
   // }
 
-  // "The product of two fetches implies parallel fetching" in {
-  //   val fetch: Fetch[(Int, List[Int])] = Fetch.join(one(1), many(3))
+  "The product of two fetches implies parallel fetching" in {
+    import cats.syntax.all._
 
-  //   Fetch
-  //     .runEnv[Future](fetch)
-  //     .map(env => {
-  //       env.rounds.size shouldEqual 1
-  //     })
-  // }
+    val fetch: Fetch[(Int, List[Int])] = (one(1) |@| many(3)).tupled
+
+    val io = Fetch.runEnv(fetch)
+    val (env, result) = io.unsafeRunSync
+
+    env.rounds.size shouldEqual 1
+    env.rounds.head.queries.size shouldEqual 2
+  }
 
   // "Concurrent fetching calls batches only wen it can" in {
   //   val fetch: Fetch[(Int, List[Int])] = Fetch.join(one(1), many(3))
@@ -407,15 +411,18 @@ class FetchTests extends FreeSpec with Matchers {
   //   })
   // }
 
-  // "Traversals are batched" in {
-  //   val fetch = Fetch.traverse(List(1, 2, 3))(one)
+  "Traversals are batched" in {
+    import cats.instances.list._
+    import cats.syntax.traverse._
 
-  //   Fetch
-  //     .runEnv[Future](fetch)
-  //     .map(env => {
-  //       env.rounds.size shouldEqual 1
-  //     })
-  // }
+    val fetch = List(1, 2, 3).traverse(one)
+
+    val io = Fetch.runEnv(fetch)
+    val (env, result) = io.unsafeRunSync
+
+    env.rounds.size shouldEqual 1
+    env.rounds.head.queries.size shouldEqual 1
+  }
 
   // "Duplicated sources are only fetched once" in {
   //   val fetch = Fetch.traverse(List(1, 2, 1))(one)
