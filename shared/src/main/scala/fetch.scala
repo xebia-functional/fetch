@@ -22,8 +22,8 @@ import cats.{Functor, Applicative, Monad, Eval}
 import cats.data.{NonEmptyList, StateT}
 import cats.free.Free
 import cats.instances.list._
-import cats.effect.Effect
-import cats.effect.concurrent.{Ref }
+import cats.effect._
+import cats.effect.concurrent.{Ref, Deferred}
 import cats.syntax.all._
 
 
@@ -31,129 +31,201 @@ object `package` {
   type DataSourceName     = String
   type DataSourceIdentity = (DataSourceName, Any)
 
-  sealed trait FetchRequest
-  case class FetchOne[I, A](id: I, ds: DataSource[I, A]) extends FetchRequest
+  // Fetch request
+  sealed trait FetchRequest extends Product with Serializable
 
-  sealed trait FetchResult
-  case class FetchDone[I, A](id: I, ds: DataSource[I, A]) extends FetchResult
-  case class FetchInProgress[I, A](id: I, ds: DataSource[I, A]) extends FetchResult
-
-  sealed trait Fetch[A]
-  case class Done[A](x: A) extends Fetch[A]
-  case class Blocked[A](r: FetchRequest, cont: Any =>  Fetch[A]) extends Fetch[A]
-
-  implicit val fetchFunctor: Functor[Fetch] = new Functor[Fetch] {
-    def map[A, B](fa: Fetch[A])(f: A => B): Fetch[B] = fa match {
-      case Done(a) => Done(f(a))
-      case Blocked(r, cont) => {
-        Blocked(r, (result) => map(cont(result))(f))
-      }
-    }
+  // Fetch queries
+  sealed trait FetchQuery[I, A] extends FetchRequest {
+    def dataSource: DataSource[I, A]
+    def identities: NonEmptyList[I]
+  }
+  case class FetchOne[I, A](id: I, dataSource: DataSource[I, A]) extends FetchQuery[I, A] {
+    def identities: NonEmptyList[I] = NonEmptyList(id.asInstanceOf[I], List.empty[I])
+  }
+  case class FetchMany[I, A](ids: NonEmptyList[I], dataSource: DataSource[I, A]) extends FetchQuery[I, A] {
+    def identities: NonEmptyList[I] = ids
   }
 
-  implicit val fetchApplicative: Applicative[Fetch] = new Applicative[Fetch] {
-    def pure[A](a: A): Fetch[A] = Done(a)
+  case class ConcurrentRequest(queries: NonEmptyList[FetchQuery[Any, Any]]) extends FetchRequest
 
-    def ap[A, B](ff: Fetch[A => B])(fa: Fetch[A]): Fetch[B] = (ff, fa) match {
-      case (Done(f), Done(a)) => Done(f(a))
-      case (Done(f), Blocked(r, cont)) => Blocked(r, (result) => map(cont(result))(f))
-      case (Blocked(r, cont), Done(a)) => Blocked(r, (result) => map(cont(result))((f) => f(a)))
-      case (Blocked(r, cont), Blocked(r2, cont2)) =>
-        ???
-    }
+  // Fetch result states
+  sealed trait FetchStatus[A]
+  case class FetchDone[A](result: A) extends FetchStatus[A]
+
+  // In-progress request
+  case class BlockedRequest(request: FetchRequest, result: Deferred[IO, FetchStatus[Any]])
+
+  // `Fetch` result data type
+  sealed trait FetchResult[A]
+  case class Done[A](x: A) extends FetchResult[A]
+  case class Blocked[A](rs: List[BlockedRequest], cont: Fetch[A]) extends FetchResult[A]
+  case class Errored[A](e: FetchError) extends FetchResult[A]
+
+  //
+  sealed trait Fetch[A] {
+    def run: IO[FetchResult[A]]
   }
+  case class Unfetch[A](run: IO[FetchResult[A]]) extends Fetch[A]
 
-  implicit val fetchFlatmap: Monad[Fetch] = new Monad[Fetch] {
-    def pure[A](x: A): Fetch[A] =
-      Done(x)
+  sealed trait FetchError
+  case class MissingIdentity() extends FetchError
+
+
+  implicit val fetchApplicative: Monad[Fetch] = new Monad[Fetch] {
+    def pure[A](a: A): Fetch[A] =
+      Unfetch(
+        IO.pure(Done(a))
+      )
+
+    override def map[A, B](fa: Fetch[A])(f: A => B): Fetch[B] =
+      Unfetch(for {
+        fetch <- fa.run
+        result = fetch match {
+          case Done(v) => Done(f(v))
+          case Blocked(br, cont) =>
+            Blocked(br, map(cont)(f))
+        }
+      } yield result.asInstanceOf[FetchResult[B]])
+
+    override def product[A, B](fa: Fetch[A], fb: Fetch[B]): Fetch[(A, B)] =
+      Unfetch(for {
+        a <- fa.run
+        b <- fb.run
+        result = (a, b) match {
+          case (Done(a), Done(b)) => Done((a, b))
+          case (Done(a), Blocked(br, c)) => Blocked(br, product(fa, c))
+          case (Blocked(br, c), Done(b)) => Blocked(br, product(c, fb))
+          case (Blocked(br, c), Blocked(br2, c2)) =>
+            Blocked(br ++ br2, product(c, c2))
+        }
+      } yield result)
+
+    // override def map2[A, B, Z](fa: Fetch[A], fb: Fetch[B])(f: (A, B) => Z): Fetch[Z] = {
+    //   println("MAP2!")
+    //   ???
+    // }
+
+    // override def tuple2[A, B](fa: Fetch[A], fb: Fetch[B]): Fetch[(A, B)] = {
+    //   println("TUPLE2!")
+    //   ???
+    // }
+
+    override def ap[A, B](ff: Fetch[A => B])(fa: Fetch[A]): Fetch[B] =
+      ???
 
     def tailRecM[A, B](a: A)(f: A => Fetch[Either[A, B]]): Fetch[B] =
       ???
 
-    def flatMap[A, B](fa: Fetch[A])(f: A => Fetch[B]): Fetch[B] = fa match {
-      case Done(a) => f(a)
-      case Blocked(r, cont) => Blocked(r, (result) => flatMap(cont(result))(f))
-    }
+    def flatMap[A, B](fa: Fetch[A])(f: A => Fetch[B]): Fetch[B] =
+      Unfetch(for {
+        fetch <- fa.run
+        result: Fetch[B] = fetch match {
+          case Done(v) => f(v)
+          case Blocked(br, cont : Fetch[A]) =>
+            Unfetch(
+              IO.pure(
+                Blocked(br, flatMap(cont)(f).asInstanceOf[Fetch[B]])
+              )
+            )
+        }
+        value <- result.run
+      } yield value)
   }
 
   object Fetch {
-
     /**
      * Lift a plain value to the Fetch monad.
      */
     def pure[A](a: A): Fetch[A] =
-      Done(a)
-
-    def apply[I, A](id: I)(implicit ds: DataSource[I, A]): Fetch[A] =
-      Blocked[A](
-        FetchOne[I, A](id, ds),
-        (a) => {
-          Done(a.asInstanceOf[A])
-        }
+      Unfetch(
+        IO.pure(Done(a))
       )
 
-    private def fetchOne[I, A, M[_] : Effect](id: I, ds: DataSource[I, A]): M[A] = {
-      Effect[M].flatMap(ds.fetchOne(id)) {
-        case Some(a) => Effect[M].pure(a)
-        case None => ??? // Effect[M].raiseError(NotFound(id, ds.name))
-      }
-    }
-
-    private[fetch] class FetchRunnerEnv[M[_]](val dummy: Boolean = true) extends AnyVal {
-      def apply[A](
-        fa: Fetch[A]
-      )(
-        implicit E: Effect[M],
-        MM: Monad[M]
-      ): M[Env] =
+    def apply[I, A](id: I)(
+      implicit ds: DataSource[I, A],
+      C: Concurrent[IO]
+    ): Fetch[A] = {
+      val request = FetchOne(id, ds)
+      Unfetch(
         for {
-          env <- Ref.of[M, Env](FetchEnv())
-          result <- runFetchWithEnv[A, M](fa, env)
-          e <- env.get
-        } yield e
+          df <- Deferred[IO, FetchStatus[Any]]
+          blocked = BlockedRequest(request, df)
+        } yield Blocked(List(blocked), Unfetch(
+          for {
+            result <- df.get
+            value = result match {
+              case FetchDone(a) => Done(a).asInstanceOf[FetchResult[A]]
+            }
+          } yield value
+        ))
+      )
     }
 
-    private def runFetchWithEnv[A, M[_] : Effect](fa: Fetch[A], env: Ref[M, Env]): M[(Env, A)] = fa match {
-      case Done(a) => env.get.flatMap((e) => Effect[M].pure((e, a)))
-      case Blocked(r, cont) => {
-        r match {
-          case FetchOne(id, ds) => for {
-            result <- fetchOne(id, ds.castDS[Any, A])
-            _      <- env.update(_.evolve(Round(result, 0, 0 ))) // TODO: accurate timers
-            next <- runFetchWithEnv(cont(result), env)
-          } yield next
-        }
-      }
-    }
+    // private[fetch] class FetchRunnerEnv[M[_]](val dummy: Boolean = true) extends AnyVal {
+    //   def apply[A](
+    //     fa: Fetch[A]
+    //   )(
+    //     implicit E: Effect[M],
+    //     MM: Monad[M]
+    //   ): M[Env] =
+    //     for {
+    //       env <- Ref.of[M, Env](FetchEnv())
+    //       result <- runFetchWithEnv[A, M](fa, env)
+    //       e <- env.get
+    //     } yield e
+    // }
+
+    // private def runFetchWithEnv[A, M[_] : Effect](fa: Fetch[A], env: Ref[M, Env]): M[(Env, A)] = fa match {
+    //   case Done(a) => env.get.flatMap((e) => Effect[M].pure((e, a)))
+    // }
 
     private[fetch] class FetchRunner[M[_]](val dummy: Boolean = true) extends AnyVal {
       def apply[A](
           fa: Fetch[A]
       )(
-        implicit M: Effect[M]
-      ): M[A] = fa match {
-        case Done(a) => M.pure(a)
-        case Blocked(r, cont) => {
-          r match {
-            case FetchOne(id, ds) => {
-              M.flatMap(
-                fetchOne(id, ds.castDS[Any, A])
-              )(a => apply(cont(a)))
-            }
-          }
+        implicit C: Concurrent[IO]
+      ): IO[A] = for {
+        result <- fa.run
+        value <- result match {
+          case Done(a) => Concurrent[IO].pure(a) // todo: handle errored
         }
-      }
+      } yield value
     }
 
-    /**
-      * Run a `Fetch`, the result in the monad `M`.
-      */
-    def runEnv[M[_]]: FetchRunnerEnv[M] = new FetchRunnerEnv[M]
+    private def performFetch[A](rs: List[BlockedRequest])(
+      implicit C: ConcurrentEffect[IO]
+    ): IO[Unit] = {
+      rs.traverse_((r) => {
+        r.request match {
+          case FetchOne(id, ds) =>
+            ds.fetchOne[IO](id).flatMap(_ match {
+              case None => IO.raiseError(new Exception("TODO"))
+              case Some(a) => r.result.complete(FetchDone[Any](a))
+            })
+          case FetchMany(ids, ds) => IO.raiseError(new Exception("TODO"))
+        }
+      })
+    }
 
     /**
      * Run a `Fetch`, the result in the monad `M`.
      */
-    def run[M[_]]: FetchRunner[M] = new FetchRunner[M]
+    def run[A](
+      fa: Fetch[A]
+    )(
+      implicit C: ConcurrentEffect[IO]
+    ): IO[A] = for {
+      result <- fa.run
+
+      value <- result.asInstanceOf[FetchResult[A]] match {
+        case Done(a) => Concurrent[IO].pure(a)
+        case Blocked(rs, cont) => for {
+          _ <- performFetch(rs)
+          result <- run(cont)
+        } yield result
+      }
+    } yield value
+
   }
 
   private[fetch] implicit class DataSourceCast[A, B](private val ds: DataSource[A, B]) extends AnyVal {
