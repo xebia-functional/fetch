@@ -18,6 +18,8 @@ package fetch
 
 import scala.collection.immutable.Map
 
+import scala.concurrent.duration.MILLISECONDS
+
 import cats.{Functor, Applicative, Monad, Eval}
 import cats.data.{NonEmptyList, StateT}
 import cats.free.Free
@@ -46,14 +48,12 @@ object `package` {
     def identities: NonEmptyList[I] = ids
   }
 
-  case class ConcurrentRequest(queries: NonEmptyList[FetchQuery[Any, Any]]) extends FetchRequest
-
   // Fetch result states
   sealed trait FetchStatus[A]
   case class FetchDone[A](result: A) extends FetchStatus[A]
 
   // In-progress request
-  case class BlockedRequest(request: FetchRequest, result: Deferred[IO, FetchStatus[Any]])
+  case class BlockedRequest(request: FetchRequest, result: FetchStatus[Any] => IO[Unit])
 
   // `Fetch` result data type
   sealed trait FetchResult[A]
@@ -69,7 +69,6 @@ object `package` {
 
   sealed trait FetchError
   case class MissingIdentity() extends FetchError
-
 
   implicit val fetchM: Monad[Fetch] = new Monad[Fetch] {
     def pure[A](a: A): Fetch[A] =
@@ -137,11 +136,12 @@ object `package` {
       Unfetch(
         for {
           df <- Deferred[IO, FetchStatus[Any]]
-          blocked = BlockedRequest(request, df)
+          result = df.complete _
+          blocked = BlockedRequest(request, result)
         } yield Blocked(List(blocked), Unfetch(
           for {
-            result <- df.get
-            value = result match {
+            fetched <- df.get
+            value = fetched match {
               case FetchDone(a) => Done(a).asInstanceOf[FetchResult[A]]
             }
           } yield value
@@ -157,7 +157,7 @@ object `package` {
           case FetchOne(id, ds) =>
             ds.fetchOne[IO](id).flatMap(_ match {
               case None => IO.raiseError(new Exception("TODO"))
-              case Some(a) => r.result.complete(FetchDone[Any](a))
+              case Some(a) => r.result(FetchDone[Any](a))
             })
           case FetchMany(ids, ds) => IO.raiseError(new Exception("TODO"))
         }
@@ -165,7 +165,8 @@ object `package` {
     }
 
     private def fetchRoundWithEnv[A](rs: List[BlockedRequest], env: Ref[IO, FetchEnv])(
-      implicit C: ConcurrentEffect[IO]
+      implicit C: ConcurrentEffect[IO],
+       T: Timer[IO]
     ): IO[Unit] = {
       for {
         requests <- Ref.of[IO, List[Request]](List())
@@ -173,18 +174,20 @@ object `package` {
           r.request match {
             case FetchOne(id, ds) =>
               for {
-                _ <- requests.modify((rs) => (rs :+ Request(r.request, 0, 0), r)) // TODO timer
+                startTime <- T.clock.realTime(MILLISECONDS)
                 o <- ds.fetchOne[IO](id)
+                endTime <- T.clock.realTime(MILLISECONDS)
+                _ <- requests.modify((rs) => (rs :+ Request(r.request, startTime, endTime), r))
                 result <- o match {
                   case None => IO.raiseError(new Exception("TODO"))
-                  case Some(a) => r.result.complete(FetchDone[Any](a))
+                  case Some(a) => r.result(FetchDone[Any](a))
                 }
               } yield result
             case FetchMany(ids, ds) => IO.raiseError(new Exception("TODO"))
           }
         })
         rs <- requests.get
-        _ <- env.modify((e) => (e.evolve(Round(rs)), e)) // TODO requests
+        _ <- env.modify((e) => (e.evolve(Round(rs)), e))
       } yield ()
     }
 
@@ -211,7 +214,8 @@ object `package` {
       fa: Fetch[A],
       env: Ref[IO, FetchEnv]
     )(
-      implicit C: ConcurrentEffect[IO]
+      implicit C: ConcurrentEffect[IO],
+      T: Timer[IO]
     ): IO[A] = for {
       result <- fa.run
 
@@ -227,7 +231,8 @@ object `package` {
     def runEnv[A](
       fa: Fetch[A]
     )(
-      implicit C: ConcurrentEffect[IO]
+      implicit C: ConcurrentEffect[IO],
+       T: Timer[IO]
     ): IO[(FetchEnv, A)] = for {
       env <- Ref.of[IO, FetchEnv](FetchEnv())
       result <- performRunEnv(fa, env)
