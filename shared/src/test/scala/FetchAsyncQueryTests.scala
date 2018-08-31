@@ -18,7 +18,6 @@ import scala.concurrent.{ExecutionContext, Future}
 import org.scalatest.{AsyncFreeSpec, Matchers}
 import cats.instances.list._
 import fetch._
-import fetch.implicits._
 
 class FetchAsyncQueryTests extends AsyncFreeSpec with Matchers {
   import TestHelper._

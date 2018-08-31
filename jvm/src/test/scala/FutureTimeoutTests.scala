@@ -18,7 +18,6 @@ package fetch
 
 import scala.concurrent.{ExecutionContext, Future}
 import org.scalatest.{AsyncFlatSpec, Matchers}
-import fetch.implicits._
 
 // Note that this test cannot run on Scala.js
 
