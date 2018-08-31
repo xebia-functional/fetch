@@ -8,7 +8,7 @@ lazy val root = project
   .in(file("."))
   .settings(name := "fetch")
   .settings(moduleName := "root")
-  .aggregate(fetchJS, fetchJVM, fetchMonixJVM, fetchMonixJS, debugJVM, debugJS, twitterJVM)
+  .aggregate(fetchJS, fetchJVM)// debugJVM, debugJS, twitterJVM)
 
 lazy val fetch = crossProject
   .in(file("."))
@@ -18,16 +18,6 @@ lazy val fetch = crossProject
 
 lazy val fetchJVM = fetch.jvm
 lazy val fetchJS  = fetch.js
-
-lazy val monix = crossProject
-  .in(file("monix"))
-  .dependsOn(fetch % "compile->compile;test->test")
-  .settings(name := "fetch-monix")
-  .jsSettings(sharedJsSettings: _*)
-  .crossDepSettings(commonCrossDependencies ++ monixCrossDependencies: _*)
-
-lazy val fetchMonixJVM = monix.jvm
-lazy val fetchMonixJS  = monix.js
 
 lazy val debug = (crossProject in file("debug"))
   .settings(name := "fetch-debug")
@@ -53,7 +43,7 @@ lazy val examples = (project in file("examples"))
   .settings(examplesSettings: _*)
 
 lazy val docs = (project in file("docs"))
-  .dependsOn(fetchJVM, fetchMonixJVM, debugJVM)
+  .dependsOn(fetchJVM, debugJVM)
   .settings(name := "fetch-docs")
   .settings(docsSettings: _*)
   .settings(noPublishSettings)
