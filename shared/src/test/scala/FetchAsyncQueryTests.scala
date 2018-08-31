@@ -15,69 +15,69 @@
  */
 
 import scala.concurrent.{ExecutionContext, Future}
-import org.scalatest.{AsyncFreeSpec, Matchers}
+import org.scalatest.{FreeSpec, Matchers}
 import cats.instances.list._
+import cats.effect._
+import cats.syntax.all._
 import fetch._
 
-class FetchAsyncQueryTests extends AsyncFreeSpec with Matchers {
+class FetchAsyncQueryTests extends FreeSpec with Matchers {
   import TestHelper._
 
-  // implicit override def executionContext = ExecutionContext.Implicits.global
+  implicit val executionContext = ExecutionContext.Implicits.global
+  implicit val timer: Timer[IO] = IO.timer(executionContext)
+  implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
 
-  // "We can interpret an async fetch into a future" in {
-  //   val fetch: Fetch[Article] = article(1)
-  //   val fut: Future[Article]  = Fetch.run[Future](fetch)
-  //   fut.map(_ shouldEqual Article(1, "An article with id 1"))
-  // }
+  "We can interpret an async fetch into an IO" in {
+    val fetch: Fetch[Article] = article(1)
+    val io: IO[Article]  = Fetch.run(fetch)
 
-  // "We can combine several async data sources and interpret a fetch into a future" in {
-  //   val fetch: Fetch[(Article, Author)] = for {
-  //     art    <- article(1)
-  //     author <- author(art)
-  //   } yield (art, author)
+    io.unsafeRunSync shouldEqual Article(1, "An article with id 1")
+  }
 
-  //   val fut: Future[(Article, Author)] = Fetch.run[Future](fetch)
+  "We can combine several async data sources and interpret a fetch into an IO" in {
+    val fetch: Fetch[(Article, Author)] = for {
+      art    <- article(1)
+      author <- author(art)
+    } yield (art, author)
 
-  //   fut.map(_ shouldEqual (Article(1, "An article with id 1"), Author(2, "@egg2")))
-  // }
+    val io = Fetch.run(fetch)
 
-  // "We can use combinators in a for comprehension and interpret a fetch from async sources into a future" in {
-  //   val fetch: Fetch[List[Article]] = for {
-  //     articles <- Fetch.traverse(List(1, 1, 2))(article)
-  //   } yield articles
+    io.unsafeRunSync shouldEqual (Article(1, "An article with id 1"), Author(2, "@egg2"))
+  }
 
-  //   val fut: Future[List[Article]] = Fetch.run[Future](fetch)
+  "We can use combinators in a for comprehension and interpret a fetch from async sources into an IO" in {
+    val fetch: Fetch[List[Article]] = for {
+      articles <-List(1, 1, 2).traverse(article)
+    } yield articles
 
-  //   fut.map(
-  //     _ shouldEqual List(
-  //       Article(1, "An article with id 1"),
-  //       Article(1, "An article with id 1"),
-  //       Article(2, "An article with id 2")
-  //     )
-  //   )
-  // }
+    val io = Fetch.run(fetch)
+    io.unsafeRunSync shouldEqual List(
+      Article(1, "An article with id 1"),
+      Article(1, "An article with id 1"),
+      Article(2, "An article with id 2")
+    )
+  }
 
-  // "We can use combinators and multiple sources in a for comprehension and interpret a fetch from async sources into a future" in {
-  //   val fetch = for {
-  //     articles <- Fetch.traverse(List(1, 1, 2))(article)
-  //     authors  <- Fetch.traverse(articles)(author)
-  //   } yield (articles, authors)
+  "We can use combinators and multiple sources in a for comprehension and interpret a fetch from async sources into an IO" in {
+    val fetch = for {
+      articles <- List(1, 1, 2).traverse(article)
+      authors  <- articles.traverse(author)
+    } yield (articles, authors)
 
-  //   val fut: Future[(List[Article], List[Author])] = Fetch.run[Future](fetch, InMemoryCache.empty)
+    val io = Fetch.run(fetch)
 
-  //   fut.map(
-  //     _ shouldEqual (
-  //       List(
-  //         Article(1, "An article with id 1"),
-  //         Article(1, "An article with id 1"),
-  //         Article(2, "An article with id 2")
-  //       ),
-  //       List(
-  //         Author(2, "@egg2"),
-  //         Author(2, "@egg2"),
-  //         Author(3, "@egg3")
-  //       )
-  //     )
-  //   )
-  // }
+    io.unsafeRunSync shouldEqual (
+      List(
+        Article(1, "An article with id 1"),
+        Article(1, "An article with id 1"),
+        Article(2, "An article with id 2")
+      ),
+      List(
+        Author(2, "@egg2"),
+        Author(2, "@egg2"),
+        Author(3, "@egg3")
+      )
+    )
+  }
 }
