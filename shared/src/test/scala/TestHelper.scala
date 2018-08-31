@@ -76,39 +76,53 @@ object TestHelper {
 
   // Async DataSources
 
-  // case class ArticleId(id: Int)
-  // case class Article(id: Int, content: String) {
-  //   def author: Int = id + 1
-  // }
+  case class ArticleId(id: Int)
+  case class Article(id: Int, content: String) {
+    def author: Int = id + 1
+  }
 
-  // implicit object ArticleAsync extends DataSource[ArticleId, Article] {
-  //   override def name = "ArticleAsync"
-  //   override def fetchOne(id: ArticleId): Query[Option[Article]] =
-  //     Query.async((ok, fail) => {
-  //       ok(Option(Article(id.id, "An article with id " + id.id)))
-  //     })
-  //   override def fetchMany(ids: NonEmptyList[ArticleId]): Query[Map[ArticleId, Article]] =
-  //     batchingNotSupported(ids)
-  // }
+  implicit object ArticleAsync extends DataSource[ArticleId, Article] {
+    override def name = "ArticleAsync"
 
-  // def article(id: Int): Fetch[Article] = Fetch(ArticleId(id))
+    override def fetchOne[F[_] : ConcurrentEffect](id: ArticleId): F[Option[Article]] =
+      ConcurrentEffect[F].async[Option[Article]]((cb) => {
+        cb(
+          Right(
+            Option(Article(id.id, "An article with id " + id.id))
+          )
+        )
+      })
 
-  // case class AuthorId(id: Int)
-  // case class Author(id: Int, name: String)
+    override def fetchMany[F[_] : ConcurrentEffect](ids: NonEmptyList[ArticleId]): F[Map[ArticleId, Article]] =
+      batchingNotSupported(ids)
+  }
 
-  // implicit object AuthorAsync extends DataSource[AuthorId, Author] {
-  //   override def name = "AuthorAsync"
-  //   override def fetchOne(id: AuthorId): Query[Option[Author]] =
-  //     Query.async((ok, fail) => {
-  //       ok(Option(Author(id.id, "@egg" + id.id)))
-  //     })
-  //   override def fetchMany(ids: NonEmptyList[AuthorId]): Query[Map[AuthorId, Author]] =
-  //     batchingNotSupported(ids)
-  // }
+  def article(id: Int)(
+    implicit C: Concurrent[IO]
+  ): Fetch[Article] = Fetch(ArticleId(id))
 
-  // def author(a: Article): Fetch[Author] = Fetch(AuthorId(a.author))
+  case class AuthorId(id: Int)
+  case class Author(id: Int, name: String)
 
-  // // check Env
+  implicit object AuthorAsync extends DataSource[AuthorId, Author] {
+    override def name = "AuthorAsync"
+    override def fetchOne[F[_] : ConcurrentEffect](id: AuthorId): F[Option[Author]] =
+      ConcurrentEffect[F].async((cb => {
+        cb(
+          Right(
+            Option(Author(id.id, "@egg" + id.id))
+          )
+        )
+      }))
+    override def fetchMany[F[_] : ConcurrentEffect](ids: NonEmptyList[AuthorId]): F[Map[AuthorId, Author]] =
+      batchingNotSupported(ids)
+  }
+
+  def author(a: Article)(
+    implicit C: Concurrent[IO]
+  ): Fetch[Author] = Fetch(AuthorId(a.author))
+
+  // Check Env
 
   def countFetches(r: Request): Int =
     r.request match {
