@@ -102,27 +102,22 @@ object TestHelper {
 
   // // check Env
 
-  // def requestFetches(r: FetchRequest): Int =
-  //   r match {
-  //     case FetchOne(_, _)       => 1
-  //     case FetchMany(ids, _)    => ids.toList.size
-  //     case Concurrent(requests) => requests.toList.map(requestFetches).sum
-  //   }
+  def countFetches(r: Request): Int =
+    r.request match {
+      case FetchOne(_, _)       => 1
+      case FetchMany(ids, _)    => ids.toList.size
+    }
 
-  // def totalFetched(rs: Seq[Round]): Int =
-  //   rs.map((round: Round) => requestFetches(round.request)).toList.sum
+  def totalFetched(rs: Seq[Round]): Int =
+    rs.map((round: Round) => round.queries.map(countFetches).sum).toList.sum
 
-  // def requestBatches(r: FetchRequest): Int =
-  //   r match {
-  //     case FetchOne(_, _)    => 0
-  //     case FetchMany(ids, _) => 1
-  //     case Concurrent(requests) =>
-  //       requests.toList.count {
-  //         case FetchMany(_, _) => true
-  //         case _               => false
-  //       }
-  //   }
+  def countBatches(r: Request): Int =
+    r.request match {
+      case FetchOne(_, _)    => 0
+      case FetchMany(_, _) => 1
+    }
 
-  // def totalBatches(rs: Seq[Round]): Int =
-  //   rs.map((round: Round) => requestBatches(round.request)).toList.sum
+  def totalBatches(rs: Seq[Round]): Int =
+
+    rs.map((round: Round) => round.queries.map(countBatches).sum).toList.sum
 }
