@@ -26,7 +26,6 @@ import cats.instances.list._
 import cats.syntax.apply._
 
 import fetch._
-import fetch.implicits._
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
@@ -37,41 +36,6 @@ class FetchTests extends FreeSpec with Matchers {
   implicit def executionContext: ExecutionContext = ExecutionContext.Implicits.global
   implicit val timer: Timer[IO] = IO.timer(executionContext)
   implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
-
-  // Data sources
-
-  case class One(id: Int)
-  implicit object OneSource extends DataSource[One, Int] {
-    override def name = "OneSource"
-
-    override def fetchOne[F[_] : ConcurrentEffect](id: One): F[Option[Int]] =
-      ConcurrentEffect[F].delay(Option(id.id))
-
-    override def fetchMany[F[_] : ConcurrentEffect](ids: NonEmptyList[One]): F[Map[One, Int]] =
-      ConcurrentEffect[F].delay(ids.toList.map(one => (one, one.id)).toMap)
-  }
-  def one(id: Int): Fetch[Int] = Fetch(One(id))
-
-  case class Many(n: Int)
-  implicit object ManySource extends DataSource[Many, List[Int]] {
-    override def name = "ManySource"
-    override def fetchOne[F[_] : ConcurrentEffect](id: Many): F[Option[List[Int]]] =
-      ConcurrentEffect[F].delay(Option(0 until id.n toList))
-
-    override def fetchMany[F[_] : ConcurrentEffect](ids: NonEmptyList[Many]): F[Map[Many, List[Int]]] =
-      ConcurrentEffect[F].delay(ids.toList.map(m => (m, 0 until m.n toList)).toMap)
-  }
-  def many(id: Int): Fetch[List[Int]] = Fetch(Many(id))
-
-  case class AnotherOne(id: Int)
-  implicit object AnotheroneSource extends DataSource[AnotherOne, Int] {
-    override def name = "AnotherOneSource"
-    override def fetchOne[F[_] : ConcurrentEffect](id: AnotherOne): F[Option[Int]] =
-      ConcurrentEffect[F].delay(Option(id.id))
-    override def fetchMany[F[_] : ConcurrentEffect](ids: NonEmptyList[AnotherOne]): F[Map[AnotherOne, Int]] =
-      ConcurrentEffect[F].delay(ids.toList.map(anotherone => (anotherone, anotherone.id)).toMap)
-  }
-  def anotherOne(id: Int): Fetch[Int] = Fetch(AnotherOne(id))
 
   // Fetch ops
 

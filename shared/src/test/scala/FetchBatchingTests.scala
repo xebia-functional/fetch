@@ -24,7 +24,6 @@ import cats.syntax.semigroupal._
 import cats.syntax.foldable._
 import cats.syntax.apply._
 import fetch._
-import fetch.implicits._
 
 class FetchBatchingTests extends AsyncFreeSpec with Matchers {
   import TestHelper._
