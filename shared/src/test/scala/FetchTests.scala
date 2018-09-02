@@ -156,6 +156,7 @@ class FetchTests extends FreeSpec with Matchers {
     val io = Fetch.runEnv(fetch)
     val (env, result) = io.unsafeRunSync
 
+    result shouldEqual (1, 2)
     env.rounds.size shouldEqual 2
   }
 
@@ -171,6 +172,7 @@ class FetchTests extends FreeSpec with Matchers {
     val io = Fetch.runEnv(fetch)
     val (env, result) = io.unsafeRunSync
 
+    result shouldEqual List(0, 1, 2)
     env.rounds.size shouldEqual 2
   }
 
@@ -183,6 +185,7 @@ class FetchTests extends FreeSpec with Matchers {
 
     val (env, result) = io.unsafeRunSync
 
+    result shouldEqual List(1, 2, 3)
     env.rounds.size shouldEqual 1
     totalFetched(env.rounds) shouldEqual 3
     totalBatches(env.rounds) shouldEqual 1
@@ -216,6 +219,7 @@ class FetchTests extends FreeSpec with Matchers {
     val io = Fetch.runEnv(fetch)
     val (env, result) = io.unsafeRunSync
 
+    result shouldEqual (1, List(0, 1, 2))
     env.rounds.size shouldEqual 1
     env.rounds.head.queries.size shouldEqual 2
   }
@@ -261,8 +265,10 @@ class FetchTests extends FreeSpec with Matchers {
     val io = Fetch.runEnv(fetch)
     val (env, result) = io.unsafeRunSync
 
-    val stats = (env.rounds.size, totalBatches(env.rounds), totalFetched(env.rounds))
-    stats shouldEqual (1, 1, 4)
+    result shouldEqual ((1, (2, 3)), 4)
+    env.rounds.size shouldEqual 1
+    totalBatches(env.rounds) shouldEqual 1
+    totalFetched(env.rounds) shouldEqual 4
   }
 
   "The product of concurrent fetches of the same type implies everything fetched in a single batch" in {
@@ -290,8 +296,10 @@ class FetchTests extends FreeSpec with Matchers {
     val io = Fetch.runEnv(fetch)
     val (env, result) = io.unsafeRunSync
 
-    val stats = (env.rounds.size, totalBatches(env.rounds), totalFetched(env.rounds))
-    stats shouldEqual (3, 3, 7)
+    result shouldEqual ((1, 2), 3)
+    env.rounds.size shouldEqual 3
+    totalBatches(env.rounds) shouldEqual 3
+    totalFetched(env.rounds) shouldEqual 7
   }
 
   "Every level of joined concurrent fetches is combined and batched" in {
@@ -311,8 +319,10 @@ class FetchTests extends FreeSpec with Matchers {
     val io = Fetch.runEnv(fetch)
     val (env, result) = io.unsafeRunSync
 
-    val stats = (env.rounds.size, totalBatches(env.rounds), totalFetched(env.rounds))
-    stats shouldEqual (3, 3, 6)
+    result shouldEqual (1, 2)
+    env.rounds.size shouldEqual 3
+    totalBatches(env.rounds) shouldEqual 3
+    totalFetched(env.rounds) shouldEqual 6
   }
 
   "Every level of sequenced concurrent fetches is batched" in {
@@ -346,6 +356,7 @@ class FetchTests extends FreeSpec with Matchers {
     val io = Fetch.runEnv(fetch)
     val (env, result) = io.unsafeRunSync
 
+    result shouldEqual ((List(9, 10, 11), List(12, 13, 14)), List(15, 16, 17))
     env.rounds.size shouldEqual 3
     totalBatches(env.rounds) shouldEqual 3
     totalFetched(env.rounds) shouldEqual 9 + 4 + 6
@@ -359,6 +370,7 @@ class FetchTests extends FreeSpec with Matchers {
     val io = Fetch.runEnv(fetch)
     val (env, result) = io.unsafeRunSync
 
+    result shouldEqual (1, 3)
     env.rounds.size shouldEqual 1
     totalBatches(env.rounds) shouldEqual 1
     totalFetched(env.rounds) shouldEqual 2
@@ -374,6 +386,7 @@ class FetchTests extends FreeSpec with Matchers {
     val io = Fetch.runEnv(fetch)
     val (env, result) = io.unsafeRunSync
 
+    result shouldEqual List(1, 2, 3, 4, 5)
     env.rounds.size shouldEqual 1
     totalBatches(env.rounds) shouldEqual 2
   }
@@ -388,6 +401,7 @@ class FetchTests extends FreeSpec with Matchers {
     val io = Fetch.runEnv(fetch)
     val (env, result) = io.unsafeRunSync
 
+    result shouldEqual List(1, 2, 1)
     env.rounds.size shouldEqual 1
     totalBatches(env.rounds) shouldEqual 1
     totalFetched(env.rounds) shouldEqual 2
@@ -402,6 +416,7 @@ class FetchTests extends FreeSpec with Matchers {
     val io = Fetch.runEnv(fetch)
     val (env, result) = io.unsafeRunSync
 
+    result shouldEqual List(1, 2, 3)
     env.rounds.size shouldEqual 1
     totalBatches(env.rounds) shouldEqual 1
   }
@@ -415,6 +430,7 @@ class FetchTests extends FreeSpec with Matchers {
     val io = Fetch.runEnv(fetch)
     val (env, result) = io.unsafeRunSync
 
+    result shouldEqual List(1, 2, 1)
     env.rounds.size shouldEqual 1
     totalFetched(env.rounds) shouldEqual 2
   }
@@ -431,6 +447,7 @@ class FetchTests extends FreeSpec with Matchers {
     val io = Fetch.runEnv(fetch)
     val (env, result) = io.unsafeRunSync
 
+    result shouldEqual List(1, 2, 1)
     env.rounds.size shouldEqual 1
     totalFetched(env.rounds) shouldEqual 2
   }
@@ -450,6 +467,7 @@ class FetchTests extends FreeSpec with Matchers {
     val io = Fetch.runEnv(fetch)
     val (env, result) = io.unsafeRunSync
 
+    result shouldEqual (1, 5)
     env.rounds.size shouldEqual 1
     totalFetched(env.rounds) shouldEqual 2
   }
@@ -474,6 +492,7 @@ class FetchTests extends FreeSpec with Matchers {
     val io = Fetch.runEnv(fetch)
     val (env, result) = io.unsafeRunSync
 
+    result shouldEqual 2
     totalFetched(env.rounds) shouldEqual 3
   }
 
@@ -498,17 +517,17 @@ class FetchTests extends FreeSpec with Matchers {
       (OneSource.name, One(3)) -> 3
     )
 
-    val io = Fetch.runCache(fetch, cache)
-    val (fetchCache, (env, result)) = io.unsafeRunSync
+    val io = Fetch.runEnv(fetch, cache)
+    val (env, result) = io.unsafeRunSync
 
-    fetchCache shouldEqual cache
+    result shouldEqual 2
     totalFetched(env.rounds) shouldEqual 0
     env.rounds.size shouldEqual 0
   }
 
   case class ForgetfulCache() extends DataSourceCache {
-    def insert[I, A](i: I, ds: DataSource[I, A], v: FetchStatus): IO[ForgetfulCache] = IO(this)
-    def lookup[I, A](i: I, ds: DataSource[I, A]): IO[Option[FetchStatus]] = IO(None)
+    def insert[I, A](i: I, ds: DataSource[I, A], v: A): IO[ForgetfulCache] = IO(this)
+    def lookup[I, A](i: I, ds: DataSource[I, A]): IO[Option[A]] = IO(None)
   }
 
   "We can use a custom cache that discards elements" in {
@@ -523,11 +542,11 @@ class FetchTests extends FreeSpec with Matchers {
     } yield aOne + anotherOne
 
     val cache = ForgetfulCache()
-    val io = Fetch.runCache(fetch, cache)
+    val io = Fetch.runEnv(fetch, cache)
 
-    val (fetchCache, (env, result)) = io.unsafeRunSync
+    val (env, result) = io.unsafeRunSync
 
-    fetchCache shouldEqual cache
+    result shouldEqual 2
     env.rounds.size shouldEqual 7
     totalFetched(env.rounds) shouldEqual 7
   }
@@ -548,11 +567,11 @@ class FetchTests extends FreeSpec with Matchers {
     } yield aOne + anotherOne
 
     val cache = ForgetfulCache()
-    val io = Fetch.runCache(fetch, cache)
+    val io = Fetch.runEnv(fetch, cache)
 
-    val (fetchCache, (env, result)) = io.unsafeRunSync
+    val (env, result) = io.unsafeRunSync
 
-    fetchCache shouldEqual cache
+    result shouldEqual 2
     env.rounds.size shouldEqual 8
     totalFetched(env.rounds) shouldEqual 10
   }
@@ -561,7 +580,7 @@ class FetchTests extends FreeSpec with Matchers {
 
   // "Data sources with errors throw fetch failures" in {
   //   val fetch: Fetch[Int] = Fetch(Never())
-  //   val io                = Fetch.run[IO](fetch)
+  //   val io                = Fetch.run(fetch)
 
   //   io.attempt
   //     .map(either =>
