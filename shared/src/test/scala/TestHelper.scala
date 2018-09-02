@@ -22,6 +22,8 @@ import cats.data.NonEmptyList
 
 object TestHelper {
 
+  case class AnException() extends Throwable
+
   case class One(id: Int)
   implicit object OneSource extends DataSource[One, Int] {
     override def name = "OneSource"
@@ -57,16 +59,13 @@ object TestHelper {
     implicit C: Concurrent[IO]
   ): Fetch[Int] = Fetch(AnotherOne(id))
 
-  // case class Never()
-  // implicit object NeverSource extends DataSource[Never, Int] {
-  //   override def name = "NeverSource"
+  case class Never()
+  implicit object NeverSource extends DataSource[Never, Int] {
+    override def name = "NeverSource"
 
-  //   override def fetchOne[F[_] : Effect](id: Never): F[Option[Int]] =
-  //     Effect[F].pure(None : Option[Int])
-
-  //   override def fetchMany[F[_] : Effect](ids: NonEmptyList[Never]): F[Map[Never, Int]] =
-  //     Effect[F].pure(Map.empty[Never, Int])
-  // }
+    override def fetch[F[_] : ConcurrentEffect](id: Never): F[Option[Int]] =
+      ConcurrentEffect[F].delay(None : Option[Int])
+  }
 
   // Async DataSources
 
