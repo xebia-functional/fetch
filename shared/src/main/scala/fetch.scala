@@ -17,6 +17,7 @@
 package fetch
 
 import scala.collection.immutable.Map
+import scala.util.control.NoStackTrace
 
 import scala.concurrent.duration.MILLISECONDS
 
@@ -49,6 +50,11 @@ object `package` {
   sealed trait FetchStatus
   case class FetchDone[A](result: A) extends FetchStatus
   case class FetchMissing() extends FetchStatus
+
+  // Fetch errors
+  sealed trait FetchError extends Throwable with NoStackTrace
+  case class MissingIdentity[I](i: I) extends FetchError
+  case class UnhandledException(e: Throwable) extends FetchError
 
   // In-progress request
   case class BlockedRequest(request: FetchRequest, result: FetchStatus => IO[Unit])
@@ -223,9 +229,34 @@ object `package` {
         } yield Blocked(RequestMap(Map(ds.asInstanceOf[DataSource[Any, Any]] -> blocked)), Unfetch(
           for {
             fetched <- df.get
-            value = fetched match {
-              case FetchDone(a) => Done(a).asInstanceOf[FetchResult[A]]
-              case FetchMissing() => ???
+            value <- fetched match {
+              case FetchDone(a) => IO(Done(a).asInstanceOf[FetchResult[A]])
+              case FetchMissing() => IO.raiseError(MissingIdentity(id))
+            }
+          } yield value
+        ))
+      )
+    }
+
+    def error[A](e: Throwable): Fetch[A] =
+      Unfetch(IO.raiseError(UnhandledException(e)))
+
+    def optional[I, A](id: I)(
+      implicit ds: DataSource[I, A],
+      C: Concurrent[IO]
+    ): Fetch[Option[A]] = {
+      val request = FetchOne(id, ds)
+      Unfetch(
+        for {
+          df <- Deferred[IO, FetchStatus]
+          result = df.complete _
+          blocked = BlockedRequest(request, result)
+        } yield Blocked(RequestMap(Map(ds.asInstanceOf[DataSource[Any, Any]] -> blocked)), Unfetch(
+          for {
+            fetched <- df.get
+            value <- fetched match {
+              case FetchDone(a) => IO(Done(Some(a)).asInstanceOf[FetchResult[Option[A]]])
+              case FetchMissing() => IO(Done(None).asInstanceOf[FetchResult[Option[A]]])
             }
           } yield value
         ))

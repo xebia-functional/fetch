@@ -576,104 +576,103 @@ class FetchTests extends FreeSpec with Matchers {
     totalFetched(env.rounds) shouldEqual 10
   }
 
+  // TODO: optional fetches
+
   // Errors
 
-  // "Data sources with errors throw fetch failures" in {
-  //   val fetch: Fetch[Int] = Fetch(Never())
-  //   val io                = Fetch.run(fetch)
+  "Data sources with errors throw fetch failures" in {
+    val fetch: Fetch[Int] = Fetch(Never())
+    val io                = Fetch.run(fetch)
 
-  //   io.attempt
-  //     .map(either =>
-  //       either should matchPattern {
-  //         case Left(NotFound(Never(), _)) =>
-  //       })
-  //   .unsafeRunSync
-  // }
+    io.attempt
+      .map(_ should matchPattern {
+        case Left(MissingIdentity(Never())) =>
+      })
+      .unsafeRunSync
+  }
 
-  // "Data sources with errors throw fetch failures that can be handled" in {
-  //   val fetch: Fetch[Int] = Fetch(Never())
-  //   val io                = Fetch.run[IO](fetch)
+  "Data sources with errors throw fetch failures that can be handled" in {
+    val fetch: Fetch[Int] = Fetch(Never())
+    val io                = Fetch.run(fetch)
 
-  //   io.handleErrorWith(err => IO(42))
-  //     .unsafeRunSync shouldEqual 42
-  // }
+    io.handleErrorWith(err => IO(42))
+      .unsafeRunSync shouldEqual 42
+  }
 
-  // "Data sources with errors and cached values throw fetch failures with the cache" in {
-  //   val fetch: Fetch[Int] = Fetch(Never())
-  //   val cache = InMemoryCache(
-  //     OneSource.identity(One(1)) -> 1
-  //   )
+  "Data sources with errors won't fail if they're cached" in {
+    val fetch: Fetch[Int] = Fetch(Never())
 
-  //   ME.attempt(Fetch.run[Future](fetch, cache)).map {
-  //     case Left(NotFound(env, _)) => env.cache shouldEqual cache
-  //     case _                      => fail("Cache should be populated")
-  //   }
-  // }
+    val cache = InMemoryCache.from(
+      (NeverSource.name, Never()) -> 1
+    )
+    val io = Fetch.run(fetch, cache)
 
-  // "Data sources with errors won't fail if they're cached" in {
-  //   val fetch: Fetch[Int] = Fetch(Never())
-  //   val cache = InMemoryCache(
-  //     NeverSource.identity(Never()) -> 1
-  //   )
-  //   Fetch.run[Future](fetch, cache).map(_ shouldEqual 1)
-  // }
+    io.unsafeRunSync shouldEqual 1
+  }
 
-  // "We can lift errors to Fetch" in {
-  //   val fetch: Fetch[Int] = Fetch.error(DidNotFound())
+  "We can lift errors to Fetch" in {
+    val fetch: Fetch[Int] = Fetch.error(AnException())
 
-  //   ME.attempt(Fetch.run[Future](fetch)).map {
-  //     case Left(UnhandledException(_, DidNotFound())) => assert(true)
-  //     case _                                          => fail("Should've thrown NotFound exception")
-  //   }
-  // }
+    val io = Fetch.run(fetch)
 
-  // "We can lift handle and recover from errors in Fetch" in {
-  //   import cats.syntax.applicativeError._
+    io.attempt
+      .map(_ should matchPattern {
+        case Left(UnhandledException(AnException())) =>
+      }).unsafeRunSync
+  }
 
-  //   val fetch: Fetch[Int] = Fetch.error(DidNotFound())
-  //   val fut               = Fetch.run[Future](fetch)
-  //   ME.handleErrorWith(fut)(err => Future.successful(42)).map(_ shouldEqual 42)
-  // }
+  "We can lift handle and recover from errors in Fetch" in {
+    import cats.syntax.applicativeError._
 
-  // "If a fetch fails in the left hand of a product the product will fail" in {
-  //   val fetch: Fetch[(Int, List[Int])] = Fetch.join(Fetch.error(DidNotFound()), many(3))
-  //   val fut                            = Fetch.run[Future](fetch)
+    val fetch: Fetch[Int] = Fetch.error(AnException())
 
-  //   ME.attempt(Fetch.run[Future](fetch)).map {
-  //     case Left(UnhandledException(_, DidNotFound())) => assert(true)
-  //     case _                                          => fail("Should've thrown NotFound exception")
-  //   }
-  // }
+    val io = Fetch.run(fetch)
 
-  // "If a fetch fails in the right hand of a product the product will fail" in {
-  //   val fetch: Fetch[(List[Int], Int)] = Fetch.join(many(3), Fetch.error(DidNotFound()))
-  //   val fut                            = Fetch.run[Future](fetch)
+    io.handleErrorWith(err => IO(42))
+      .unsafeRunSync shouldEqual 42
+  }
 
-  //   ME.attempt(Fetch.run[Future](fetch)).map {
-  //     case Left(UnhandledException(_, DidNotFound())) => assert(true)
-  //     case _                                          => fail("Should've thrown NotFound exception")
-  //   }
-  // }
+  "If a fetch fails in the left hand of a product the product will fail" in {
+    val fetch: Fetch[(Int, List[Int])] = (Fetch.error(AnException()) |@| many(3)).tupled
 
-  // "If there is a missing identity in the left hand of a product the product will fail" in {
-  //   val fetch: Fetch[(Int, List[Int])] = Fetch.join(Fetch(Never()), many(3))
-  //   val fut                            = Fetch.run[Future](fetch)
+    val io = Fetch.run(fetch)
 
-  //   ME.attempt(Fetch.run[Future](fetch)).map {
-  //     case Left(MissingIdentities(_, missing)) =>
-  //       missing shouldEqual Map(NeverSource.name -> List(Never()))
-  //     case _ => fail("Should've thrown a fetch failure")
-  //   }
-  // }
+    io.attempt
+      .map(_ should matchPattern {
+        case Left(UnhandledException(AnException())) =>
+      }).unsafeRunSync
+  }
 
-  // "If there is a missing identity in the right hand of a product the product will fail" in {
-  //   val fetch: Fetch[(List[Int], Int)] = Fetch.join(many(3), Fetch(Never()))
-  //   val fut                            = Fetch.run[Future](fetch)
+  "If a fetch fails in the right hand of a product the product will fail" in {
+    val fetch: Fetch[(List[Int], Int)] = (many(3) |@| Fetch.error(AnException())).tupled
 
-  //   ME.attempt(fut).map {
-  //     case Left(MissingIdentities(_, missing)) =>
-  //       missing shouldEqual Map(NeverSource.name -> List(Never()))
-  //     case _ => fail("Should've thrown a fetch failure")
-  //   }
-  // }
+    val io = Fetch.run(fetch)
+
+    io.attempt
+      .map(_ should matchPattern {
+        case Left(UnhandledException(AnException())) =>
+      }).unsafeRunSync
+  }
+
+  "If there is a missing identity in the left hand of a product the product will fail" in {
+    val fetch: Fetch[(Int, List[Int])] = (Fetch(Never()) |@| many(3)).tupled
+
+    val io = Fetch.run(fetch)
+
+    io.attempt
+      .map(_ should matchPattern {
+        case Left(MissingIdentity(Never())) =>
+      }).unsafeRunSync
+  }
+
+  "If there is a missing identity in the right hand of a product the product will fail" in {
+    val fetch: Fetch[(List[Int], Int)] = (many(3) |@| Fetch(Never())).tupled
+
+    val io = Fetch.run(fetch)
+
+    io.attempt
+      .map(_ should matchPattern {
+        case Left(MissingIdentity(Never())) =>
+      }).unsafeRunSync
+  }
 }
