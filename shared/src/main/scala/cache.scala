@@ -22,18 +22,18 @@ import cats.effect._
  * A `Cache` trait so the users of the library can provide their own cache.
  */
 trait DataSourceCache {
-  def lookup[I, A](i: I, ds: DataSource[I, A]): IO[Option[FetchStatus]]
-  def insert[I, A](i: I, ds: DataSource[I, A], v: FetchStatus): IO[DataSourceCache]
+  def lookup[I, A](i: I, ds: DataSource[I, A]): IO[Option[A]]
+  def insert[I, A](i: I, ds: DataSource[I, A], v: A): IO[DataSourceCache]
 }
 
 /**
  * A cache that stores its elements in memory.
  */
-case class InMemoryCache(state: Map[(String, Any), FetchStatus]) extends DataSourceCache {
-  def lookup[I, A](i: I, ds: DataSource[I, A]): IO[Option[FetchStatus]] =
-    IO.pure(state.get((ds.name, i)).asInstanceOf[Option[FetchStatus]])
+case class InMemoryCache(state: Map[(String, Any), Any]) extends DataSourceCache {
+  def lookup[I, A](i: I, ds: DataSource[I, A]): IO[Option[A]] =
+    IO.pure(state.get((ds.name, i)).asInstanceOf[Option[A]])
 
-  def insert[I, A](i: I, ds: DataSource[I, A], v: FetchStatus): IO[DataSourceCache] =
+  def insert[I, A](i: I, ds: DataSource[I, A], v: A): IO[DataSourceCache] =
     IO.pure(copy(state = state.updated((ds.name, i), v)))
 }
 
@@ -41,7 +41,7 @@ object InMemoryCache {
   def empty: InMemoryCache = InMemoryCache(Map.empty[(String, Any), FetchStatus])
 
   def from[I, A](results: ((String, I), A)*): InMemoryCache =
-    InMemoryCache(results.foldLeft(Map.empty[(String, Any), FetchStatus])({
-      case (acc, ((s, i), v)) => acc.updated((s, i), FetchDone(v))
+    InMemoryCache(results.foldLeft(Map.empty[(String, Any), Any])({
+      case (acc, ((s, i), v)) => acc.updated((s, i), v)
     }))
 }

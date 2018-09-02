@@ -239,171 +239,142 @@ object `package` {
       fa: Fetch[A],
       cache: DataSourceCache = InMemoryCache.empty
     )(
-      implicit C: ConcurrentEffect[IO]
+      implicit C: ConcurrentEffect[IO],
+      T: Timer[IO]
+    ): IO[A] = for {
+      cache <- Ref.of[IO, DataSourceCache](cache)
+      result <- performRun(fa, cache, None)
+    } yield result
+
+    /**
+      * Run a `Fetch`, the environment and the result in the `IO` monad.
+      */
+    def runEnv[A](
+      fa: Fetch[A],
+      cache: DataSourceCache = InMemoryCache.empty
+    )(
+      implicit C: ConcurrentEffect[IO],
+      T: Timer[IO]
+    ): IO[(FetchEnv, A)] = for {
+      env <- Ref.of[IO, FetchEnv](FetchEnv())
+      cache <- Ref.of[IO, DataSourceCache](cache)
+      result <- performRun(fa, cache, Some(env))
+      e <- env.get
+    } yield (e, result)
+
+    private def performRun[A](
+      fa: Fetch[A],
+      cache: Ref[IO, DataSourceCache],
+      env: Option[Ref[IO, FetchEnv]]
+    )(
+      implicit C: ConcurrentEffect[IO],
+      T: Timer[IO]
     ): IO[A] = for {
       result <- fa.run
+
       value <- result.asInstanceOf[FetchResult[A]] match {
         case Done(a) => Concurrent[IO].pure(a)
         case Blocked(rs, cont) => for {
-          _ <- fetchRound(rs)
-          result <- run(cont, cache)
+          _ <- fetchRound(rs, cache, env)
+          result <- performRun(cont, cache, env)
         } yield result
       }
     } yield value
 
     private def fetchRound[A](
-      rs: RequestMap
-    )(
-      implicit C: ConcurrentEffect[IO]
-    ): IO[Unit] =
-      rs.m.toList.traverse_((r) => {
-        val (dataSource, blocked) = r
-        blocked.request match {
-          case q @ FetchOne(id, ds) =>
-            ds.fetch[IO](id).flatMap(_ match {
-              case None => blocked.result(FetchMissing())
-              case Some(a) => blocked.result(FetchDone[Any](a)) //todo: update cache
-            })
-
-          case Batch(ids, ds) =>
-            // TODO: cache
-            ds.batch[IO](ids).flatMap((m: Map[Any, Any]) =>
-              blocked.result(FetchDone(m))
-            )
-        }
-      })
-
-    private def fetchRoundWithEnv[A](
       rs: RequestMap,
       cache: Ref[IO, DataSourceCache],
-      env: Ref[IO, FetchEnv]
+      env: Option[Ref[IO, FetchEnv]]
     )(
       implicit
         C: ConcurrentEffect[IO],
         T: Timer[IO]
     ): IO[Unit] = {
       for {
-        requests <- Ref.of[IO, List[Request]](List())
-        _ <- rs.m.toList.traverse_((r) => {
+        requests <- rs.m.toList.traverse((r) => {
           val (dataSource, blocked) = r
-          blocked.request match {
-            case q @ FetchOne(id, ds) =>
-              for {
-                c <- cache.get
-                startTime <- T.clock.realTime(MILLISECONDS)
-                maybeCached <- c.lookup(id, ds)
-                result <- maybeCached match {
-                  // Cached
-                  case Some(result) => blocked.result(result)
-
-                  // Not cached, must fetch
-                  case None => ds.fetch[IO](id).flatMap(_ match {
-                    // Fetched
-                    case Some(a) => for {
-                      newC <- c.insert(id, ds, FetchDone[Any](a))
-                      _ <- cache.modify((c) => (newC, c))
-                      result <- blocked.result(FetchDone[Any](a))
-                    } yield result
-
-                    // Missing
-                    case None => for {
-                      newC <- c.insert(id, ds, FetchMissing())
-                      _ <- cache.modify((c) => (newC, c))
-                      result <- blocked.result(FetchMissing())
-                    } yield result
-                  }).flatMap(for {
-                    endTime <- T.clock.realTime(MILLISECONDS)
-                    _ <- requests.modify((rs) => (rs :+ Request(blocked.request, startTime, endTime), r))
-                  } yield _)
-                }
-              } yield result
-
-            case Batch(ids, ds) =>
-              for {
-                c <- cache.get
-
-                // Remove cached IDs
-                idLookups <- ids.traverse[IO, (Any, Option[FetchStatus])](
-                  (i) => c.lookup(i, ds).map( m => (i, m) )
-                )
-                cachedResults = idLookups.collect({
-                  case (i, Some(a)) => (i, a)
-                }).toMap
-                uncachedIds = idLookups.collect({
-                  case (i, None) => i
-                })
-
-                result <- uncachedIds match {
-                  // All cached
-                  case Nil => blocked.result(FetchDone[Map[Any, Any]](cachedResults))
-
-                  // Some uncached
-                  case l@_ => for {
-                    startTime <- T.clock.realTime(MILLISECONDS)
-                    uncached = NonEmptyList.fromListUnsafe(l)
-                    request = Batch(uncached, ds)
-                    m <- ds.batch[IO](uncached)
-                    // todo: update cache
-                    endTime <- T.clock.realTime(MILLISECONDS)
-                    _ <- requests.modify((rs) => (rs :+ Request(request, startTime, endTime), r))
-                    resultMap = m ++ cachedResults
-                    result <- blocked.result(FetchDone[Map[Any, Any]](resultMap))
-                  } yield result
-                }
-              } yield result
-
-          }
+          runBlockedRequest(blocked, cache, env)
         })
-        rs <- requests.get
-        _ <- if (rs.isEmpty) IO(())
-             else env.modify((e) => (e.evolve(Round(rs)), e))
+        performedRequests = requests.flatten
+        _ <- if (performedRequests.isEmpty) IO(())
+        else env match {
+          case Some(e) => e.modify((oldE) => (oldE.evolve(Round(performedRequests)), oldE))
+          case None => IO(())
+        }
       } yield ()
     }
 
-    def performRunEnv[A](
-      fa: Fetch[A],
+    private def runBlockedRequest[A](
+      blocked: BlockedRequest,
       cache: Ref[IO, DataSourceCache],
-      env: Ref[IO, FetchEnv]
+      env: Option[Ref[IO, FetchEnv]]
     )(
-      implicit C: ConcurrentEffect[IO],
+      implicit
+        C: ConcurrentEffect[IO],
       T: Timer[IO]
-    ): IO[A] = for {
-      result <- fa.run
+    ): IO[Option[Request]] = 
+      blocked.request match {
+        case q @ FetchOne(id, ds) =>
+          for {
+            c <- cache.get
+            startTime <- T.clock.realTime(MILLISECONDS)
+            maybeCached <- c.lookup(id, ds)
+            result <- maybeCached match {
+              // Cached
+              case Some(v) => blocked.result(FetchDone(v)) >> IO(None)
 
-      value <- result.asInstanceOf[FetchResult[A]] match {
-        case Done(a) => Concurrent[IO].pure(a)
-        case Blocked(rs, cont) => for {
-          _ <- fetchRoundWithEnv(rs, cache, env)
-          result <- performRunEnv(cont, cache, env)
-        } yield result
+              // Not cached, must fetch
+              case None => for {
+                startTime <- T.clock.realTime(MILLISECONDS)
+                o <- ds.fetch[IO](id)
+                endTime <- T.clock.realTime(MILLISECONDS)
+                result <- o match {
+                  // Fetched
+                  case Some(a) => for {
+                    newC <- c.insert(id, ds, a)
+                    _ <- cache.modify((c) => (newC, c))
+                    result <- blocked.result(FetchDone[Any](a))
+                  } yield Some(Request(blocked.request, startTime, endTime))
+
+                  // Missing
+                  case None => blocked.result(FetchMissing()) >> IO(Some(Request(blocked.request, startTime, endTime)))
+                }
+              } yield result
+            }
+          } yield result
+
+        case Batch(ids, ds) =>
+          for {
+            c <- cache.get
+
+            // Remove cached IDs
+            idLookups <- ids.traverse[IO, (Any, Option[Any])](
+              (i) => c.lookup(i, ds).map( m => (i, m) )
+            )
+            cachedResults = idLookups.collect({
+              case (i, Some(a)) => (i, FetchDone(a))
+            }).toMap
+            uncachedIds = idLookups.collect({
+              case (i, None) => i
+            })
+
+            result <- uncachedIds match {
+              // All cached
+              case Nil => blocked.result(FetchDone[Map[Any, Any]](cachedResults)) >> IO(None)
+
+              // Some uncached
+              case l@_ => for {
+                startTime <- T.clock.realTime(MILLISECONDS)
+                uncached = NonEmptyList.fromListUnsafe(l)
+                request = Batch(uncached, ds)
+                m <- ds.batch[IO](uncached)
+                // todo: update cache
+                endTime <- T.clock.realTime(MILLISECONDS)
+                resultMap = m ++ cachedResults
+                result <- blocked.result(FetchDone[Map[Any, Any]](resultMap))
+              } yield Some(Request(request, startTime, endTime))
+            }
+          } yield result
       }
-    } yield value
-
-    def runCache[A](
-      fa: Fetch[A],
-      c: DataSourceCache
-    )(
-      implicit C: ConcurrentEffect[IO],
-      T: Timer[IO]
-    ): IO[(DataSourceCache, (FetchEnv, A))] = for {
-      env <- Ref.of[IO, FetchEnv](FetchEnv())
-      cache <- Ref.of[IO, DataSourceCache](c)
-      result <- performRunEnv(fa, cache, env)
-      c <- cache.get
-      e <- env.get
-    } yield (c, (e, result))
-
-    def runEnv[A](
-      fa: Fetch[A],
-      cache: DataSourceCache = InMemoryCache.empty
-    )(
-      implicit C: ConcurrentEffect[IO],
-       T: Timer[IO]
-    ): IO[(FetchEnv, A)] = for {
-      env <- Ref.of[IO, FetchEnv](FetchEnv())
-      cache <- Ref.of[IO, DataSourceCache](cache)
-      result <- performRunEnv(fa, cache, env)
-      e <- env.get
-    } yield (e, result)
   }
 }
