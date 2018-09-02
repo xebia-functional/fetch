@@ -174,6 +174,20 @@ class FetchTests extends FreeSpec with Matchers {
     env.rounds.size shouldEqual 2
   }
 
+  "Sequencing is implicitly batched" in {
+    import cats.instances.list._
+    import cats.syntax.all._
+
+    val fetch: Fetch[List[Int]] = List(one(1), one(2), one(3)).sequence
+    val io = Fetch.runEnv(fetch)
+
+    val (env, result) = io.unsafeRunSync
+
+    env.rounds.size shouldEqual 1
+    totalFetched(env.rounds) shouldEqual 3
+    totalBatches(env.rounds) shouldEqual 1
+  }
+
   "Identities are deduped when batched" in {
     import cats.instances.list._
     import cats.syntax.traverse._
@@ -190,7 +204,7 @@ class FetchTests extends FreeSpec with Matchers {
     env.rounds.size shouldEqual 1
     env.rounds.head.queries.size shouldEqual 1
     env.rounds.head.queries.head.request should matchPattern {
-      case FetchMany(NonEmptyList(One(1), List(One(2))), _) =>
+      case Batch(NonEmptyList(One(1), List(One(2))), _) =>
     }
   }
 
@@ -442,151 +456,106 @@ class FetchTests extends FreeSpec with Matchers {
 
   // Caching
 
-  // case class MyCache(state: Map[Any, Any] = Map.empty[Any, Any]) extends DataSourceCache {
-  //   override def get[A](k: DataSourceIdentity): Option[A] = state.get(k).asInstanceOf[Option[A]]
-  //   override def update[A](k: DataSourceIdentity, v: A): MyCache =
-  //     copy(state = state.updated(k, v))
-  // }
+  "Elements are cached and thus not fetched more than once" in {
+    import cats.instances.list._
+    import cats.syntax.all._
 
-  // val fullCache: MyCache = MyCache(
-  //   Map(
-  //     OneSource.identity(One(1))   -> 1,
-  //     OneSource.identity(One(2))   -> 2,
-  //     OneSource.identity(One(3))   -> 3,
-  //     OneSource.identity(One(1))   -> 1,
-  //     ManySource.identity(Many(2)) -> List(0, 1)
-  //   )
-  // )
+    val fetch = for {
+      aOne       <- one(1)
+      anotherOne <- one(1)
+      _          <- one(1)
+      _          <- one(2)
+      _          <- one(3)
+      _          <- one(1)
+      _          <- List(1, 2, 3).traverse(one)
+      _          <- one(1)
+    } yield aOne + anotherOne
 
-    // "Elements are cached and thus not fetched more than once" in {
-  //   val fetch = for {
-  //     aOne       <- one(1)
-  //     anotherOne <- one(1)
-  //     _          <- one(1)
-  //     _          <- one(2)
-  //     _          <- one(3)
-  //     _          <- one(1)
-  //     _          <- Fetch.traverse(List(1, 2, 3))(one)
-  //     _          <- one(1)
-  //   } yield aOne + anotherOne
+    val io = Fetch.runEnv(fetch)
+    val (env, result) = io.unsafeRunSync
 
-  //   Fetch
-  //     .runEnv[Future](fetch)
-  //     .map(env => {
-  //       val rounds = env.rounds
+    totalFetched(env.rounds) shouldEqual 3
+  }
 
-  //       totalFetched(rounds) shouldEqual 3
-  //     })
-  // }
+  "Elements that are cached won't be fetched" in {
+    import cats.instances.list._
+    import cats.syntax.all._
 
-  // "Elements that are cached won't be fetched" in {
-  //   val fetch = for {
-  //     aOne       <- one(1)
-  //     anotherOne <- one(1)
-  //     _          <- one(1)
-  //     _          <- one(2)
-  //     _          <- one(3)
-  //     _          <- one(1)
-  //     _          <- Fetch.traverse(List(1, 2, 3))(one)
-  //     _          <- one(1)
-  //   } yield aOne + anotherOne
+    val fetch = for {
+      aOne       <- one(1)
+      anotherOne <- one(1)
+      _          <- one(1)
+      _          <- one(2)
+      _          <- one(3)
+      _          <- one(1)
+      _          <- List(1, 2, 3).traverse(one)
+      _          <- one(1)
+    } yield aOne + anotherOne
 
-  //   val fut = Fetch.runEnv[Future](
-  //     fetch,
-  //     InMemoryCache(
-  //       OneSource.identity(One(1)) -> 1,
-  //       OneSource.identity(One(2)) -> 2,
-  //       OneSource.identity(One(3)) -> 3
-  //     )
-  //   )
+    val cache = InMemoryCache.from(
+      (OneSource.name, One(1)) -> 1,
+      (OneSource.name, One(2)) -> 2,
+      (OneSource.name, One(3)) -> 3
+    )
 
-  //   fut.map(env => {
-  //     val rounds = env.rounds
+    val io = Fetch.runCache(fetch, cache)
+    val (fetchCache, (env, result)) = io.unsafeRunSync
 
-  //     rounds.size shouldEqual 0
-  //   })
-  // }
+    fetchCache shouldEqual cache
+    totalFetched(env.rounds) shouldEqual 0
+    env.rounds.size shouldEqual 0
+  }
 
-  // "We can use a custom cache" in {
-  //   val fetch = for {
-  //     aOne       <- one(1)
-  //     anotherOne <- one(1)
-  //     _          <- one(1)
-  //     _          <- one(2)
-  //     _          <- one(3)
-  //     _          <- one(1)
-  //     _          <- Fetch.traverse(List(1, 2, 3))(one)
-  //     _          <- one(1)
-  //   } yield aOne + anotherOne
-  //   val fut = Fetch.runEnv[Future](
-  //     fetch,
-  //     InMemoryCache(
-  //       OneSource.identity(One(1))   -> 1,
-  //       OneSource.identity(One(2))   -> 2,
-  //       OneSource.identity(One(3))   -> 3,
-  //       ManySource.identity(Many(2)) -> List(0, 1)
-  //     )
-  //   )
+  case class ForgetfulCache() extends DataSourceCache {
+    def insert[I, A](i: I, ds: DataSource[I, A], v: FetchStatus): IO[ForgetfulCache] = IO(this)
+    def lookup[I, A](i: I, ds: DataSource[I, A]): IO[Option[FetchStatus]] = IO(None)
+  }
 
-  //   fut.map(env => {
-  //     val rounds = env.rounds
+  "We can use a custom cache that discards elements" in {
+    val fetch = for {
+      aOne       <- one(1)
+      anotherOne <- one(1)
+      _          <- one(1)
+      _          <- one(2)
+      _          <- one(3)
+      _          <- one(1)
+      _          <- one(1)
+    } yield aOne + anotherOne
 
-  //     rounds.size shouldEqual 0
-  //   })
-  // }
+    val cache = ForgetfulCache()
+    val io = Fetch.runCache(fetch, cache)
 
-  // case class ForgetfulCache() extends DataSourceCache {
-  //   override def get[A](k: DataSourceIdentity): Option[A]               = None
-  //   override def update[A](k: DataSourceIdentity, v: A): ForgetfulCache = this
-  // }
+    val (fetchCache, (env, result)) = io.unsafeRunSync
 
-  // "We can use a custom cache that discards elements" in {
-  //   val fetch = for {
-  //     aOne       <- one(1)
-  //     anotherOne <- one(1)
-  //     _          <- one(1)
-  //     _          <- one(2)
-  //     _          <- one(3)
-  //     _          <- one(1)
-  //     _          <- one(1)
-  //   } yield aOne + anotherOne
+    fetchCache shouldEqual cache
+    env.rounds.size shouldEqual 7
+    totalFetched(env.rounds) shouldEqual 7
+  }
 
-  //   val fut = Fetch.runEnv[Future](fetch, ForgetfulCache())
+  "We can use a custom cache that discards elements together with concurrent fetches" in {
+    import cats.instances.list._
+    import cats.syntax.all._
 
-  //   fut.map(env => {
-  //     totalFetched(env.rounds) shouldEqual 7
-  //   })
-  // }
+    val fetch = for {
+      aOne       <- one(1)
+      anotherOne <- one(1)
+      _          <- one(1)
+      _          <- one(2)
+      _          <- List(1, 2, 3).traverse(one)
+      _          <- one(3)
+      _          <- one(1)
+      _          <- one(1)
+    } yield aOne + anotherOne
 
-  // "We can use a custom cache that discards elements together with concurrent fetches" in {
-  //   val fetch = for {
-  //     aOne       <- one(1)
-  //     anotherOne <- one(1)
-  //     _          <- one(1)
-  //     _          <- one(2)
-  //     _          <- Fetch.traverse(List(1, 2, 3))(one)
-  //     _          <- one(3)
-  //     _          <- one(1)
-  //     _          <- one(1)
-  //   } yield aOne + anotherOne
+    val cache = ForgetfulCache()
+    val io = Fetch.runCache(fetch, cache)
 
-  //   val fut = Fetch.runEnv[Future](fetch, ForgetfulCache())
+    val (fetchCache, (env, result)) = io.unsafeRunSync
 
-  //   fut.map(env => {
-  //     totalFetched(env.rounds) shouldEqual 10
-  //   })
-  // }
-
-  // "We can fetch multiple items at the same time" in {
-  //   val fetch: Fetch[List[Int]] = Fetch.multiple(One(1), One(2), One(3))
-  //   Fetch.runFetch[Future](fetch).map {
-  //     case (env, res) =>
-  //       res shouldEqual List(1, 2, 3)
-  //       totalFetched(env.rounds) shouldEqual 3
-  //       totalBatches(env.rounds) shouldEqual 1
-  //       env.rounds.size shouldEqual 1
-  //   }
-  // }
+    fetchCache shouldEqual cache
+    env.rounds.size shouldEqual 8
+    totalFetched(env.rounds) shouldEqual 10
+  }
 
   // Errors
 
