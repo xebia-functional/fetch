@@ -26,11 +26,8 @@ object TestHelper {
   implicit object OneSource extends DataSource[One, Int] {
     override def name = "OneSource"
 
-    override def fetchOne[F[_] : ConcurrentEffect](id: One): F[Option[Int]] =
+    override def fetch[F[_] : ConcurrentEffect](id: One): F[Option[Int]] =
       ConcurrentEffect[F].delay(Option(id.id))
-
-    override def fetchMany[F[_] : ConcurrentEffect](ids: NonEmptyList[One]): F[Map[One, Int]] =
-      ConcurrentEffect[F].delay(ids.toList.map(one => (one, one.id)).toMap)
   }
 
   def one(id: Int)(
@@ -40,11 +37,9 @@ object TestHelper {
   case class Many(n: Int)
   implicit object ManySource extends DataSource[Many, List[Int]] {
     override def name = "ManySource"
-    override def fetchOne[F[_] : ConcurrentEffect](id: Many): F[Option[List[Int]]] =
-      ConcurrentEffect[F].delay(Option(0 until id.n toList))
 
-    override def fetchMany[F[_] : ConcurrentEffect](ids: NonEmptyList[Many]): F[Map[Many, List[Int]]] =
-      ConcurrentEffect[F].delay(ids.toList.map(m => (m, 0 until m.n toList)).toMap)
+    override def fetch[F[_] : ConcurrentEffect](id: Many): F[Option[List[Int]]] =
+      ConcurrentEffect[F].delay(Option(0 until id.n toList))
   }
   def many(id: Int)(
     implicit C: Concurrent[IO]
@@ -53,10 +48,9 @@ object TestHelper {
   case class AnotherOne(id: Int)
   implicit object AnotheroneSource extends DataSource[AnotherOne, Int] {
     override def name = "AnotherOneSource"
-    override def fetchOne[F[_] : ConcurrentEffect](id: AnotherOne): F[Option[Int]] =
+
+    override def fetch[F[_] : ConcurrentEffect](id: AnotherOne): F[Option[Int]] =
       ConcurrentEffect[F].delay(Option(id.id))
-    override def fetchMany[F[_] : ConcurrentEffect](ids: NonEmptyList[AnotherOne]): F[Map[AnotherOne, Int]] =
-      ConcurrentEffect[F].delay(ids.toList.map(anotherone => (anotherone, anotherone.id)).toMap)
   }
 
   def anotherOne(id: Int)(
@@ -84,7 +78,7 @@ object TestHelper {
   implicit object ArticleAsync extends DataSource[ArticleId, Article] {
     override def name = "ArticleAsync"
 
-    override def fetchOne[F[_] : ConcurrentEffect](id: ArticleId): F[Option[Article]] =
+    override def fetch[F[_] : ConcurrentEffect](id: ArticleId): F[Option[Article]] =
       ConcurrentEffect[F].async[Option[Article]]((cb) => {
         cb(
           Right(
@@ -92,9 +86,6 @@ object TestHelper {
           )
         )
       })
-
-    override def fetchMany[F[_] : ConcurrentEffect](ids: NonEmptyList[ArticleId]): F[Map[ArticleId, Article]] =
-      batchingNotSupported(ids)
   }
 
   def article(id: Int)(
@@ -106,7 +97,8 @@ object TestHelper {
 
   implicit object AuthorAsync extends DataSource[AuthorId, Author] {
     override def name = "AuthorAsync"
-    override def fetchOne[F[_] : ConcurrentEffect](id: AuthorId): F[Option[Author]] =
+
+    override def fetch[F[_] : ConcurrentEffect](id: AuthorId): F[Option[Author]] =
       ConcurrentEffect[F].async((cb => {
         cb(
           Right(
@@ -114,8 +106,6 @@ object TestHelper {
           )
         )
       }))
-    override def fetchMany[F[_] : ConcurrentEffect](ids: NonEmptyList[AuthorId]): F[Map[AuthorId, Author]] =
-      batchingNotSupported(ids)
   }
 
   def author(a: Article)(
@@ -127,7 +117,7 @@ object TestHelper {
   def countFetches(r: Request): Int =
     r.request match {
       case FetchOne(_, _)       => 1
-      case FetchMany(ids, _)    => ids.toList.size
+      case Batch(ids, _)    => ids.toList.size
     }
 
   def totalFetched(rs: Seq[Round]): Int =
@@ -136,7 +126,7 @@ object TestHelper {
   def countBatches(r: Request): Int =
     r.request match {
       case FetchOne(_, _)    => 0
-      case FetchMany(_, _) => 1
+      case Batch(_, _) => 1
     }
 
   def totalBatches(rs: Seq[Round]): Int =

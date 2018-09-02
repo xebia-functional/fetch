@@ -28,40 +28,23 @@ import cats.syntax.traverse._
  * results of type `A`.
  */
 trait DataSource[I, A] {
-
   /** The name of the data source.
    */
-  def name: DataSourceName
-
-  override def toString: String = "DataSource:" + name
-
-  /**
-   * Derive a `DataSourceIdentity` from an identity, suitable for storing the result
-   * of such identity in a `DataSourceCache`.
-   */
-  def identity(i: I): DataSourceIdentity = (name, i)
+  def name: String
 
   /** Fetch one identity, returning a None if it wasn't found.
    */
-  def fetchOne[F[_] : ConcurrentEffect](id: I): F[Option[A]]
+  def fetch[F[_] : ConcurrentEffect](id: I): F[Option[A]]
 
   /** Fetch many identities, returning a mapping from identities to results. If an
    * identity wasn't found, it won't appear in the keys.
    */
-  def fetchMany[F[_] : ConcurrentEffect](ids: NonEmptyList[I]): F[Map[I, A]]
-
-  /** Use `fetchOne` for implementing of `fetchMany`. Use only when the data
-   * source doesn't support batching.
-   */
-  def batchingNotSupported[F[_] : ConcurrentEffect](ids: NonEmptyList[I]): F[Map[I, A]] = {
+  def batch[F[_] : ConcurrentEffect](ids: NonEmptyList[I]): F[Map[I, A]] = {
     val fetchOneWithId: I => F[Option[(I, A)]] = id =>
-      fetchOne(id).map(_.tupleLeft(id))
+      fetch(id).map(_.tupleLeft(id))
 
     ids.toList.traverse(fetchOneWithId).map(_.collect { case Some(x) => x }.toMap)
   }
-
-  def batchingOnly[F[_] : ConcurrentEffect](id: I): F[Option[A]] =
-    fetchMany(NonEmptyList.one(id)).map(_ get id)
 
   def maxBatchSize: Option[Int] = None
 

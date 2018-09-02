@@ -16,55 +16,32 @@
 
 package fetch
 
+import cats.effect._
+
 /**
  * A `Cache` trait so the users of the library can provide their own cache.
  */
-// trait DataSourceCache {
-//   def update[A](k: DataSourceIdentity, v: A): DataSourceCache
-
-//   def get[A](k: DataSourceIdentity): Option[A]
-
-//   def getWithDS[I, A](ds: DataSource[I, A]): I => Option[A] = id => get(ds.identity(id))
-
-//   def cacheResults[I, A](results: Map[I, A], ds: DataSource[I, A]): DataSourceCache = {
-//     results.foldLeft(this)({
-//       case (acc, (i, a)) => acc.update(ds.identity(i), a)
-//     })
-//   }
-
-//   def contains(k: DataSourceIdentity): Boolean = get(k).isDefined
-// }
+trait DataSourceCache {
+  def lookup[I, A](i: I, ds: DataSource[I, A]): IO[Option[FetchStatus]]
+  def insert[I, A](i: I, ds: DataSource[I, A], v: FetchStatus): IO[DataSourceCache]
+}
 
 /**
  * A cache that stores its elements in memory.
  */
-// case class InMemoryCache(state: Map[DataSourceIdentity, Any]) extends DataSourceCache {
-//   override def get[A](k: DataSourceIdentity): Option[A] =
-//     state.get(k).asInstanceOf[Option[A]]
+case class InMemoryCache(state: Map[(String, Any), FetchStatus]) extends DataSourceCache {
+  def lookup[I, A](i: I, ds: DataSource[I, A]): IO[Option[FetchStatus]] =
+    IO.pure(state.get((ds.name, i)).asInstanceOf[Option[FetchStatus]])
 
-//   override def update[A](k: DataSourceIdentity, v: A): InMemoryCache =
-//     copy(state = state.updated(k, v))
-// }
+  def insert[I, A](i: I, ds: DataSource[I, A], v: FetchStatus): IO[DataSourceCache] =
+    IO.pure(copy(state = state.updated((ds.name, i), v)))
+}
 
-// object InMemoryCache {
-//   def empty: InMemoryCache = InMemoryCache(Map.empty[DataSourceIdentity, Any])
+object InMemoryCache {
+  def empty: InMemoryCache = InMemoryCache(Map.empty[(String, Any), FetchStatus])
 
-//   def apply(results: (DataSourceIdentity, Any)*): InMemoryCache =
-//     InMemoryCache(results.foldLeft(Map.empty[DataSourceIdentity, Any])({
-//       case (c, (k, v)) => c.updated(k, v)
-//     }))
-
-//   import cats.{Monoid, Semigroup}
-//   import cats.instances.map._
-//   import cats.syntax.semigroup._
-//   implicit val inMemoryCacheMonoid: Monoid[InMemoryCache] = {
-//     implicit val anySemigroup = new Semigroup[Any] {
-//       def combine(a: Any, b: Any): Any = b
-//     }
-//     new Monoid[InMemoryCache] {
-//       def empty: InMemoryCache = InMemoryCache.empty
-//       def combine(c1: InMemoryCache, c2: InMemoryCache): InMemoryCache =
-//         InMemoryCache(c1.state |+| c2.state)
-//     }
-//   }
-// }
+  def from[I, A](results: ((String, I), A)*): InMemoryCache =
+    InMemoryCache(results.foldLeft(Map.empty[(String, Any), FetchStatus])({
+      case (acc, ((s, i), v)) => acc.updated((s, i), FetchDone(v))
+    }))
+}
