@@ -38,9 +38,6 @@ class FetchBatchingTests extends FreeSpec with Matchers {
     override def fetch[F[_] : ConcurrentEffect](id: BatchedDataSeq): F[Option[Int]] =
       ConcurrentEffect[F].delay(Some(id.id))
 
-    // override def batch(ids: NonEmptyList[BatchedDataSeq]): Query[Map[BatchedDataSeq, Int]] =
-    //   Query.sync(ids.toList.map(one => (one, one.id)).toMap)
-
     override val maxBatchSize = Some(2)
 
     override val batchExecution = Sequential
@@ -52,9 +49,6 @@ class FetchBatchingTests extends FreeSpec with Matchers {
 
     override def fetch[F[_] : ConcurrentEffect](id: BatchedDataPar): F[Option[Int]] =
       ConcurrentEffect[F].delay(Some(id.id))
-
-    // override def fetchMany(ids: NonEmptyList[BatchedDataPar]): Query[Map[BatchedDataPar, Int]] =
-    //   Query.sync(ids.toList.map(one => (one, one.id)).toMap)
 
     override val maxBatchSize = Some(2)
 
