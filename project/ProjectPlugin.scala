@@ -18,9 +18,8 @@ object ProjectPlugin extends AutoPlugin {
   object autoImport {
 
     lazy val commonCrossDependencies: Seq[ModuleID] =
-      Seq(%%("cats-free"),
-        "org.typelevel" %% "cats-effect" % "1.0.0-RC3",
-        %%("scalatest") % "test")
+      Seq("org.typelevel" %% "cats-effect" % "1.0.0-RC3",
+          %%("scalatest") % "test")
 
     lazy val monixCrossDependencies: Seq[ModuleID] =
       %%("monix-eval") :: Nil
@@ -82,15 +81,10 @@ object ProjectPlugin extends AutoPlugin {
         "validateJVM",
         List(
           "fetchJVM/compile",
-          "monixJVM/compile",
-          "twitterJVM/compile",
-          "fetchJVM/test",
-          "monixJVM/test",
-          "twitterJVM/test",
           "project root").asCmd) ++
       addCommandAlias(
         "validateJS",
-        List("fetchJS/compile", "monixJS/compile", "fetchJS/test", "monixJS/test", "project root").asCmd)
+        List("fetchJS/compile", "project root").asCmd)
 
   override def projectSettings: Seq[Def.Setting[_]] =
     commandAliases ++
