@@ -54,7 +54,7 @@ object `package` {
 
   // Fetch errors
   sealed trait FetchException extends Throwable with NoStackTrace
-  case class MissingIdentity[I](i: I) extends FetchException
+  case class MissingIdentity[I](i: I, request: FetchQuery) extends FetchException
   case class UnhandledException(e: Throwable) extends FetchException
 
   // In-progress request
@@ -189,6 +189,19 @@ object `package` {
         }
       } yield result)
 
+    override def map2[A, B, C](fa: Fetch[A], fb: Fetch[B])(ff: (A, B) => C): Fetch[C] =
+      Unfetch(for {
+        a <- fa.run
+        b <- fb.run
+        result = (a, b) match {
+          case (Done(a), Done(b)) => Done(ff(a, b))
+          case (Done(a), Blocked(br, c)) => Blocked(br, map2(fa, c)(ff))
+          case (Blocked(br, c), Done(b)) => Blocked(br, map2(c, fb)(ff))
+          case (Blocked(br, c), Blocked(br2, c2)) =>
+            Blocked(br |+| br2, map2(c, c2)(ff))
+        }
+      } yield result)
+
     def tailRecM[A, B](a: A)(f: A => Fetch[Either[A, B]]): Fetch[B] =
       ???
 
@@ -219,7 +232,7 @@ object `package` {
 
     def apply[I, A](id: I)(
       implicit ds: DataSource[I, A],
-      C: Concurrent[IO]
+      CS: ContextShift[IO]
     ): Fetch[A] = {
       val request = FetchOne(id, ds)
       Unfetch(
@@ -235,7 +248,7 @@ object `package` {
                 IO(Done(a).asInstanceOf[FetchResult[A]])
 
               case FetchMissing() =>
-                IO.raiseError(MissingIdentity(id))
+                IO.raiseError(MissingIdentity(id, request))
             }
           } yield value
         ))
@@ -275,7 +288,8 @@ object `package` {
       cache: DataSourceCache = InMemoryCache.empty
     )(
       implicit C: ConcurrentEffect[IO],
-      T: Timer[IO]
+      T: Timer[IO],
+      P: Parallel[IO, IO.Par]
     ): IO[A] = for {
       cache <- Ref.of[IO, DataSourceCache](cache)
       result <- performRun(fa, cache, None)
@@ -289,7 +303,8 @@ object `package` {
       cache: DataSourceCache = InMemoryCache.empty
     )(
       implicit C: ConcurrentEffect[IO],
-      T: Timer[IO]
+      T: Timer[IO],
+      P: Parallel[IO, IO.Par]
     ): IO[(FetchEnv, A)] = for {
       env <- Ref.of[IO, FetchEnv](FetchEnv())
       cache <- Ref.of[IO, DataSourceCache](cache)
@@ -297,13 +312,30 @@ object `package` {
       e <- env.get
     } yield (e, result)
 
+    /**
+      * Run a `Fetch`, the cache and the result in the `IO` monad.
+      */
+    def runCache[A](
+      fa: Fetch[A],
+      cache: DataSourceCache = InMemoryCache.empty
+    )(
+      implicit C: ConcurrentEffect[IO],
+      T: Timer[IO],
+      P: Parallel[IO, IO.Par]
+    ): IO[(DataSourceCache, A)] = for {
+      cache <- Ref.of[IO, DataSourceCache](cache)
+      result <- performRun(fa, cache, None)
+      c <- cache.get
+    } yield (c, result)
+
     private def performRun[A](
       fa: Fetch[A],
       cache: Ref[IO, DataSourceCache],
       env: Option[Ref[IO, FetchEnv]]
     )(
       implicit C: ConcurrentEffect[IO],
-      T: Timer[IO]
+      T: Timer[IO],
+      P: Parallel[IO, IO.Par]
     ): IO[A] = for {
       result <- fa.run
 
@@ -323,20 +355,22 @@ object `package` {
     )(
       implicit
         C: ConcurrentEffect[IO],
-        T: Timer[IO]
+      T: Timer[IO],
+      P: Parallel[IO, IO.Par]
     ): IO[Unit] = {
-      for {
-        requests <- rs.m.toList.traverse((r) => {
-          val (dataSource, blocked) = r
-          runBlockedRequest(blocked, cache, env)
-        })
-        performedRequests = requests.flatten
-        _ <- if (performedRequests.isEmpty) IO(())
-        else env match {
-          case Some(e) => e.modify((oldE) => (oldE.evolve(Round(performedRequests)), oldE))
-          case None => IO(())
-        }
-      } yield ()
+      val blocked = rs.m.toList.map(_._2)
+      if (blocked.isEmpty) IO(())
+      else
+        for {
+          blockeds <- IO(NonEmptyList.fromListUnsafe(blocked))
+          requests <- blockeds.parTraverse(runBlockedRequest(_, cache, env))
+          performedRequests = requests.foldLeft(List.empty[Request])(_ ++ _)
+          _ <- if (performedRequests.isEmpty) IO(())
+          else env match {
+            case Some(e) => e.modify((oldE) => (oldE.evolve(Round(performedRequests)), oldE))
+            case None => IO(())
+          }
+        } yield ()
     }
 
     private def runBlockedRequest[A](
@@ -346,7 +380,8 @@ object `package` {
     )(
       implicit
         C: ConcurrentEffect[IO],
-      T: Timer[IO]
+      T: Timer[IO],
+      P: Parallel[IO, IO.Par]
     ): IO[List[Request]] =
       blocked.request match {
         case q @ FetchOne(id, ds) => runFetchOne(q, blocked.result, cache, env)
@@ -405,7 +440,8 @@ object `package` {
   )(
     implicit
       C: ConcurrentEffect[IO],
-    T: Timer[IO]
+    T: Timer[IO],
+    P: Parallel[IO, IO.Par]
   ): IO[List[Request]] =
     for {
       c <- cache.get
@@ -443,12 +479,9 @@ object `package` {
                 )
                 val reqs = batches.toList.map(Batch[Any, Any](_, q.ds))
 
-                batches.foldLeftM(
-                  Map.empty[Any, Any]
-                )({
-                  case (acc, v) =>
-                    q.ds.batch(v) >>= { (m: Map[Any, Any]) => IO(acc ++ m) }
-                }).map(BatchedRequest(reqs, _))
+                batches.traverse(
+                  q.ds.batch(_)
+                ).map(_.toList.reduce(_ ++ _)).map(BatchedRequest(reqs, _))
               }
               case Parallel =>  {
                 val batches: NonEmptyList[NonEmptyList[Any]] = NonEmptyList.fromListUnsafe(
@@ -458,7 +491,7 @@ object `package` {
                 )
                 val reqs = batches.toList.map(Batch[Any, Any](_, q.ds))
 
-                batches.traverse(
+                batches.parTraverse(
                   q.ds.batch(_)
                 ).map(_.toList.reduce(_ ++ _)).map(BatchedRequest(reqs, _))
               }

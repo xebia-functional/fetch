@@ -73,8 +73,8 @@ object debug {
     Document.text(s", fetch interrupted after ${env.rounds.size} rounds")
 
   def showException(err: FetchException): Document = err match {
-    case MissingIdentity(id) =>
-      Document.text(s"[Error] Identity not found: ${id}")
+    case MissingIdentity(id, q) =>
+      Document.text(s"[Error] Identity with id `${id}` for data source `${q.dataSource.name}` not found")
     // case MissingIdentities(env, missing) =>
     //   Document.text("[Error] Missing identities") :: showRoundCount(err) :/:
     //     Document.nest(2, pile(missing.toSeq.map((kv) => showMissing(kv._1, kv._2))))
@@ -87,10 +87,10 @@ object debug {
   def describe(env: Env): String =
     string(showEnv(env))
 
-  /* Given a [[fetch.FetchException]], describe it with a human-readable string. */
-  def describe(err: FetchException): String = {
-    string(
-      showException(err)
-    )
+  /* Given a [[Throwable]], describe it with a human-readable string. */
+  def describe(err: Throwable): String = err match {
+    case e @ MissingIdentity(_, _) => string(showException(e))
+    case e @ UnhandledException(_) => string(showException(e))
+    case _ => string(Document.text("Unexpected exception"))
   }
 }
