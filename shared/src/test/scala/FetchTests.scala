@@ -33,7 +33,7 @@ import scala.concurrent.duration._
 class FetchTests extends FreeSpec with Matchers {
   import TestHelper._
 
-  implicit def executionContext: ExecutionContext = ExecutionContext.Implicits.global
+  val executionContext: ExecutionContext = ExecutionContext.Implicits.global
   implicit val timer: Timer[IO] = IO.timer(executionContext)
   implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
 
