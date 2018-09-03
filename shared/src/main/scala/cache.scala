@@ -18,6 +18,10 @@ package fetch
 
 import cats.effect._
 
+final class DataSourceName(val name: String) extends AnyVal
+final class DataSourceId(val id: Any) extends AnyVal
+final class DataSourceResult(val result: Any) extends AnyVal
+
 /**
  * A `Cache` trait so the users of the library can provide their own cache.
  */
@@ -29,19 +33,19 @@ trait DataSourceCache {
 /**
  * A cache that stores its elements in memory.
  */
-case class InMemoryCache(state: Map[(String, Any), Any]) extends DataSourceCache {
+case class InMemoryCache(state: Map[(DataSourceName, DataSourceId), DataSourceResult]) extends DataSourceCache {
   def lookup[I, A](i: I, ds: DataSource[I, A]): IO[Option[A]] =
-    IO.pure(state.get((ds.name, i)).asInstanceOf[Option[A]])
+    IO.pure(state.get((new DataSourceName(ds.name), new DataSourceId(i))).map(_.result.asInstanceOf[A]))
 
   def insert[I, A](i: I, ds: DataSource[I, A], v: A): IO[DataSourceCache] =
-    IO.pure(copy(state = state.updated((ds.name, i), v)))
+    IO.pure(copy(state = state.updated((new DataSourceName(ds.name), new DataSourceId(i)), new DataSourceResult(v))))
 }
 
 object InMemoryCache {
-  def empty: InMemoryCache = InMemoryCache(Map.empty[(String, Any), FetchStatus])
+  def empty: InMemoryCache = InMemoryCache(Map.empty[(DataSourceName, DataSourceId), DataSourceResult])
 
   def from[I, A](results: ((String, I), A)*): InMemoryCache =
-    InMemoryCache(results.foldLeft(Map.empty[(String, Any), Any])({
-      case (acc, ((s, i), v)) => acc.updated((s, i), v)
+    InMemoryCache(results.foldLeft(Map.empty[(DataSourceName, DataSourceId), DataSourceResult])({
+      case (acc, ((s, i), v)) => acc.updated((new DataSourceName(s), new DataSourceId(i)), new DataSourceResult(v))
     }))
 }
