@@ -53,9 +53,9 @@ object `package` {
   case class FetchMissing() extends FetchStatus
 
   // Fetch errors
-  sealed trait FetchError extends Throwable with NoStackTrace
-  case class MissingIdentity[I](i: I) extends FetchError
-  case class UnhandledException(e: Throwable) extends FetchError
+  sealed trait FetchException extends Throwable with NoStackTrace
+  case class MissingIdentity[I](i: I) extends FetchException
+  case class UnhandledException(e: Throwable) extends FetchException
 
   // In-progress request
   case class BlockedRequest(request: FetchRequest, result: FetchStatus => IO[Unit])

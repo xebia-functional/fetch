@@ -34,15 +34,17 @@ object debug {
   def showEnv(env: Env): Document = env.rounds match {
     case Nil => Document.empty
     case _ => {
-      val result = for {
-        last <- env.rounds.lastOption
-      } yield last.response
-      val resultDoc =
-        result.fold(Document.empty: Document)((r) => Document.text(s"Fetching `${r}`"))
+      // val result = for {
+      //   last <- env.rounds.lastOption
+      // } yield last.response
+      val resultDoc = Document.empty
+//        result.fold(Document.empty: Document)((r) => Document.text(s"Fetching `${r}`"))
 
       val duration = for {
-        first <- env.rounds.headOption
-        last  <- env.rounds.lastOption
+        firstRound <- env.rounds.headOption
+        first <- firstRound.queries.headOption
+        lastRound  <- env.rounds.lastOption
+        last <- lastRound.queries.lastOption
       } yield last.end - first.start
       val durationDoc =
         duration.fold(Document.empty: Document)((d) =>
@@ -52,42 +54,33 @@ object debug {
     }
   }
 
-  def showRound(r: Round): Document = r match {
-    case Round(cache, q @ FetchOne(id, ds), result, start, end) =>
-      showQuery(q) :: showDuration(r.duration / 1e6)
-    case Round(cache, q @ FetchMany(ids, ds), result, start, end) =>
-      showQuery(q) :: showDuration(r.duration / 1e6)
-    case Round(cache, Concurrent(queries), result, start, end) =>
-      if (queries.tail.isEmpty) {
-        showQuery(queries.head) :: showDuration(r.duration / 1e6)
-      } else {
-        Document.text("[Concurrent]") :: showDuration(r.duration / 1e6) :: Document
-          .nest(2, pile(queries.toList.map(showQuery)))
-      }
+  def showRound(r: Round): Document =
+    Document.text("[Round]") :: Document.nest(
+      2, pile(r.queries.map(showRequest))
+    )
+
+  def showRequest(r: Request): Document = r.request match {
+    case FetchOne(id, ds) =>
+      Document.text(s"[Fetch one] From `${ds.name}` with id ${id}") :: showDuration(0)
+    case Batch(ids, ds) =>
+      Document.text(s"[Batch] From `${ds.name}` with ids ${ids.toList}") :: showDuration(0)
   }
 
-  def showQuery(q: FetchQuery[_, _]): Document = q match {
-    case FetchOne(id, ds) => Document.text(s"[Fetch one] From `${ds.name}` with id ${id}")
-    case FetchMany(ids, ds) =>
-      Document.text(s"[Fetch many] From `${ds.name}` with ids ${ids.toList}")
-  }
+  def showMissing(ds: DataSource[_, _], ids: List[_]): Document =
+    Document.text(s"`${ds.name}` missing identities ${ids}")
 
-  def showMissing(ds: DataSourceName, ids: List[_]): Document =
-    Document.text(s"`${ds}` missing identities ${ids}")
-
-  def showRoundCount(err: FetchException): Document =
-    Document.text(s", fetch interrupted after ${err.env.rounds.size} rounds")
+  def showRoundCount(env: FetchEnv, err: FetchException): Document =
+    Document.text(s", fetch interrupted after ${env.rounds.size} rounds")
 
   def showException(err: FetchException): Document = err match {
-    case NotFound(env, q @ FetchOne(id, ds)) =>
-      Document.text(s"[Error] Identity not found: ${id} in `${ds.name}`") :: showRoundCount(err)
-    case MissingIdentities(env, missing) =>
-      Document.text("[Error] Missing identities") :: showRoundCount(err) :/:
-        Document.nest(2, pile(missing.toSeq.map((kv) => showMissing(kv._1, kv._2))))
-    case UnhandledException(env, exc) =>
+    case MissingIdentity(id) =>
+      Document.text(s"[Error] Identity not found: ${id}")
+    // case MissingIdentities(env, missing) =>
+    //   Document.text("[Error] Missing identities") :: showRoundCount(err) :/:
+    //     Document.nest(2, pile(missing.toSeq.map((kv) => showMissing(kv._1, kv._2))))
+    case UnhandledException(exc) =>
       Document
-        .text(s"[Error] Unhandled `${exc.getClass.getName}`: '${exc.getMessage}'") :: showRoundCount(
-        err)
+        .text(s"[Error] Unhandled `${exc.getClass.getName}`: '${exc.getMessage}'")
   }
 
   /* Given a [[fetch.env.Env]], describe it with a human-readable string. */
@@ -97,11 +90,7 @@ object debug {
   /* Given a [[fetch.FetchException]], describe it with a human-readable string. */
   def describe(err: FetchException): String = {
     string(
-      showException(err) :/:
-        Document.nest(
-        2,
-        showEnv(err.env)
-      )
+      showException(err)
     )
   }
 }
