@@ -174,13 +174,12 @@ object `package` {
           case Blocked(br, cont) =>
             Blocked(br, map(cont)(f))
         }
-      } yield result.asInstanceOf[FetchResult[B]])
+      } yield result)
 
     override def product[A, B](fa: Fetch[A], fb: Fetch[B]): Fetch[(A, B)] =
       Unfetch(for {
-        a <- fa.run
-        b <- fb.run
-        result = (a, b) match {
+        fab <- (fa.run, fb.run).tupled
+        result = fab match {
           case (Done(a), Done(b)) => Done((a, b))
           case (Done(a), Blocked(br, c)) => Blocked(br, product(fa, c))
           case (Blocked(br, c), Done(b)) => Blocked(br, product(c, fb))
@@ -191,9 +190,8 @@ object `package` {
 
     override def map2[A, B, C](fa: Fetch[A], fb: Fetch[B])(ff: (A, B) => C): Fetch[C] =
       Unfetch(for {
-        a <- fa.run
-        b <- fb.run
-        result = (a, b) match {
+        fab <- (fa.run, fb.run).tupled
+        result = fab match {
           case (Done(a), Done(b)) => Done(ff(a, b))
           case (Done(a), Blocked(br, c)) => Blocked(br, map2(fa, c)(ff))
           case (Blocked(br, c), Done(b)) => Blocked(br, map2(c, fb)(ff))
