@@ -58,8 +58,7 @@ def println(msg: String): Unit = {
 
 There are other libraries in Scala that implement the same optimizations as Fetch does and have different design decisions. If Fetch is not suitable for you these alternatives may be a better fit:
 
-- [Clump](http://getclump.io/) it's been around for a long time and is used in production systems at SoundCloud and LinkedIn. You can use it with Scala's or Twitter's Futures.
-- [Resolvable](https://github.com/resolvable/resolvable) can be used with Scala Futures.
+- [Clump](https://github.com/getclump/clump) it's been around for a long time and is used in production systems at SoundCloud and LinkedIn. You can use it with Scala's or Twitter's Futures.
 
 If something is missing in Fetch that stops you from using it we'd appreciate if you [open an issue in our repository](https://github.com/47deg/fetch/issues).
 
@@ -114,14 +113,14 @@ import java.util.concurrent._
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
-val executor: Executor = new ScheduledThreadPoolExecutor(4)
+val executor = new ScheduledThreadPoolExecutor(2)
 val executionContext: ExecutionContext = ExecutionContext.fromExecutor(executor)
 implicit val timer: Timer[IO] = IO.timer(executionContext)
 implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
 
 def latency[A](result: A, msg: String): IO[A] = for {
   _ <- IO(println(s"--> [${Thread.currentThread.getId}] $msg"))
-  _ <- IO.sleep(100.second)
+  _ <- IO.sleep(100.milliseconds)
   _ <- IO(println(s"<-- [${Thread.currentThread.getId}] $msg"))
 } yield result
 ```
@@ -148,7 +147,7 @@ implicit object UserSource extends DataSource[UserId, User]{
     latency(userDatabase.get(id), s"One User $id")
 
   override def batch(ids: NonEmptyList[UserId]): IO[Map[UserId, User]] =
-    latency(userDatabase.filterKeys(ids.toList.toSet), s"Many Users $ids")
+    latency(userDatabase.filterKeys(ids.toList.toSet), s"Batch Users $ids")
 }
 ```
 
@@ -200,7 +199,7 @@ val fetchUser: Fetch[User] = getUser(1)
 
 A `Fetch` is just a value, and in order to be able to get its value we need to run it to an `IO` first. 
 
-```tut:silent
+```tut:book
 import cats.effect.IO
 
 Fetch.run(fetchUser)
@@ -226,7 +225,7 @@ val fetchTwoUsers: Fetch[(User, User)] = for {
 When composing fetches with `flatMap` we are telling Fetch that the second one depends on the previous one, so it isn't able to make any optimizations. When running the above fetch, we will query the user data source in two rounds: one for the user with id 1 and another for the user with id 2.
 
 ```tut:book
-// Fetch.run(fetchTwoUsers).unsafeRunSync
+Fetch.run(fetchTwoUsers).unsafeRunSync
 ```
 
 ### Batching
@@ -244,7 +243,7 @@ val fetchProduct: Fetch[(User, User)] = getUser(1).product(getUser(2))
 Note how both ids (1 and 2) are requested in a single query to the data source when executing the fetch.
 
 ```tut:book
-// Fetch.run(fetchProduct).unsafeRunSync
+Fetch.run(fetchProduct).unsafeRunSync
 ```
 
 ### Deduplication
@@ -258,7 +257,7 @@ val fetchDuped: Fetch[(User, User)] = getUser(1).product(getUser(1))
 Note that when running the fetch, the identity 1 is only requested once even when it is needed by both fetches.
 
 ```tut:book
-// Fetch.run(fetchDuped).unsafeRunSync
+Fetch.run(fetchDuped).unsafeRunSync
 ```
 
 ### Caching
@@ -278,7 +277,7 @@ val fetchCached: Fetch[(User, User)] = for {
 The above fetch asks for the same identity multiple times. Let's see what happens when executing it.
 
 ```tut:book
-// Fetch.run(fetchCached).unsafeRunSync
+Fetch.run(fetchCached).unsafeRunSync
 ```
 
 As you can see, the `User` with id 1 was fetched only once in a single round-trip. The next
@@ -314,7 +313,7 @@ implicit object PostSource extends DataSource[PostId, Post]{
     latency(postDatabase.get(id), s"One Post $id")
 
   override def batch(ids: NonEmptyList[PostId]): IO[Map[PostId, Post]] =
-    latency(postDatabase.filterKeys(ids.toList.toSet), s"Many Posts $ids")
+    latency(postDatabase.filterKeys(ids.toList.toSet), s"Batch Posts $ids")
 }
 
 def getPost(id: PostId): Fetch[Post] = Fetch(id)
@@ -345,7 +344,7 @@ implicit object PostTopicSource extends DataSource[Post, PostTopic]{
 
   override def batch(ids: NonEmptyList[Post]): IO[Map[Post, PostTopic]] = {
     val result = ids.toList.map(id => (id, if (id.id % 2 == 0) "monad" else "applicative")).toMap
-    latency(result, s"Many Post Topics $ids")
+    latency(result, s"Batch Post Topics $ids")
   }
 }
 
@@ -364,7 +363,7 @@ val fetchMulti: Fetch[(Post, PostTopic)] = for {
 We can now run the previous fetch, querying the posts data source first and the user data source afterwards.
 
 ```tut:book
-// Fetch.run(fetchMulti).unsafeRunSync
+Fetch.run(fetchMulti).unsafeRunSync
 ```
 
 In the previous example, we fetched a post given its id and then fetched its topic. This
@@ -388,7 +387,7 @@ val fetchConcurrent: Fetch[(Post, User)] = getPost(1).product(getUser(2))
 The above example combines data from two different sources, and the library knows they are independent.
 
 ```tut:book
-// Fetch.run(fetchConcurrent).unsafeRunSync
+Fetch.run(fetchConcurrent).unsafeRunSync
 ```
 
 ## Combinators
@@ -412,7 +411,7 @@ val fetchSequence: Fetch[List[User]] = List(getUser(1), getUser(2), getUser(3)).
 Since `sequence` uses applicative operations internally, the library is able to perform optimizations across all the sequenced fetches.
 
 ```tut:book
-// Fetch.run(fetchSequence).unsafeRunSync
+Fetch.run(fetchSequence).unsafeRunSync
 ```
 
 As you can see, requests to the user data source were batched, thus fetching all the data in one round.
@@ -428,7 +427,7 @@ val fetchTraverse: Fetch[List[User]] = List(1, 2, 3).traverse(getUser)
 As you may have guessed, all the optimizations made by `sequence` still apply when using `traverse`.
 
 ```tut:book
-// Fetch.run(fetchTraverse).unsafeRunSync
+Fetch.run(fetchTraverse).unsafeRunSync
 ```
 
 # Caching
@@ -451,7 +450,7 @@ val cache = InMemoryCache.from(
 We can pass a cache as the second argument when running a fetch with `Fetch.run`.
 
 ```tut:book
-// Fetch.run(fetchUser, cache).unsafeRunSync
+Fetch.run(fetchUser, cache).unsafeRunSync
 ```
 
 As you can see, when all the data is cached, no query to the data sources is executed since the results are available
@@ -464,10 +463,10 @@ val fetchManyUsers: Fetch[List[User]] = List(1, 2, 3).traverse(getUser)
 If only part of the data is cached, the cached data won't be asked for:
 
 ```tut:book
-// Fetch.run(fetchManyUsers).unsafeRunSync
+Fetch.run(fetchManyUsers, cache).unsafeRunSync
 ```
 
-## Replaying a fetch without querying any data source
+## TODO Replaying a fetch without querying any data source
 
 When running a fetch, we are generally interested in its final result. However, we also have access to the cache
 and information about the executed rounds once we run a fetch. Fetch's interpreter keeps its state in an environment
@@ -477,11 +476,10 @@ instead of `Fetch.run` or `value.runF` via it's implicit syntax.
 Knowing this, we can replay a fetch reusing the cache of a previous one. The replayed fetch won't have to call any of the
 data sources.
 
-```scala
-TODO
-val env = fetchManyUsers.runE[Id]
+```tut:book
+val (cache, result) = Fetch.runCache(fetchManyUsers).unsafeRunSync
 
-fetchManyUsers.runA[Id](env.cache)
+Fetch.run(fetchManyUsers, cache).unsafeRunSync
 ```
 
 ## Implementing a custom cache
@@ -492,31 +490,29 @@ There is no need for the cache to be mutable since fetch executions run in an in
 
 ```scala
 trait DataSourceCache {
-  def update[A](k: DataSourceIdentity, v: A): DataSourceCache
-  def get[A](k: DataSourceIdentity): Option[A]
+  def insert[I, A](i: I, ds: DataSource[I, A], v: A): DataSourceIdentity, v: A): IO[DataSourceCache]
+  def lookup[I, A](i: I, ds: DataSource[I, A]): IO[Option[A]]
 }
 ```
 
 Let's implement a cache that forgets everything we store in it.
 
-```scala
-TODO
+```tut:silent
 final case class ForgetfulCache() extends DataSourceCache {
-  override def get[A](k: DataSourceIdentity): Option[A] = None
-  override def update[A](k: DataSourceIdentity, v: A): ForgetfulCache = this
+  def insert[I, A](i: I, ds: DataSource[I, A], v: A): IO[ForgetfulCache] = IO(this)
+  def lookup[I, A](i: I, ds: DataSource[I, A]): IO[Option[A]] = IO(None)
 }
 ```
 
 We can now use our implementation of the cache when running a fetch.
 
-```scala
-TODO
+```tut:book
 val fetchSameTwice: Fetch[(User, User)] = for {
   one <- getUser(1)
   another <- getUser(1)
 } yield (one, another)
 
-fetchSameTwice.runA[Id](ForgetfulCache())
+Fetch.run(fetchSameTwice, ForgetfulCache()).unsafeRunSync
 ```
 
 # Batching
@@ -529,40 +525,37 @@ for tweaking the maximum batch size and whether multiple batches are run in para
 When implementing a `DataSource`, there is a method we can override called `maxBatchSize`. When implementing it
 we can specify the maximum size of the batched requests to this data source, let's try it out:
 
-```scala
-TODO
+```tut:silent
 implicit object BatchedUserSource extends DataSource[UserId, User]{
   override def name = "BatchedUser"
 
   override def maxBatchSize: Option[Int] = Some(2)
 
-  override def fetchOne(id: UserId): Query[Option[User]] =
-    Query.sync(latency(userDatabase.get(id), s"One User $id"))
+  override def fetch(id: UserId): IO[Option[User]] =
+    latency(userDatabase.get(id), s"One User $id")
 
-  override def fetchMany(ids: NonEmptyList[UserId]): Query[Map[UserId, User]] =
-    Query.sync(latency(userDatabase.filterKeys(ids.toList.toSet), s"Many Users $ids"))
+  override def batch(ids: NonEmptyList[UserId]): IO[Map[UserId, User]] =
+    latency(userDatabase.filterKeys(ids.toList.toSet), s"Batch Users $ids")
 }
 
-def getBatchedUser(id: Int): Fetch[User] = Fetch(id)(BatchedUserSource)
+def getBatchedUser(id: Int): Fetch[User] = Fetch(id)(BatchedUserSource, cs)
 ```
 
 We have defined the maximum batch size to be 2, let's see what happens when running a fetch that needs more
 than two users:
 
 
-```scala
-TODO
+```tut:book
 val fetchManyBatchedUsers: Fetch[List[User]] = List(1, 2, 3, 4).traverse(getBatchedUser)
 
-fetchManyBatchedUsers.runA[Id]
+Fetch.run(fetchManyBatchedUsers).unsafeRunSync
 ```
 
 ## Batch execution strategy
 
 In the presence of multiple concurrent batches, we can choose between a sequential or parallel execution strategy. By default batches will be run in parallel, but you can tweak this behaviour by overriding `DataSource#batchExection`.
 
-```scala
-TODO
+```tut:silent
 implicit object SequentialUserSource extends DataSource[UserId, User]{
   override def name = "SequentialUser"
 
@@ -570,24 +563,23 @@ implicit object SequentialUserSource extends DataSource[UserId, User]{
 
   override def batchExecution: ExecutionType = Sequential
 
-  override def fetchOne(id: UserId): Query[Option[User]] =
-    Query.sync(latency(userDatabase.get(id), s"One User $id"))
+  override def fetch(id: UserId): IO[Option[User]] =
+    latency(userDatabase.get(id), s"One User $id")
 
-  override def fetchMany(ids: NonEmptyList[UserId]): Query[Map[UserId, User]] =
-    Query.sync(latency(userDatabase.filterKeys(ids.toList.toSet), s"Many Users $ids"))
+  override def batch(ids: NonEmptyList[UserId]): IO[Map[UserId, User]] =
+    latency(userDatabase.filterKeys(ids.toList.toSet), s"Batch Users $ids")
 }
 
-def getSequentialUser(id: Int): Fetch[User] = Fetch(id)(SequentialUserSource)
+def getSequentialUser(id: Int): Fetch[User] = Fetch(id)(SequentialUserSource, cs)
 ```
 
 We have defined the maximum batch size to be 2 and the batch execution to be sequential, let's see what happens when running a fetch that needs more than one batch:
 
 
-```scala
-TODO
+```tut:book
 val fetchManySeqBatchedUsers: Fetch[List[User]] = List(1, 2, 3, 4).traverse(getSequentialUser)
 
-fetchManySeqBatchedUsers.runA[Id]
+Fetch.run(fetchManySeqBatchedUsers).unsafeRunSync
 ```
 
 # Error handling
@@ -606,47 +598,22 @@ you want.
 
 What happens if we run a fetch and fails with an exception? We'll create a fetch that always fails to learn about it.
 
-```scala
-TODO
-val fetchException: Fetch[User] = (new Exception("Oh noes")).fetch
+```tut:silent
+val fetchException: Fetch[User] = Fetch.error(new Exception("Oh noes"))
 ```
 
-If we try to execute to `Id` the exception will be thrown wrapped in a `FetchException`.
+If we try to execute to `IO` the exception will be thrown wrapped in a `FetchException`.
 
-```scala
-TODO
-fetchException.runA[Id]
+```tut:fail
+Fetch.run(fetchException).unsafeRunSync
 ```
 
-Since `Id` runs the fetch eagerly, the only way to recover from errors when running it is surrounding it with a `try-catch` block. We'll use Cats' `Eval` type as the target
-monad which, instead of evaluating the fetch eagerly, gives us an `Eval[A]` that we can run anytime with its `.value` method.
+A safer version would use Cats' `.attempt` method:
 
-We can use the `FetchMonadError[Eval]#attempt` to convert a fetch result into a disjuntion and avoid throwing exceptions. Fetch provides an implicit instance of `FetchMonadError[Eval]` that we can import from `fetch.unsafe.implicits._` to have it available.
-
-```scala
-TODO
-import fetch.unsafe.implicits._
-```
-
-Now we can convert `Eval[User]` into `Eval[Either[FetchException, User]` and capture exceptions as values in the left of the disjunction.
-
-```scala
-TODO
-import cats.Eval
-
-val safeResult: Eval[Either[FetchException, User]] = FetchMonadError[Eval].attempt(fetchException.runA[Eval])
-
-safeResult.value
-```
-
-And more succintly with Cats' applicative error syntax.
-
-```scala
-TODO
+```tut:book
 import cats.syntax.applicativeError._
-import fetch.unsafe.implicits._
 
-fetchException.runA[Eval].attempt.value
+Fetch.run(fetchException).attempt.unsafeRunSync
 ```
 
 ### Debugging exceptions
@@ -654,24 +621,22 @@ fetchException.runA[Eval].attempt.value
 Using fetch's debugging facilities, we can visualize a failed fetch's execution up until the point where it failed. Let's create
 a fetch that fails after a couple rounds to see it in action:
 
-```scala
-TODO
+```tut:silent
 val failingFetch: Fetch[String] = for {
   a <- getUser(1)
   b <- getUser(2)
   c <- fetchException
 } yield s"${a.username} loves ${b.username}"
 
-val result: Eval[Either[FetchException, String]] = FetchMonadError[Eval].attempt(failingFetch.runA[Eval])
+val result: IO[Either[Throwable, String]] = Fetch.run(failingFetch).attempt
 ```
 
 Now let's use the `fetch.debug.describe` function for describing the error if we find one:
 
-```scala
-TODO
+```tut:book
 import fetch.debug.describe
 
-val value: Either[FetchException, String] = result.value
+val value: Either[Throwable, String] = result.unsafeRunSync
 
 println(value.fold(describe, identity _))
 ```
@@ -691,34 +656,30 @@ The requests can be of different types, each of which is described below.
 When a single identity is being fetched the request will be a `FetchOne`; it contains the data source and the identity to fetch so you
 should be able to easily diagnose the failure. For ilustrating this scenario we'll ask for users that are not in the database.
 
-```scala
-TODO
-import cats.syntax.either._
+```tut:silent
 import fetch.debug.describe
 
 val missingUser = getUser(5)
 
-val result: Eval[Either[FetchException, User]] = missingUser.runA[Eval].attempt
+val result: IO[Either[Throwable, User]] = Fetch.run(missingUser).attempt
 ```
 
 And now we can execute the fetch and describe its execution:
 
-```scala
-TODO
-val value: Either[FetchException, User] = result.value
+```tut:book
+val value: Either[Throwable, User] = result.unsafeRunSync
 
 println(value.fold(describe, _.toString))
 ```
 
 As you can see in the output, the identity `5` for the user source was not found, thus the fetch failed without executing any rounds.
-`NotFound` also allows you to access the fetch request that was in progress when the error happened and the environment of the fetch.
+`MissingIdentity` also allows you to access the fetch request that was in progress when the error happened.
 
-```scala
-TODO
+```tut:book
 value match {
-  case Left(nf @ NotFound(_, _)) => {
-    println("Request " + nf.request)
-    println("Environment " + nf.env)
+  case Left(mi @ MissingIdentity(id, q)) => {
+    println("Data Source: " + q.dataSource.name)
+    println("Identity: " + id)
   }
   case _ =>
 }
@@ -1044,7 +1005,7 @@ Let's break down the output from `describe`:
 Fetch stands on the shoulders of giants:
 
 - [Haxl](https://github.com/facebook/haxl) is Facebook's implementation (Haskell) of the [original paper Fetch is based on](http://community.haskell.org/~simonmar/papers/haxl-icfp14.pdf).
-- [Clump](http://getclump.io) has inspired the signature of the `DataSource#fetch*` methods.
+- [Clump](https://github.com/getclump/clump) has inspired the signature of the `DataSource#fetch*` methods.
 - [Stitch](https://engineering.twitter.com/university/videos/introducing-stitch) is an in-house Twitter library that is not open source but has inspired Fetch's high-level API.
 - [Cats](http://typelevel.org/cats/), a library for functional programming in Scala.
 - [Monix](https://monix.io) high-performance and multiplatform (Scala / Scala.js) asynchronous programming library.
