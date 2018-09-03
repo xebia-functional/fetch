@@ -16,7 +16,7 @@
 
 package fetch
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 import org.scalatest.{FreeSpec, Matchers}
 import cats.data.NonEmptyList
 import cats.instances.list._

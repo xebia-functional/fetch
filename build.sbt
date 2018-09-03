@@ -8,7 +8,7 @@ lazy val root = project
   .in(file("."))
   .settings(name := "fetch")
   .settings(moduleName := "root")
-  .aggregate(fetchJS, fetchJVM)// debugJVM, debugJS, twitterJVM)
+  .aggregate(fetchJS, fetchJVM, debugJVM, debugJS)
 
 lazy val fetch = crossProject
   .in(file("."))
@@ -27,14 +27,6 @@ lazy val debug = (crossProject in file("debug"))
 
 lazy val debugJVM = debug.jvm
 lazy val debugJS  = debug.js
-
-lazy val twitter = crossProject
-  .in(file("twitter"))
-  .settings(name := "fetch-twitter")
-  .dependsOn(fetch % "compile->compile;test->test")
-  .crossDepSettings(commonCrossDependencies ++ twitterUtilDependencies: _*)
-
-lazy val twitterJVM = twitter.jvm
 
 lazy val examples = (project in file("examples"))
   .settings(name := "fetch-examples")
