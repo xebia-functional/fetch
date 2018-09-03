@@ -33,7 +33,7 @@ object TestHelper {
   }
 
   def one(id: Int)(
-    implicit C: Concurrent[IO]
+    implicit C: ContextShift[IO]
   ): Fetch[Int] = Fetch(One(id))
 
   case class Many(n: Int)
@@ -44,7 +44,7 @@ object TestHelper {
       IO(Option(0 until id.n toList))
   }
   def many(id: Int)(
-    implicit C: Concurrent[IO]
+    implicit C: ContextShift[IO]
   ): Fetch[List[Int]] = Fetch(Many(id))
 
   case class AnotherOne(id: Int)
@@ -56,7 +56,7 @@ object TestHelper {
   }
 
   def anotherOne(id: Int)(
-    implicit C: Concurrent[IO]
+    implicit C: ContextShift[IO]
   ): Fetch[Int] = Fetch(AnotherOne(id))
 
   case class Never()
@@ -88,7 +88,7 @@ object TestHelper {
   }
 
   def article(id: Int)(
-    implicit C: Concurrent[IO]
+    implicit C: ContextShift[IO]
   ): Fetch[Article] = Fetch(ArticleId(id))
 
   case class AuthorId(id: Int)
@@ -108,7 +108,7 @@ object TestHelper {
   }
 
   def author(a: Article)(
-    implicit C: Concurrent[IO]
+    implicit C: ContextShift[IO]
   ): Fetch[Author] = Fetch(AuthorId(a.author))
 
   // Check Env
