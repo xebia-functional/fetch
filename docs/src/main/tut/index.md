@@ -57,32 +57,47 @@ import cats.data.NonEmptyList
 
 trait DataSource[Identity, Result]{
   def name: String
-  def fetchOne(id: Identity): Query[Option[Result]]
-  def fetchMany(ids: NonEmptyList[Identity]): Query[Map[Identity, Result]]
+  def fetch(id: Identity): IO[Option[Result]]
+  def batch(ids: NonEmptyList[Identity]): IO[Map[Identity, Result]]
 }
 ```
 
 Note that when we create a query we can compute its result right away, defer its evaluation or make it asynchronous. Returning `Query` instances from the fetch methods allows us to abstract from the target result type and to run it synchronously or asynchronously.
 
+
 We'll implement a dummy data source that can convert integers to strings. For convenience, we define a `fetchString` function that lifts identities (`Int` in our dummy data source) to a `Fetch`.
+
+```tut:silent
+// TODO
+import cats.effect._
+import java.util.concurrent._
+import scala.concurrent.ExecutionContext
+import scala.concurrent.duration._
+
+val executor: Executor = new ScheduledThreadPoolExecutor(4)
+val executionContext: ExecutionContext = ExecutionContext.fromExecutor(executor)
+implicit val timer: Timer[IO] = IO.timer(executionContext)
+implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
+```
 
 ```tut:silent
 import cats.data.NonEmptyList
 import cats.instances.list._
+import cats.effect.IO
 import fetch._
 
 implicit object ToStringSource extends DataSource[Int, String]{
   override def name = "ToString"
 
-  override def fetchOne(id: Int): Query[Option[String]] = {
-    Query.sync {
+  override def fetch(id: Int): IO[Option[String]] = {
+    IO {
       println(s"[${Thread.currentThread.getId}] One ToString $id")
       Option(id.toString)
     }
   }
-  override def fetchMany(ids: NonEmptyList[Int]): Query[Map[Int, String]] = {
-    Query.sync {
-      println(s"[${Thread.currentThread.getId}] Many ToString $ids")
+  override def batch(ids: NonEmptyList[Int]): IO[Map[Int, String]] = {
+    IO {
+      println(s"[${Thread.currentThread.getId}] Batch ToString $ids")
       ids.toList.map(i => (i, i.toString)).toMap
     }
   }
@@ -99,21 +114,10 @@ Now that we can convert `Int` values to `Fetch[String]`, let's try creating a fe
 val fetchOne: Fetch[String] = fetchString(1)
 ```
 
-We'll run our fetches to the ambient `Id` monad in our examples, let's do some imports.
-
-```tut:silent
-import cats.Id
-import fetch.unsafe.implicits._
-import fetch.syntax._
-```
-
-Note that in real-life scenarios you'll want to run a fetch to a concurrency monad, synchronous execution of a fetch
-is only supported in Scala and not Scala.js and is meant for experimentation purposes.
-
 Let's run it and wait for the fetch to complete:
 
 ```tut:book
-fetchOne.runA[Id]
+Fetch.run(fetchOne).unsafeRunSync
 ```
 
 As you can see in the previous example, the `ToStringSource` is queried once to get the value of 1.
@@ -131,29 +135,29 @@ val fetchThree: Fetch[(String, String, String)] = (fetchString(1), fetchString(2
 When executing the above fetch, note how the three identities get batched and the data source is only queried once.
 
 ```tut:book
-fetchThree.runA[Id]
+Fetch.run(fetchThree).unsafeRunSync
 ```
 
 ## Parallelism
 
 If we combine two independent fetches from different data sources, the fetches can be run in parallel. First, let's add a data source that fetches a string's size.
 
-This time, instead of creating the results with `Query#sync` we are going to do it with `Query#async` for emulating an asynchronous data source.
+This time, instead of creating the results with `IO#apply` we are going to do it with `IO#async` for emulating an asynchronous data source.
 
 ```tut:silent
 implicit object LengthSource extends DataSource[String, Int]{
   override def name = "Length"
 
-  override def fetchOne(id: String): Query[Option[Int]] = {
-    Query.async((ok, fail) => {
+  override def fetch(id: String): IO[Option[Int]] = {
+    IO.async((cb) => {
       println(s"[${Thread.currentThread.getId}] One Length $id")
-      ok((Option(id.size)))
+      cb(Right(Option(id.size)))
     })
   }
-  override def fetchMany(ids: NonEmptyList[String]): Query[Map[String, Int]] = {
-    Query.async((ok, fail) => {
+  override def batch(ids: NonEmptyList[String]): IO[Map[String, Int]] = {
+    IO.async((cb) => {
       println(s"[${Thread.currentThread.getId}] Many Length $ids")
-      ok(ids.toList.map(i => (i, i.size)).toMap)
+      cb(Right(ids.toList.map(i => (i, i.size)).toMap))
     })
   }
 }
@@ -170,7 +174,7 @@ val fetchMulti: Fetch[(String, Int)] = (fetchString(1), fetchLength("one")).tupl
 Note how the two independent data fetches run in parallel, minimizing the latency cost of querying the two data sources.
 
 ```tut:book
-fetchMulti.runA[Id]
+Fetch.run(fetchMulti).unsafeRunSync
 ```
 
 ## Caching
@@ -178,6 +182,8 @@ fetchMulti.runA[Id]
 When fetching an identity, subsequent fetches for the same identity are cached. Let's try creating a fetch that asks for the same identity twice.
 
 ```tut:silent
+import cats.syntax.all._
+
 val fetchTwice: Fetch[(String, String)] = for {
   one <- fetchString(1)
   two <- fetchString(1)
@@ -187,7 +193,7 @@ val fetchTwice: Fetch[(String, String)] = for {
 While running it, notice that the data source is only queried once. The next time the identity is requested it's served from the cache.
 
 ```tut:book
-fetchTwice.runA[Id]
+Fetch.run(fetchTwice).unsafeRunSync
 ```
 
 ---
