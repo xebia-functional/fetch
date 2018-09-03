@@ -28,8 +28,8 @@ object TestHelper {
   implicit object OneSource extends DataSource[One, Int] {
     override def name = "OneSource"
 
-    override def fetch[F[_] : ConcurrentEffect](id: One): F[Option[Int]] =
-      ConcurrentEffect[F].delay(Option(id.id))
+    override def fetch(id: One): IO[Option[Int]] =
+      IO(Option(id.id))
   }
 
   def one(id: Int)(
@@ -40,8 +40,8 @@ object TestHelper {
   implicit object ManySource extends DataSource[Many, List[Int]] {
     override def name = "ManySource"
 
-    override def fetch[F[_] : ConcurrentEffect](id: Many): F[Option[List[Int]]] =
-      ConcurrentEffect[F].delay(Option(0 until id.n toList))
+    override def fetch(id: Many): IO[Option[List[Int]]] =
+      IO(Option(0 until id.n toList))
   }
   def many(id: Int)(
     implicit C: Concurrent[IO]
@@ -51,8 +51,8 @@ object TestHelper {
   implicit object AnotheroneSource extends DataSource[AnotherOne, Int] {
     override def name = "AnotherOneSource"
 
-    override def fetch[F[_] : ConcurrentEffect](id: AnotherOne): F[Option[Int]] =
-      ConcurrentEffect[F].delay(Option(id.id))
+    override def fetch(id: AnotherOne): IO[Option[Int]] =
+     IO(Option(id.id))
   }
 
   def anotherOne(id: Int)(
@@ -63,8 +63,8 @@ object TestHelper {
   implicit object NeverSource extends DataSource[Never, Int] {
     override def name = "NeverSource"
 
-    override def fetch[F[_] : ConcurrentEffect](id: Never): F[Option[Int]] =
-      ConcurrentEffect[F].delay(None : Option[Int])
+    override def fetch(id: Never): IO[Option[Int]] =
+      IO(None : Option[Int])
   }
 
   // Async DataSources
@@ -77,8 +77,8 @@ object TestHelper {
   implicit object ArticleAsync extends DataSource[ArticleId, Article] {
     override def name = "ArticleAsync"
 
-    override def fetch[F[_] : ConcurrentEffect](id: ArticleId): F[Option[Article]] =
-      ConcurrentEffect[F].async[Option[Article]]((cb) => {
+    override def fetch(id: ArticleId): IO[Option[Article]] =
+      IO.async[Option[Article]]((cb) => {
         cb(
           Right(
             Option(Article(id.id, "An article with id " + id.id))
@@ -97,8 +97,8 @@ object TestHelper {
   implicit object AuthorAsync extends DataSource[AuthorId, Author] {
     override def name = "AuthorAsync"
 
-    override def fetch[F[_] : ConcurrentEffect](id: AuthorId): F[Option[Author]] =
-      ConcurrentEffect[F].async((cb => {
+    override def fetch(id: AuthorId): IO[Option[Author]] =
+      IO.async((cb => {
         cb(
           Right(
             Option(Author(id.id, "@egg" + id.id))
