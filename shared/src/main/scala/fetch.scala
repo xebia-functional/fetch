@@ -375,7 +375,7 @@ object `package` {
         // Not cached, must fetch
         case None => for {
           startTime <- T.clock.realTime(MILLISECONDS)
-          o <- q.ds.fetch[IO](q.id)
+          o <- q.ds.fetch(q.id)
           endTime <- T.clock.realTime(MILLISECONDS)
           result <- o match {
             // Fetched
@@ -433,7 +433,7 @@ object `package` {
           request = Batch(uncached, q.ds)
 
           batchedRequest <- q.ds.maxBatchSize match {
-            case None => q.ds.batch[IO](uncached).map(BatchedRequest(List(request), _))
+            case None => q.ds.batch(uncached).map(BatchedRequest(List(request), _))
             case Some(n) => q.ds.batchExecution match {
               case Sequential => {
                 val batches: NonEmptyList[NonEmptyList[Any]] = NonEmptyList.fromListUnsafe(
@@ -447,7 +447,7 @@ object `package` {
                   Map.empty[Any, Any]
                 )({
                   case (acc, v) =>
-                    q.ds.batch[IO](v) >>= { (m: Map[Any, Any]) => IO(acc ++ m) }
+                    q.ds.batch(v) >>= { (m: Map[Any, Any]) => IO(acc ++ m) }
                 }).map(BatchedRequest(reqs, _))
               }
               case Parallel =>  {
@@ -459,7 +459,7 @@ object `package` {
                 val reqs = batches.toList.map(Batch[Any, Any](_, q.ds))
 
                 batches.traverse(
-                  q.ds.batch[IO](_)
+                  q.ds.batch(_)
                 ).map(_.toList.reduce(_ ++ _)).map(BatchedRequest(reqs, _))
               }
             }

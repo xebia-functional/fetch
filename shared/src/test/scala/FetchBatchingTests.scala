@@ -35,8 +35,8 @@ class FetchBatchingTests extends FreeSpec with Matchers {
   implicit object MaxBatchSourceSeq extends DataSource[BatchedDataSeq, Int] {
     override def name = "BatchSourceSeq"
 
-    override def fetch[F[_] : ConcurrentEffect](id: BatchedDataSeq): F[Option[Int]] =
-      ConcurrentEffect[F].delay(Some(id.id))
+    override def fetch(id: BatchedDataSeq): IO[Option[Int]] =
+      IO(Some(id.id))
 
     override val maxBatchSize = Some(2)
 
@@ -47,8 +47,8 @@ class FetchBatchingTests extends FreeSpec with Matchers {
   implicit object MaxBatchSourcePar extends DataSource[BatchedDataPar, Int] {
     override def name = "BatchSourcePar"
 
-    override def fetch[F[_] : ConcurrentEffect](id: BatchedDataPar): F[Option[Int]] =
-      ConcurrentEffect[F].delay(Some(id.id))
+    override def fetch(id: BatchedDataPar): IO[Option[Int]] =
+      IO(Some(id.id))
 
     override val maxBatchSize = Some(2)
 
