@@ -275,12 +275,12 @@ class FetchTests extends FreeSpec with Matchers {
     val aFetch = for {
       a <- one(1)  // round 1
       b <- many(1) // round 2
-      c <- one(1)  // round 3
+      c <- one(1)
     } yield c
     val anotherFetch = for {
       a <- one(2)  // round 1
       m <- many(2) // round 2
-      c <- one(2)  // round 3
+      c <- one(2)
     } yield c
 
     val fetch = (
@@ -297,21 +297,21 @@ class FetchTests extends FreeSpec with Matchers {
     val (env, result) = io.unsafeRunSync
 
     result shouldEqual ((1, 2), 3)
-    env.rounds.size shouldEqual 3
-    totalBatches(env.rounds) shouldEqual 3
-    totalFetched(env.rounds) shouldEqual 7
+    env.rounds.size shouldEqual 2
+    totalBatches(env.rounds) shouldEqual 2
+    totalFetched(env.rounds) shouldEqual 5
   }
 
   "Every level of joined concurrent fetches is combined and batched" in {
     val aFetch = for {
       a <- one(1)  // round 1
       b <- many(1) // round 2
-      c <- one(1)  // round 3
+      c <- one(1)
     } yield c
     val anotherFetch = for {
       a <- one(2)  // round 1
       m <- many(2) // round 2
-      c <- one(2)  // round 3
+      c <- one(2)
     } yield c
 
     val fetch = (aFetch |@| anotherFetch).tupled
@@ -320,9 +320,9 @@ class FetchTests extends FreeSpec with Matchers {
     val (env, result) = io.unsafeRunSync
 
     result shouldEqual (1, 2)
-    env.rounds.size shouldEqual 3
-    totalBatches(env.rounds) shouldEqual 3
-    totalFetched(env.rounds) shouldEqual 6
+    env.rounds.size shouldEqual 2
+    totalBatches(env.rounds) shouldEqual 2
+    totalFetched(env.rounds) shouldEqual 4
   }
 
   "Every level of sequenced concurrent fetches is batched" in {
@@ -496,6 +496,29 @@ class FetchTests extends FreeSpec with Matchers {
     totalFetched(env.rounds) shouldEqual 3
   }
 
+  "Batched elements are cached and thus not fetched more than once" in {
+    import cats.instances.list._
+    import cats.syntax.all._
+
+    val fetch = for {
+      _          <- List(1, 2, 3).traverse(one)
+      aOne       <- one(1)
+      anotherOne <- one(1)
+      _          <- one(1)
+      _          <- one(2)
+      _          <- one(3)
+      _          <- one(1)
+      _          <- one(1)
+    } yield aOne + anotherOne
+
+    val io = Fetch.runEnv(fetch)
+    val (env, result) = io.unsafeRunSync
+
+    result shouldEqual 2
+    env.rounds.size shouldEqual 1
+    totalFetched(env.rounds) shouldEqual 3
+  }
+
   "Elements that are cached won't be fetched" in {
     import cats.instances.list._
     import cats.syntax.all._
@@ -586,7 +609,7 @@ class FetchTests extends FreeSpec with Matchers {
 
     io.attempt
       .map(_ should matchPattern {
-        case Left(MissingIdentity(Never())) =>
+        case Left(MissingIdentity(Never(), _)) =>
       })
       .unsafeRunSync
   }
@@ -661,7 +684,7 @@ class FetchTests extends FreeSpec with Matchers {
 
     io.attempt
       .map(_ should matchPattern {
-        case Left(MissingIdentity(Never())) =>
+        case Left(MissingIdentity(Never(), _)) =>
       }).unsafeRunSync
   }
 
@@ -672,7 +695,7 @@ class FetchTests extends FreeSpec with Matchers {
 
     io.attempt
       .map(_ should matchPattern {
-        case Left(MissingIdentity(Never())) =>
+        case Left(MissingIdentity(Never(), _)) =>
       }).unsafeRunSync
   }
 }

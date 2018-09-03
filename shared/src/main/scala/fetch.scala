@@ -497,10 +497,14 @@ object `package` {
               }
             }
           }
-          // TODO: update cache
 
           endTime <- T.clock.realTime(MILLISECONDS)
           resultMap = batchedRequest.results ++ cachedResults
+
+          updatedCache <- batchedRequest.results.toList.foldLeftM(c)({
+            case (c, (i, v)) => c.insert(i, q.ds, v)
+          })
+          _ <- cache.modify((c) => (updatedCache, c))
           result <- putResult(FetchDone[Map[Any, Any]](resultMap))
         } yield batchedRequest.batches.map(Request(_, startTime, endTime))
       }

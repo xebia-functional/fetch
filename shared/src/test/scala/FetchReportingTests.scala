@@ -104,12 +104,12 @@ class FetchReportingTests extends FreeSpec with Matchers {
     val aFetch = for {
       a <- one(1)  // round 1
       b <- one(2)  // round 2
-      c <- one(3)  // round 3
+      c <- one(3)
     } yield c
     val anotherFetch = for {
       a <- one(2)  // round 1
       m <- many(4) // round 2
-      c <- one(3)  // round 3
+      c <- one(3)
     } yield c
     val fetch = (
       (
@@ -121,6 +121,6 @@ class FetchReportingTests extends FreeSpec with Matchers {
 
     val io = Fetch.runEnv(fetch)
     val (env, result) = io.unsafeRunSync
-    env.rounds.size shouldEqual 3
+    env.rounds.size shouldEqual 2
   }
 }
