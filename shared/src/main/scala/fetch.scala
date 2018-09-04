@@ -394,8 +394,8 @@ object `package` {
           result <- o match {
             // Fetched
             case Some(a) => for {
-              newC <- c.insert(q.id, q.ds, a)
-              _ <- cache.modify((c) => (newC, c))
+              newC <- c.insert(q.id, a, q.ds)
+              _ <- cache.set(newC)
               result <- putResult(FetchDone[Any](a))
             } yield List(Request(q, startTime, endTime))
 
@@ -461,10 +461,8 @@ object `package` {
           endTime <- T.clock.realTime(MILLISECONDS)
           resultMap = combineBatchResults(batchedRequest.results, cachedResults)
 
-          updatedCache <- batchedRequest.results.toList.foldLeftM(c)({
-            case (c, (i, v)) => c.insert(i, request.ds, v)
-          })
-          _ <- cache.modify((c) => (updatedCache, c))
+          updatedCache <- c.insertMany(batchedRequest.results, request.ds)
+          _ <- cache.set(updatedCache)
           result <- putResult(FetchDone[Map[Any, Any]](resultMap))
         } yield batchedRequest.batches.map(Request(_, startTime, endTime))
       }

@@ -472,7 +472,7 @@ class FetchTests extends FreeSpec with Matchers {
   }
 
   case class ForgetfulCache() extends DataSourceCache {
-    def insert[I, A](i: I, ds: DataSource[I, A], v: A): IO[ForgetfulCache] = IO(this)
+    def insert[I, A](i: I, v: A, ds: DataSource[I, A]): IO[ForgetfulCache] = IO(this)
     def lookup[I, A](i: I, ds: DataSource[I, A]): IO[Option[A]] = IO(None)
   }
 
