@@ -604,7 +604,7 @@ class FetchTests extends FreeSpec with Matchers {
   // Errors
 
   "Data sources with errors throw fetch failures" in {
-    val fetch: Fetch[Int] = Fetch(Never())
+    val fetch: Fetch[Int] = never
     val io                = Fetch.run(fetch)
 
     io.attempt
@@ -615,7 +615,7 @@ class FetchTests extends FreeSpec with Matchers {
   }
 
   "Data sources with errors throw fetch failures that can be handled" in {
-    val fetch: Fetch[Int] = Fetch(Never())
+    val fetch: Fetch[Int] = never
     val io                = Fetch.run(fetch)
 
     io.handleErrorWith(err => IO(42))
@@ -623,7 +623,7 @@ class FetchTests extends FreeSpec with Matchers {
   }
 
   "Data sources with errors won't fail if they're cached" in {
-    val fetch: Fetch[Int] = Fetch(Never())
+    val fetch: Fetch[Int] = never
 
     val cache = InMemoryCache.from(
       (NeverSource.name, Never()) -> 1
@@ -678,7 +678,7 @@ class FetchTests extends FreeSpec with Matchers {
   }
 
   "If there is a missing identity in the left hand of a product the product will fail" in {
-    val fetch: Fetch[(Int, List[Int])] = (Fetch(Never()) |@| many(3)).tupled
+    val fetch: Fetch[(Int, List[Int])] = (never |@| many(3)).tupled
 
     val io = Fetch.run(fetch)
 
@@ -689,7 +689,7 @@ class FetchTests extends FreeSpec with Matchers {
   }
 
   "If there is a missing identity in the right hand of a product the product will fail" in {
-    val fetch: Fetch[(List[Int], Int)] = (many(3) |@| Fetch(Never())).tupled
+    val fetch: Fetch[(List[Int], Int)] = (many(3) |@| never).tupled
 
     val io = Fetch.run(fetch)
 
