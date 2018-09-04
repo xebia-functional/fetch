@@ -17,6 +17,8 @@
 package fetch
 
 import cats.effect._
+import cats.instances.list._
+import cats.syntax.all._
 
 final class DataSourceName(val name: String) extends AnyVal
 final class DataSourceId(val id: Any) extends AnyVal
@@ -27,7 +29,11 @@ final class DataSourceResult(val result: Any) extends AnyVal
  */
 trait DataSourceCache {
   def lookup[I, A](i: I, ds: DataSource[I, A]): IO[Option[A]]
-  def insert[I, A](i: I, ds: DataSource[I, A], v: A): IO[DataSourceCache]
+  def insert[I, A](i: I, v: A, ds: DataSource[I, A]): IO[DataSourceCache]
+  def insertMany[I, A](vs: Map[I, A], ds: DataSource[I, A]): IO[DataSourceCache] =
+    vs.toList.foldLeftM(this)({
+      case (c, (i, v)) => c.insert(i, v, ds)
+    })
 }
 
 /**
@@ -37,7 +43,7 @@ case class InMemoryCache(state: Map[(DataSourceName, DataSourceId), DataSourceRe
   def lookup[I, A](i: I, ds: DataSource[I, A]): IO[Option[A]] =
     IO.pure(state.get((new DataSourceName(ds.name), new DataSourceId(i))).map(_.result.asInstanceOf[A]))
 
-  def insert[I, A](i: I, ds: DataSource[I, A], v: A): IO[DataSourceCache] =
+  def insert[I, A](i: I, v: A, ds: DataSource[I, A]): IO[DataSourceCache] =
     IO.pure(copy(state = state.updated((new DataSourceName(ds.name), new DataSourceId(i)), new DataSourceResult(v))))
 }
 
