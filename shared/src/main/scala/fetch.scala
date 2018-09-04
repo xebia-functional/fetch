@@ -22,7 +22,7 @@ import scala.util.control.NoStackTrace
 import scala.concurrent.duration.MILLISECONDS
 
 import cats._
-import cats.data.{NonEmptyList, NonEmptySet, StateT}
+import cats.data.NonEmptyList
 import cats.instances.list._
 import cats.effect._
 import cats.effect.concurrent.{Ref, Deferred}
@@ -158,7 +158,9 @@ object `package` {
   sealed trait Fetch[A] {
     def run: IO[FetchResult[A]]
   }
-  case class Unfetch[A](run: IO[FetchResult[A]]) extends Fetch[A]
+  case class Unfetch[A](
+    run: IO[FetchResult[A]]
+  ) extends Fetch[A]
 
   implicit val fetchM: Monad[Fetch] = new Monad[Fetch] {
     def pure[A](a: A): Fetch[A] =
@@ -228,9 +230,9 @@ object `package` {
         IO.pure(Done(a))
       )
 
-    def apply[I, A](id: I)(
-      implicit ds: DataSource[I, A],
-      CS: ContextShift[IO]
+    def apply[I, A](id: I, ds: DataSource[I, A])(
+      implicit
+        CS: ContextShift[IO]
     ): Fetch[A] = {
       val request = FetchOne(id, ds)
       Unfetch(
@@ -255,28 +257,6 @@ object `package` {
 
     def error[A](e: Throwable): Fetch[A] =
       Unfetch(IO.raiseError(UnhandledException(e)))
-
-    // def optional[I, A](id: I)(
-    //   implicit ds: DataSource[I, A],
-    //   C: Concurrent[IO]
-    // ): Fetch[Option[A]] = {
-    //   val request = FetchOne(id, ds)
-    //   Unfetch(
-    //     for {
-    //       df <- Deferred[IO, FetchStatus]
-    //       result = df.complete _
-    //       blocked = BlockedRequest(request, result)
-    //     } yield Blocked(RequestMap(Map(ds.asInstanceOf[DataSource[Any, Any]] -> blocked)), Unfetch(
-    //       for {
-    //         fetched <- df.get
-    //         value <- fetched match {
-    //           case FetchDone(a) => IO(Done(Some(a)).asInstanceOf[FetchResult[Option[A]]])
-    //           case FetchMissing() => IO(Done(None).asInstanceOf[FetchResult[Option[A]]])
-    //         }
-    //       } yield value
-    //     ))
-    //   )
-    // }
 
     /**
       * Run a `Fetch`, the result in the `IO` monad.

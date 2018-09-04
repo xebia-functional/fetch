@@ -55,8 +55,8 @@ class FetchBatchingTests extends FreeSpec with Matchers {
     override val batchExecution = Parallel
   }
 
-  def fetchBatchedDataSeq(id: Int): Fetch[Int] = Fetch(BatchedDataSeq(id))
-  def fetchBatchedDataPar(id: Int): Fetch[Int] = Fetch(BatchedDataPar(id))
+  def fetchBatchedDataSeq(id: Int): Fetch[Int] = Fetch(BatchedDataSeq(id), MaxBatchSourceSeq)
+  def fetchBatchedDataPar(id: Int): Fetch[Int] = Fetch(BatchedDataPar(id), MaxBatchSourcePar)
 
   "A large fetch to a datasource with a maximum batch size is split and executed in sequence" in {
     val fetch: Fetch[List[Int]] = List.range(1, 6).traverse(fetchBatchedDataSeq)

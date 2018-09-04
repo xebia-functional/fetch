@@ -34,7 +34,7 @@ object TestHelper {
 
   def one(id: Int)(
     implicit C: ContextShift[IO]
-  ): Fetch[Int] = Fetch(One(id))
+  ): Fetch[Int] = Fetch(One(id), OneSource)
 
   case class Many(n: Int)
   implicit object ManySource extends DataSource[Many, List[Int]] {
@@ -45,7 +45,7 @@ object TestHelper {
   }
   def many(id: Int)(
     implicit C: ContextShift[IO]
-  ): Fetch[List[Int]] = Fetch(Many(id))
+  ): Fetch[List[Int]] = Fetch(Many(id), ManySource)
 
   case class AnotherOne(id: Int)
   implicit object AnotheroneSource extends DataSource[AnotherOne, Int] {
@@ -57,7 +57,7 @@ object TestHelper {
 
   def anotherOne(id: Int)(
     implicit C: ContextShift[IO]
-  ): Fetch[Int] = Fetch(AnotherOne(id))
+  ): Fetch[Int] = Fetch(AnotherOne(id), AnotheroneSource)
 
   case class Never()
   implicit object NeverSource extends DataSource[Never, Int] {
@@ -66,6 +66,10 @@ object TestHelper {
     override def fetch(id: Never): IO[Option[Int]] =
       IO(None : Option[Int])
   }
+
+  def never(
+    implicit C: ContextShift[IO]
+  ): Fetch[Int] = Fetch(Never(), NeverSource)
 
   // Async DataSources
 
@@ -89,7 +93,7 @@ object TestHelper {
 
   def article(id: Int)(
     implicit C: ContextShift[IO]
-  ): Fetch[Article] = Fetch(ArticleId(id))
+  ): Fetch[Article] = Fetch(ArticleId(id), ArticleAsync)
 
   case class AuthorId(id: Int)
   case class Author(id: Int, name: String)
@@ -109,7 +113,7 @@ object TestHelper {
 
   def author(a: Article)(
     implicit C: ContextShift[IO]
-  ): Fetch[Author] = Fetch(AuthorId(a.author))
+  ): Fetch[Author] = Fetch(AuthorId(a.author), AuthorAsync)
 
   // Check Env
 
