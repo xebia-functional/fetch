@@ -66,8 +66,6 @@ class FetchReportingTests extends FreeSpec with Matchers {
   }
 
   "Single fetches combined with cartesian are run in one round" in {
-    import cats.syntax.apply._
-
     val fetch: Fetch[(Int, List[Int])] = (one(1), many(3)).tupled
 
     val io = Fetch.runEnv(fetch)
@@ -76,8 +74,6 @@ class FetchReportingTests extends FreeSpec with Matchers {
   }
 
   "Single fetches combined with traverse are run in one round" in {
-    import cats.syntax.traverse._
-
     val fetch: Fetch[List[Int]] = for {
       manies <- many(3)              // round 1
       ones   <- manies.traverse(one) // round 2
@@ -89,8 +85,6 @@ class FetchReportingTests extends FreeSpec with Matchers {
   }
 
   "The product of two fetches from the same data source implies batching" in {
-    import cats.syntax.apply._
-
     val fetch: Fetch[(Int, Int)] = (one(1), one(3)).tupled
 
     val io = Fetch.runEnv(fetch)
@@ -99,8 +93,6 @@ class FetchReportingTests extends FreeSpec with Matchers {
   }
 
   "The product of concurrent fetches of the same type implies everything fetched in batches" in {
-    import cats.syntax.apply._
-
     val aFetch = for {
       a <- one(1)  // round 1
       b <- one(2)  // round 2

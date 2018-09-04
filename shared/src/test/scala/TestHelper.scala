@@ -16,8 +16,7 @@
 
 package fetch
 
-import cats.effect._
-import cats.implicits._
+import cats.effect.{ IO, ContextShift }
 import cats.data.NonEmptyList
 
 object TestHelper {
