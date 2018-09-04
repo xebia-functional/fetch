@@ -93,6 +93,10 @@ a map from identities to results. Accepting a list of identities gives Fetch the
 the same data source, and returning a mapping from identities to results, Fetch can detect whenever an identity
 couldn't be fetched or no longer exists.
 
+## A note on IO
+
+TODO: ContextShift, Timer
+
 ## Writing your first data source
 
 Now that we know about the `DataSource` typeclass, let's write our first data source! We'll start by implementing a data
