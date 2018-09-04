@@ -62,8 +62,7 @@ trait DataSource[Identity, Result]{
 }
 ```
 
-Note that when we create a query we can compute its result right away, defer its evaluation or make it asynchronous. Returning `Query` instances from the fetch methods allows us to abstract from the target result type and to run it synchronously or asynchronously.
-
+Returning `IO` instances from the fetch methods allows us to specify if the fetch must run synchronously or asynchronously and use all the goodies available in `cats` and `cats-effect`.
 
 We'll implement a dummy data source that can convert integers to strings. For convenience, we define a `fetchString` function that lifts identities (`Int` in our dummy data source) to a `Fetch`.
 
@@ -90,20 +89,21 @@ implicit object ToStringSource extends DataSource[Int, String]{
   override def name = "ToString"
 
   override def fetch(id: Int): IO[Option[String]] = {
-    IO {
-      println(s"[${Thread.currentThread.getId}] One ToString $id")
-      Option(id.toString)
-    }
+    IO(println(s"--> [${Thread.currentThread.getId}] One ToString $id")) >>
+    IO.sleep(10.milliseconds) >>
+    IO(println(s"<-- [${Thread.currentThread.getId}] One ToString $id")) >>
+    IO(Option(id.toString))
   }
+
   override def batch(ids: NonEmptyList[Int]): IO[Map[Int, String]] = {
-    IO {
-      println(s"[${Thread.currentThread.getId}] Batch ToString $ids")
-      ids.toList.map(i => (i, i.toString)).toMap
-    }
+    IO(println(s"--> [${Thread.currentThread.getId}] Batch ToString $ids")) >>
+    IO.sleep(10.milliseconds) >>
+    IO(println(s"<-- [${Thread.currentThread.getId}] Batch ToString $ids")) >>
+    IO(ids.toList.map(i => (i, i.toString)).toMap)
   }
 }
 
-def fetchString(n: Int): Fetch[String] = Fetch(n) // or, more explicitly: Fetch(n)(ToStringSource)
+def fetchString(n: Int): Fetch[String] = Fetch(n, ToStringSource)
 ```
 
 ## Creating and running a fetch

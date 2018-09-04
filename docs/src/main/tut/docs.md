@@ -155,7 +155,7 @@ Now that we have a data source we can write a function for fetching users
 given an id, we just have to pass a `UserId` as an argument to `Fetch`.
 
 ```tut:silent
-def getUser(id: UserId): Fetch[User] = Fetch(id) // or, more explicitly: Fetch(id)(UserSource)
+def getUser(id: UserId): Fetch[User] = Fetch(id, UserSource)
 ```
 
 ### TODO Data sources that don't support batching
@@ -316,13 +316,7 @@ implicit object PostSource extends DataSource[PostId, Post]{
     latency(postDatabase.filterKeys(ids.toList.toSet), s"Batch Posts $ids")
 }
 
-def getPost(id: PostId): Fetch[Post] = Fetch(id)
-```
-
-We can also implement a function for fetching a post's author given a post:
-
-```tut:silent
-def getAuthor(p: Post): Fetch[User] = Fetch(p.author)
+def getPost(id: PostId): Fetch[Post] = Fetch(id, PostSource)
 ```
 
 Apart from posts, we are going to add another data source: one for post topics.
@@ -348,7 +342,7 @@ implicit object PostTopicSource extends DataSource[Post, PostTopic]{
   }
 }
 
-def getPostTopic(post: Post): Fetch[PostTopic] = Fetch(post)
+def getPostTopic(post: Post): Fetch[PostTopic] = Fetch(post, PostTopicSource)
 ```
 
 Now that we have multiple sources let's mix them in the same fetch.
@@ -538,7 +532,7 @@ implicit object BatchedUserSource extends DataSource[UserId, User]{
     latency(userDatabase.filterKeys(ids.toList.toSet), s"Batch Users $ids")
 }
 
-def getBatchedUser(id: Int): Fetch[User] = Fetch(id)(BatchedUserSource, cs)
+def getBatchedUser(id: Int): Fetch[User] = Fetch(id, BatchedUserSource)
 ```
 
 We have defined the maximum batch size to be 2, let's see what happens when running a fetch that needs more
@@ -570,7 +564,7 @@ implicit object SequentialUserSource extends DataSource[UserId, User]{
     latency(userDatabase.filterKeys(ids.toList.toSet), s"Batch Users $ids")
 }
 
-def getSequentialUser(id: Int): Fetch[User] = Fetch(id)(SequentialUserSource, cs)
+def getSequentialUser(id: Int): Fetch[User] = Fetch(id, SequentialUserSource)
 ```
 
 We have defined the maximum batch size to be 2 and the batch execution to be sequential, let's see what happens when running a fetch that needs more than one batch:
