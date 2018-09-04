@@ -48,7 +48,7 @@ class FetchAsyncQueryTests extends FreeSpec with Matchers {
 
   "We can use combinators in a for comprehension and interpret a fetch from async sources into an IO" in {
     val fetch: Fetch[List[Article]] = for {
-      articles <-List(1, 1, 2).traverse(article)
+      articles <- List(1, 1, 2).traverse(article)
     } yield articles
 
     val io = Fetch.run(fetch)

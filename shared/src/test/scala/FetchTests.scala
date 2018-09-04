@@ -18,17 +18,17 @@ package fetch
 
 import org.scalatest.{FreeSpec, Matchers}
 
-import cats._
-import cats.implicits._
-import cats.effect._
-import cats.data.NonEmptyList
-import cats.instances.list._
-import cats.syntax.apply._
-
 import fetch._
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
+
+import cats._
+import cats.effect._
+import cats.instances.list._
+import cats.data.NonEmptyList
+import cats.syntax.cartesian._
+import cats.syntax.all._
 
 class FetchTests extends FreeSpec with Matchers {
   import TestHelper._
@@ -72,8 +72,6 @@ class FetchTests extends FreeSpec with Matchers {
   }
 
   "We can use Fetch as a cartesian" in {
-    import cats.syntax.all._
-
     val fetch: Fetch[(Int, List[Int])] = (one(1), many(3)).tupled
     val io                             = Fetch.run(fetch)
 
@@ -81,8 +79,6 @@ class FetchTests extends FreeSpec with Matchers {
   }
 
   "We can use Fetch as an applicative" in {
-    import cats.syntax.all._
-
     val fetch: Fetch[Int] = (one(1), one(2), one(3)).mapN(_ + _ + _)
     val io                = Fetch.run(fetch)
 
@@ -90,9 +86,6 @@ class FetchTests extends FreeSpec with Matchers {
   }
 
   "We can traverse over a list with a Fetch for each element" in {
-    import cats.instances.list._
-    import cats.syntax.all._
-
     val fetch: Fetch[List[Int]] = for {
       manies <- many(3)
       ones   <- manies.traverse(one)
@@ -114,9 +107,6 @@ class FetchTests extends FreeSpec with Matchers {
   }
 
   "We can collect a list of Fetch into one" in {
-    import cats.instances.list._
-    import cats.syntax.all._
-
     val sources: List[Fetch[Int]] = List(one(1), one(2), one(3))
     val fetch: Fetch[List[Int]]   = sources.sequence
     val io                        = Fetch.run(fetch)
@@ -125,9 +115,6 @@ class FetchTests extends FreeSpec with Matchers {
   }
 
   "We can collect a list of Fetches with heterogeneous sources" in {
-    import cats.instances.list._
-    import cats.syntax.all._
-
     val sources: List[Fetch[Int]] = List(one(1), one(2), one(3), anotherOne(4), anotherOne(5))
     val fetch: Fetch[List[Int]]   = sources.sequence
     val io                        = Fetch.run(fetch)
@@ -136,9 +123,6 @@ class FetchTests extends FreeSpec with Matchers {
   }
 
   "We can collect the results of a traversal" in {
-    import cats.instances.list._
-    import cats.syntax.all._
-
     val fetch = List(1, 2, 3).traverse(one)
     val io    = Fetch.run(fetch)
 
@@ -161,9 +145,6 @@ class FetchTests extends FreeSpec with Matchers {
   }
 
   "Traversals are implicitly batched" in {
-    import cats.instances.list._
-    import cats.syntax.all._
-
     val fetch: Fetch[List[Int]] = for {
       manies <- many(3)
       ones   <- manies.traverse(one)
@@ -177,9 +158,6 @@ class FetchTests extends FreeSpec with Matchers {
   }
 
   "Sequencing is implicitly batched" in {
-    import cats.instances.list._
-    import cats.syntax.all._
-
     val fetch: Fetch[List[Int]] = List(one(1), one(2), one(3)).sequence
     val io = Fetch.runEnv(fetch)
 
@@ -192,9 +170,6 @@ class FetchTests extends FreeSpec with Matchers {
   }
 
   "Identities are deduped when batched" in {
-    import cats.instances.list._
-    import cats.syntax.traverse._
-
     val manies = List(1, 1, 2)
     val fetch: Fetch[List[Int]] = for {
       ones <- manies.traverse(one)
@@ -212,9 +187,7 @@ class FetchTests extends FreeSpec with Matchers {
   }
 
   "The product of two fetches implies parallel fetching" in {
-    import cats.syntax.all._
-
-    val fetch: Fetch[(Int, List[Int])] = (one(1) |@| many(3)).tupled
+    val fetch: Fetch[(Int, List[Int])] = (one(1), many(3)).tupled
 
     val io = Fetch.runEnv(fetch)
     val (env, result) = io.unsafeRunSync
@@ -225,9 +198,7 @@ class FetchTests extends FreeSpec with Matchers {
   }
 
   "Concurrent fetching calls batches only when it can" in {
-    import cats.syntax.all._
-
-    val fetch: Fetch[(Int, List[Int])] = (one(1) |@| many(3)).tupled
+    val fetch: Fetch[(Int, List[Int])] = (one(1), many(3)).tupled
 
     val io = Fetch.runEnv(fetch)
     val (env, result) = io.unsafeRunSync
@@ -238,9 +209,7 @@ class FetchTests extends FreeSpec with Matchers {
   }
 
   "Concurrent fetching performs requests to multiple data sources in parallel" in {
-    import cats.syntax.all._
-
-    val fetch: Fetch[((Int, List[Int]), Int)] = ((one(1) |@| many(2)).tupled |@| anotherOne(3)).tupled
+    val fetch: Fetch[((Int, List[Int]), Int)] = ((one(1), many(2)).tupled, anotherOne(3)).tupled
 
     val io = Fetch.runEnv(fetch)
     val (env, result) = io.unsafeRunSync
@@ -251,15 +220,12 @@ class FetchTests extends FreeSpec with Matchers {
   }
 
   "The product of concurrent fetches implies everything fetched concurrently" in {
-    import cats.syntax.all._
-
     val fetch = (
       (
-        one(1) |@|
-        (one(2) |@| one(3)).tupled
-      ).tupled
-        |@|
-        one(4)
+        one(1),
+        (one(2), one(3)).tupled
+      ).tupled,
+      one(4)
     ).tupled
 
     val io = Fetch.runEnv(fetch)
@@ -284,12 +250,7 @@ class FetchTests extends FreeSpec with Matchers {
     } yield c
 
     val fetch = (
-      (
-        aFetch
-          |@|
-          anotherFetch
-      ).tupled
-        |@|
+      (aFetch, anotherFetch).tupled,
       one(3)       // round 1
     ).tupled
 
@@ -314,7 +275,7 @@ class FetchTests extends FreeSpec with Matchers {
       c <- one(2)
     } yield c
 
-    val fetch = (aFetch |@| anotherFetch).tupled
+    val fetch = (aFetch, anotherFetch).tupled
 
     val io = Fetch.runEnv(fetch)
     val (env, result) = io.unsafeRunSync
@@ -326,9 +287,6 @@ class FetchTests extends FreeSpec with Matchers {
   }
 
   "Every level of sequenced concurrent fetches is batched" in {
-    import cats.instances.list._
-    import cats.syntax.all._
-
     val aFetch =
       for {
         a <- List(2, 3, 4).traverse(one)   // round 1
@@ -344,13 +302,8 @@ class FetchTests extends FreeSpec with Matchers {
       } yield c
 
     val fetch = (
-       (
-         aFetch
-           |@|
-         anotherFetch
-      ).tupled
-        |@|
-        List(15, 16, 17).traverse(one)      // round 1
+       (aFetch, anotherFetch).tupled,
+       List(15, 16, 17).traverse(one)      // round 1
     ).tupled
 
     val io = Fetch.runEnv(fetch)
@@ -363,9 +316,7 @@ class FetchTests extends FreeSpec with Matchers {
   }
 
   "The product of two fetches from the same data source implies batching" in {
-    import cats.syntax.all._
-
-    val fetch: Fetch[(Int, Int)] = (one(1) |@| one(3)).tupled
+    val fetch: Fetch[(Int, Int)] = (one(1), one(3)).tupled
 
     val io = Fetch.runEnv(fetch)
     val (env, result) = io.unsafeRunSync
@@ -377,9 +328,6 @@ class FetchTests extends FreeSpec with Matchers {
   }
 
   "Sequenced fetches are run concurrently" in {
-    import cats.instances.list._
-    import cats.syntax.all._
-
     val sources: List[Fetch[Int]] = List(one(1), one(2), one(3), anotherOne(4), anotherOne(5))
     val fetch: Fetch[List[Int]]   = sources.sequence
 
@@ -392,9 +340,6 @@ class FetchTests extends FreeSpec with Matchers {
   }
 
   "Sequenced fetches are deduped" in {
-    import cats.instances.list._
-    import cats.syntax.all._
-
     val sources: List[Fetch[Int]] = List(one(1), one(2), one(1))
     val fetch: Fetch[List[Int]]   = sources.sequence
 
@@ -408,9 +353,6 @@ class FetchTests extends FreeSpec with Matchers {
   }
 
   "Traversals are batched" in {
-    import cats.instances.list._
-    import cats.syntax.traverse._
-
     val fetch = List(1, 2, 3).traverse(one)
 
     val io = Fetch.runEnv(fetch)
@@ -422,9 +364,6 @@ class FetchTests extends FreeSpec with Matchers {
   }
 
   "Duplicated sources are only fetched once" in {
-    import cats.instances.list._
-    import cats.syntax.traverse._
-
     val fetch = List(1, 2, 1).traverse(one)
 
     val io = Fetch.runEnv(fetch)
@@ -436,9 +375,6 @@ class FetchTests extends FreeSpec with Matchers {
   }
 
   "Sources that can be fetched concurrently inside a for comprehension will be" in {
-    import cats.instances.list._
-    import cats.syntax.traverse._
-
     val fetch = for {
       v      <- Fetch.pure(List(1, 2, 1))
       result <- v.traverse(one)
@@ -458,11 +394,7 @@ class FetchTests extends FreeSpec with Matchers {
       b <- one(3)
     } yield a + b
 
-    val fetch: Fetch[(Int, Int)] = (
-      one(1)
-       |@|
-      aFetch
-    ).tupled
+    val fetch: Fetch[(Int, Int)] = (one(1), aFetch).tupled
 
     val io = Fetch.runEnv(fetch)
     val (env, result) = io.unsafeRunSync
@@ -475,9 +407,6 @@ class FetchTests extends FreeSpec with Matchers {
   // Caching
 
   "Elements are cached and thus not fetched more than once" in {
-    import cats.instances.list._
-    import cats.syntax.all._
-
     val fetch = for {
       aOne       <- one(1)
       anotherOne <- one(1)
@@ -497,9 +426,6 @@ class FetchTests extends FreeSpec with Matchers {
   }
 
   "Batched elements are cached and thus not fetched more than once" in {
-    import cats.instances.list._
-    import cats.syntax.all._
-
     val fetch = for {
       _          <- List(1, 2, 3).traverse(one)
       aOne       <- one(1)
@@ -520,9 +446,6 @@ class FetchTests extends FreeSpec with Matchers {
   }
 
   "Elements that are cached won't be fetched" in {
-    import cats.instances.list._
-    import cats.syntax.all._
-
     val fetch = for {
       aOne       <- one(1)
       anotherOne <- one(1)
@@ -575,9 +498,6 @@ class FetchTests extends FreeSpec with Matchers {
   }
 
   "We can use a custom cache that discards elements together with concurrent fetches" in {
-    import cats.instances.list._
-    import cats.syntax.all._
-
     val fetch = for {
       aOne       <- one(1)
       anotherOne <- one(1)
@@ -598,8 +518,6 @@ class FetchTests extends FreeSpec with Matchers {
     env.rounds.size shouldEqual 8
     totalFetched(env.rounds) shouldEqual 10
   }
-
-  // TODO: optional fetches
 
   // Errors
 
@@ -645,8 +563,6 @@ class FetchTests extends FreeSpec with Matchers {
   }
 
   "We can lift handle and recover from errors in Fetch" in {
-    import cats.syntax.applicativeError._
-
     val fetch: Fetch[Int] = Fetch.error(AnException())
 
     val io = Fetch.run(fetch)
@@ -656,7 +572,8 @@ class FetchTests extends FreeSpec with Matchers {
   }
 
   "If a fetch fails in the left hand of a product the product will fail" in {
-    val fetch: Fetch[(Int, List[Int])] = (Fetch.error(AnException()) |@| many(3)).tupled
+    val error: Fetch[Int] = Fetch.error(AnException())
+    val fetch: Fetch[(Int, List[Int])] = (error, many(3)).tupled
 
     val io = Fetch.run(fetch)
 
@@ -667,7 +584,8 @@ class FetchTests extends FreeSpec with Matchers {
   }
 
   "If a fetch fails in the right hand of a product the product will fail" in {
-    val fetch: Fetch[(List[Int], Int)] = (many(3) |@| Fetch.error(AnException())).tupled
+    val error: Fetch[Int] = Fetch.error(AnException())
+    val fetch: Fetch[(List[Int], Int)] = (many(3), error).tupled
 
     val io = Fetch.run(fetch)
 
@@ -678,7 +596,7 @@ class FetchTests extends FreeSpec with Matchers {
   }
 
   "If there is a missing identity in the left hand of a product the product will fail" in {
-    val fetch: Fetch[(Int, List[Int])] = (never |@| many(3)).tupled
+    val fetch: Fetch[(Int, List[Int])] = (never,  many(3)).tupled
 
     val io = Fetch.run(fetch)
 
@@ -689,7 +607,7 @@ class FetchTests extends FreeSpec with Matchers {
   }
 
   "If there is a missing identity in the right hand of a product the product will fail" in {
-    val fetch: Fetch[(List[Int], Int)] = (many(3) |@| never).tupled
+    val fetch: Fetch[(List[Int], Int)] = (many(3),  never).tupled
 
     val io = Fetch.run(fetch)
 

@@ -22,11 +22,11 @@ import scala.util.control.NoStackTrace
 import scala.concurrent.duration.MILLISECONDS
 
 import cats._
-import cats.data.NonEmptyList
 import cats.instances.list._
 import cats.effect._
 import cats.effect.concurrent.{Ref, Deferred}
 import cats.syntax.all._
+import cats.data.NonEmptyList
 
 
 object `package` {
@@ -245,7 +245,7 @@ object `package` {
             fetched <- df.get
             value <- fetched match {
               case FetchDone(a) =>
-                IO(Done(a).asInstanceOf[FetchResult[A]])
+                IO.pure(Done(a).asInstanceOf[FetchResult[A]])
 
               case FetchMissing() =>
                 IO.raiseError(MissingIdentity(id, request))
@@ -337,16 +337,17 @@ object `package` {
       P: Parallel[IO, IO.Par]
     ): IO[Unit] = {
       val blocked = rs.m.toList.map(_._2)
-      if (blocked.isEmpty) IO(())
+      if (blocked.isEmpty) IO.unit
       else
         for {
-          blockeds <- IO(NonEmptyList.fromListUnsafe(blocked))
-          requests <- blockeds.parTraverse(runBlockedRequest(_, cache, env))
+          requests <- NonEmptyList.fromListUnsafe(blocked).parTraverse(
+            runBlockedRequest(_, cache, env)
+          )
           performedRequests = requests.foldLeft(List.empty[Request])(_ ++ _)
-          _ <- if (performedRequests.isEmpty) IO(())
+          _ <- if (performedRequests.isEmpty) IO.unit
           else env match {
             case Some(e) => e.modify((oldE) => (oldE.evolve(Round(performedRequests)), oldE))
-            case None => IO(())
+            case None => IO.unit
           }
         } yield ()
     }
@@ -383,7 +384,7 @@ object `package` {
       maybeCached <- c.lookup(q.id, q.ds)
       result <- maybeCached match {
         // Cached
-        case Some(v) => putResult(FetchDone(v)) >> IO(Nil)
+        case Some(v) => putResult(FetchDone(v)) >> IO.pure(Nil)
 
         // Not cached, must fetch
         case None => for {
@@ -399,7 +400,8 @@ object `package` {
             } yield List(Request(q, startTime, endTime))
 
             // Missing
-            case None => putResult(FetchMissing()) >> IO(List(Request(q, startTime, endTime)))
+            case None =>
+              putResult(FetchMissing()) >> IO.pure(List(Request(q, startTime, endTime)))
           }
         } yield result
       }
@@ -437,7 +439,7 @@ object `package` {
 
       result <- uncachedIds match {
         // All cached
-        case Nil => putResult(FetchDone[Map[Any, Any]](cachedResults)) >> IO(Nil)
+        case Nil => putResult(FetchDone[Map[Any, Any]](cachedResults)) >> IO.pure(Nil)
 
         // Some uncached
         case l@_ => for {
@@ -446,41 +448,21 @@ object `package` {
           uncached = NonEmptyList.fromListUnsafe(l)
           request = Batch(uncached, q.ds)
 
-          batchedRequest <- q.ds.maxBatchSize match {
-            case None => q.ds.batch(uncached).map(BatchedRequest(List(request), _))
-            case Some(n) => q.ds.batchExecution match {
-              case Sequential => {
-                val batches: NonEmptyList[NonEmptyList[Any]] = NonEmptyList.fromListUnsafe(
-                  q.ids.toList.grouped(n)
-                    .map(batchIds => NonEmptyList.fromListUnsafe(batchIds))
-                    .toList
-                )
-                val reqs = batches.toList.map(Batch[Any, Any](_, q.ds))
+          batchedRequest <- request.ds.maxBatchSize match {
+            // Unbatched
+            case None =>
+              request.ds.batch(uncached).map(BatchedRequest(List(request), _))
 
-                batches.traverse(
-                  q.ds.batch(_)
-                ).map(_.toList.reduce(_ ++ _)).map(BatchedRequest(reqs, _))
-              }
-              case Parallel =>  {
-                val batches: NonEmptyList[NonEmptyList[Any]] = NonEmptyList.fromListUnsafe(
-                  q.ids.toList.grouped(n)
-                    .map(batchIds => NonEmptyList.fromListUnsafe(batchIds))
-                    .toList
-                )
-                val reqs = batches.toList.map(Batch[Any, Any](_, q.ds))
-
-                batches.parTraverse(
-                  q.ds.batch(_)
-                ).map(_.toList.reduce(_ ++ _)).map(BatchedRequest(reqs, _))
-              }
-            }
+            // Batched
+            case Some(batchSize) =>
+              runBatchedRequest(request, batchSize, request.ds.batchExecution)
           }
 
           endTime <- T.clock.realTime(MILLISECONDS)
-          resultMap = batchedRequest.results ++ cachedResults
+          resultMap = combineBatchResults(batchedRequest.results, cachedResults)
 
           updatedCache <- batchedRequest.results.toList.foldLeftM(c)({
-            case (c, (i, v)) => c.insert(i, q.ds, v)
+            case (c, (i, v)) => c.insert(i, request.ds, v)
           })
           _ <- cache.modify((c) => (updatedCache, c))
           result <- putResult(FetchDone[Map[Any, Any]](resultMap))
@@ -488,4 +470,33 @@ object `package` {
       }
     } yield result
 
+  private def runBatchedRequest(
+    q: Batch[Any, Any],
+    batchSize: Int,
+    e: ExecutionType
+  )(
+    implicit
+      C: ConcurrentEffect[IO],
+    T: Timer[IO],
+    P: Parallel[IO, IO.Par]
+  ): IO[BatchedRequest] = {
+    val batches = NonEmptyList.fromListUnsafe(
+      q.ids.toList.grouped(batchSize)
+        .map(batchIds => NonEmptyList.fromListUnsafe(batchIds))
+        .toList
+    )
+    val reqs = batches.toList.map(Batch[Any, Any](_, q.ds))
+
+    val results = e match {
+      case Sequential =>
+        batches.traverse(q.ds.batch)
+      case Parallel =>
+        batches.parTraverse(q.ds.batch)
+    }
+
+    results.map(_.toList.reduce(combineBatchResults)).map(BatchedRequest(reqs, _))
+  }
+
+  private def combineBatchResults(r: Map[Any, Any], rs: Map[Any, Any]): Map[Any, Any] =
+    r ++ rs
 }
