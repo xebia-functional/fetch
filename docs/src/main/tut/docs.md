@@ -95,7 +95,20 @@ couldn't be fetched or no longer exists.
 
 ## A note on IO
 
-TODO: ContextShift, Timer
+Since `Fetch` relies on `IO` from the `cats-effect` library, we'll need a runtime for executing our `IO` instances. This includes a `ContextShift[IO]` used for running the `IO` instances and a `Timer[IO]` that is used for scheduling, let's go ahead and create them, we'll use a `java.util.concurrent.ScheduledThreadPoolExecutor` with a couple of threads to run our fetches.
+
+```tut:silent
+import cats.effect.{ IO, Timer, ContextShift }
+import java.util.concurrent._
+import scala.concurrent.ExecutionContext
+import scala.concurrent.duration._
+
+val executor = new ScheduledThreadPoolExecutor(2)
+val executionContext: ExecutionContext = ExecutionContext.fromExecutor(executor)
+
+implicit val timer: Timer[IO] = IO.timer(executionContext)
+implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
+```
 
 ## Writing your first data source
 
@@ -110,17 +123,7 @@ case class User(id: UserId, username: String)
 We'll simulate unpredictable latency with this function.
 
 ```tut:silent
-import cats.effect._
 import cats.syntax.all._
-
-import java.util.concurrent._
-import scala.concurrent.ExecutionContext
-import scala.concurrent.duration._
-
-val executor = new ScheduledThreadPoolExecutor(2)
-val executionContext: ExecutionContext = ExecutionContext.fromExecutor(executor)
-implicit val timer: Timer[IO] = IO.timer(executionContext)
-implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
 
 def latency[A](result: A, msg: String): IO[A] = for {
   _ <- IO(println(s"--> [${Thread.currentThread.getId}] $msg"))
@@ -134,7 +137,6 @@ And now we're ready to write our user data source; we'll emulate a database with
 ```tut:silent
 import cats.data.NonEmptyList
 import cats.instances.list._
-
 import fetch._
 
 val userDatabase: Map[UserId, User] = Map(
@@ -162,7 +164,7 @@ given an id, we just have to pass a `UserId` as an argument to `Fetch`.
 def getUser(id: UserId): Fetch[User] = Fetch(id, UserSource)
 ```
 
-### TODO Data sources that don't support batching
+### Data sources that don't support batching
 
 If your data source doesn't support batching, you can simply leave the `batch` method unimplemented. Note that it will use the `fetch` implementation for requesting identities one at a time.
 
@@ -175,9 +177,9 @@ implicit object UnbatchedSource extends DataSource[Int, Int]{
 }
 ```
 
-### TODO Data sources that only support batching
+### Data sources that only support batching
 
-If your data source only supports querying it in batches, you can implement `fetch` in terms of `fetchMany` using `DataSource#batchingOnly`.
+If your data source only supports querying it in batches, you can implement `fetch` in terms of `batch`.
 
 ```tut:silent
 implicit object OnlyBatchedSource extends DataSource[Int, Int]{
@@ -212,7 +214,7 @@ Fetch.run(fetchUser)
 We can now run the `IO` and see its result:
 
 ```tut:book
-Fetch.run(fetchUser).unsafeRunSync
+Fetch.run(fetchUser).unsafeRunTimed(5.seconds)
 ```
 
 ### Sequencing
@@ -229,7 +231,7 @@ val fetchTwoUsers: Fetch[(User, User)] = for {
 When composing fetches with `flatMap` we are telling Fetch that the second one depends on the previous one, so it isn't able to make any optimizations. When running the above fetch, we will query the user data source in two rounds: one for the user with id 1 and another for the user with id 2.
 
 ```tut:book
-Fetch.run(fetchTwoUsers).unsafeRunSync
+Fetch.run(fetchTwoUsers).unsafeRunTimed(5.seconds)
 ```
 
 ### Batching
@@ -247,7 +249,7 @@ val fetchProduct: Fetch[(User, User)] = getUser(1).product(getUser(2))
 Note how both ids (1 and 2) are requested in a single query to the data source when executing the fetch.
 
 ```tut:book
-Fetch.run(fetchProduct).unsafeRunSync
+Fetch.run(fetchProduct).unsafeRunTimed(5.seconds)
 ```
 
 ### Deduplication
@@ -261,7 +263,7 @@ val fetchDuped: Fetch[(User, User)] = getUser(1).product(getUser(1))
 Note that when running the fetch, the identity 1 is only requested once even when it is needed by both fetches.
 
 ```tut:book
-Fetch.run(fetchDuped).unsafeRunSync
+Fetch.run(fetchDuped).unsafeRunTimed(5.seconds)
 ```
 
 ### Caching
@@ -281,7 +283,7 @@ val fetchCached: Fetch[(User, User)] = for {
 The above fetch asks for the same identity multiple times. Let's see what happens when executing it.
 
 ```tut:book
-Fetch.run(fetchCached).unsafeRunSync
+Fetch.run(fetchCached).unsafeRunTimed(5.seconds)
 ```
 
 As you can see, the `User` with id 1 was fetched only once in a single round-trip. The next
@@ -361,7 +363,7 @@ val fetchMulti: Fetch[(Post, PostTopic)] = for {
 We can now run the previous fetch, querying the posts data source first and the user data source afterwards.
 
 ```tut:book
-Fetch.run(fetchMulti).unsafeRunSync
+Fetch.run(fetchMulti).unsafeRunTimed(5.seconds)
 ```
 
 In the previous example, we fetched a post given its id and then fetched its topic. This
@@ -385,7 +387,7 @@ val fetchConcurrent: Fetch[(Post, User)] = getPost(1).product(getUser(2))
 The above example combines data from two different sources, and the library knows they are independent.
 
 ```tut:book
-Fetch.run(fetchConcurrent).unsafeRunSync
+Fetch.run(fetchConcurrent).unsafeRunTimed(5.seconds)
 ```
 
 ## Combinators
@@ -409,7 +411,7 @@ val fetchSequence: Fetch[List[User]] = List(getUser(1), getUser(2), getUser(3)).
 Since `sequence` uses applicative operations internally, the library is able to perform optimizations across all the sequenced fetches.
 
 ```tut:book
-Fetch.run(fetchSequence).unsafeRunSync
+Fetch.run(fetchSequence).unsafeRunTimed(5.seconds)
 ```
 
 As you can see, requests to the user data source were batched, thus fetching all the data in one round.
@@ -425,7 +427,7 @@ val fetchTraverse: Fetch[List[User]] = List(1, 2, 3).traverse(getUser)
 As you may have guessed, all the optimizations made by `sequence` still apply when using `traverse`.
 
 ```tut:book
-Fetch.run(fetchTraverse).unsafeRunSync
+Fetch.run(fetchTraverse).unsafeRunTimed(5.seconds)
 ```
 
 # Caching
@@ -439,7 +441,7 @@ one, and even implement a custom cache.
 We'll be using the default in-memory cache, prepopulated with some data. The cache key of an identity
 is calculated with the `DataSource`'s `name` method and the request identity.
 
-```tut:book
+```tut:silent
 val cache = InMemoryCache.from(
  (UserSource.name, 1) -> User(1, "@dialelo")
 )
@@ -448,7 +450,7 @@ val cache = InMemoryCache.from(
 We can pass a cache as the second argument when running a fetch with `Fetch.run`.
 
 ```tut:book
-Fetch.run(fetchUser, cache).unsafeRunSync
+Fetch.run(fetchUser, cache).unsafeRunTimed(5.seconds)
 ```
 
 As you can see, when all the data is cached, no query to the data sources is executed since the results are available
@@ -461,23 +463,20 @@ val fetchManyUsers: Fetch[List[User]] = List(1, 2, 3).traverse(getUser)
 If only part of the data is cached, the cached data won't be asked for:
 
 ```tut:book
-Fetch.run(fetchManyUsers, cache).unsafeRunSync
+Fetch.run(fetchManyUsers, cache).unsafeRunTimed(5.seconds)
 ```
 
-## TODO Replaying a fetch without querying any data source
+## Replaying a fetch without querying any data source
 
-When running a fetch, we are generally interested in its final result. However, we also have access to the cache
-and information about the executed rounds once we run a fetch. Fetch's interpreter keeps its state in an environment
-(implementing the `Env` trait), and we can get both the environment and result after running a fetch using `Fetch.runFetch`
-instead of `Fetch.run` or `value.runF` via it's implicit syntax.
+When running a fetch, we are generally interested in its final result. However, we also have access to the cache once we run a fetch. We can get both the cache and the result using `Fetch.runCache` instead of `Fetch.run`.
 
 Knowing this, we can replay a fetch reusing the cache of a previous one. The replayed fetch won't have to call any of the
 data sources.
 
 ```tut:book
-val (cache, result) = Fetch.runCache(fetchManyUsers).unsafeRunSync
+val (populatedCache, result) = Fetch.runCache(fetchManyUsers).unsafeRunSync
 
-Fetch.run(fetchManyUsers, cache).unsafeRunSync
+Fetch.run(fetchManyUsers, populatedCache).unsafeRunTimed(5.seconds)
 ```
 
 ## Implementing a custom cache
@@ -497,7 +496,7 @@ Let's implement a cache that forgets everything we store in it.
 
 ```tut:silent
 final case class ForgetfulCache() extends DataSourceCache {
-  def insert[I, A](i: I, ds: DataSource[I, A], v: A): IO[ForgetfulCache] = IO(this)
+  def insert[I, A](i: I, v: A, ds: DataSource[I, A]): IO[ForgetfulCache] = IO(this)
   def lookup[I, A](i: I, ds: DataSource[I, A]): IO[Option[A]] = IO(None)
 }
 ```
@@ -510,7 +509,7 @@ val fetchSameTwice: Fetch[(User, User)] = for {
   another <- getUser(1)
 } yield (one, another)
 
-Fetch.run(fetchSameTwice, ForgetfulCache()).unsafeRunSync
+Fetch.run(fetchSameTwice, ForgetfulCache()).unsafeRunTimed(5.seconds)
 ```
 
 # Batching
@@ -542,11 +541,10 @@ def getBatchedUser(id: Int): Fetch[User] = Fetch(id, BatchedUserSource)
 We have defined the maximum batch size to be 2, let's see what happens when running a fetch that needs more
 than two users:
 
-
 ```tut:book
 val fetchManyBatchedUsers: Fetch[List[User]] = List(1, 2, 3, 4).traverse(getBatchedUser)
 
-Fetch.run(fetchManyBatchedUsers).unsafeRunSync
+Fetch.run(fetchManyBatchedUsers).unsafeRunTimed(5.seconds)
 ```
 
 ## Batch execution strategy
@@ -577,7 +575,7 @@ We have defined the maximum batch size to be 2 and the batch execution to be seq
 ```tut:book
 val fetchManySeqBatchedUsers: Fetch[List[User]] = List(1, 2, 3, 4).traverse(getSequentialUser)
 
-Fetch.run(fetchManySeqBatchedUsers).unsafeRunSync
+Fetch.run(fetchManySeqBatchedUsers).unsafeRunTimed(5.seconds)
 ```
 
 # Error handling
@@ -600,10 +598,10 @@ What happens if we run a fetch and fails with an exception? We'll create a fetch
 val fetchException: Fetch[User] = Fetch.error(new Exception("Oh noes"))
 ```
 
-If we try to execute to `IO` the exception will be thrown wrapped in a `FetchException`.
+If we try to execute to `IO` the exception will be thrown wrapped in a `fetch.UnhandledException`.
 
 ```tut:fail
-Fetch.run(fetchException).unsafeRunSync
+Fetch.run(fetchException).unsafeRunTimed(5.seconds)
 ```
 
 A safer version would use Cats' `.attempt` method:
@@ -611,7 +609,7 @@ A safer version would use Cats' `.attempt` method:
 ```tut:book
 import cats.syntax.applicativeError._
 
-Fetch.run(fetchException).attempt.unsafeRunSync
+Fetch.run(fetchException).attempt.unsafeRunTimed(5.seconds)
 ```
 
 ### Debugging exceptions
@@ -814,7 +812,7 @@ Note that using cats syntax gives you a plethora of combinators, much richer tha
 
 Plain values can be lifted to the Fetch monad with `Fetch#pure`:
 
-```tut:silent
+```scala
 val fetchPure: Fetch[Int] = Fetch.pure(42)
 ```
 
@@ -822,7 +820,7 @@ Executing a pure fetch doesn't query any data source, as expected.
 
 ```scala
 TODO
-Fetch.run[Id](fetchPure)
+// Fetch.run[Id](fetchPure)
 ```
 
 ### error
@@ -838,7 +836,7 @@ Note that interpreting an errorful fetch to `Id` will throw the exception.
 
 ```scala
 TODO
-Fetch.run[Id](fetchFail)
+// Fetch.run[Id](fetchFail)
 ```
 
 ### join
@@ -982,6 +980,10 @@ import fetch.debug.describe
 val env = interestingFetch.runE[Id]
 
 println(describe(env))
+```
+
+```tut:invisible
+executor.shutdownNow()
 ```
 
 Let's break down the output from `describe`:

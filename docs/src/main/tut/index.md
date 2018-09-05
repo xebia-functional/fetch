@@ -41,9 +41,25 @@ def println(msg: String): Unit = {
 Fetch is a library for making access to data both simple & efficient. Fetch is especially useful when querying data that
 has a latency cost, such as databases or web services.
 
+## Create a runtime
+
+Since `Fetch` relies on `IO` from the `cats-effect` library, we'll need a runtime for executing our `IO` instances. This includes a `ContextShift[IO]` used for running the `IO` instances and a `Timer[IO]` that is used for scheduling, let's go ahead and create them, we'll use a `java.util.concurrent.ScheduledThreadPoolExecutor` with a couple of threads to run our fetches.
+
+```tut:silent
+import java.util.concurrent._
+import scala.concurrent.ExecutionContext
+import cats.effect.{ IO, Timer, ContextShift }
+
+val executor = new ScheduledThreadPoolExecutor(2)
+val executionContext: ExecutionContext = ExecutionContext.fromExecutor(executor)
+
+implicit val timer: Timer[IO] = IO.timer(executionContext)
+implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
+```
+
 ## Define your data sources
 
-To tell Fetch how to get the data you want, you must implement the `DataSource` typeclass. Data sources have `fetchOne` and `fetchMany` methods that define how to fetch such a piece of data.
+To tell Fetch how to get the data you want, you must implement the `DataSource` typeclass. Data sources have `fetch` and `batch` methods that define how to fetch such a piece of data.
 
 Data Sources take two type parameters:
 
@@ -67,22 +83,10 @@ Returning `IO` instances from the fetch methods allows us to specify if the fetc
 We'll implement a dummy data source that can convert integers to strings. For convenience, we define a `fetchString` function that lifts identities (`Int` in our dummy data source) to a `Fetch`.
 
 ```tut:silent
-// TODO
-import cats.effect._
-import java.util.concurrent._
-import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
-
-val executor = new ScheduledThreadPoolExecutor(4)
-val executionContext: ExecutionContext = ExecutionContext.fromExecutor(executor)
-implicit val timer: Timer[IO] = IO.timer(executionContext)
-implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
-```
-
-```tut:silent
 import cats.data.NonEmptyList
 import cats.instances.list._
-import cats.effect.IO
+import cats.syntax.all._
 import fetch._
 
 implicit object ToStringSource extends DataSource[Int, String]{
@@ -114,10 +118,10 @@ Now that we can convert `Int` values to `Fetch[String]`, let's try creating a fe
 val fetchOne: Fetch[String] = fetchString(1)
 ```
 
-Let's run it and wait for the fetch to complete:
+Let's run it and wait for the fetch to complete, we'll use `IO#unsafeRunTimed` for testing purposes, which will run an `IO[A]` to `Option[A]` and return `None` if it didn't complete in time:
 
 ```tut:book
-Fetch.run(fetchOne).unsafeRunSync
+Fetch.run(fetchOne).unsafeRunTimed(5.seconds)
 ```
 
 As you can see in the previous example, the `ToStringSource` is queried once to get the value of 1.
@@ -135,34 +139,34 @@ val fetchThree: Fetch[(String, String, String)] = (fetchString(1), fetchString(2
 When executing the above fetch, note how the three identities get batched and the data source is only queried once.
 
 ```tut:book
-Fetch.run(fetchThree).unsafeRunSync
+Fetch.run(fetchThree).unsafeRunTimed(5.seconds)
 ```
+
+Note that the `DataSource#batch` method is not mandatory, it will be implemented in terms of `DataSource#fetch` if you don't provide an implementation.
 
 ## Parallelism
 
 If we combine two independent fetches from different data sources, the fetches can be run in parallel. First, let's add a data source that fetches a string's size.
-
-This time, instead of creating the results with `IO#apply` we are going to do it with `IO#async` for emulating an asynchronous data source.
 
 ```tut:silent
 implicit object LengthSource extends DataSource[String, Int]{
   override def name = "Length"
 
   override def fetch(id: String): IO[Option[Int]] = {
-    IO.async((cb) => {
-      println(s"[${Thread.currentThread.getId}] One Length $id")
-      cb(Right(Option(id.size)))
-    })
+    IO(println(s"--> [${Thread.currentThread.getId}] One Length $id")) >>
+    IO.sleep(10.milliseconds) >>
+    IO(println(s"<-- [${Thread.currentThread.getId}] One Length $id")) >>
+    IO(Option(id.size))
   }
   override def batch(ids: NonEmptyList[String]): IO[Map[String, Int]] = {
-    IO.async((cb) => {
-      println(s"[${Thread.currentThread.getId}] Many Length $ids")
-      cb(Right(ids.toList.map(i => (i, i.size)).toMap))
-    })
+    IO(println(s"--> [${Thread.currentThread.getId}] Batch Length $ids")) >>
+    IO.sleep(10.milliseconds) >>
+    IO(println(s"<-- [${Thread.currentThread.getId}] Batch Length $ids")) >>
+    IO(ids.toList.map(i => (i, i.size)).toMap)
   }
 }
 
-def fetchLength(s: String): Fetch[Int] = Fetch(s)
+def fetchLength(s: String): Fetch[Int] = Fetch(s, LengthSource)
 ```
 
 And now we can easily receive data from the two sources in a single fetch.
@@ -174,7 +178,7 @@ val fetchMulti: Fetch[(String, Int)] = (fetchString(1), fetchLength("one")).tupl
 Note how the two independent data fetches run in parallel, minimizing the latency cost of querying the two data sources.
 
 ```tut:book
-Fetch.run(fetchMulti).unsafeRunSync
+Fetch.run(fetchMulti).unsafeRunTimed(5.seconds)
 ```
 
 ## Caching
@@ -193,9 +197,13 @@ val fetchTwice: Fetch[(String, String)] = for {
 While running it, notice that the data source is only queried once. The next time the identity is requested it's served from the cache.
 
 ```tut:book
-Fetch.run(fetchTwice).unsafeRunSync
+Fetch.run(fetchTwice).unsafeRunTimed(5.seconds)
 ```
 
+
+```tut:invisible
+executor.shutdownNow()
+```
 ---
 
 For more in-depth information take a look at our [documentation](http://47deg.github.io/fetch/docs.html).
