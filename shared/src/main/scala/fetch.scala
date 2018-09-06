@@ -371,7 +371,6 @@ object `package` {
   ): IO[List[Request]] =
     for {
       c <- cache.get
-      startTime <- T.clock.realTime(MILLISECONDS)
       maybeCached <- c.lookup(q.id, q.ds)
       result <- maybeCached match {
         // Cached
@@ -379,9 +378,9 @@ object `package` {
 
         // Not cached, must fetch
         case None => for {
-          startTime <- T.clock.realTime(MILLISECONDS)
+          startTime <- T.clock.monotonic(MILLISECONDS)
           o <- q.ds.fetch(q.id)
-          endTime <- T.clock.realTime(MILLISECONDS)
+          endTime <- T.clock.monotonic(MILLISECONDS)
           result <- o match {
             // Fetched
             case Some(a) => for {
@@ -433,7 +432,7 @@ object `package` {
 
         // Some uncached
         case l@_ => for {
-          startTime <- T.clock.realTime(MILLISECONDS)
+          startTime <- T.clock.monotonic(MILLISECONDS)
 
           uncached = NonEmptyList.fromListUnsafe(l)
           request = Batch(uncached, q.ds)
@@ -448,7 +447,7 @@ object `package` {
               runBatchedRequest(request, batchSize, request.ds.batchExecution)
           }
 
-          endTime <- T.clock.realTime(MILLISECONDS)
+          endTime <- T.clock.monotonic(MILLISECONDS)
           resultMap = combineBatchResults(batchedRequest.results, cachedResults)
 
           updatedCache <- c.insertMany(batchedRequest.results, request.ds)

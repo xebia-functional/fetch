@@ -653,8 +653,6 @@ When a single identity is being fetched the request will be a `FetchOne`; it con
 should be able to easily diagnose the failure. For ilustrating this scenario we'll ask for users that are not in the database.
 
 ```tut:silent
-import fetch.debug.describe
-
 val missingUser = getUser(5)
 
 val result: IO[Either[Throwable, User]] = Fetch.run(missingUser).attempt
@@ -973,17 +971,15 @@ val interestingFetch = for {
 
 Now that we have the fetch let's run it, get the environment and visualize its execution using the `describe` function:
 
-```scala
-TODO
-import fetch.debug.describe
+```tut:book
+val io = Fetch.runEnv(interestingFetch)
 
-val env = interestingFetch.runE[Id]
+val (env, result) = io.unsafeRunSync
 
-println(describe(env))
-```
-
-```tut:invisible
-executor.shutdownNow()
+io.unsafeRunTimed(5.seconds) match {
+ case Some((env, result)) => println(describe(env))
+ case None => println("Unable to run fetch")
+}
 ```
 
 Let's break down the output from `describe`:
@@ -991,8 +987,11 @@ Let's break down the output from `describe`:
  - The first line shows the total time that took to run the fetch
  - The nested lines represent the different rounds of execution
   + "Fetch one" rounds are executed for getting an identity from one data source
-  + "Fetch many" rounds are executed for getting a batch of identities from one data source
-  + "Concurrent" rounds are multiple "one" or "many" rounds for different data sources executed concurrently
+  + "Batch" rounds are executed for getting a batch of identities from one data source
+
+```tut:invisible
+executor.shutdownNow()
+```
 
 # Resources
 
