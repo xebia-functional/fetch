@@ -16,12 +16,11 @@
 
 package fetch
 
-import cats.effect.IO
+import cats.effect._
 import cats.data.NonEmptyList
 import cats.instances.list._
 import cats.instances.option._
-import cats.syntax.functor._
-import cats.syntax.traverse._
+import cats.syntax.all._
 
 /**
  * A `DataSource` is the recipe for fetching a certain identity `I`, which yields
@@ -39,11 +38,18 @@ trait DataSource[I, A] {
   /** Fetch many identities, returning a mapping from identities to results. If an
    * identity wasn't found, it won't appear in the keys.
    */
-  def batch(ids: NonEmptyList[I]): IO[Map[I, A]] = {
-    val fetchOneWithId: I => IO[Option[(I, A)]] = id =>
-      fetch(id).map(_.tupleLeft(id))
+  def batch(ids: NonEmptyList[I])(
+    implicit CS: ContextShift[IO]
+  ): IO[Map[I, A]] = {
+    val fetchOneWithId: I => IO[Option[(I, A)]] =
+      id => fetch(id).map(_.tupleLeft(id))
 
-    ids.toList.traverse(fetchOneWithId).map(_.collect { case Some(x) => x }.toMap)
+    val results = batchExecution match {
+      case Sequential => ids.traverse(fetchOneWithId)
+      case Parallel => ids.parTraverse(fetchOneWithId)
+    }
+
+    results.map(_.collect { case Some(x) => x }.toMap)
   }
 
   def maxBatchSize: Option[Int] = None
