@@ -70,11 +70,14 @@ Data Sources take two type parameters:
 
 ```scala
 import cats.data.NonEmptyList
+import cats.Parallel
 
 trait DataSource[Identity, Result]{
   def name: String
   def fetch(id: Identity): IO[Option[Result]]
-  def batch(ids: NonEmptyList[Identity]): IO[Map[Identity, Result]]
+  def batch(ids: NonEmptyList[Identity])(
+    implicit P: Parallel[IO, IO.Par]
+  ): IO[Map[Identity, Result]]
 }
 ```
 
@@ -84,6 +87,7 @@ We'll implement a dummy data source that can convert integers to strings. For co
 
 ```tut:silent
 import scala.concurrent.duration._
+import cats.Parallel
 import cats.data.NonEmptyList
 import cats.instances.list._
 import cats.syntax.all._
@@ -99,7 +103,9 @@ implicit object ToStringSource extends DataSource[Int, String]{
     IO(Option(id.toString))
   }
 
-  override def batch(ids: NonEmptyList[Int]): IO[Map[Int, String]] = {
+  override def batch(ids: NonEmptyList[Int])(
+    implicit P: Parallel[IO, IO.Par]
+  ): IO[Map[Int, String]] = {
     IO(println(s"--> [${Thread.currentThread.getId}] Batch ToString $ids")) >>
     IO.sleep(10.milliseconds) >>
     IO(println(s"<-- [${Thread.currentThread.getId}] Batch ToString $ids")) >>
@@ -186,7 +192,9 @@ implicit object LengthSource extends DataSource[String, Int]{
     IO(println(s"<-- [${Thread.currentThread.getId}] One Length $id")) >>
     IO(Option(id.size))
   }
-  override def batch(ids: NonEmptyList[String]): IO[Map[String, Int]] = {
+  override def batch(ids: NonEmptyList[String])(
+    implicit P: Parallel[IO, IO.Par]
+  ): IO[Map[String, Int]] = {
     IO(println(s"--> [${Thread.currentThread.getId}] Batch Length $ids")) >>
     IO.sleep(10.milliseconds) >>
     IO(println(s"<-- [${Thread.currentThread.getId}] Batch Length $ids")) >>

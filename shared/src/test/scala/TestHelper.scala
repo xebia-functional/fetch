@@ -16,6 +16,7 @@
 
 package fetch
 
+import cats.{Parallel => P}
 import cats.effect.{ IO, ContextShift }
 import cats.data.NonEmptyList
 
@@ -29,6 +30,13 @@ object TestHelper {
 
     override def fetch(id: One): IO[Option[Int]] =
       IO(Option(id.id))
+
+    override def batch(ids: NonEmptyList[One])(
+      implicit P: P[IO, IO.Par]
+    ): IO[Map[One, Int]] =
+      IO(
+        ids.toList.map((v) => (v, v.id)).toMap
+      )
   }
 
   def one(id: Int)(

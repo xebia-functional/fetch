@@ -16,6 +16,7 @@
 
 package fetch
 
+import cats.{Parallel => P}
 import cats.effect._
 import cats.data.NonEmptyList
 import cats.instances.list._
@@ -35,28 +36,22 @@ trait DataSource[I, A] {
    */
   def fetch(id: I): IO[Option[A]]
 
+  private def fetchOneWithId(id: I): IO[Option[(I, A)]] =
+    fetch(id).map(_.tupleLeft(id))
+
   /** Fetch many identities, returning a mapping from identities to results. If an
    * identity wasn't found, it won't appear in the keys.
    */
   def batch(ids: NonEmptyList[I])(
-    implicit CS: ContextShift[IO]
-  ): IO[Map[I, A]] = {
-    val fetchOneWithId: I => IO[Option[(I, A)]] =
-      id => fetch(id).map(_.tupleLeft(id))
-
-    val results = batchExecution match {
-      case Sequential => ids.traverse(fetchOneWithId)
-      case Parallel => ids.parTraverse(fetchOneWithId)
-    }
-
-    results.map(_.collect { case Some(x) => x }.toMap)
-  }
+    implicit P: P[IO, IO.Par]
+  ): IO[Map[I, A]] =
+    ids.parTraverse(fetchOneWithId).map(_.collect { case Some(x) => x }.toMap)
 
   def maxBatchSize: Option[Int] = None
 
-  def batchExecution: ExecutionType = Parallel
+  def batchExecution: BatchExecution = InParallel
 }
 
-sealed trait ExecutionType extends Product with Serializable
-case object Sequential     extends ExecutionType
-case object Parallel       extends ExecutionType
+sealed trait BatchExecution extends Product with Serializable
+case object Sequentially extends BatchExecution
+case object InParallel   extends BatchExecution
