@@ -16,6 +16,9 @@
 
 package fetch
 
+import cats.instances.all._
+import cats.syntax.all._
+
 object debug {
   import fetch.document.Document
 
@@ -28,42 +31,60 @@ object debug {
   def pile(docs: Seq[Document]): Document =
     docs.foldLeft(Document.empty: Document)(_ :/: _)
 
-  def showDuration(secs: Double): Document =
-    Document.text(f" took $secs%2f seconds")
+  def showDuration(millis: Long): Document = {
+    val secs = millis / 1e3
+    Document.text(f" 🕛 $secs%1.2f seconds")
+  }
+
+  def firstRequest(r: Round): Option[Long] = for {
+    aQuery <- r.queries.headOption
+    firstR = r.queries.foldLeft(aQuery.start)({
+      case (acc, q) => acc min q.start
+    })
+  } yield firstR
+
+  def lastRequest(r: Round): Option[Long] = for {
+    aQuery <- r.queries.headOption
+    lastR = r.queries.foldLeft(aQuery.end)({
+      case (acc, q) => acc max q.end
+    })
+  } yield lastR
 
   def showEnv(env: Env): Document = env.rounds match {
     case Nil => Document.empty
     case _ => {
-      // val result = for {
-      //   last <- env.rounds.lastOption
-      // } yield last.response
-      val resultDoc = Document.empty
-//        result.fold(Document.empty: Document)((r) => Document.text(s"Fetching `${r}`"))
-
-      val duration = for {
+      val duration: Option[Long] = for {
         firstRound <- env.rounds.headOption
-        first <- firstRound.queries.headOption
+        firstRequestStart <- firstRequest(firstRound)
         lastRound  <- env.rounds.lastOption
-        last <- lastRound.queries.lastOption
-      } yield last.end - first.start
+        lastRequestEnd <- lastRequest(lastRound)
+      } yield lastRequestEnd - firstRequestStart
       val durationDoc =
-        duration.fold(Document.empty: Document)((d) =>
-          Document.text("Fetch execution") :: showDuration(d / 1e9))
+        duration.fold(Document.empty: Document)((d: Long) =>
+          Document.text("Fetch execution") :: showDuration(d))
 
-      durationDoc :/: Document.nest(2, pile(env.rounds.map(showRound)))
+      durationDoc :/: Document.nest(2, pile(env.rounds.mapWithIndex((r, i) => showRound(r, i + 1))))
     }
   }
 
-  def showRound(r: Round): Document =
-    Document.text("[Round]") :: Document.nest(
+  def showRound(r: Round, n: Int): Document = {
+    val roundDuration = for {
+      f <- firstRequest(r)
+      l <- lastRequest(r)
+    } yield l - f
+
+    val round = Document.text(s"[Round ${n}]") :: roundDuration.fold(Document.text(""))(showDuration(_))
+
+    round :: Document.nest(
       2, pile(r.queries.map(showRequest))
     )
+  }
 
   def showRequest(r: Request): Document = r.request match {
     case FetchOne(id, ds) =>
-      Document.text(s"[Fetch one] From `${ds.name}` with id ${id}") :: showDuration(0)
+      Document.text(s"[Fetch one] From `${ds.name}` with id ${id}") :: showDuration(r.duration)
     case Batch(ids, ds) =>
-      Document.text(s"[Batch] From `${ds.name}` with ids ${ids.toList}") :: showDuration(0)
+      Document.text(s"[Batch] From `${ds.name}` with ids ${ids.toList}") :: showDuration(r.duration)
   }
 
   def showMissing(ds: DataSource[_, _], ids: List[_]): Document =
@@ -74,13 +95,13 @@ object debug {
 
   def showException(err: FetchException): Document = err match {
     case MissingIdentity(id, q) =>
-      Document.text(s"[Error] Identity with id `${id}` for data source `${q.dataSource.name}` not found")
+      Document.text(s"[ERROR] Identity with id `${id}` for data source `${q.dataSource.name}` not found")
     // case MissingIdentities(env, missing) =>
     //   Document.text("[Error] Missing identities") :: showRoundCount(err) :/:
     //     Document.nest(2, pile(missing.toSeq.map((kv) => showMissing(kv._1, kv._2))))
     case UnhandledException(exc) =>
       Document
-        .text(s"[Error] Unhandled `${exc.getClass.getName}`: '${exc.getMessage}'")
+        .text(s"[ERROR] Unhandled `${exc.getClass.getName}`: '${exc.getMessage}'")
   }
 
   /* Given a [[fetch.env.Env]], describe it with a human-readable string. */

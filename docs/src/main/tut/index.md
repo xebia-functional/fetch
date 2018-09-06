@@ -144,6 +144,34 @@ Fetch.run(fetchThree).unsafeRunTimed(5.seconds)
 
 Note that the `DataSource#batch` method is not mandatory, it will be implemented in terms of `DataSource#fetch` if you don't provide an implementation.
 
+```tut:silent
+implicit object UnbatchedToStringSource extends DataSource[Int, String]{
+  override def name = "UnbatchedToString"
+
+  override def fetch(id: Int): IO[Option[String]] = {
+    IO(println(s"--> [${Thread.currentThread.getId}] One UnbatchedToString $id")) >>
+    IO.sleep(10.milliseconds) >>
+    IO(println(s"<-- [${Thread.currentThread.getId}] One UnbatchedToString $id")) >>
+    IO(Option(id.toString))
+  }
+}
+
+def unbatchedString(n: Int): Fetch[String] = Fetch(n, UnbatchedToStringSource)
+```
+
+Let's create a tuple of unbatched string requests.
+
+```tut:silent
+val fetchUnbatchedThree: Fetch[(String, String, String)] = (unbatchedString(1), unbatchedString(2), unbatchedString(3)).tupled
+```
+
+When executing the above fetch, note how the three identities get requested in parallel. You can override `batch` to execute queries sequentially if you need to.
+
+```tut:book
+Fetch.run(fetchUnbatchedThree).unsafeRunTimed(5.seconds)
+```
+
+
 ## Parallelism
 
 If we combine two independent fetches from different data sources, the fetches can be run in parallel. First, let's add a data source that fetches a string's size.
