@@ -18,13 +18,8 @@ object ProjectPlugin extends AutoPlugin {
   object autoImport {
 
     lazy val commonCrossDependencies: Seq[ModuleID] =
-      Seq("org.typelevel" %% "cats-effect" % "1.0.0-RC3",
+      Seq("org.typelevel" %% "cats-effect" % "1.0.0",
           %%("scalatest") % "test")
-
-    lazy val monixCrossDependencies: Seq[ModuleID] =
-      %%("monix-eval") :: Nil
-
-    lazy val twitterUtilDependencies: Seq[ModuleID] = Seq(%%("catbird-util", "18.1.0"))
 
     lazy val micrositeSettings: Seq[Def.Setting[_]] = Seq(
       micrositeName := "Fetch",
@@ -68,8 +63,8 @@ object ProjectPlugin extends AutoPlugin {
       %%("circe-generic"),
       %%("doobie-core"),
       %%("doobie-h2"),
-      %%("http4s-blaze-client"),
-      %%("http4s-circe")
+      "org.http4s" %% "http4s-blaze-client" % "0.19.0-SNAPSHOT",
+      "org.http4s" %% "http4s-circe" % "0.19.0-SNAPSHOT"
     ) ++ commonCrossDependencies
   }
 

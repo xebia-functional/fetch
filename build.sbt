@@ -33,6 +33,9 @@ lazy val examples = (project in file("examples"))
   .dependsOn(fetchJVM)
   .settings(noPublishSettings: _*)
   .settings(examplesSettings: _*)
+  .settings(Seq(
+    resolvers += Resolver.sonatypeRepo("snapshots")
+  ))
 
 lazy val docs = (project in file("docs"))
   .dependsOn(fetchJVM, debugJVM)

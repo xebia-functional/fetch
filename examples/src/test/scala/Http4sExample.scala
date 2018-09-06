@@ -54,7 +54,10 @@ class Http4sExample extends WordSpec with Matchers {
 
   // http4s client which is used by the datasources
 
-  val client = PooledHttp1Client[IO]()
+  val client = Http1Client[IO](
+    BlazeClientConfig.defaultConfig.copy(
+      responseHeaderTimeout = 30.seconds // high timeout because jsonplaceholder takes a while to respond
+    ))
 
   // a DataSource that can fetch Users with their UserId.
 
@@ -62,13 +65,13 @@ class Http4sExample extends WordSpec with Matchers {
     override def name = "UserH4s"
     override def fetch(id: UserId): IO[Option[User]] = {
       val url = s"https://jsonplaceholder.typicode.com/users?id=${id.id}"
-      client.expect(url)(jsonOf[IO, List[User]]).map(_.headOption)
+      client >>= ((c) => c.expect(url)(jsonOf[IO, List[User]]).map(_.headOption))
     }
 
     override def batch(ids: NonEmptyList[UserId]): IO[Map[UserId, User]] = {
       val filterIds = ids.map("id=" + _.id).toList.mkString("&")
       val url       = s"https://jsonplaceholder.typicode.com/users?$filterIds"
-      val io        = client.expect(url)(jsonOf[IO, List[User]])
+      val io        = client >>= ((c) => c.expect(url)(jsonOf[IO, List[User]]))
       io.map(users => users.map(user => user.id -> user).toMap)
     }
   }
@@ -79,13 +82,13 @@ class Http4sExample extends WordSpec with Matchers {
     override def name = "PostH4s"
     override def fetch(id: UserId): IO[Option[List[Post]]] = {
       val url = s"https://jsonplaceholder.typicode.com/posts?userId=${id.id}"
-      client.expect(url)(jsonOf[IO, List[Post]]).map(Option.apply)
+      client >>= ((c) => c.expect(url)(jsonOf[IO, List[Post]]).map(Option.apply))
     }
 
     override def batch(ids: NonEmptyList[UserId]): IO[Map[UserId, List[Post]]] = {
       val filterIds = ids.map("userId=" + _.id).toList.mkString("&")
       val url       = s"https://jsonplaceholder.typicode.com/posts?$filterIds"
-      client.expect(url)(jsonOf[IO, List[Post]]).map(_.groupBy(_.userId).toMap)
+      client >>= ((c) => c.expect(url)(jsonOf[IO, List[Post]]).map(_.groupBy(_.userId).toMap))
     }
   }
 
