@@ -68,7 +68,9 @@ class Http4sExample extends WordSpec with Matchers {
       client >>= ((c) => c.expect(url)(jsonOf[IO, List[User]]).map(_.headOption))
     }
 
-    override def batch(ids: NonEmptyList[UserId]): IO[Map[UserId, User]] = {
+    override def batch(ids: NonEmptyList[UserId])(
+      implicit P: Parallel[IO, IO.Par]
+    ): IO[Map[UserId, User]] = {
       val filterIds = ids.map("id=" + _.id).toList.mkString("&")
       val url       = s"https://jsonplaceholder.typicode.com/users?$filterIds"
       val io        = client >>= ((c) => c.expect(url)(jsonOf[IO, List[User]]))
@@ -85,7 +87,9 @@ class Http4sExample extends WordSpec with Matchers {
       client >>= ((c) => c.expect(url)(jsonOf[IO, List[Post]]).map(Option.apply))
     }
 
-    override def batch(ids: NonEmptyList[UserId]): IO[Map[UserId, List[Post]]] = {
+    override def batch(ids: NonEmptyList[UserId])(
+      implicit P: Parallel[IO, IO.Par]
+    ): IO[Map[UserId, List[Post]]] = {
       val filterIds = ids.map("userId=" + _.id).toList.mkString("&")
       val url       = s"https://jsonplaceholder.typicode.com/posts?$filterIds"
       client >>= ((c) => c.expect(url)(jsonOf[IO, List[Post]]).map(_.groupBy(_.userId).toMap))

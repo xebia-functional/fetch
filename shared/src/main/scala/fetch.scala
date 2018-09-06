@@ -460,7 +460,7 @@ object `package` {
   private def runBatchedRequest(
     q: Batch[Any, Any],
     batchSize: Int,
-    e: ExecutionType
+    e: BatchExecution
   )(
     implicit
       CS: ContextShift[IO],
@@ -474,9 +474,9 @@ object `package` {
     val reqs = batches.toList.map(Batch[Any, Any](_, q.ds))
 
     val results = e match {
-      case Sequential =>
+      case Sequentially =>
         batches.traverse(q.ds.batch)
-      case Parallel =>
+      case InParallel =>
         batches.parTraverse(q.ds.batch)
     }
 

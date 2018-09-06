@@ -67,6 +67,7 @@ If something is missing in Fetch that stops you from using it we'd appreciate if
 In order to tell Fetch how to retrieve data, we must implement the `DataSource` typeclass.
 
 ```scala
+import cats.Parallel
 import cats.data.NonEmptyList
 
 trait DataSource[Identity, Result]{
@@ -75,7 +76,9 @@ trait DataSource[Identity, Result]{
   def fetch(id: Identity): IO[Option[Result]]
   
   /* `batch` is implemented in terms of `fetch` by default */
-  def batch(ids: NonEmptyList[Identity]): IO[Map[Identity, Result]]
+  def batch(ids: NonEmptyList[Identity])(
+    implicit P: Parallel[IO, IO.Par]
+  ): IO[Map[Identity, Result]]
 }
 ```
 
@@ -135,6 +138,7 @@ def latency[A](result: A, msg: String): IO[A] = for {
 And now we're ready to write our user data source; we'll emulate a database with an in-memory map.
 
 ```tut:silent
+import cats.Parallel
 import cats.data.NonEmptyList
 import cats.instances.list._
 import fetch._
@@ -152,7 +156,9 @@ implicit object UserSource extends DataSource[UserId, User]{
   override def fetch(id: UserId): IO[Option[User]] =
     latency(userDatabase.get(id), s"One User $id")
 
-  override def batch(ids: NonEmptyList[UserId]): IO[Map[UserId, User]] =
+  override def batch(ids: NonEmptyList[UserId])(
+    implicit P: Parallel[IO, IO.Par]
+  ): IO[Map[UserId, User]] =
     latency(userDatabase.filterKeys(ids.toList.toSet), s"Batch Users $ids")
 }
 ```
@@ -166,7 +172,7 @@ def getUser(id: UserId): Fetch[User] = Fetch(id, UserSource)
 
 ### Data sources that don't support batching
 
-If your data source doesn't support batching, you can simply leave the `batch` method unimplemented. Note that it will use the `fetch` implementation for requesting identities one at a time.
+If your data source doesn't support batching, you can simply leave the `batch` method unimplemented. Note that it will use the `fetch` implementation for requesting identities in parallel.
 
 ```tut:silent
 implicit object UnbatchedSource extends DataSource[Int, Int]{
@@ -176,6 +182,28 @@ implicit object UnbatchedSource extends DataSource[Int, Int]{
     IO(Option(id))
 }
 ```
+
+#### Batching individuals requests sequentially
+
+The default `batch` implementation run requests to the data source in parallel, but you can easily override it. We can make `batch` sequential using `NonEmptyList.traverse` for fetching individual identities.
+
+```scala
+TODO
+implicit object UnbatchedSeqSource extends DataSource[Int, Int]{
+  override def name = "UnbatchedSeq"
+
+  override def fetch(id: Int): IO[Option[Int]] =
+    IO(Option(id))
+    
+  override def batch(ids: NonEmptyList[Int])(
+    implicit P: Parallel[IO, IO.Par]
+  ): IO[Option[Map[Int, Int]]] =
+    ids.traverse(
+      (id) => fetch(id).map(v => (id, v))
+    ).map(_.collect { case (i, Some(x)) => (i, x) }.toMap_)
+}
+```
+
 
 ### Data sources that only support batching
 
@@ -188,7 +216,9 @@ implicit object OnlyBatchedSource extends DataSource[Int, Int]{
   override def fetch(id: Int): IO[Option[Int]] =
     batch(NonEmptyList(id, List())).map(_.get(id))
 
-  override def batch(ids: NonEmptyList[Int]): IO[Map[Int, Int]] =
+  override def batch(ids: NonEmptyList[Int])(
+    implicit P: Parallel[IO, IO.Par]
+  ): IO[Map[Int, Int]] =
     IO(ids.map(x => (x, x)).toList.toMap)
 }
 ```
@@ -241,9 +271,7 @@ automatically batch them together into a single request. Applicative operations 
 help us tell the library that those fetches are independent, and thus can be batched if they use the same data source:
 
 ```tut:silent
-import cats.syntax.cartesian._
-
-val fetchProduct: Fetch[(User, User)] = getUser(1).product(getUser(2))
+val fetchProduct: Fetch[(User, User)] = (getUser(1), getUser(2)).tupled
 ```
 
 Note how both ids (1 and 2) are requested in a single query to the data source when executing the fetch.
@@ -257,7 +285,7 @@ Fetch.run(fetchProduct).unsafeRunTimed(5.seconds)
 If two independent requests ask for the same identity, Fetch will detect it and deduplicate the id.
 
 ```tut:silent
-val fetchDuped: Fetch[(User, User)] = getUser(1).product(getUser(1))
+val fetchDuped: Fetch[(User, User)] = (getUser(1), getUser(1)).tupled
 ```
 
 Note that when running the fetch, the identity 1 is only requested once even when it is needed by both fetches.
@@ -318,7 +346,9 @@ implicit object PostSource extends DataSource[PostId, Post]{
   override def fetch(id: PostId): IO[Option[Post]] =
     latency(postDatabase.get(id), s"One Post $id")
 
-  override def batch(ids: NonEmptyList[PostId]): IO[Map[PostId, Post]] =
+  override def batch(ids: NonEmptyList[PostId])(
+    implicit P: Parallel[IO, IO.Par]
+  ): IO[Map[PostId, Post]] =
     latency(postDatabase.filterKeys(ids.toList.toSet), s"Batch Posts $ids")
 }
 
@@ -342,7 +372,9 @@ implicit object PostTopicSource extends DataSource[Post, PostTopic]{
     latency(Option(topic), s"One Post Topic $id")
   }
 
-  override def batch(ids: NonEmptyList[Post]): IO[Map[Post, PostTopic]] = {
+  override def batch(ids: NonEmptyList[Post])(
+    implicit P: Parallel[IO, IO.Par]
+  ): IO[Map[Post, PostTopic]] = {
     val result = ids.toList.map(id => (id, if (id.id % 2 == 0) "monad" else "applicative")).toMap
     latency(result, s"Batch Post Topics $ids")
   }
@@ -381,7 +413,7 @@ In the following example we are fetching from different data sources so both req
 evaluated together.
 
 ```tut:silent
-val fetchConcurrent: Fetch[(Post, User)] = getPost(1).product(getUser(2))
+val fetchConcurrent: Fetch[(Post, User)] = (getPost(1), getUser(2)).tupled
 ```
 
 The above example combines data from two different sources, and the library knows they are independent.
@@ -392,7 +424,7 @@ Fetch.run(fetchConcurrent).unsafeRunTimed(5.seconds)
 
 ## Combinators
 
-Besides `flatMap` for sequencing fetches and `product` for running them concurrently, Fetch provides a number of
+Besides `flatMap` for sequencing fetches and products for running them concurrently, Fetch provides a number of
 other combinators.
 
 ### Sequence
@@ -531,7 +563,9 @@ implicit object BatchedUserSource extends DataSource[UserId, User]{
   override def fetch(id: UserId): IO[Option[User]] =
     latency(userDatabase.get(id), s"One User $id")
 
-  override def batch(ids: NonEmptyList[UserId]): IO[Map[UserId, User]] =
+  override def batch(ids: NonEmptyList[UserId])(
+    implicit P: Parallel[IO, IO.Par]
+  ): IO[Map[UserId, User]] =
     latency(userDatabase.filterKeys(ids.toList.toSet), s"Batch Users $ids")
 }
 
@@ -557,12 +591,14 @@ implicit object SequentialUserSource extends DataSource[UserId, User]{
 
   override def maxBatchSize: Option[Int] = Some(2)
 
-  override def batchExecution: ExecutionType = Sequential
+  override def batchExecution: BatchExecution = Sequentially // defaults to `InParallel`
 
   override def fetch(id: UserId): IO[Option[User]] =
     latency(userDatabase.get(id), s"One User $id")
 
-  override def batch(ids: NonEmptyList[UserId]): IO[Map[UserId, User]] =
+  override def batch(ids: NonEmptyList[UserId])(
+    implicit P: Parallel[IO, IO.Par]
+  ): IO[Map[UserId, User]] =
     latency(userDatabase.filterKeys(ids.toList.toSet), s"Batch Users $ids")
 }
 
@@ -684,19 +720,16 @@ value match {
 When multiple requests to the same data source are batched and/or multiple requests are performed at the same time, is possible that more than one identity was missing. There is another error case for such situations: `MissingIdentities`, which contains a mapping from data source names to the list of missing identities.
 
 ```scala
-TODO
-import fetch.debug.describe
-
 val missingUsers = List(3, 4, 5, 6).traverse(getUser)
 
-val result: Eval[Either[FetchException, List[User]]] = missingUsers.runA[Eval].attempt
+val result: IO[Either[Throwable, List[User]]] = Fetch.run(missingUsers).attempt
 ```
 
 And now we can execute the fetch and describe its execution:
 
 ```scala
 TODO
-val value: Either[FetchException, List[User]] = result.value
+val value: Either[Throwable, List[User]] = result.value
 
 println(value.fold(describe, _.toString))
 ```
@@ -718,86 +751,6 @@ value match {
 
 # Syntax
 
-## Implicit syntax
-
-Fetch provides implicit syntax to lift any value to the context of a `Fetch` in addition to the most common used
-combinators active within `Fetch` instances.
-
-### pure
-
-Plain values can be lifted to the Fetch monad with `value.fetch`:
-
-```scala
-TODO
-val fetchPure: Fetch[Int] = 42.fetch
-```
-
-Executing a pure fetch doesn't query any data source, as expected.
-
-```scala
-TODO
-fetchPure.runA[Id]
-```
-
-### error
-
-Errors can also be lifted to the Fetch monad via `exception.fetch`.
-
-```scala
-TODO
-val fetchFail: Fetch[Int] = new Exception("Something went terribly wrong").fetch
-```
-
-Note that interpreting an errorful fetch to `Id` will throw the exception.
-
-```scala
-TODO
-fetchFail.runA[Id]
-```
-
-### join
-
-We can compose two independent fetches with `fetch1.join(fetch2)`.
-
-```scala
-TODO
-val fetchJoined: Fetch[(Post, User)] = getPost(1).join(getUser(2))
-```
-
-If the fetches are to the same data source they will be batched; if they aren't, they will be evaluated at the same time.
-
-```scala
-TODO
-fetchJoined.runA[Id]
-```
-
-### runA
-
-Run directly any fetch with `fetch1.runA`.
-
-```scala
-TODO
-getPost(1).runA[Id]
-```
-
-### runE
-
-Run a fetch an get it's runtime environment `fetch1.runE`.
-
-```scala
-TODO
-getPost(1).runE[Id]
-```
-
-### runF
-
-Run a fetch obtaining the environment and final value `fetch1.runF`.
-
-```scala
-TODO
-getPost(1).runF[Id]
-```
-
 ## Companion object
 
 We've been using Cats' syntax and `fetch.syntax` throughout the examples since it's more concise and general than the
@@ -810,78 +763,28 @@ Note that using cats syntax gives you a plethora of combinators, much richer tha
 
 Plain values can be lifted to the Fetch monad with `Fetch#pure`:
 
-```scala
+```tut:silent
 val fetchPure: Fetch[Int] = Fetch.pure(42)
 ```
 
 Executing a pure fetch doesn't query any data source, as expected.
 
-```scala
-TODO
-// Fetch.run[Id](fetchPure)
+```tut:book
+Fetch.run(fetchPure).unsafeRunTimed(5.seconds)
 ```
 
 ### error
 
 Errors can also be lifted to the Fetch monad via `Fetch#error`.
 
-```scala
-TODO
+```tut:silent
 val fetchFail: Fetch[Int] = Fetch.error(new Exception("Something went terribly wrong"))
 ```
 
 Note that interpreting an errorful fetch to `Id` will throw the exception.
 
-```scala
-TODO
-// Fetch.run[Id](fetchFail)
-```
-
-### join
-
-We can compose two independent fetches with `Fetch#join`.
-
-```scala
-TODO
-val fetchJoined: Fetch[(Post, User)] = Fetch.join(getPost(1), getUser(2))
-```
-
-If the fetches are to the same data source they will be batched; if they aren't, they will be evaluated at the same time.
-
-```scala
-TODO
-Fetch.run[Id](fetchJoined)
-```
-
-### sequence
-
-The `Fetch#sequence` combinator turns a `List[Fetch[A]]` into a `Fetch[List[A]]`, running all the fetches concurrently
-and batching when possible.
-
-```scala
-TODO
-val fetchSequence: Fetch[List[User]] = Fetch.sequence(List(getUser(1), getUser(2), getUser(3)))
-```
-
-```scala
-TODO
-Fetch.run[Id](fetchSequence)
-```
-
-### traverse
-
-The `Fetch#traverse` combinator is a combination of `map` and `sequence`.
-
-```scala
-TODO
-val fetchTraverse: Fetch[List[User]] = Fetch.traverse(List(1, 2, 3))(getUser)
-```
-
-Note that `Fetch#traverse` is not as general as the `traverse` method from `Traverse`, but the resulting `Fetch` can be parallelized more safely if the number of elements is very large.
-
-```scala
-TODO
-Fetch.run[Id](fetchTraverse)
+```tut:fail
+Fetch.run(fetchFail).unsafeRunTimed(5.seconds)
 ```
 
 ## cats
@@ -903,8 +806,7 @@ The tuple apply syntax allows us to combine multiple independent fetches, even w
 are from different types, and apply a pure function to their results. We can use it
 as a more powerful alternative to the `product` method or `Fetch#join`:
 
-```scala
-TODO
+```tut:silent
 import cats.syntax.apply._
 
 val fetchThree: Fetch[(Post, User, Post)] = (getPost(1), getUser(2), getPost(2)).tupled
@@ -956,9 +858,8 @@ Add the following line to your dependencies for including Fetch's debugging faci
 We are going to create an interesting fetch that applies all the optimizations available (caching, batching and concurrent request) for ilustrating how we can
 visualize fetch executions using the environment.
 
-```scala
-TODO
-val batched: Fetch[List[User]] = Fetch.multiple(1, 2)(UserSource)
+```tut:silent
+val batched: Fetch[List[User]] = List(1, 2).traverse(getUser)
 val cached: Fetch[User] = getUser(2)
 val concurrent: Fetch[(List[User], List[Post])] = (List(1, 2, 3).traverse(getUser), List(1, 2, 3).traverse(getPost)).tupled
 

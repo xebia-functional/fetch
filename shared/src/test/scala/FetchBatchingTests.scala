@@ -40,7 +40,7 @@ class FetchBatchingTests extends FreeSpec with Matchers {
 
     override val maxBatchSize = Some(2)
 
-    override val batchExecution = Sequential
+    override val batchExecution = Sequentially
   }
 
   case class BatchedDataPar(id: Int)
@@ -52,7 +52,7 @@ class FetchBatchingTests extends FreeSpec with Matchers {
 
     override val maxBatchSize = Some(2)
 
-    override val batchExecution = Parallel
+    override val batchExecution = InParallel
   }
 
   def fetchBatchedDataSeq(id: Int): Fetch[Int] = Fetch(BatchedDataSeq(id), MaxBatchSourceSeq)

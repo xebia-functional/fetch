@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import cats.Parallel
 import cats.data.NonEmptyList
 import cats.effect.{ContextShift, IO, Timer}
 import cats.instances.list._
@@ -66,7 +67,9 @@ class DoobieExample extends WordSpec with Matchers {
     override def fetch(id: AuthorId): IO[Option[Author]] =
       fetchById(id).transact(xa)
 
-    override def batch(ids: NonEmptyList[AuthorId]): IO[Map[AuthorId, Author]] =
+    override def batch(ids: NonEmptyList[AuthorId])(
+      implicit P: Parallel[IO, IO.Par]
+    ): IO[Map[AuthorId, Author]] =
       fetchByIds(ids)
         .map { authors =>
           authors.map(a => AuthorId(a.id) -> a).toMap
