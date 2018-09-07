@@ -53,9 +53,11 @@ object `package` {
   case class FetchMissing() extends FetchStatus
 
   // Fetch errors
-  sealed trait FetchException extends Throwable with NoStackTrace
-  case class MissingIdentity[I](i: I, request: FetchQuery) extends FetchException
-  case class UnhandledException(e: Throwable) extends FetchException
+  sealed trait FetchException extends Throwable with NoStackTrace {
+    def environment: Env
+  }
+  case class MissingIdentity[I](i: I, request: FetchQuery, environment: Env) extends FetchException
+  case class UnhandledException(e: Throwable, environment: Env) extends FetchException
 
   // In-progress request
   case class BlockedRequest(request: FetchRequest, result: FetchStatus => IO[Unit])
@@ -144,6 +146,7 @@ object `package` {
   sealed trait FetchResult[A]
   case class Done[A](x: A) extends FetchResult[A]
   case class Blocked[A](rs: RequestMap, cont: Fetch[A]) extends FetchResult[A]
+  case class Throw[A](e: Env => FetchException) extends FetchResult[A]
 
   // Fetch data type
   sealed trait Fetch[A] {
@@ -167,6 +170,7 @@ object `package` {
           case Done(v) => Done(f(v))
           case Blocked(br, cont) =>
             Blocked(br, map(cont)(f))
+          case Throw(e) => Throw[B](e)
         }
       } yield result)
 
@@ -174,23 +178,14 @@ object `package` {
       Unfetch(for {
         fab <- (fa.run, fb.run).tupled
         result = fab match {
+          case (Throw(e), _) => Throw[(A, B)](e)
           case (Done(a), Done(b)) => Done((a, b))
           case (Done(a), Blocked(br, c)) => Blocked(br, product(fa, c))
           case (Blocked(br, c), Done(b)) => Blocked(br, product(c, fb))
           case (Blocked(br, c), Blocked(br2, c2)) =>
             Blocked(br |+| br2, product(c, c2))
-        }
-      } yield result)
-
-    override def map2[A, B, C](fa: Fetch[A], fb: Fetch[B])(ff: (A, B) => C): Fetch[C] =
-      Unfetch(for {
-        fab <- (fa.run, fb.run).tupled
-        result = fab match {
-          case (Done(a), Done(b)) => Done(ff(a, b))
-          case (Done(a), Blocked(br, c)) => Blocked(br, map2(fa, c)(ff))
-          case (Blocked(br, c), Done(b)) => Blocked(br, map2(c, fb)(ff))
-          case (Blocked(br, c), Blocked(br2, c2)) =>
-            Blocked(br |+| br2, map2(c, c2)(ff))
+          case (_, Throw(e)) =>
+            Throw[(A, B)](e)
         }
       } yield result)
 
@@ -202,6 +197,7 @@ object `package` {
         fetch <- fa.run
         result: Fetch[B] = fetch match {
           case Done(v) => f(v)
+          case Throw(e) => Unfetch(IO.pure(Throw[B](e)))
           case Blocked(br, cont : Fetch[A]) =>
             Unfetch(
               IO.pure(
@@ -218,9 +214,13 @@ object `package` {
      * Lift a plain value to the Fetch monad.
      */
     def pure[A](a: A): Fetch[A] =
-      Unfetch(
-        IO.pure(Done(a))
-      )
+      Unfetch(IO.pure(Done(a)))
+
+    def exception[A](e: Env => FetchException): Fetch[A] =
+      Unfetch(IO.pure(Throw[A](e)))
+
+    def error[A](e: Throwable): Fetch[A] =
+      exception((env) => UnhandledException(e, env))
 
     def apply[I, A](id: I, ds: DataSource[I, A])(
       implicit
@@ -235,21 +235,14 @@ object `package` {
           anyDs = ds.asInstanceOf[DataSource[Any, Any]]
           blockedRequest = RequestMap(Map(anyDs -> blocked))
         } yield Blocked(blockedRequest, Unfetch(
-          for {
-            fetched <- deferred.get
-            value <- fetched match {
-              case FetchDone(a: A) =>
-                IO.pure(Done(a))
-
-              case FetchMissing() =>
-                IO.raiseError(MissingIdentity(id, request))
-            }
-          } yield value
+          deferred.get.flatMap(_ match {
+            case FetchDone(a: A) =>
+              IO.pure(Done(a))
+            case FetchMissing() =>
+              IO.pure(Throw((env) => MissingIdentity(id, request, env)))
+          })
         ))
       )
-
-    def error[A](e: Throwable): Fetch[A] =
-      Unfetch(IO.raiseError(UnhandledException(e)))
 
     /**
       * Run a `Fetch`, the result in the `IO` monad.
@@ -276,8 +269,8 @@ object `package` {
       implicit
         CS: ContextShift[IO],
         T: Timer[IO]
-    ): IO[(FetchEnv, A)] = for {
-      env <- Ref.of[IO, FetchEnv](FetchEnv())
+    ): IO[(Env, A)] = for {
+      env <- Ref.of[IO, Env](FetchEnv())
       cache <- Ref.of[IO, DataSourceCache](cache)
       result <- performRun(fa, cache, Some(env))
       e <- env.get
@@ -302,7 +295,7 @@ object `package` {
     private def performRun[A](
       fa: Fetch[A],
       cache: Ref[IO, DataSourceCache],
-      env: Option[Ref[IO, FetchEnv]]
+      env: Option[Ref[IO, Env]]
     )(
       implicit
         CS: ContextShift[IO],
@@ -316,13 +309,15 @@ object `package` {
           _ <- fetchRound(rs, cache, env)
           result <- performRun(cont, cache, env)
         } yield result
+        case Throw(envToThrowable) =>
+          env.fold(IO.pure(FetchEnv() : Env))(_.get).flatMap((e: Env) => IO.raiseError(envToThrowable(e)))
       }
     } yield value
 
     private def fetchRound[A](
       rs: RequestMap,
       cache: Ref[IO, DataSourceCache],
-      env: Option[Ref[IO, FetchEnv]]
+      env: Option[Ref[IO, Env]]
     )(
       implicit
         CS: ContextShift[IO],
@@ -347,7 +342,7 @@ object `package` {
     private def runBlockedRequest[A](
       blocked: BlockedRequest,
       cache: Ref[IO, DataSourceCache],
-      env: Option[Ref[IO, FetchEnv]]
+      env: Option[Ref[IO, Env]]
     )(
       implicit
         CS: ContextShift[IO],
@@ -363,7 +358,7 @@ object `package` {
     q: FetchOne[Any, Any],
     putResult: FetchStatus => IO[Unit],
     cache: Ref[IO, DataSourceCache],
-    env: Option[Ref[IO, FetchEnv]]
+    env: Option[Ref[IO, Env]]
   )(
     implicit
       CS: ContextShift[IO],
@@ -406,7 +401,7 @@ object `package` {
     q: Batch[Any, Any],
     putResult: FetchStatus => IO[Unit],
     cache: Ref[IO, DataSourceCache],
-    env: Option[Ref[IO, FetchEnv]]
+    env: Option[Ref[IO, Env]]
   )(
     implicit
       CS: ContextShift[IO],
