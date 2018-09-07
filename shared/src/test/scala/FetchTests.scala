@@ -685,4 +685,15 @@ class FetchTests extends AsyncFreeSpec with Matchers {
         case Left(MissingIdentity(Never(), _, _)) =>
       })
   }
+
+  "If there are multiple failing identities the fetch will fail" in {
+    val fetch: Fetch[(Int, Int)] = (never,  never).tupled
+
+    val io = Fetch.run(fetch)
+
+    io.attempt
+      .map(_ should matchPattern {
+        case Left(MissingIdentity(Never(), _, _)) =>
+      })
+  }
 }

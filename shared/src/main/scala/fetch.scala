@@ -447,7 +447,9 @@ object `package` {
 
           updatedCache <- c.insertMany(batchedRequest.results, request.ds)
           _ <- cache.set(updatedCache)
+
           result <- putResult(FetchDone[Map[Any, Any]](resultMap))
+
         } yield batchedRequest.batches.map(Request(_, startTime, endTime))
       }
     } yield result

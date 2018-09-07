@@ -96,9 +96,6 @@ object debug {
   def showException(err: FetchException): Document = err match {
     case MissingIdentity(id, q, env) =>
       Document.text(s"[ERROR] Identity with id `${id}` for data source `${q.dataSource.name}` not found") :: showRoundCount(err)
-    // case MissingIdentities(env, missing) =>
-    //   Document.text("[Error] Missing identities") :: showRoundCount(err) :/:
-    //     Document.nest(2, pile(missing.toSeq.map((kv) => showMissing(kv._1, kv._2))))
     case UnhandledException(exc, env) =>
       Document
         .text(s"[ERROR] Unhandled `${exc.getClass.getName}`: '${exc.getMessage}'") :: showRoundCount(err)
