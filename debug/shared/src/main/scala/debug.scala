@@ -90,18 +90,18 @@ object debug {
   def showMissing(ds: DataSource[_, _], ids: List[_]): Document =
     Document.text(s"`${ds.name}` missing identities ${ids}")
 
-  def showRoundCount(env: FetchEnv, err: FetchException): Document =
-    Document.text(s", fetch interrupted after ${env.rounds.size} rounds")
+  def showRoundCount(err: FetchException): Document =
+    Document.text(s", fetch interrupted after ${err.environment.rounds.size} rounds")
 
   def showException(err: FetchException): Document = err match {
-    case MissingIdentity(id, q) =>
-      Document.text(s"[ERROR] Identity with id `${id}` for data source `${q.dataSource.name}` not found")
+    case MissingIdentity(id, q, env) =>
+      Document.text(s"[ERROR] Identity with id `${id}` for data source `${q.dataSource.name}` not found") :: showRoundCount(err)
     // case MissingIdentities(env, missing) =>
     //   Document.text("[Error] Missing identities") :: showRoundCount(err) :/:
     //     Document.nest(2, pile(missing.toSeq.map((kv) => showMissing(kv._1, kv._2))))
-    case UnhandledException(exc) =>
+    case UnhandledException(exc, env) =>
       Document
-        .text(s"[ERROR] Unhandled `${exc.getClass.getName}`: '${exc.getMessage}'")
+        .text(s"[ERROR] Unhandled `${exc.getClass.getName}`: '${exc.getMessage}'") :: showRoundCount(err)
   }
 
   /* Given a [[fetch.env.Env]], describe it with a human-readable string. */
@@ -110,8 +110,10 @@ object debug {
 
   /* Given a [[Throwable]], describe it with a human-readable string. */
   def describe(err: Throwable): String = err match {
-    case e @ MissingIdentity(_, _) => string(showException(e))
-    case e @ UnhandledException(_) => string(showException(e))
+    case fe: FetchException => string(
+      showException(fe) :/:
+        Document.nest(2, showEnv(fe.environment))
+    )
     case _ => string(Document.text("Unexpected exception"))
   }
 }

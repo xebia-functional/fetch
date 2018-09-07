@@ -660,7 +660,7 @@ val failingFetch: Fetch[String] = for {
   c <- fetchException
 } yield s"${a.username} loves ${b.username}"
 
-val result: IO[Either[Throwable, String]] = Fetch.run(failingFetch).attempt
+val result: IO[Either[Throwable, (Env, String)]] = Fetch.runEnv(failingFetch).attempt
 ```
 
 Now let's use the `fetch.debug.describe` function for describing the error if we find one:
@@ -668,9 +668,9 @@ Now let's use the `fetch.debug.describe` function for describing the error if we
 ```tut:book
 import fetch.debug.describe
 
-val value: Either[Throwable, String] = result.unsafeRunSync
+val value: Either[Throwable, (Env, String)] = result.unsafeRunSync
 
-println(value.fold(describe, identity _))
+println(value.fold(describe, _.toString))
 ```
 
 As you can see in the output from `describe`, the fetch stopped due to a `java.lang.Exception` after succesfully executing two
@@ -691,13 +691,13 @@ should be able to easily diagnose the failure. For ilustrating this scenario we'
 ```tut:silent
 val missingUser = getUser(5)
 
-val result: IO[Either[Throwable, User]] = Fetch.run(missingUser).attempt
+val result: IO[Either[Throwable, (Env, User)]] = Fetch.runEnv(missingUser).attempt
 ```
 
 And now we can execute the fetch and describe its execution:
 
 ```tut:book
-val value: Either[Throwable, User] = result.unsafeRunSync
+val value: Either[Throwable, (Env, User)] = result.unsafeRunSync
 
 println(value.fold(describe, _.toString))
 ```
@@ -707,9 +707,11 @@ As you can see in the output, the identity `5` for the user source was not found
 
 ```tut:book
 value match {
-  case Left(mi @ MissingIdentity(id, q)) => {
+  case Left(mi @ MissingIdentity(id, q, e)) => {
     println("Data Source: " + q.dataSource.name)
     println("Identity: " + id)
+    
+    println(describe(mi.environment))
   }
   case _ =>
 }
@@ -722,26 +724,26 @@ When multiple requests to the same data source are batched and/or multiple reque
 ```scala
 val missingUsers = List(3, 4, 5, 6).traverse(getUser)
 
-val result: IO[Either[Throwable, List[User]]] = Fetch.run(missingUsers).attempt
+val result: IO[Either[Throwable, (Env, List[User]])] = Fetch.runEnv(missingUsers).attempt
 ```
 
 And now we can execute the fetch and describe its execution:
 
 ```scala
 TODO
-val value: Either[Throwable, List[User]] = result.value
+val value: Either[Throwable, (Env, List[User])] = result.value
 
 println(value.fold(describe, _.toString))
 ```
 
-The `.missing` attribute will give us the mapping from data source name to missing identities, and `.env` will give us the environment so we can track the execution of the fetch.
+The `.missing` attribute will give us the mapping from data source name to missing identities, and `.environment` will give us the environment so we can track the execution of the fetch.
 
 ```scala
 TODO
 value match {
-  case Left(mi @ MissingIdentities(_, _)) => {
+  case Left(mi @ MissingIdentities(_, _, _)) => {
     println("Missing identities " + mi.missing)
-    println("Environment " + mi.env)
+    println("Environment " + mi.environment)
   }
   case _ =>
 }
@@ -861,13 +863,10 @@ visualize fetch executions using the environment.
 ```tut:silent
 val batched: Fetch[List[User]] = List(1, 2).traverse(getUser)
 val cached: Fetch[User] = getUser(2)
+val notCached: Fetch[User] = getUser(4)
 val concurrent: Fetch[(List[User], List[Post])] = (List(1, 2, 3).traverse(getUser), List(1, 2, 3).traverse(getPost)).tupled
 
-val interestingFetch = for {
-  users <- batched
-  anotherUser <- cached
-  _ <- concurrent
-} yield "done"
+val interestingFetch: Fetch[String] = batched >> cached >> notCached >> concurrent >> Fetch.pure("done")
 ```
 
 Now that we have the fetch let's run it, get the environment and visualize its execution using the `describe` function:

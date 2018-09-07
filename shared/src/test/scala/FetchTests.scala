@@ -527,7 +527,7 @@ class FetchTests extends FreeSpec with Matchers {
 
     io.attempt
       .map(_ should matchPattern {
-        case Left(MissingIdentity(Never(), _)) =>
+        case Left(MissingIdentity(Never(), _, _)) =>
       })
       .unsafeRunSync
   }
@@ -558,7 +558,7 @@ class FetchTests extends FreeSpec with Matchers {
 
     io.attempt
       .map(_ should matchPattern {
-        case Left(UnhandledException(AnException())) =>
+        case Left(UnhandledException(AnException(), _)) =>
       }).unsafeRunSync
   }
 
@@ -579,7 +579,7 @@ class FetchTests extends FreeSpec with Matchers {
 
     io.attempt
       .map(_ should matchPattern {
-        case Left(UnhandledException(AnException())) =>
+        case Left(UnhandledException(AnException(), _)) =>
       }).unsafeRunSync
   }
 
@@ -591,7 +591,7 @@ class FetchTests extends FreeSpec with Matchers {
 
     io.attempt
       .map(_ should matchPattern {
-        case Left(UnhandledException(AnException())) =>
+        case Left(UnhandledException(AnException(), _)) =>
       }).unsafeRunSync
   }
 
@@ -602,7 +602,7 @@ class FetchTests extends FreeSpec with Matchers {
 
     io.attempt
       .map(_ should matchPattern {
-        case Left(MissingIdentity(Never(), _)) =>
+        case Left(MissingIdentity(Never(), _, _)) =>
       }).unsafeRunSync
   }
 
@@ -613,7 +613,7 @@ class FetchTests extends FreeSpec with Matchers {
 
     io.attempt
       .map(_ should matchPattern {
-        case Left(MissingIdentity(Never(), _)) =>
+        case Left(MissingIdentity(Never(), _, _)) =>
       }).unsafeRunSync
   }
 }
