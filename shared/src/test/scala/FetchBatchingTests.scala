@@ -16,20 +16,26 @@
 
 package fetch
 
-import scala.concurrent.ExecutionContext
-import org.scalatest.{FreeSpec, Matchers}
+import scala.language.implicitConversions
+import scala.concurrent.{ExecutionContext, Future}
+
+import org.scalatest.{AsyncFreeSpec, Matchers}
+
 import cats.data.NonEmptyList
 import cats.instances.list._
 import cats.syntax.all._
 import cats.effect._
+
 import fetch._
 
-class FetchBatchingTests extends FreeSpec with Matchers {
+class FetchBatchingTests extends AsyncFreeSpec with Matchers {
   import TestHelper._
 
-  val executionContext: ExecutionContext = ExecutionContext.Implicits.global
+  override val executionContext: ExecutionContext = ExecutionContext.Implicits.global
   implicit val timer: Timer[IO] = IO.timer(executionContext)
   implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
+
+  implicit def ioToFuture[A](io: IO[A]): Future[A] = io.unsafeToFuture()
 
   case class BatchedDataSeq(id: Int)
   implicit object MaxBatchSourceSeq extends DataSource[BatchedDataSeq, Int] {
@@ -62,26 +68,30 @@ class FetchBatchingTests extends FreeSpec with Matchers {
     val fetch: Fetch[List[Int]] = List.range(1, 6).traverse(fetchBatchedDataSeq)
 
     val io = Fetch.runEnv(fetch)
-    val (env, result) = io.unsafeRunSync
 
-    result shouldEqual List(1, 2, 3, 4, 5)
-
-    env.rounds.size shouldEqual 1
-    totalFetched(env.rounds) shouldEqual 5
-    totalBatches(env.rounds) shouldEqual 3
+    io.map({
+      case (env, result) => {
+        result shouldEqual List(1, 2, 3, 4, 5)
+        env.rounds.size shouldEqual 1
+        totalFetched(env.rounds) shouldEqual 5
+        totalBatches(env.rounds) shouldEqual 3
+      }
+    })
   }
 
   "A large fetch to a datasource with a maximum batch size is split and executed in parallel" in {
     val fetch: Fetch[List[Int]] = List.range(1, 6).traverse(fetchBatchedDataPar)
 
     val io = Fetch.runEnv(fetch)
-    val (env, result) = io.unsafeRunSync
 
-    result shouldEqual List(1, 2, 3, 4, 5)
-
-    env.rounds.size shouldEqual 1
-    totalFetched(env.rounds) shouldEqual 5
-    totalBatches(env.rounds) shouldEqual 3
+    io.map({
+      case (env, result) => {
+        result shouldEqual List(1, 2, 3, 4, 5)
+        env.rounds.size shouldEqual 1
+        totalFetched(env.rounds) shouldEqual 5
+        totalBatches(env.rounds) shouldEqual 3
+      }
+    })
   }
 
   "Fetches to datasources with a maximum batch size should be split and executed in parallel and sequentially" in {
@@ -90,13 +100,15 @@ class FetchBatchingTests extends FreeSpec with Matchers {
         List.range(1, 6).traverse(fetchBatchedDataSeq)
 
     val io = Fetch.runEnv(fetch)
-    val (env, result) = io.unsafeRunSync
 
-    result shouldEqual List(1, 2, 3, 4, 5)
-
-    env.rounds.size shouldEqual 1
-    totalFetched(env.rounds) shouldEqual 5 + 5
-    totalBatches(env.rounds) shouldEqual 3 + 3
+    io.map({
+      case (env, result) => {
+        result shouldEqual List(1, 2, 3, 4, 5)
+        env.rounds.size shouldEqual 1
+        totalFetched(env.rounds) shouldEqual 5 + 5
+        totalBatches(env.rounds) shouldEqual 3 + 3
+      }
+    })
   }
 
   "A large (many) fetch to a datasource with a maximum batch size is split and executed in sequence" in {
@@ -104,12 +116,15 @@ class FetchBatchingTests extends FreeSpec with Matchers {
       List(fetchBatchedDataSeq(1), fetchBatchedDataSeq(2), fetchBatchedDataSeq(3)).sequence
 
     val io = Fetch.runEnv(fetch)
-    val (env, result) = io.unsafeRunSync
 
-    result shouldEqual List(1, 2, 3)
-    env.rounds.size shouldEqual 1
-    totalFetched(env.rounds) shouldEqual 3
-    totalBatches(env.rounds) shouldEqual 2
+    io.map({
+      case (env, result) => {
+        result shouldEqual List(1, 2, 3)
+        env.rounds.size shouldEqual 1
+        totalFetched(env.rounds) shouldEqual 3
+        totalBatches(env.rounds) shouldEqual 2
+      }
+    })
   }
 
   "A large (many) fetch to a datasource with a maximum batch size is split and executed in parallel" in {
@@ -117,12 +132,16 @@ class FetchBatchingTests extends FreeSpec with Matchers {
       List(fetchBatchedDataPar(1), fetchBatchedDataPar(2), fetchBatchedDataPar(3)).sequence
 
     val io = Fetch.runEnv(fetch)
-    val (env, result) = io.unsafeRunSync
 
-    result shouldEqual List(1, 2, 3)
-    env.rounds.size shouldEqual 1
-    totalFetched(env.rounds) shouldEqual 3
-    totalBatches(env.rounds) shouldEqual 2
+
+    io.map({
+      case (env, result) => {
+        result shouldEqual List(1, 2, 3)
+        env.rounds.size shouldEqual 1
+        totalFetched(env.rounds) shouldEqual 3
+        totalBatches(env.rounds) shouldEqual 2
+      }
+    })
   }
 
   "Very deep fetches don't overflow stack or heap" in {
@@ -135,9 +154,12 @@ class FetchBatchingTests extends FreeSpec with Matchers {
       )(_ >> _)
 
     val io = Fetch.runEnv(fetch)
-    val (env, result) = io.unsafeRunSync
 
-    result shouldEqual (0 until depth).toList
-    env.rounds.size shouldEqual depth
+    io.map({
+      case (env, result) => {
+        result shouldEqual (0 until depth).toList
+        env.rounds.size shouldEqual depth
+      }
+    })
   }
 }

@@ -14,25 +14,31 @@
  * limitations under the License.
  */
 
+import scala.language.implicitConversions
 import scala.concurrent.{ExecutionContext, Future}
-import org.scalatest.{FreeSpec, Matchers}
+
+import org.scalatest.{AsyncFreeSpec, Matchers}
+
 import cats.instances.list._
 import cats.effect._
 import cats.syntax.all._
+
 import fetch._
 
-class FetchAsyncQueryTests extends FreeSpec with Matchers {
+class FetchAsyncQueryTests extends AsyncFreeSpec with Matchers {
   import TestHelper._
 
-  implicit val executionContext = ExecutionContext.Implicits.global
+  implicit override val executionContext = ExecutionContext.Implicits.global
   implicit val timer: Timer[IO] = IO.timer(executionContext)
   implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
+
+  implicit def ioToFuture[A](io: IO[A]): Future[A] = io.unsafeToFuture()
 
   "We can interpret an async fetch into an IO" in {
     val fetch: Fetch[Article] = article(1)
     val io: IO[Article]  = Fetch.run(fetch)
 
-    io.unsafeRunSync shouldEqual Article(1, "An article with id 1")
+    io.map(_ shouldEqual Article(1, "An article with id 1"))
   }
 
   "We can combine several async data sources and interpret a fetch into an IO" in {
@@ -43,7 +49,7 @@ class FetchAsyncQueryTests extends FreeSpec with Matchers {
 
     val io = Fetch.run(fetch)
 
-    io.unsafeRunSync shouldEqual (Article(1, "An article with id 1"), Author(2, "@egg2"))
+    io.map(_ shouldEqual (Article(1, "An article with id 1"), Author(2, "@egg2")))
   }
 
   "We can use combinators in a for comprehension and interpret a fetch from async sources into an IO" in {
@@ -52,11 +58,11 @@ class FetchAsyncQueryTests extends FreeSpec with Matchers {
     } yield articles
 
     val io = Fetch.run(fetch)
-    io.unsafeRunSync shouldEqual List(
+    io.map(_ shouldEqual List(
       Article(1, "An article with id 1"),
       Article(1, "An article with id 1"),
       Article(2, "An article with id 2")
-    )
+    ))
   }
 
   "We can use combinators and multiple sources in a for comprehension and interpret a fetch from async sources into an IO" in {
@@ -67,7 +73,7 @@ class FetchAsyncQueryTests extends FreeSpec with Matchers {
 
     val io = Fetch.run(fetch)
 
-    io.unsafeRunSync shouldEqual (
+    io.map(_ shouldEqual (
       List(
         Article(1, "An article with id 1"),
         Article(1, "An article with id 1"),
@@ -78,6 +84,6 @@ class FetchAsyncQueryTests extends FreeSpec with Matchers {
         Author(2, "@egg2"),
         Author(3, "@egg3")
       )
-    )
+    ))
   }
 }

@@ -16,32 +16,43 @@
 
 package fetch
 
+import scala.language.implicitConversions
 import scala.concurrent.{ExecutionContext, Future}
-import org.scalatest.{FreeSpec, Matchers}
+
+import org.scalatest.{AsyncFreeSpec, Matchers}
+
 import fetch._
+
 import cats.effect._
 import cats.instances.list._
 import cats.syntax.all._
 
-class FetchReportingTests extends FreeSpec with Matchers {
+class FetchReportingTests extends AsyncFreeSpec with Matchers {
   import TestHelper._
 
-  implicit val executionContext = ExecutionContext.Implicits.global
+  override implicit val executionContext = ExecutionContext.Implicits.global
   implicit val timer: Timer[IO] = IO.timer(executionContext)
   implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
+
+  implicit def ioToFuture[A](io: IO[A]): Future[A] = io.unsafeToFuture()
 
   "Plain values have no rounds of execution" in {
     val fetch: Fetch[Int] = Fetch.pure(42)
     val io = Fetch.runEnv(fetch)
-    val (env, result) = io.unsafeRunSync
-    env.rounds.size shouldEqual 0
+
+    io.map({
+      case (env, result) => env.rounds.size shouldEqual 0
+    })
   }
 
   "Single fetches are executed in one round" in {
     val fetch = one(1)
     val io = Fetch.runEnv(fetch)
-    val (env, result) = io.unsafeRunSync
-    env.rounds.size shouldEqual 1
+
+    io.map({
+      case (env, result) => env.rounds.size shouldEqual 1
+    })
+
   }
 
   "Single fetches are executed in one round per binding in a for comprehension" in {
@@ -50,8 +61,11 @@ class FetchReportingTests extends FreeSpec with Matchers {
       t <- one(2)
     } yield (o, t)
     val io = Fetch.runEnv(fetch)
-    val (env, result) = io.unsafeRunSync
-    env.rounds.size shouldEqual 2
+
+    io.map({
+      case (env, result) => env.rounds.size shouldEqual 2
+    })
+
   }
 
   "Single fetches for different data sources are executed in multiple rounds if they are in a for comprehension" in {
@@ -61,16 +75,21 @@ class FetchReportingTests extends FreeSpec with Matchers {
     } yield (o, m)
 
     val io = Fetch.runEnv(fetch)
-    val (env, result) = io.unsafeRunSync
-    env.rounds.size shouldEqual 2
+
+    io.map({
+      case (env, result) => env.rounds.size shouldEqual 2
+    })
+
   }
 
   "Single fetches combined with cartesian are run in one round" in {
     val fetch: Fetch[(Int, List[Int])] = (one(1), many(3)).tupled
 
     val io = Fetch.runEnv(fetch)
-    val (env, result) = io.unsafeRunSync
-    env.rounds.size shouldEqual 1
+
+    io.map({
+      case (env, result) => env.rounds.size shouldEqual 1
+    })
   }
 
   "Single fetches combined with traverse are run in one round" in {
@@ -80,16 +99,20 @@ class FetchReportingTests extends FreeSpec with Matchers {
     } yield ones
 
     val io = Fetch.runEnv(fetch)
-    val (env, result) = io.unsafeRunSync
-    env.rounds.size shouldEqual 2
+
+    io.map({
+      case (env, result) => env.rounds.size shouldEqual 2
+    })
   }
 
   "The product of two fetches from the same data source implies batching" in {
     val fetch: Fetch[(Int, Int)] = (one(1), one(3)).tupled
 
     val io = Fetch.runEnv(fetch)
-    val (env, result) = io.unsafeRunSync
-    env.rounds.size shouldEqual 1
+
+    io.map({
+      case (env, result) => env.rounds.size shouldEqual 1
+    })
   }
 
   "The product of concurrent fetches of the same type implies everything fetched in batches" in {
@@ -112,7 +135,9 @@ class FetchReportingTests extends FreeSpec with Matchers {
     ).tupled
 
     val io = Fetch.runEnv(fetch)
-    val (env, result) = io.unsafeRunSync
-    env.rounds.size shouldEqual 2
+
+    io.map({
+      case (env, result) => env.rounds.size shouldEqual 2
+    })
   }
 }
