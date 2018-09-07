@@ -16,35 +16,36 @@
 
 package fetch
 
-import cats.{Parallel => P}
+import cats.{Functor, Monad}
 import cats.effect._
 import cats.data.NonEmptyList
 import cats.instances.list._
 import cats.instances.option._
 import cats.syntax.all._
+import cats.temp.par._
 
 /**
  * A `DataSource` is the recipe for fetching a certain identity `I`, which yields
  * results of type `A`.
  */
-trait DataSource[I, A] {
+trait DataSource[F[_], I, A] {
   /** The name of the data source.
    */
   def name: String
 
   /** Fetch one identity, returning a None if it wasn't found.
    */
-  def fetch(id: I): IO[Option[A]]
+  def fetch(id: I): F[Option[A]]
 
-  private def fetchOneWithId(id: I): IO[Option[(I, A)]] =
+  private def fetchOneWithId(id: I)(implicit f: Functor[F]): F[Option[(I, A)]] =
     fetch(id).map(_.tupleLeft(id))
 
   /** Fetch many identities, returning a mapping from identities to results. If an
    * identity wasn't found, it won't appear in the keys.
    */
   def batch(ids: NonEmptyList[I])(
-    implicit P: P[IO, IO.Par]
-  ): IO[Map[I, A]] =
+    implicit M: Monad[F], P: Par[F]
+  ): F[Map[I, A]] =
     ids.parTraverse(fetchOneWithId).map(_.collect { case Some(x) => x }.toMap)
 
   def maxBatchSize: Option[Int] = None
