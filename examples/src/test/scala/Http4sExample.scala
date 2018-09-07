@@ -14,18 +14,22 @@
  * limitations under the License.
  */
 
+import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
+
+import cats.Parallel
 import cats.data.NonEmptyList
 import cats.effect._
 import cats.instances.list._
 import cats.syntax.all._
+
 import io.circe._
 import io.circe.generic.semiauto._
+
 import org.http4s.circe._
 import org.http4s.client.blaze._
 import org.scalatest.{Matchers, WordSpec}
 
-import scala.concurrent.{ExecutionContext}
 import fetch._
 
 class Http4sExample extends WordSpec with Matchers {
@@ -69,7 +73,7 @@ class Http4sExample extends WordSpec with Matchers {
     }
 
     override def batch(ids: NonEmptyList[UserId])(
-      implicit P: Parallel[IO, IO.Par]
+        implicit P: Parallel[IO, IO.Par]
     ): IO[Map[UserId, User]] = {
       val filterIds = ids.map("id=" + _.id).toList.mkString("&")
       val url       = s"https://jsonplaceholder.typicode.com/users?$filterIds"
@@ -88,7 +92,7 @@ class Http4sExample extends WordSpec with Matchers {
     }
 
     override def batch(ids: NonEmptyList[UserId])(
-      implicit P: Parallel[IO, IO.Par]
+        implicit P: Parallel[IO, IO.Par]
     ): IO[Map[UserId, List[Post]]] = {
       val filterIds = ids.map("userId=" + _.id).toList.mkString("&")
       val url       = s"https://jsonplaceholder.typicode.com/posts?$filterIds"
@@ -102,8 +106,8 @@ class Http4sExample extends WordSpec with Matchers {
   def postsForUser(id: UserId): Fetch[List[Post]] = Fetch(id, postsForUserDS)
 
   "We can fetch one user" in {
-    val fetch: Fetch[User]       = user(UserId(1))
-    val io: IO[(FetchEnv, User)] = Fetch.runEnv(fetch)
+    val fetch: Fetch[User]  = user(UserId(1))
+    val io: IO[(Env, User)] = Fetch.runEnv(fetch)
 
     val (env, result) = io.unsafeRunSync
 
