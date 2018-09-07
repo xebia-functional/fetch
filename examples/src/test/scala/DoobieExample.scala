@@ -68,7 +68,7 @@ class DoobieExample extends WordSpec with Matchers {
       fetchById(id).transact(xa)
 
     override def batch(ids: NonEmptyList[AuthorId])(
-      implicit P: Parallel[IO, IO.Par]
+        implicit P: Parallel[IO, IO.Par]
     ): IO[Map[AuthorId, Author]] =
       fetchByIds(ids)
         .map { authors =>
@@ -91,8 +91,8 @@ class DoobieExample extends WordSpec with Matchers {
   def author(id: Int): Fetch[Author] = Fetch(AuthorId(id), authorDS)
 
   "We can fetch one author from the DB" in {
-    val fetch: Fetch[Author]       = author(1)
-    val io: IO[(FetchEnv, Author)] = Fetch.runEnv(fetch)
+    val fetch: Fetch[Author]  = author(1)
+    val io: IO[(Env, Author)] = Fetch.runEnv(fetch)
 
     val (env, result) = io.unsafeRunSync
 
@@ -101,8 +101,8 @@ class DoobieExample extends WordSpec with Matchers {
   }
 
   "We can fetch multiple authors from the DB in parallel" in {
-    val fetch: Fetch[List[Author]]       = List(1, 2).traverse(author)
-    val io: IO[(FetchEnv, List[Author])] = Fetch.runEnv(fetch)
+    val fetch: Fetch[List[Author]]  = List(1, 2).traverse(author)
+    val io: IO[(Env, List[Author])] = Fetch.runEnv(fetch)
 
     val (env, result) = io.unsafeRunSync
 
@@ -115,7 +115,7 @@ class DoobieExample extends WordSpec with Matchers {
       a <- author(1)
       b <- author(a.id + 1)
     } yield List(a, b)
-    val io: IO[(FetchEnv, List[Author])] = Fetch.runEnv(fetch)
+    val io: IO[(Env, List[Author])] = Fetch.runEnv(fetch)
 
     val (env, result) = io.unsafeRunSync
 
