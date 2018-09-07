@@ -187,8 +187,7 @@ implicit object UnbatchedSource extends DataSource[Int, Int]{
 
 The default `batch` implementation run requests to the data source in parallel, but you can easily override it. We can make `batch` sequential using `NonEmptyList.traverse` for fetching individual identities.
 
-```scala
-TODO
+```tut:silent
 implicit object UnbatchedSeqSource extends DataSource[Int, Int]{
   override def name = "UnbatchedSeq"
 
@@ -197,10 +196,10 @@ implicit object UnbatchedSeqSource extends DataSource[Int, Int]{
     
   override def batch(ids: NonEmptyList[Int])(
     implicit P: Parallel[IO, IO.Par]
-  ): IO[Option[Map[Int, Int]]] =
+  ): IO[Map[Int, Int]] =
     ids.traverse(
       (id) => fetch(id).map(v => (id, v))
-    ).map(_.collect { case (i, Some(x)) => (i, x) }.toMap_)
+    ).map(_.collect { case (i, Some(x)) => (i, x) }.toMap)
 }
 ```
 
@@ -678,15 +677,8 @@ rounds for getting users 1 and 2.
 
 ## Missing identities
 
-You've probably noticed that `DataSource.fetchOne` and `DataSource.fetchMany` return types help Fetch know if any requested
-identity was not found. Whenever an identity cannot be found, the fetch execution will fail with an instance of `FetchException`.
-
-The requests can be of different types, each of which is described below.
-
-### One request
-
-When a single identity is being fetched the request will be a `FetchOne`; it contains the data source and the identity to fetch so you
-should be able to easily diagnose the failure. For ilustrating this scenario we'll ask for users that are not in the database.
+You've probably noticed that `DataSource.fetch` and `DataSource.batch` return types help Fetch know if any requested
+identity was not found. Whenever an identity cannot be found, the fetch execution will fail with an instance of `MissingIdentity`.
 
 ```tut:silent
 val missingUser = getUser(5)
@@ -716,40 +708,6 @@ value match {
   case _ =>
 }
 ```
-
-### Multiple requests
-
-When multiple requests to the same data source are batched and/or multiple requests are performed at the same time, is possible that more than one identity was missing. There is another error case for such situations: `MissingIdentities`, which contains a mapping from data source names to the list of missing identities.
-
-```scala
-val missingUsers = List(3, 4, 5, 6).traverse(getUser)
-
-val result: IO[Either[Throwable, (Env, List[User]])] = Fetch.runEnv(missingUsers).attempt
-```
-
-And now we can execute the fetch and describe its execution:
-
-```scala
-TODO
-val value: Either[Throwable, (Env, List[User])] = result.value
-
-println(value.fold(describe, _.toString))
-```
-
-The `.missing` attribute will give us the mapping from data source name to missing identities, and `.environment` will give us the environment so we can track the execution of the fetch.
-
-```scala
-TODO
-value match {
-  case Left(mi @ MissingIdentities(_, _, _)) => {
-    println("Missing identities " + mi.missing)
-    println("Environment " + mi.environment)
-  }
-  case _ =>
-}
-```
-
-## Your own errors
 
 # Syntax
 
@@ -816,32 +774,19 @@ val fetchThree: Fetch[(Post, User, Post)] = (getPost(1), getUser(2), getPost(2))
 
 Notice how the queries to posts are batched.
 
-```scala
-TODO
-fetchThree.runA[Id]
+```tut:book
+Fetch.run(fetchThree).unsafeRunTimed(5.seconds)
 ```
 
 More interestingly, we can use it to apply a pure function to the results of various
 fetches.
 
-```scala
-TODO
+```tut:book
 val fetchFriends: Fetch[String] = (getUser(1), getUser(2)).mapN { (one, other) =>
   s"${one.username} is friends with ${other.username}"
 }
 
-fetchFriends.runA[Id]
-```
-
-The above example is equivalent to the following using the `Fetch#join` method:
-
-```scala
-TODO
-val fetchFriends: Fetch[String] = Fetch.join(getUser(1), getUser(2)).map { case (one, other) =>
-  s"${one.username} is friends with ${other.username}"
-}
-
-fetchFriends.runA[Id]
+Fetch.run(fetchFriends).unsafeRunTimed(5.seconds)
 ```
 
 # Debugging
