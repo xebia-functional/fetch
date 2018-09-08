@@ -70,7 +70,7 @@ object `package` {
   }
 
   /* Combines two requests to the same data source. */
-  implicit val brSemigroup: Semigroup[BlockedRequest] = new Semigroup[BlockedRequest] {
+  private val brSemigroup: Semigroup[BlockedRequest] = new Semigroup[BlockedRequest] {
     def combine(x: BlockedRequest, y: BlockedRequest): BlockedRequest =
       (x.request, y.request) match {
         case (a@FetchOne(aId, ds), b@FetchOne(anotherId, _)) =>
@@ -130,14 +130,17 @@ object `package` {
   /* A map from datasources to blocked requests used to group requests to the same data source. */
   case class RequestMap(m: Map[DataSource[Any, Any], BlockedRequest])
 
-  def optionCombine[A : Semigroup](a: A, opt: Option[A]): A =
+  private def optionCombine[A](a: A, opt: Option[A])(
+    implicit S: Semigroup[A]
+  ): A =
     opt.map(a |+| _).getOrElse(a)
 
-  implicit val rqSemigroup: Semigroup[RequestMap] = new Semigroup[RequestMap] {
+  /* Combine two `RequestMap` instances using the `Semigroup[BlockedRequest]` to combine requests to the same data source. */
+  private val rqSemigroup: Semigroup[RequestMap] = new Semigroup[RequestMap] {
     def combine(x: RequestMap, y: RequestMap): RequestMap =
       RequestMap(
         x.m.foldLeft(y.m) {
-          case (acc, (ds, blocked)) => acc.updated(ds, optionCombine(blocked, acc.get(ds)))
+          case (acc, (ds, blocked)) => acc.updated(ds, optionCombine(blocked, acc.get(ds))(brSemigroup))
         }
       )
   }
@@ -178,12 +181,16 @@ object `package` {
       Unfetch(for {
         fab <- (fa.run, fb.run).tupled
         result = fab match {
-          case (Throw(e), _) => Throw[(A, B)](e)
-          case (Done(a), Done(b)) => Done((a, b))
-          case (Done(a), Blocked(br, c)) => Blocked(br, product(fa, c))
-          case (Blocked(br, c), Done(b)) => Blocked(br, product(c, fb))
+          case (Throw(e), _) =>
+            Throw[(A, B)](e)
+          case (Done(a), Done(b)) =>
+            Done((a, b))
+          case (Done(a), Blocked(br, c)) =>
+            Blocked(br, product(fa, c))
+          case (Blocked(br, c), Done(b)) =>
+            Blocked(br, product(c, fb))
           case (Blocked(br, c), Blocked(br2, c2)) =>
-            Blocked(br |+| br2, product(c, c2))
+            Blocked(rqSemigroup.combine(br, br2), product(c, c2))
           case (_, Throw(e)) =>
             Throw[(A, B)](e)
         }
