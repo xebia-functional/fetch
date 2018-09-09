@@ -70,80 +70,73 @@ object `package` {
   }
 
   /* Combines two requests to the same data source. */
-  private val brSemigroup: Semigroup[BlockedRequest] = new Semigroup[BlockedRequest] {
-    def combine(x: BlockedRequest, y: BlockedRequest): BlockedRequest =
-      (x.request, y.request) match {
-        case (a@FetchOne(aId, ds), b@FetchOne(anotherId, _)) =>
-          if (aId == anotherId)  {
-            val newRequest = FetchOne(aId, ds)
-            val newResult = (r: FetchStatus) => (x.result(r), y.result(r)).tupled >> IO.unit
-            BlockedRequest(newRequest, newResult)
-          } else {
-            val newRequest = Batch(combineIdentities(a, b), ds)
-            val newResult = (r: FetchStatus) => r match {
-              case FetchDone(m : Map[Any, Any]) => {
-                val xResult = m.get(aId).map(FetchDone(_)).getOrElse(FetchMissing())
-                val yResult = m.get(anotherId).map(FetchDone(_)).getOrElse(FetchMissing())
-                (x.result(xResult), y.result(yResult)).tupled >> IO.unit
-              }
-
-              case FetchMissing() =>
-                (x.result(r), y.result(r)).tupled >> IO.unit
-            }
-            BlockedRequest(newRequest, newResult)
+  private def combineRequests(x: BlockedRequest, y: BlockedRequest): BlockedRequest = (x.request, y.request) match {
+    case (a@FetchOne(aId, ds), b@FetchOne(anotherId, _)) =>
+      if (aId == anotherId)  {
+        val newRequest = FetchOne(aId, ds)
+        val newResult = (r: FetchStatus) => (x.result(r), y.result(r)).tupled >> IO.unit
+        BlockedRequest(newRequest, newResult)
+      } else {
+        val newRequest = Batch(combineIdentities(a, b), ds)
+        val newResult = (r: FetchStatus) => r match {
+          case FetchDone(m : Map[Any, Any]) => {
+            val xResult = m.get(aId).map(FetchDone(_)).getOrElse(FetchMissing())
+            val yResult = m.get(anotherId).map(FetchDone(_)).getOrElse(FetchMissing())
+              (x.result(xResult), y.result(yResult)).tupled >> IO.unit
           }
 
-        case (a@FetchOne(oneId, ds), b@Batch(anotherIds, _)) =>
-          val newRequest = Batch(combineIdentities(a, b), ds)
-          val newResult = (r: FetchStatus) => r match {
-            case FetchDone(m : Map[Any, Any]) => {
-              val oneResult = m.get(oneId).map(FetchDone(_)).getOrElse(FetchMissing())
-
-              (x.result(oneResult), y.result(r)).tupled >> IO.unit
-            }
-
-            case FetchMissing() =>
-              (x.result(r), y.result(r)).tupled >> IO.unit
-          }
-          BlockedRequest(newRequest, newResult)
-
-        case (a@Batch(manyId, ds), b@FetchOne(oneId, _)) =>
-          val newRequest = Batch(combineIdentities(a, b), ds)
-          val newResult = (r: FetchStatus) => r match {
-            case FetchDone(m : Map[Any, Any]) => {
-              val oneResult = m.get(oneId).map(FetchDone(_)).getOrElse(FetchMissing())
-              (x.result(r), y.result(oneResult)).tupled >> IO.unit
-            }
-
-            case FetchMissing() =>
-              (x.result(r), y.result(r)).tupled >> IO.unit
-          }
-          BlockedRequest(newRequest, newResult)
-
-        case (a@Batch(manyId, ds), b@Batch(otherId, _)) =>
-          val newRequest = Batch(combineIdentities(a, b), ds)
-          val newResult = (r: FetchStatus) => (x.result(r), y.result(r)).tupled >> IO.unit
-          BlockedRequest(newRequest, newResult)
+          case FetchMissing() =>
+            (x.result(r), y.result(r)).tupled >> IO.unit
+        }
+        BlockedRequest(newRequest, newResult)
       }
+
+    case (a@FetchOne(oneId, ds), b@Batch(anotherIds, _)) =>
+      val newRequest = Batch(combineIdentities(a, b), ds)
+      val newResult = (r: FetchStatus) => r match {
+        case FetchDone(m : Map[Any, Any]) => {
+          val oneResult = m.get(oneId).map(FetchDone(_)).getOrElse(FetchMissing())
+
+          (x.result(oneResult), y.result(r)).tupled >> IO.unit
+        }
+
+        case FetchMissing() =>
+          (x.result(r), y.result(r)).tupled >> IO.unit
+      }
+      BlockedRequest(newRequest, newResult)
+
+    case (a@Batch(manyId, ds), b@FetchOne(oneId, _)) =>
+      val newRequest = Batch(combineIdentities(a, b), ds)
+      val newResult = (r: FetchStatus) => r match {
+        case FetchDone(m : Map[Any, Any]) => {
+          val oneResult = m.get(oneId).map(FetchDone(_)).getOrElse(FetchMissing())
+            (x.result(r), y.result(oneResult)).tupled >> IO.unit
+        }
+
+        case FetchMissing() =>
+          (x.result(r), y.result(r)).tupled >> IO.unit
+      }
+      BlockedRequest(newRequest, newResult)
+
+    case (a@Batch(manyId, ds), b@Batch(otherId, _)) =>
+      val newRequest = Batch(combineIdentities(a, b), ds)
+      val newResult = (r: FetchStatus) => (x.result(r), y.result(r)).tupled >> IO.unit
+      BlockedRequest(newRequest, newResult)
   }
 
   /* A map from datasources to blocked requests used to group requests to the same data source. */
   case class RequestMap(m: Map[DataSource[Any, Any], BlockedRequest])
 
-  private def optionCombine[A](a: A, opt: Option[A])(
-    implicit S: Semigroup[A]
-  ): A =
-    opt.map(a |+| _).getOrElse(a)
-
-  /* Combine two `RequestMap` instances using the `Semigroup[BlockedRequest]` to combine requests to the same data source. */
-  private val rqSemigroup: Semigroup[RequestMap] = new Semigroup[RequestMap] {
-    def combine(x: RequestMap, y: RequestMap): RequestMap =
-      RequestMap(
-        x.m.foldLeft(y.m) {
-          case (acc, (ds, blocked)) => acc.updated(ds, optionCombine(blocked, acc.get(ds))(brSemigroup))
+  /* Combine two `RequestMap` instances to batch requests to the same data source. */
+  private def combineRequestMaps(x: RequestMap, y: RequestMap): RequestMap =
+    RequestMap(
+      x.m.foldLeft(y.m) {
+        case (acc, (ds, blocked)) => {
+          val combinedReq: BlockedRequest = acc.get(ds).fold(blocked)(combineRequests(blocked, _))
+          acc.updated(ds, combinedReq)
         }
-      )
-  }
+      }
+    )
 
   // `Fetch` result data type
   sealed trait FetchResult[A]
@@ -190,7 +183,7 @@ object `package` {
           case (Blocked(br, c), Done(b)) =>
             Blocked(br, product(c, fb))
           case (Blocked(br, c), Blocked(br2, c2)) =>
-            Blocked(rqSemigroup.combine(br, br2), product(c, c2))
+            Blocked(combineRequestMaps(br, br2), product(c, c2))
           case (_, Throw(e)) =>
             Throw[(A, B)](e)
         }
