@@ -94,19 +94,19 @@ implicit object ToStringSource extends DataSource[Int, String]{
   override def name = "ToString"
 
   override def fetch(id: Int): IO[Option[String]] = {
-    IO(println(s"--> [${Thread.currentThread.getId}] One ToString $id")) >>
+    IO.delay(println(s"--> [${Thread.currentThread.getId}] One ToString $id")) >>
     IO.sleep(10.milliseconds) >>
-    IO(println(s"<-- [${Thread.currentThread.getId}] One ToString $id")) >>
-    IO(Option(id.toString))
+    IO.delay(println(s"<-- [${Thread.currentThread.getId}] One ToString $id")) >>
+    IO.pure(Option(id.toString))
   }
 
   override def batch(ids: NonEmptyList[Int])(
     implicit P: Parallel[IO, IO.Par]
   ): IO[Map[Int, String]] = {
-    IO(println(s"--> [${Thread.currentThread.getId}] Batch ToString $ids")) >>
+    IO.delay(println(s"--> [${Thread.currentThread.getId}] Batch ToString $ids")) >>
     IO.sleep(10.milliseconds) >>
-    IO(println(s"<-- [${Thread.currentThread.getId}] Batch ToString $ids")) >>
-    IO(ids.toList.map(i => (i, i.toString)).toMap)
+    IO.delay(println(s"<-- [${Thread.currentThread.getId}] Batch ToString $ids")) >>
+    IO.pure(ids.toList.map(i => (i, i.toString)).toMap)
   }
 }
 
@@ -125,8 +125,8 @@ Let's run it and wait for the fetch to complete, we'll use `IO#unsafeRunTimed` f
 
 ```scala
 Fetch.run(fetchOne).unsafeRunTimed(5.seconds)
-// --> [92] One ToString 1
-// <-- [93] One ToString 1
+// --> [311] One ToString 1
+// <-- [312] One ToString 1
 // res0: Option[String] = Some(1)
 ```
 
@@ -146,8 +146,8 @@ When executing the above fetch, note how the three identities get batched and th
 
 ```scala
 Fetch.run(fetchThree).unsafeRunTimed(5.seconds)
-// --> [92] Batch ToString NonEmptyList(1, 2, 3)
-// <-- [93] Batch ToString NonEmptyList(1, 2, 3)
+// --> [311] Batch ToString NonEmptyList(1, 2, 3)
+// <-- [312] Batch ToString NonEmptyList(1, 2, 3)
 // res1: Option[(String, String, String)] = Some((1,2,3))
 ```
 
@@ -162,18 +162,18 @@ implicit object LengthSource extends DataSource[String, Int]{
   override def name = "Length"
 
   override def fetch(id: String): IO[Option[Int]] = {
-    IO(println(s"--> [${Thread.currentThread.getId}] One Length $id")) >>
+    IO.delay(println(s"--> [${Thread.currentThread.getId}] One Length $id")) >>
     IO.sleep(10.milliseconds) >>
-    IO(println(s"<-- [${Thread.currentThread.getId}] One Length $id")) >>
-    IO(Option(id.size))
+    IO.delay(println(s"<-- [${Thread.currentThread.getId}] One Length $id")) >>
+    IO.pure(Option(id.size))
   }
   override def batch(ids: NonEmptyList[String])(
     implicit P: Parallel[IO, IO.Par]
   ): IO[Map[String, Int]] = {
-    IO(println(s"--> [${Thread.currentThread.getId}] Batch Length $ids")) >>
+    IO.delay(println(s"--> [${Thread.currentThread.getId}] Batch Length $ids")) >>
     IO.sleep(10.milliseconds) >>
-    IO(println(s"<-- [${Thread.currentThread.getId}] Batch Length $ids")) >>
-    IO(ids.toList.map(i => (i, i.size)).toMap)
+    IO.delay(println(s"<-- [${Thread.currentThread.getId}] Batch Length $ids")) >>
+    IO.pure(ids.toList.map(i => (i, i.size)).toMap)
   }
 }
 
@@ -190,10 +190,10 @@ Note how the two independent data fetches run in parallel, minimizing the latenc
 
 ```scala
 Fetch.run(fetchMulti).unsafeRunTimed(5.seconds)
-// --> [93] One ToString 1
-// --> [92] One Length one
-// <-- [93] One ToString 1
-// <-- [92] One Length one
+// --> [312] One ToString 1
+// --> [311] One Length one
+// <-- [312] One ToString 1
+// <-- [311] One Length one
 // res2: Option[(String, Int)] = Some((1,3))
 ```
 
@@ -214,8 +214,8 @@ While running it, notice that the data source is only queried once. The next tim
 
 ```scala
 Fetch.run(fetchTwice).unsafeRunTimed(5.seconds)
-// --> [93] One ToString 1
-// <-- [92] One ToString 1
+// --> [312] One ToString 1
+// <-- [311] One ToString 1
 // res3: Option[(String, String)] = Some((1,1))
 ```
 
