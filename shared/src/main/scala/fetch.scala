@@ -189,8 +189,12 @@ object `package` {
         }
       } yield result)
 
+    // todo: can be tail recursive?
     def tailRecM[A, B](a: A)(f: A => Fetch[Either[A, B]]): Fetch[B] =
-      ???
+      f(a).flatMap(_ match {
+        case Left(a) => tailRecM(a)(f)
+        case Right(b) => pure(b)
+      })
 
     def flatMap[A, B](fa: Fetch[A])(f: A => Fetch[B]): Fetch[B] =
       Unfetch(for {
