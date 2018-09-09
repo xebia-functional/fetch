@@ -34,17 +34,17 @@ object `package` {
   sealed trait FetchRequest extends Product with Serializable
 
   // A query to a remote data source
-  sealed trait FetchQuery extends FetchRequest {
-    def dataSource[I, A]: DataSource[I, A]
-    def identities[I]: NonEmptyList[I]
+  sealed trait FetchQuery[I, A] extends FetchRequest {
+    def dataSource: DataSource[I, A]
+    def identities: NonEmptyList[I]
   }
-  case class FetchOne[I, A](id: I, ds: DataSource[I, A]) extends FetchQuery {
-    override def identities[I]: NonEmptyList[I] = NonEmptyList(id.asInstanceOf[I], List.empty[I])
-    override def dataSource[I, A]: DataSource[I, A] = ds.asInstanceOf[DataSource[I, A]]
+  case class FetchOne[I, A](id: I, ds: DataSource[I, A]) extends FetchQuery[I, A] {
+    override def identities: NonEmptyList[I] = NonEmptyList(id, List.empty[I])
+    override def dataSource: DataSource[I, A] = ds
   }
-  case class Batch[I, A](ids: NonEmptyList[I], ds: DataSource[I, A]) extends FetchQuery {
-    override def identities[I]: NonEmptyList[I] = ids.toNonEmptyList.asInstanceOf[NonEmptyList[I]]
-    override def dataSource[I, A]: DataSource[I, A] = ds.asInstanceOf[DataSource[I, A]]
+  case class Batch[I, A](ids: NonEmptyList[I], ds: DataSource[I, A]) extends FetchQuery[I, A] {
+    override def identities: NonEmptyList[I] = ids
+    override def dataSource: DataSource[I, A] = ds
   }
 
   // Fetch result states
@@ -56,15 +56,15 @@ object `package` {
   sealed trait FetchException extends Throwable with NoStackTrace {
     def environment: Env
   }
-  case class MissingIdentity[I](i: I, request: FetchQuery, environment: Env) extends FetchException
+  case class MissingIdentity[I, A](i: I, request: FetchQuery[I, A], environment: Env) extends FetchException
   case class UnhandledException(e: Throwable, environment: Env) extends FetchException
 
   // In-progress request
   case class BlockedRequest(request: FetchRequest, result: FetchStatus => IO[Unit])
 
   /* Combines the identities of two `FetchQuery` to the same data source. */
-  private def combineIdentities[I](x: FetchQuery, y: FetchQuery): NonEmptyList[I] = {
-    y.identities[I].foldLeft(x.identities[I]) {
+  private def combineIdentities[I, A](x: FetchQuery[I, A], y: FetchQuery[I, A]): NonEmptyList[I] = {
+    y.identities.foldLeft(x.identities) {
       case (acc, i) => if (acc.exists(_ == i)) acc else NonEmptyList(acc.head, acc.tail :+ i)
     }
   }
@@ -229,7 +229,7 @@ object `package` {
       Unfetch(
         for {
           deferred <- Deferred[IO, FetchStatus]
-          request = FetchOne(id, ds)
+          request = FetchOne[I, A](id, ds)
           result = deferred.complete _
           blocked = BlockedRequest(request, result)
           anyDs = ds.asInstanceOf[DataSource[Any, Any]]
@@ -239,7 +239,7 @@ object `package` {
             case FetchDone(a: A) =>
               IO.pure(Done(a))
             case FetchMissing() =>
-              IO.pure(Throw((env) => MissingIdentity(id, request, env)))
+              IO.pure(Throw((env) => MissingIdentity[I, A](id, request, env)))
           })
         ))
       )
