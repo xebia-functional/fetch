@@ -538,8 +538,8 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   }
 
   case class ForgetfulCache() extends DataSourceCache {
-    def insert[I, A](i: I, v: A, ds: DataSource[I, A]): IO[ForgetfulCache] = IO(this)
-    def lookup[I, A](i: I, ds: DataSource[I, A]): IO[Option[A]] = IO(None)
+    def insert[I, A](i: I, v: A, ds: DataSource[I, A]): IO[ForgetfulCache] = IO.pure(this)
+    def lookup[I, A](i: I, ds: DataSource[I, A]): IO[Option[A]] = IO.pure(None)
   }
 
   "We can use a custom cache that discards elements" in {
@@ -605,7 +605,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
     val fetch: Fetch[Int] = never
     val io                = Fetch.run(fetch)
 
-    io.handleErrorWith(err => IO(42))
+    io.handleErrorWith(err => IO.pure(42))
       .map(_ shouldEqual 42)
   }
 
@@ -636,7 +636,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
 
     val io = Fetch.run(fetch)
 
-    io.handleErrorWith(err => IO(42))
+    io.handleErrorWith(err => IO.pure(42))
       .map(_ shouldEqual 42)
   }
 

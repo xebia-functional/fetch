@@ -129,9 +129,9 @@ We'll simulate unpredictable latency with this function.
 import cats.syntax.all._
 
 def latency[A](result: A, msg: String): IO[A] = for {
-  _ <- IO(println(s"--> [${Thread.currentThread.getId}] $msg"))
+  _ <- IO.delay(println(s"--> [${Thread.currentThread.getId}] $msg"))
   _ <- IO.sleep(100.milliseconds)
-  _ <- IO(println(s"<-- [${Thread.currentThread.getId}] $msg"))
+  _ <- IO.delay(println(s"<-- [${Thread.currentThread.getId}] $msg"))
 } yield result
 ```
 
@@ -179,7 +179,7 @@ implicit object UnbatchedSource extends DataSource[Int, Int]{
   override def name = "Unbatched"
 
   override def fetch(id: Int): IO[Option[Int]] =
-    IO(Option(id))
+    IO.pure(Option(id))
 }
 ```
 
@@ -192,7 +192,7 @@ implicit object UnbatchedSeqSource extends DataSource[Int, Int]{
   override def name = "UnbatchedSeq"
 
   override def fetch(id: Int): IO[Option[Int]] =
-    IO(Option(id))
+    IO.pure(Option(id))
     
   override def batch(ids: NonEmptyList[Int])(
     implicit P: Parallel[IO, IO.Par]
@@ -218,7 +218,7 @@ implicit object OnlyBatchedSource extends DataSource[Int, Int]{
   override def batch(ids: NonEmptyList[Int])(
     implicit P: Parallel[IO, IO.Par]
   ): IO[Map[Int, Int]] =
-    IO(ids.map(x => (x, x)).toList.toMap)
+    IO.pure(ids.map(x => (x, x)).toList.toMap)
 }
 ```
 
@@ -527,8 +527,8 @@ Let's implement a cache that forgets everything we store in it.
 
 ```tut:silent
 final case class ForgetfulCache() extends DataSourceCache {
-  def insert[I, A](i: I, v: A, ds: DataSource[I, A]): IO[ForgetfulCache] = IO(this)
-  def lookup[I, A](i: I, ds: DataSource[I, A]): IO[Option[A]] = IO(None)
+  def insert[I, A](i: I, v: A, ds: DataSource[I, A]): IO[ForgetfulCache] = IO.pure(this)
+  def lookup[I, A](i: I, ds: DataSource[I, A]): IO[Option[A]] = IO.pure(None)
 }
 ```
 

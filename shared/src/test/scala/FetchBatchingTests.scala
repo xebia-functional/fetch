@@ -42,7 +42,7 @@ class FetchBatchingTests extends AsyncFreeSpec with Matchers {
     override def name = "BatchSourceSeq"
 
     override def fetch(id: BatchedDataSeq): IO[Option[Int]] =
-      IO(Some(id.id))
+      IO.pure(Some(id.id))
 
     override val maxBatchSize = Some(2)
 
@@ -54,7 +54,7 @@ class FetchBatchingTests extends AsyncFreeSpec with Matchers {
     override def name = "BatchSourcePar"
 
     override def fetch(id: BatchedDataPar): IO[Option[Int]] =
-      IO(Some(id.id))
+      IO.pure(Some(id.id))
 
     override val maxBatchSize = Some(2)
 

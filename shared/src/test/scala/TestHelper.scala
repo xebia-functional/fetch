@@ -29,12 +29,12 @@ object TestHelper {
     override def name = "OneSource"
 
     override def fetch(id: One): IO[Option[Int]] =
-      IO(Option(id.id))
+      IO.pure(Option(id.id))
 
     override def batch(ids: NonEmptyList[One])(
       implicit P: P[IO, IO.Par]
     ): IO[Map[One, Int]] =
-      IO(
+      IO.pure(
         ids.toList.map((v) => (v, v.id)).toMap
       )
   }
@@ -48,7 +48,7 @@ object TestHelper {
     override def name = "ManySource"
 
     override def fetch(id: Many): IO[Option[List[Int]]] =
-      IO(Option(0 until id.n toList))
+      IO.pure(Option(0 until id.n toList))
   }
   def many(id: Int)(
     implicit C: ContextShift[IO]
@@ -59,7 +59,7 @@ object TestHelper {
     override def name = "AnotherOneSource"
 
     override def fetch(id: AnotherOne): IO[Option[Int]] =
-     IO(Option(id.id))
+     IO.pure(Option(id.id))
   }
 
   def anotherOne(id: Int)(
@@ -71,7 +71,7 @@ object TestHelper {
     override def name = "NeverSource"
 
     override def fetch(id: Never): IO[Option[Int]] =
-      IO(None : Option[Int])
+      IO.pure(None : Option[Int])
   }
 
   def never(
