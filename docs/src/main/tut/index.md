@@ -97,19 +97,19 @@ implicit object ToStringSource extends DataSource[Int, String]{
   override def name = "ToString"
 
   override def fetch(id: Int): IO[Option[String]] = {
-    IO(println(s"--> [${Thread.currentThread.getId}] One ToString $id")) >>
+    IO.delay(println(s"--> [${Thread.currentThread.getId}] One ToString $id")) >>
     IO.sleep(10.milliseconds) >>
-    IO(println(s"<-- [${Thread.currentThread.getId}] One ToString $id")) >>
-    IO(Option(id.toString))
+    IO.delay(println(s"<-- [${Thread.currentThread.getId}] One ToString $id")) >>
+    IO.pure(Option(id.toString))
   }
 
   override def batch(ids: NonEmptyList[Int])(
     implicit P: Parallel[IO, IO.Par]
   ): IO[Map[Int, String]] = {
-    IO(println(s"--> [${Thread.currentThread.getId}] Batch ToString $ids")) >>
+    IO.delay(println(s"--> [${Thread.currentThread.getId}] Batch ToString $ids")) >>
     IO.sleep(10.milliseconds) >>
-    IO(println(s"<-- [${Thread.currentThread.getId}] Batch ToString $ids")) >>
-    IO(ids.toList.map(i => (i, i.toString)).toMap)
+    IO.delay(println(s"<-- [${Thread.currentThread.getId}] Batch ToString $ids")) >>
+    IO.pure(ids.toList.map(i => (i, i.toString)).toMap)
   }
 }
 
@@ -155,10 +155,10 @@ implicit object UnbatchedToStringSource extends DataSource[Int, String]{
   override def name = "UnbatchedToString"
 
   override def fetch(id: Int): IO[Option[String]] = {
-    IO(println(s"--> [${Thread.currentThread.getId}] One UnbatchedToString $id")) >>
+    IO.delay(println(s"--> [${Thread.currentThread.getId}] One UnbatchedToString $id")) >>
     IO.sleep(10.milliseconds) >>
-    IO(println(s"<-- [${Thread.currentThread.getId}] One UnbatchedToString $id")) >>
-    IO(Option(id.toString))
+    IO.delay(println(s"<-- [${Thread.currentThread.getId}] One UnbatchedToString $id")) >>
+    IO.pure(Option(id.toString))
   }
 }
 
@@ -187,18 +187,18 @@ implicit object LengthSource extends DataSource[String, Int]{
   override def name = "Length"
 
   override def fetch(id: String): IO[Option[Int]] = {
-    IO(println(s"--> [${Thread.currentThread.getId}] One Length $id")) >>
+    IO.delay(println(s"--> [${Thread.currentThread.getId}] One Length $id")) >>
     IO.sleep(10.milliseconds) >>
-    IO(println(s"<-- [${Thread.currentThread.getId}] One Length $id")) >>
-    IO(Option(id.size))
+    IO.delay(println(s"<-- [${Thread.currentThread.getId}] One Length $id")) >>
+    IO.pure(Option(id.size))
   }
   override def batch(ids: NonEmptyList[String])(
     implicit P: Parallel[IO, IO.Par]
   ): IO[Map[String, Int]] = {
-    IO(println(s"--> [${Thread.currentThread.getId}] Batch Length $ids")) >>
+    IO.delay(println(s"--> [${Thread.currentThread.getId}] Batch Length $ids")) >>
     IO.sleep(10.milliseconds) >>
-    IO(println(s"<-- [${Thread.currentThread.getId}] Batch Length $ids")) >>
-    IO(ids.toList.map(i => (i, i.size)).toMap)
+    IO.delay(println(s"<-- [${Thread.currentThread.getId}] Batch Length $ids")) >>
+    IO.pure(ids.toList.map(i => (i, i.size)).toMap)
   }
 }
 
