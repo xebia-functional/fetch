@@ -54,6 +54,6 @@ case class FetchEnv(
   def rounds = roundsQ.toList
   def evolve(
       newRound: Round
-  ): FetchEnv =
+  ): Env =
     copy(roundsQ = roundsQ :+ newRound)
 }

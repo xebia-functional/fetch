@@ -18,7 +18,9 @@ object ProjectPlugin extends AutoPlugin {
   object autoImport {
 
     lazy val commonCrossDependencies: Seq[ModuleID] =
-      Seq("org.typelevel" %% "cats-effect" % "1.0.0",
+      Seq(
+        "io.chrisdavenport" %% "cats-par" % "0.2.0",
+        "org.typelevel" %% "cats-effect" % "1.0.0",
           %%("scalatest") % "test")
 
     lazy val micrositeSettings: Seq[Def.Setting[_]] = Seq(
@@ -109,6 +111,8 @@ object ProjectPlugin extends AutoPlugin {
         scalaVersion := "2.12.6",
         crossScalaVersions := List("2.11.12", "2.12.6"),
         resolvers += Resolver.sonatypeRepo("snapshots"),
+        resolvers += Resolver.sonatypeRepo("releases"),
+        addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.7"),
         scalacOptions := Seq(
           "-unchecked",
           "-deprecation",
