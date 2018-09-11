@@ -17,90 +17,87 @@
 package fetch
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.language.implicitConversions
+
 import org.scalatest.{AsyncFreeSpec, Matchers}
-import cats.instances.list._
+
+import cats.syntax.all._
+import cats.effect._
+
 import fetch._
+import fetch.syntax._
 
 class FetchSyntaxTests extends AsyncFreeSpec with Matchers {
-  // import fetch.syntax._
   import TestHelper._
 
-  // val ME = FetchMonadError[Future]
+  override val executionContext: ExecutionContext = ExecutionContext.Implicits.global
+  implicit val timer: Timer[IO] = IO.timer(executionContext)
+  implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
 
-  // implicit override def executionContext = ExecutionContext.Implicits.global
+  implicit def ioToFuture[A](io: IO[A]): Future[A] = io.unsafeToFuture()
 
-  // "Cartesian syntax is implicitly concurrent" in {
-  //   import cats.syntax.apply._
+  "Cartesian syntax is implicitly concurrent" in {
+    val fetch: Fetch[(Int, List[Int])] = (one(1), many(3)).tupled
 
-  //   val fetch: Fetch[(Int, List[Int])] = (one(1), many(3)).tupled
+    val io = Fetch.runEnv(fetch)
 
-  //   val fut = Fetch.runEnv[Future](fetch)
+    io.map({
+      case (env, result) =>
+        env.rounds.size shouldEqual 1
+    })
+  }
 
-  //   fut.map(env => {
-  //     env.rounds.size shouldEqual 1
-  //   })
-  // }
+  "Apply syntax is implicitly concurrent" in {
+    val fetch: Fetch[Int] = Fetch.pure((x: Int, y: Int) => x + y).ap2(one(1), one(2))
 
-  // "Apply syntax is implicitly concurrent" in {
-  //   import cats.syntax.apply._
+    val io = Fetch.runEnv(fetch)
 
-  //   val fetch: Fetch[Int] = Fetch.pure((x: Int, y: Int) => x + y).ap2(one(1), one(2))
+    io.map({
+      case (env, result) => {
+        env.rounds.size shouldEqual 1
+        totalBatches(env.rounds) shouldEqual 1
+        totalFetched(env.rounds) shouldEqual 2
+      }
+    })
+  }
 
-  //   val fut = Fetch.runEnv[Future](fetch)
+  "`fetch` syntax allows lifting of any value to the context of a fetch" in {
+    Fetch.pure(42) shouldEqual 42.fetch
+  }
 
-  //   fut.map(env => {
-  //     val rounds = env.rounds
+  "`fetch` syntax allows lifting of any `Throwable` as a failure on a fetch" in {
+    case object Ex extends RuntimeException
 
-  //     rounds.size shouldEqual 1
-  //     totalBatches(rounds) shouldEqual 1
-  //     totalFetched(rounds) shouldEqual 2
-  //   })
-  // }
+    val f1: Fetch[Int] = Fetch.error(Ex)
+    val f2: Fetch[Int] = Ex.fetch
 
-  // "`fetch` syntax allows lifting of any value to the context of a fetch" in {
-  //   Fetch.pure(42) shouldEqual 42.fetch
-  // }
+    val io1 = Fetch.run(f1)
+    val io2 = Fetch.run(f2)
 
-  // "`fetch` syntax allows lifting of any `Throwable` as a failure on a fetch" in {
-  //   case object Ex extends RuntimeException
+    val e1 = io1.handleError(err => 42)
+    val e2 = io2.handleError(err => 42)
 
-  //   val fut1 = Fetch.run[Future](Fetch.error(Ex): Fetch[Int])
-  //   val fut2 = Fetch.run[Future](Ex.fetch: Fetch[Int])
+    (e1, e2).mapN(_ shouldEqual _)
+  }
 
-  //   val e1 = ME.handleError(fut1)(err => 42)
-  //   val e2 = ME.handleError(fut2)(err => 42)
+  "`runFetch` syntax is equivalent to `Fetch#run`" in {
+    val rf1 = Fetch.run(1.fetch)
+    val rf2 = 1.fetch.runFetch
 
-  //   ME.map2(e1, e2)(_ shouldEqual _)
-  // }
+    (rf1, rf2).mapN(_ shouldEqual _)
+  }
 
-  // "`join` syntax is equivalent to `Fetch#join`" in {
-  //   val join1 = Fetch.join(one(1), many(3))
-  //   val join2 = one(1).join(many(3))
+  "`runEnv` syntax is equivalent to `Fetch#runEnv`" in {
+    val rf1: IO[(Env, Int)] = Fetch.runEnv(1.fetch)
+    val rf2: IO[(Env, Int)] = 1.fetch.runEnv
 
-  //   ME.map2(Fetch.run[Future](join1), Fetch.run[Future](join2))(_ shouldEqual _)
-  // }
+    (rf1, rf2).mapN(_ shouldEqual _)
+  }
 
-  // "`runF` syntax is equivalent to `Fetch#runFetch`" in {
+  "`runCache` syntax is equivalent to `Fetch#runCache`" in {
+    val rf1: IO[(DataSourceCache, Int)] = Fetch.runCache(1.fetch)
+    val rf2: IO[(DataSourceCache, Int)] = 1.fetch.runCache
 
-  //   val rf1 = Fetch.runFetch[Future](1.fetch)
-  //   val rf2 = 1.fetch.runF[Future]
-
-  //   ME.map2(rf1, rf2)(_ shouldEqual _)
-  // }
-
-  // "`runE` syntax is equivalent to `Fetch#runEnv`" in {
-
-  //   val rf1 = Fetch.runEnv[Future](1.fetch)
-  //   val rf2 = 1.fetch.runE[Future]
-
-  //   ME.map2(rf1, rf2)(_ shouldEqual _)
-  // }
-
-  // "`runA` syntax is equivalent to `Fetch#run`" in {
-
-  //   val rf1 = Fetch.run[Future](1.fetch)
-  //   val rf2 = 1.fetch.runA[Future]
-
-  //   ME.map2(rf1, rf2)(_ shouldEqual _)
-  // }
+    (rf1, rf2).mapN(_ shouldEqual _)
+  }
 }
