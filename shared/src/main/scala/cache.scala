@@ -16,9 +16,10 @@
 
 package fetch
 
-import cats.{Applicative, Monad}
+import cats._
 import cats.instances.list._
 import cats.syntax.all._
+import cats.effect._
 
 final class DataSourceName(val name: String) extends AnyVal
 final class DataSourceId(val id: Any) extends AnyVal
@@ -27,10 +28,10 @@ final class DataSourceResult(val result: Any) extends AnyVal
 /**
  * A `Cache` trait so the users of the library can provide their own cache.
  */
-trait DataSourceCache[F[_]] {
-  def lookup[I, A](i: I, ds: DataSource[F, I, A]): F[Option[A]]
-  def insert[I, A](i: I, v: A, ds: DataSource[F, I, A]): F[DataSourceCache[F]]
-  def insertMany[I, A](vs: Map[I, A], ds: DataSource[F, I, A])(implicit M: Monad[F]): F[DataSourceCache[F]] =
+trait DataSourceCache {
+  def lookup[F[_] : ConcurrentEffect, I, A](i: I, ds: DataSource[I, A]): F[Option[A]]
+  def insert[F[_] : ConcurrentEffect, I, A](i: I, v: A, ds: DataSource[I, A]): F[DataSourceCache]
+  def insertMany[F[_]: ConcurrentEffect, I, A](vs: Map[I, A], ds: DataSource[I, A]): F[DataSourceCache] =
     vs.toList.foldLeftM(this)({
       case (c, (i, v)) => c.insert(i, v, ds)
     })
@@ -39,19 +40,30 @@ trait DataSourceCache[F[_]] {
 /**
  * A cache that stores its elements in memory.
  */
-case class InMemoryCache[F[_]: Applicative](state: Map[(DataSourceName, DataSourceId), DataSourceResult]) extends DataSourceCache[F] {
-  def lookup[I, A](i: I, ds: DataSource[F, I, A]): F[Option[A]] =
+case class InMemoryCache(state: Map[(DataSourceName, DataSourceId), DataSourceResult]) extends DataSourceCache {
+  def lookup[F[_] : ConcurrentEffect, I, A](i: I, ds: DataSource[I, A]): F[Option[A]] =
     Applicative[F].pure(state.get((new DataSourceName(ds.name), new DataSourceId(i))).map(_.result.asInstanceOf[A]))
 
-  def insert[I, A](i: I, v: A, ds: DataSource[F, I, A]): F[DataSourceCache[F]] =
+  def insert[F[_] : ConcurrentEffect, I, A](i: I, v: A, ds: DataSource[I, A]): F[DataSourceCache] =
     Applicative[F].pure(copy(state = state.updated((new DataSourceName(ds.name), new DataSourceId(i)), new DataSourceResult(v))))
 }
 
 object InMemoryCache {
-  def empty[F[_]: Applicative]: InMemoryCache[F] = InMemoryCache[F](Map.empty[(DataSourceName, DataSourceId), DataSourceResult])
+  def empty: InMemoryCache = InMemoryCache(Map.empty[(DataSourceName, DataSourceId), DataSourceResult])
 
-  def from[F[_]: Applicative, I, A](results: ((String, I), A)*): InMemoryCache[F] =
-    InMemoryCache[F](results.foldLeft(Map.empty[(DataSourceName, DataSourceId), DataSourceResult])({
+  def from[I, A](results: ((String, I), A)*): InMemoryCache =
+    InMemoryCache(results.foldLeft(Map.empty[(DataSourceName, DataSourceId), DataSourceResult])({
       case (acc, ((s, i), v)) => acc.updated((new DataSourceName(s), new DataSourceId(i)), new DataSourceResult(v))
     }))
+
+  implicit val inMemoryCacheMonoid: Monoid[InMemoryCache] = {
+    implicit val anySemigroup = new Semigroup[Any] {
+      def combine(a: Any, b: Any): Any = b
+    }
+    new Monoid[InMemoryCache] {
+      def empty: InMemoryCache = InMemoryCache.empty
+      def combine(c1: InMemoryCache, c2: InMemoryCache): InMemoryCache =
+        InMemoryCache(c1.state ++ c2.state)
+    }
+  }
 }

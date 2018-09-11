@@ -22,16 +22,16 @@ import scala.collection.immutable._
  * An environment that is passed along during the fetch rounds. It holds the
  * cache and the list of rounds that have been executed.
  */
-trait Env[F[_]] {
-  def rounds: List[Round[F]]
-  def evolve(newRound: Round[F]): Env[F]
+trait Env {
+  def rounds: List[Round]
+  def evolve(newRound: Round): Env
 }
 
 /**
   * A data structure that holds information about a request inside a fetch round.
   */
-case class Request[F[_]](
-  request: FetchRequest[F],
+case class Request(
+  request: FetchRequest,
   start: Long,
   end: Long
 ) {
@@ -41,19 +41,19 @@ case class Request[F[_]](
 /**
  * A data structure that holds information about a fetch round.
  */
-case class Round[F[_]](
-  queries: List[Request[F]]
+case class Round(
+  queries: List[Request]
 )
 
 /**
  * A concrete implementation of `Env` used in the default Fetch interpreter.
  */
-case class FetchEnv[F[_]](
-    roundsQ: Queue[Round[F]] = Queue.empty
-) extends Env[F] {
+case class FetchEnv(
+    roundsQ: Queue[Round] = Queue.empty
+) extends Env {
   def rounds = roundsQ.toList
   def evolve(
-      newRound: Round[F]
-  ): FetchEnv[F] =
+      newRound: Round
+  ): Env =
     copy(roundsQ = roundsQ :+ newRound)
 }
