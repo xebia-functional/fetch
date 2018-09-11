@@ -37,129 +37,129 @@ class FetchBatchingTests extends AsyncFreeSpec with Matchers {
 
   implicit def ioToFuture[A](io: IO[A]): Future[A] = io.unsafeToFuture()
 
-  case class BatchedDataSeq(id: Int)
-  implicit object MaxBatchSourceSeq extends DataSource[BatchedDataSeq, Int] {
-    override def name = "BatchSourceSeq"
+  // case class BatchedDataSeq(id: Int)
+  // implicit object MaxBatchSourceSeq extends DataSource[BatchedDataSeq, Int] {
+  //   override def name = "BatchSourceSeq"
 
-    override def fetch(id: BatchedDataSeq): IO[Option[Int]] =
-      IO.pure(Some(id.id))
+  //   override def fetch(id: BatchedDataSeq): IO[Option[Int]] =
+  //     IO.pure(Some(id.id))
 
-    override val maxBatchSize = Some(2)
+  //   override val maxBatchSize = Some(2)
 
-    override val batchExecution = Sequentially
-  }
+  //   override val batchExecution = Sequentially
+  // }
 
-  case class BatchedDataPar(id: Int)
-  implicit object MaxBatchSourcePar extends DataSource[BatchedDataPar, Int] {
-    override def name = "BatchSourcePar"
+  // case class BatchedDataPar(id: Int)
+  // implicit object MaxBatchSourcePar extends DataSource[BatchedDataPar, Int] {
+  //   override def name = "BatchSourcePar"
 
-    override def fetch(id: BatchedDataPar): IO[Option[Int]] =
-      IO.pure(Some(id.id))
+  //   override def fetch(id: BatchedDataPar): IO[Option[Int]] =
+  //     IO.pure(Some(id.id))
 
-    override val maxBatchSize = Some(2)
+  //   override val maxBatchSize = Some(2)
 
-    override val batchExecution = InParallel
-  }
+  //   override val batchExecution = InParallel
+  // }
 
-  def fetchBatchedDataSeq(id: Int): Fetch[Int] = Fetch(BatchedDataSeq(id), MaxBatchSourceSeq)
-  def fetchBatchedDataPar(id: Int): Fetch[Int] = Fetch(BatchedDataPar(id), MaxBatchSourcePar)
+  // def fetchBatchedDataSeq(id: Int): Fetch[Int] = Fetch(BatchedDataSeq(id), MaxBatchSourceSeq)
+  // def fetchBatchedDataPar(id: Int): Fetch[Int] = Fetch(BatchedDataPar(id), MaxBatchSourcePar)
 
-  "A large fetch to a datasource with a maximum batch size is split and executed in sequence" in {
-    val fetch: Fetch[List[Int]] = List.range(1, 6).traverse(fetchBatchedDataSeq)
+  // "A large fetch to a datasource with a maximum batch size is split and executed in sequence" in {
+  //   val fetch: Fetch[List[Int]] = List.range(1, 6).traverse(fetchBatchedDataSeq)
 
-    val io = Fetch.runEnv(fetch)
+  //   val io = Fetch.runEnv(fetch)
 
-    io.map({
-      case (env, result) => {
-        result shouldEqual List(1, 2, 3, 4, 5)
-        env.rounds.size shouldEqual 1
-        totalFetched(env.rounds) shouldEqual 5
-        totalBatches(env.rounds) shouldEqual 3
-      }
-    })
-  }
+  //   io.map({
+  //     case (env, result) => {
+  //       result shouldEqual List(1, 2, 3, 4, 5)
+  //       env.rounds.size shouldEqual 1
+  //       totalFetched(env.rounds) shouldEqual 5
+  //       totalBatches(env.rounds) shouldEqual 3
+  //     }
+  //   })
+  // }
 
-  "A large fetch to a datasource with a maximum batch size is split and executed in parallel" in {
-    val fetch: Fetch[List[Int]] = List.range(1, 6).traverse(fetchBatchedDataPar)
+  // "A large fetch to a datasource with a maximum batch size is split and executed in parallel" in {
+  //   val fetch: Fetch[List[Int]] = List.range(1, 6).traverse(fetchBatchedDataPar)
 
-    val io = Fetch.runEnv(fetch)
+  //   val io = Fetch.runEnv(fetch)
 
-    io.map({
-      case (env, result) => {
-        result shouldEqual List(1, 2, 3, 4, 5)
-        env.rounds.size shouldEqual 1
-        totalFetched(env.rounds) shouldEqual 5
-        totalBatches(env.rounds) shouldEqual 3
-      }
-    })
-  }
+  //   io.map({
+  //     case (env, result) => {
+  //       result shouldEqual List(1, 2, 3, 4, 5)
+  //       env.rounds.size shouldEqual 1
+  //       totalFetched(env.rounds) shouldEqual 5
+  //       totalBatches(env.rounds) shouldEqual 3
+  //     }
+  //   })
+  // }
 
-  "Fetches to datasources with a maximum batch size should be split and executed in parallel and sequentially" in {
-    val fetch: Fetch[List[Int]] =
-      List.range(1, 6).traverse(fetchBatchedDataPar) *>
-        List.range(1, 6).traverse(fetchBatchedDataSeq)
+  // "Fetches to datasources with a maximum batch size should be split and executed in parallel and sequentially" in {
+  //   val fetch: Fetch[List[Int]] =
+  //     List.range(1, 6).traverse(fetchBatchedDataPar) *>
+  //       List.range(1, 6).traverse(fetchBatchedDataSeq)
 
-    val io = Fetch.runEnv(fetch)
+  //   val io = Fetch.runEnv(fetch)
 
-    io.map({
-      case (env, result) => {
-        result shouldEqual List(1, 2, 3, 4, 5)
-        env.rounds.size shouldEqual 1
-        totalFetched(env.rounds) shouldEqual 5 + 5
-        totalBatches(env.rounds) shouldEqual 3 + 3
-      }
-    })
-  }
+  //   io.map({
+  //     case (env, result) => {
+  //       result shouldEqual List(1, 2, 3, 4, 5)
+  //       env.rounds.size shouldEqual 1
+  //       totalFetched(env.rounds) shouldEqual 5 + 5
+  //       totalBatches(env.rounds) shouldEqual 3 + 3
+  //     }
+  //   })
+  // }
 
-  "A large (many) fetch to a datasource with a maximum batch size is split and executed in sequence" in {
-    val fetch: Fetch[List[Int]] =
-      List(fetchBatchedDataSeq(1), fetchBatchedDataSeq(2), fetchBatchedDataSeq(3)).sequence
+  // "A large (many) fetch to a datasource with a maximum batch size is split and executed in sequence" in {
+  //   val fetch: Fetch[List[Int]] =
+  //     List(fetchBatchedDataSeq(1), fetchBatchedDataSeq(2), fetchBatchedDataSeq(3)).sequence
 
-    val io = Fetch.runEnv(fetch)
+  //   val io = Fetch.runEnv(fetch)
 
-    io.map({
-      case (env, result) => {
-        result shouldEqual List(1, 2, 3)
-        env.rounds.size shouldEqual 1
-        totalFetched(env.rounds) shouldEqual 3
-        totalBatches(env.rounds) shouldEqual 2
-      }
-    })
-  }
+  //   io.map({
+  //     case (env, result) => {
+  //       result shouldEqual List(1, 2, 3)
+  //       env.rounds.size shouldEqual 1
+  //       totalFetched(env.rounds) shouldEqual 3
+  //       totalBatches(env.rounds) shouldEqual 2
+  //     }
+  //   })
+  // }
 
-  "A large (many) fetch to a datasource with a maximum batch size is split and executed in parallel" in {
-    val fetch: Fetch[List[Int]] =
-      List(fetchBatchedDataPar(1), fetchBatchedDataPar(2), fetchBatchedDataPar(3)).sequence
+  // "A large (many) fetch to a datasource with a maximum batch size is split and executed in parallel" in {
+  //   val fetch: Fetch[List[Int]] =
+  //     List(fetchBatchedDataPar(1), fetchBatchedDataPar(2), fetchBatchedDataPar(3)).sequence
 
-    val io = Fetch.runEnv(fetch)
+  //   val io = Fetch.runEnv(fetch)
 
 
-    io.map({
-      case (env, result) => {
-        result shouldEqual List(1, 2, 3)
-        env.rounds.size shouldEqual 1
-        totalFetched(env.rounds) shouldEqual 3
-        totalBatches(env.rounds) shouldEqual 2
-      }
-    })
-  }
+  //   io.map({
+  //     case (env, result) => {
+  //       result shouldEqual List(1, 2, 3)
+  //       env.rounds.size shouldEqual 1
+  //       totalFetched(env.rounds) shouldEqual 3
+  //       totalBatches(env.rounds) shouldEqual 2
+  //     }
+  //   })
+  // }
 
-  "Very deep fetches don't overflow stack or heap" in {
-    val depth = 200
-    val list  = (1 to depth).toList
-    val fetch: Fetch[List[Int]] = list
-      .map(x => (0 until x).toList.traverse(fetchBatchedDataSeq))
-      .foldLeft(
-        Fetch.pure(List.empty[Int])
-      )(_ >> _)
+  // "Very deep fetches don't overflow stack or heap" in {
+  //   val depth = 200
+  //   val list  = (1 to depth).toList
+  //   val fetch: Fetch[List[Int]] = list
+  //     .map(x => (0 until x).toList.traverse(fetchBatchedDataSeq))
+  //     .foldLeft(
+  //       Fetch.pure(List.empty[Int])
+  //     )(_ >> _)
 
-    val io = Fetch.runEnv(fetch)
+  //   val io = Fetch.runEnv(fetch)
 
-    io.map({
-      case (env, result) => {
-        result shouldEqual (0 until depth).toList
-        env.rounds.size shouldEqual depth
-      }
-    })
-  }
+  //   io.map({
+  //     case (env, result) => {
+  //       result shouldEqual (0 until depth).toList
+  //       env.rounds.size shouldEqual depth
+  //     }
+  //   })
+  // }
 }

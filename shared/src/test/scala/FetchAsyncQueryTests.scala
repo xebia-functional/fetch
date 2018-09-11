@@ -34,56 +34,56 @@ class FetchAsyncQueryTests extends AsyncFreeSpec with Matchers {
 
   implicit def ioToFuture[A](io: IO[A]): Future[A] = io.unsafeToFuture()
 
-  "We can interpret an async fetch into an IO" in {
-    val fetch: Fetch[Article] = article(1)
-    val io: IO[Article]  = Fetch.run(fetch)
+  // "We can interpret an async fetch into an IO" in {
+  //   val fetch: Fetch[Article] = article(1)
+  //   val io: IO[Article]  = Fetch.run(fetch)
 
-    io.map(_ shouldEqual Article(1, "An article with id 1"))
-  }
+  //   io.map(_ shouldEqual Article(1, "An article with id 1"))
+  // }
 
-  "We can combine several async data sources and interpret a fetch into an IO" in {
-    val fetch: Fetch[(Article, Author)] = for {
-      art    <- article(1)
-      author <- author(art)
-    } yield (art, author)
+  // "We can combine several async data sources and interpret a fetch into an IO" in {
+  //   val fetch: Fetch[(Article, Author)] = for {
+  //     art    <- article(1)
+  //     author <- author(art)
+  //   } yield (art, author)
 
-    val io = Fetch.run(fetch)
+  //   val io = Fetch.run(fetch)
 
-    io.map(_ shouldEqual (Article(1, "An article with id 1"), Author(2, "@egg2")))
-  }
+  //   io.map(_ shouldEqual (Article(1, "An article with id 1"), Author(2, "@egg2")))
+  // }
 
-  "We can use combinators in a for comprehension and interpret a fetch from async sources into an IO" in {
-    val fetch: Fetch[List[Article]] = for {
-      articles <- List(1, 1, 2).traverse(article)
-    } yield articles
+  // "We can use combinators in a for comprehension and interpret a fetch from async sources into an IO" in {
+  //   val fetch: Fetch[List[Article]] = for {
+  //     articles <- List(1, 1, 2).traverse(article)
+  //   } yield articles
 
-    val io = Fetch.run(fetch)
-    io.map(_ shouldEqual List(
-      Article(1, "An article with id 1"),
-      Article(1, "An article with id 1"),
-      Article(2, "An article with id 2")
-    ))
-  }
+  //   val io = Fetch.run(fetch)
+  //   io.map(_ shouldEqual List(
+  //     Article(1, "An article with id 1"),
+  //     Article(1, "An article with id 1"),
+  //     Article(2, "An article with id 2")
+  //   ))
+  // }
 
-  "We can use combinators and multiple sources in a for comprehension and interpret a fetch from async sources into an IO" in {
-    val fetch = for {
-      articles <- List(1, 1, 2).traverse(article)
-      authors  <- articles.traverse(author)
-    } yield (articles, authors)
+  // "We can use combinators and multiple sources in a for comprehension and interpret a fetch from async sources into an IO" in {
+  //   val fetch = for {
+  //     articles <- List(1, 1, 2).traverse(article)
+  //     authors  <- articles.traverse(author)
+  //   } yield (articles, authors)
 
-    val io = Fetch.run(fetch)
+  //   val io = Fetch.run(fetch)
 
-    io.map(_ shouldEqual (
-      List(
-        Article(1, "An article with id 1"),
-        Article(1, "An article with id 1"),
-        Article(2, "An article with id 2")
-      ),
-      List(
-        Author(2, "@egg2"),
-        Author(2, "@egg2"),
-        Author(3, "@egg3")
-      )
-    ))
-  }
+  //   io.map(_ shouldEqual (
+  //     List(
+  //       Article(1, "An article with id 1"),
+  //       Article(1, "An article with id 1"),
+  //       Article(2, "An article with id 2")
+  //     ),
+  //     List(
+  //       Author(2, "@egg2"),
+  //       Author(2, "@egg2"),
+  //       Author(3, "@egg3")
+  //     )
+  //   ))
+  // }
 }

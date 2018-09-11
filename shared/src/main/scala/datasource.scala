@@ -28,25 +28,26 @@ import cats.temp.par._
  * A `DataSource` is the recipe for fetching a certain identity `I`, which yields
  * results of type `A`.
  */
-trait DataSource[F[_], I, A] {
+trait DataSource[I, A] {
   /** The name of the data source.
    */
   def name: String
 
   /** Fetch one identity, returning a None if it wasn't found.
    */
-  def fetch(id: I): F[Option[A]]
+  def fetch[F[_] : ConcurrentEffect](id: I): F[Option[A]]
 
-  private def fetchOneWithId(id: I)(implicit f: Functor[F]): F[Option[(I, A)]] =
-    fetch(id).map(_.tupleLeft(id))
 
   /** Fetch many identities, returning a mapping from identities to results. If an
    * identity wasn't found, it won't appear in the keys.
    */
-  def batch(ids: NonEmptyList[I])(
-    implicit M: Monad[F], P: Par[F]
+  def batch[F[_] : ConcurrentEffect](ids: NonEmptyList[I])(
+    implicit
+      P: Par[F]
   ): F[Map[I, A]] =
-    ids.parTraverse(fetchOneWithId).map(_.collect { case Some(x) => x }.toMap)
+    ids.parTraverse(
+      (id) => fetch(id).map(_.tupleLeft(id))
+    ).map(_.collect { case Some(x) => x }.toMap) // todo: partraverse
 
   def maxBatchSize: Option[Int] = None
 

@@ -16,129 +16,137 @@
 
 package fetch
 
-import cats.{Parallel => P}
-import cats.effect.{ IO, ContextShift }
+import scala.language.implicitConversions
+
+import cats.effect._
+import cats.temp.par._
+
 import cats.data.NonEmptyList
 
-object TestHelper {
+import scala.collection.immutable.Map
 
+
+object TestHelper {
   case class AnException() extends Throwable
 
   case class One(id: Int)
-  implicit object OneSource extends DataSource[One, Int] {
+
+  object OneSource extends DataSource[One, Int] {
     override def name = "OneSource"
 
-    override def fetch(id: One): IO[Option[Int]] =
-      IO.pure(Option(id.id))
+    override def fetch[F[_]](id: One)(
+      implicit CF: ConcurrentEffect[F]
+    ): F[Option[Int]] =
+      CF.pure(Option(id.id))
 
-    override def batch(ids: NonEmptyList[One])(
-      implicit P: P[IO, IO.Par]
-    ): IO[Map[One, Int]] =
-      IO.pure(
+    override def batch[F[_]](ids: NonEmptyList[One])(
+      implicit CF: ConcurrentEffect[F], P: Par[F]
+    ): F[Map[One, Int]] =
+      CF.pure(
         ids.toList.map((v) => (v, v.id)).toMap
       )
   }
 
-  def one(id: Int)(
-    implicit C: ContextShift[IO]
-  ): Fetch[Int] = Fetch(One(id), OneSource)
+  def one[F[_] : ConcurrentEffect : ContextShift](id: Int): Fetch[F, Int] =
+    Fetch(One(id), OneSource)
 
   case class Many(n: Int)
+
   implicit object ManySource extends DataSource[Many, List[Int]] {
     override def name = "ManySource"
 
-    override def fetch(id: Many): IO[Option[List[Int]]] =
-      IO.pure(Option(0 until id.n toList))
+    override def fetch[F[_] : ConcurrentEffect](id: Many): F[Option[List[Int]]] =
+      ConcurrentEffect[F].pure(Option(0 until id.n toList))
   }
-  def many(id: Int)(
-    implicit C: ContextShift[IO]
-  ): Fetch[List[Int]] = Fetch(Many(id), ManySource)
+
+  def many[F[_] : ConcurrentEffect : ContextShift](id: Int): Fetch[F, List[Int]] =
+    Fetch(Many(id), ManySource)
 
   case class AnotherOne(id: Int)
+
   implicit object AnotheroneSource extends DataSource[AnotherOne, Int] {
     override def name = "AnotherOneSource"
 
-    override def fetch(id: AnotherOne): IO[Option[Int]] =
-     IO.pure(Option(id.id))
+    override def fetch[F[_] : ConcurrentEffect](id: AnotherOne): F[Option[Int]] =
+     ConcurrentEffect[F].pure(Option(id.id))
   }
 
-  def anotherOne(id: Int)(
-    implicit C: ContextShift[IO]
-  ): Fetch[Int] = Fetch(AnotherOne(id), AnotheroneSource)
+  def anotherOne[F[_] : ConcurrentEffect : ContextShift](id: Int): Fetch[F, Int] =
+    Fetch(AnotherOne(id), AnotheroneSource)
 
-  case class Never()
-  implicit object NeverSource extends DataSource[Never, Int] {
-    override def name = "NeverSource"
+  // case class Never()
+  // implicit object NeverSource extends DataSource[Never, Int] {
+  //   override def name = "NeverSource"
 
-    override def fetch(id: Never): IO[Option[Int]] =
-      IO.pure(None : Option[Int])
-  }
+  //   override def fetch(id: Never): IO[Option[Int]] =
+  //     IO.pure(None : Option[Int])
+  // }
 
-  def never(
-    implicit C: ContextShift[IO]
-  ): Fetch[Int] = Fetch(Never(), NeverSource)
+  // def never(
+  //   implicit C: ContextShift[IO]
+  // ): Fetch[Int] = Fetch(Never(), NeverSource)
 
-  // Async DataSources
+  // // Async DataSources
 
-  case class ArticleId(id: Int)
-  case class Article(id: Int, content: String) {
-    def author: Int = id + 1
-  }
+  // case class ArticleId(id: Int)
+  // case class Article(id: Int, content: String) {
+  //   def author: Int = id + 1
+  // }
 
-  implicit object ArticleAsync extends DataSource[ArticleId, Article] {
-    override def name = "ArticleAsync"
+  // implicit object ArticleAsync extends DataSource[ArticleId, Article] {
+  //   override def name = "ArticleAsync"
 
-    override def fetch(id: ArticleId): IO[Option[Article]] =
-      IO.async[Option[Article]]((cb) => {
-        cb(
-          Right(
-            Option(Article(id.id, "An article with id " + id.id))
-          )
-        )
-      })
-  }
+  //   override def fetch(id: ArticleId): IO[Option[Article]] =
+  //     IO.async[Option[Article]]((cb) => {
+  //       cb(
+  //         Right(
+  //           Option(Article(id.id, "An article with id " + id.id))
+  //         )
+  //       )
+  //     })
+  // }
 
-  def article(id: Int)(
-    implicit C: ContextShift[IO]
-  ): Fetch[Article] = Fetch(ArticleId(id), ArticleAsync)
+  // def article(id: Int)(
+  //   implicit C: ContextShift[IO]
+  // ): Fetch[Article] = Fetch(ArticleId(id), ArticleAsync)
 
-  case class AuthorId(id: Int)
-  case class Author(id: Int, name: String)
+  // case class AuthorId(id: Int)
+  // case class Author(id: Int, name: String)
 
-  implicit object AuthorAsync extends DataSource[AuthorId, Author] {
-    override def name = "AuthorAsync"
+  // implicit object AuthorAsync extends DataSource[AuthorId, Author] {
+  //   override def name = "AuthorAsync"
 
-    override def fetch(id: AuthorId): IO[Option[Author]] =
-      IO.async((cb => {
-        cb(
-          Right(
-            Option(Author(id.id, "@egg" + id.id))
-          )
-        )
-      }))
-  }
+  //   override def fetch(id: AuthorId): IO[Option[Author]] =
+  //     IO.async((cb => {
+  //       cb(
+  //         Right(
+  //           Option(Author(id.id, "@egg" + id.id))
+  //         )
+  //       )
+  //     }))
+  // }
 
-  def author(a: Article)(
-    implicit C: ContextShift[IO]
-  ): Fetch[Author] = Fetch(AuthorId(a.author), AuthorAsync)
+  // def author(a: Article)(
+  //   implicit C: ContextShift[IO]
+  // ): Fetch[Author] = Fetch(AuthorId(a.author), AuthorAsync)
 
-  // Check Env
+  // // Check Env
 
-  def countFetches(r: Request): Int =
-    r.request match {
-      case FetchOne(_, _)       => 1
-      case Batch(ids, _)    => ids.toList.size
-    }
+  // def countFetches(r: Request): Int =
+  //   r.request match {
+  //     case FetchOne(_, _)       => 1
+  //     case Batch(ids, _)    => ids.toList.size
+  //   }
 
-  def totalFetched(rs: Seq[Round]): Int =
-    rs.map((round: Round) => round.queries.map(countFetches).sum).toList.sum
+  // def totalFetched(rs: Seq[Round]): Int =
+  //   rs.map((round: Round) => round.queries.map(countFetches).sum).toList.sum
 
-  def countBatches(r: Request): Int =
-    r.request match {
-      case FetchOne(_, _)    => 0
-      case Batch(_, _) => 1
-    }
+  // def countBatches(r: Request): Int =
+  //   r.request match {
+  //     case FetchOne(_, _)    => 0
+  //     case Batch(_, _) => 1
+  //   }
 
-  def totalBatches(rs: Seq[Round]): Int =
-    rs.map((round: Round) => round.queries.map(countBatches).sum).toList.sum
+  // def totalBatches(rs: Seq[Round]): Int =
+  //   rs.map((round: Round) => round.queries.map(countBatches).sum).toList.sum
 }
