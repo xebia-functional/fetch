@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-import scala.language.implicitConversions
 import scala.concurrent.{ExecutionContext, Future}
 
 import org.scalatest.{AsyncFreeSpec, Matchers}
@@ -26,52 +25,53 @@ import cats.syntax.all._
 import fetch._
 
 class FetchAsyncQueryTests extends AsyncFreeSpec with Matchers {
-  import TestHelper._
+  import DataSources._
 
   implicit override val executionContext = ExecutionContext.Implicits.global
   implicit val timer: Timer[IO] = IO.timer(executionContext)
   implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
 
-  implicit def ioToFuture[A](io: IO[A]): Future[A] = io.unsafeToFuture()
-
   "We can interpret an async fetch into an IO" in {
-    val fetch: Fetch[Article] = article(1)
-    val io: IO[Article]  = Fetch.run(fetch)
+    def fetch[F[_] : ConcurrentEffect]: Fetch[F, Article] =
+      article(1)
 
-    io.map(_ shouldEqual Article(1, "An article with id 1"))
+    val io = Fetch.run[IO](fetch)
+
+    io.map(_ shouldEqual Article(1, "An article with id 1")).unsafeToFuture
   }
 
   "We can combine several async data sources and interpret a fetch into an IO" in {
-    val fetch: Fetch[(Article, Author)] = for {
+    def fetch[F[_] : ConcurrentEffect]: Fetch[F, (Article, Author)] = for {
       art    <- article(1)
       author <- author(art)
     } yield (art, author)
 
-    val io = Fetch.run(fetch)
+    val io = Fetch.run[IO](fetch)
 
-    io.map(_ shouldEqual (Article(1, "An article with id 1"), Author(2, "@egg2")))
+    io.map(_ shouldEqual (Article(1, "An article with id 1"), Author(2, "@egg2"))).unsafeToFuture
   }
 
   "We can use combinators in a for comprehension and interpret a fetch from async sources into an IO" in {
-    val fetch: Fetch[List[Article]] = for {
-      articles <- List(1, 1, 2).traverse(article)
+    def fetch[F[_] : ConcurrentEffect]: Fetch[F, List[Article]] = for {
+      articles <- List(1, 1, 2).traverse(article[F])
     } yield articles
 
-    val io = Fetch.run(fetch)
+    val io = Fetch.run[IO](fetch)
+
     io.map(_ shouldEqual List(
       Article(1, "An article with id 1"),
       Article(1, "An article with id 1"),
       Article(2, "An article with id 2")
-    ))
+    )).unsafeToFuture
   }
 
   "We can use combinators and multiple sources in a for comprehension and interpret a fetch from async sources into an IO" in {
-    val fetch = for {
-      articles <- List(1, 1, 2).traverse(article)
-      authors  <- articles.traverse(author)
+    def fetch[F[_] : ConcurrentEffect] = for {
+      articles <- List(1, 1, 2).traverse(article[F])
+      authors  <- articles.traverse(author[F])
     } yield (articles, authors)
 
-    val io = Fetch.run(fetch)
+    val io = Fetch.run[IO](fetch)
 
     io.map(_ shouldEqual (
       List(
@@ -84,6 +84,48 @@ class FetchAsyncQueryTests extends AsyncFreeSpec with Matchers {
         Author(2, "@egg2"),
         Author(3, "@egg3")
       )
-    ))
+    )).unsafeToFuture
   }
+}
+
+object DataSources {
+  case class ArticleId(id: Int)
+  case class Article(id: Int, content: String) {
+    def author: Int = id + 1
+  }
+
+  implicit object ArticleAsync extends DataSource[ArticleId, Article] {
+    override def name = "ArticleAsync"
+
+    override def fetch[F[_] : ConcurrentEffect](id: ArticleId): F[Option[Article]] =
+      Async[F].async[Option[Article]]((cb) => {
+        cb(
+          Right(
+            Option(Article(id.id, "An article with id " + id.id))
+          )
+        )
+      })
+  }
+
+  def article[F[_] : ConcurrentEffect](id: Int): Fetch[F, Article] =
+    Fetch(ArticleId(id), ArticleAsync)
+
+  case class AuthorId(id: Int)
+  case class Author(id: Int, name: String)
+
+  implicit object AuthorAsync extends DataSource[AuthorId, Author] {
+    override def name = "AuthorAsync"
+
+    override def fetch[F[_] : ConcurrentEffect](id: AuthorId): F[Option[Author]] =
+      Async[F].async((cb => {
+        cb(
+          Right(
+            Option(Author(id.id, "@egg" + id.id))
+          )
+        )
+      }))
+  }
+
+  def author[F[_] : ConcurrentEffect](a: Article): Fetch[F, Author] =
+    Fetch(AuthorId(a.author), AuthorAsync)
 }

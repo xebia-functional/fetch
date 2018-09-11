@@ -16,6 +16,8 @@
 
 package fetch
 
+import cats._
+import cats.temp.par._
 import cats.effect._
 
 object syntax {
@@ -23,40 +25,15 @@ object syntax {
   /** Implicit syntax to lift any value to the context of Fetch via pure */
   implicit class FetchIdSyntax[A](val a: A) extends AnyVal {
 
-    def fetch: Fetch[A] =
-      Fetch.pure(a)
+    def fetch[F[_] : ConcurrentEffect]: Fetch[F, A] =
+      Fetch.pure[F, A](a)
   }
-
 
   /** Implicit syntax to lift exception to Fetch errors */
-  implicit class FetchExceptionSyntax(val a: Throwable) extends AnyVal {
+  implicit class FetchExceptionSyntax[B](val a: Throwable) extends AnyVal {
 
-    def fetch[B]: Fetch[B] =
-      Fetch.error[B](a)
-  }
-
-  /** Implicit syntax for Fetch ops */
-  implicit class FetchSyntax[A](val fa: Fetch[A]) extends AnyVal {
-    def runFetch(
-      implicit
-        CS: ContextShift[IO],
-        T: Timer[IO]
-    ): IO[A] =
-      Fetch.run(fa)
-
-    def runEnv(
-      implicit
-        CS: ContextShift[IO],
-        T: Timer[IO]
-    ): IO[(Env, A)] =
-      Fetch.runEnv(fa)
-
-    def runCache(
-      implicit
-        CS: ContextShift[IO],
-        T: Timer[IO]
-    ): IO[(DataSourceCache, A)] =
-      Fetch.runCache(fa)
+    def fetch[F[_] : ConcurrentEffect]: Fetch[F, B] =
+      Fetch.error[F, B](a)
   }
 }
 
