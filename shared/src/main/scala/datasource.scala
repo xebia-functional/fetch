@@ -37,7 +37,6 @@ trait DataSource[I, A] {
    */
   def fetch[F[_] : ConcurrentEffect](id: I): F[Option[A]]
 
-
   /** Fetch many identities, returning a mapping from identities to results. If an
    * identity wasn't found, it won't appear in the keys.
    */
