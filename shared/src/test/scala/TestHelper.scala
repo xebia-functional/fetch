@@ -18,9 +18,9 @@ package fetch
 
 import scala.language.implicitConversions
 
+import cats._
 import cats.effect._
 import cats.temp.par._
-
 import cats.data.NonEmptyList
 
 import scala.collection.immutable.Map
@@ -37,12 +37,12 @@ object TestHelper {
     override def fetch[F[_]](id: One)(
       implicit CF: ConcurrentEffect[F]
     ): F[Option[Int]] =
-      CF.pure(Option(id.id))
+      Applicative[F].pure(Option(id.id))
 
     override def batch[F[_]](ids: NonEmptyList[One])(
       implicit CF: ConcurrentEffect[F], P: Par[F]
     ): F[Map[One, Int]] =
-      CF.pure(
+      Applicative[F].pure(
         ids.toList.map((v) => (v, v.id)).toMap
       )
   }
@@ -56,7 +56,7 @@ object TestHelper {
     override def name = "ManySource"
 
     override def fetch[F[_] : ConcurrentEffect](id: Many): F[Option[List[Int]]] =
-      ConcurrentEffect[F].pure(Option(0 until id.n toList))
+      Applicative[F].pure(Option(0 until id.n toList))
   }
 
   def many[F[_] : ConcurrentEffect](id: Int): Fetch[F, List[Int]] =
@@ -68,7 +68,12 @@ object TestHelper {
     override def name = "AnotherOneSource"
 
     override def fetch[F[_] : ConcurrentEffect](id: AnotherOne): F[Option[Int]] =
-     ConcurrentEffect[F].pure(Option(id.id))
+      Applicative[F].pure(Option(id.id))
+
+    override def batch[F[_] : ConcurrentEffect : Par](ids: NonEmptyList[AnotherOne]): F[Map[AnotherOne, Int]] =
+      Applicative[F].pure(
+        ids.toList.map((v) => (v, v.id)).toMap
+      )
   }
 
   def anotherOne[F[_] : ConcurrentEffect](id: Int): Fetch[F, Int] =
@@ -79,7 +84,7 @@ object TestHelper {
     override def name = "NeverSource"
 
     override def fetch[F[_] : ConcurrentEffect](id: Never): F[Option[Int]] =
-      ConcurrentEffect[F].pure(None : Option[Int])
+      Applicative[F].pure(None : Option[Int])
   }
 
   def never[F[_] : ConcurrentEffect]: Fetch[F, Int] =
