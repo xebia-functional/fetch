@@ -15,13 +15,16 @@
  */
 
 import cats.Parallel
+import cats.temp.par._
 import cats.data.NonEmptyList
-import cats.effect.{ContextShift, IO, Timer}
+import cats.effect._
 import cats.instances.list._
 import cats.syntax.all._
+
 import doobie.{Query => _, _}
 import doobie.h2.H2Transactor
 import doobie.implicits._
+
 import org.scalatest.{Matchers, WordSpec}
 
 import scala.concurrent.{ExecutionContext}
@@ -57,24 +60,27 @@ class DoobieExample extends WordSpec with Matchers {
       case (name, id) => Author(id + 1, name)
     }
 
-  val xa: Transactor[IO] = (for {
-    xa <- createTransactor
-    _  <- (dropTable *> createTable *> authors.traverse(addAuthor)).transact(xa)
-  } yield xa).unsafeRunSync()
+  val xa: Transactor[IO] =
+    (for {
+      xa <- createTransactor
+      _  <- (dropTable *> createTable *> authors.traverse(addAuthor)).transact(xa)
+    } yield xa).unsafeRunSync()
 
-  implicit val authorDS = new DataSource[AuthorId, Author] {
+  val authorDS = new DataSource[AuthorId, Author] {
     override def name = "AuthorDoobie"
-    override def fetch(id: AuthorId): IO[Option[Author]] =
-      fetchById(id).transact(xa)
 
-    override def batch(ids: NonEmptyList[AuthorId])(
-        implicit P: Parallel[IO, IO.Par]
-    ): IO[Map[AuthorId, Author]] =
-      fetchByIds(ids)
-        .map { authors =>
-          authors.map(a => AuthorId(a.id) -> a).toMap
-        }
-        .transact(xa)
+    override def fetch[F[_]: ConcurrentEffect](id: AuthorId): F[Option[Author]] =
+      LiftIO[F].liftIO(fetchById(id).transact(xa))
+
+    override def batch[F[_]: ConcurrentEffect: Par](
+        ids: NonEmptyList[AuthorId]): F[Map[AuthorId, Author]] =
+      LiftIO[F].liftIO(
+        fetchByIds(ids)
+          .map { authors =>
+            authors.map(a => AuthorId(a.id) -> a).toMap
+          }
+          .transact(xa)
+      )
 
     def fetchById(id: AuthorId): ConnectionIO[Option[Author]] =
       sql"SELECT * FROM author WHERE id = $id".query[Author].option
@@ -88,11 +94,14 @@ class DoobieExample extends WordSpec with Matchers {
       Meta[Int].xmap(AuthorId(_), _.id)
   }
 
-  def author(id: Int): Fetch[Author] = Fetch(AuthorId(id), authorDS)
+  def author[F[_]: ConcurrentEffect](id: Int): Fetch[F, Author] =
+    Fetch(AuthorId(id), authorDS)
 
   "We can fetch one author from the DB" in {
-    val fetch: Fetch[Author]  = author(1)
-    val io: IO[(Env, Author)] = Fetch.runEnv(fetch)
+    def fetch[F[_]: ConcurrentEffect]: Fetch[F, Author] =
+      author(1)
+
+    val io: IO[(Env, Author)] = Fetch.runEnv[IO](fetch)
 
     val (env, result) = io.unsafeRunSync
 
@@ -101,8 +110,10 @@ class DoobieExample extends WordSpec with Matchers {
   }
 
   "We can fetch multiple authors from the DB in parallel" in {
-    val fetch: Fetch[List[Author]]  = List(1, 2).traverse(author)
-    val io: IO[(Env, List[Author])] = Fetch.runEnv(fetch)
+    def fetch[F[_]: ConcurrentEffect]: Fetch[F, List[Author]] =
+      List(1, 2).traverse(author[F])
+
+    val io: IO[(Env, List[Author])] = Fetch.runEnv[IO](fetch)
 
     val (env, result) = io.unsafeRunSync
 
@@ -111,11 +122,13 @@ class DoobieExample extends WordSpec with Matchers {
   }
 
   "We can fetch multiple authors from the DB using a for comprehension" in {
-    val fetch: Fetch[List[Author]] = for {
-      a <- author(1)
-      b <- author(a.id + 1)
-    } yield List(a, b)
-    val io: IO[(Env, List[Author])] = Fetch.runEnv(fetch)
+    def fetch[F[_]: ConcurrentEffect]: Fetch[F, List[Author]] =
+      for {
+        a <- author(1)
+        b <- author(a.id + 1)
+      } yield List(a, b)
+
+    val io: IO[(Env, List[Author])] = Fetch.runEnv[IO](fetch)
 
     val (env, result) = io.unsafeRunSync
 

@@ -22,6 +22,7 @@ import cats.data.NonEmptyList
 import cats.effect._
 import cats.instances.list._
 import cats.syntax.all._
+import cats.temp.par._
 
 import io.circe._
 import io.circe.generic.semiauto._
@@ -58,56 +59,61 @@ class Http4sExample extends WordSpec with Matchers {
 
   // http4s client which is used by the datasources
 
-  val client = Http1Client[IO](
-    BlazeClientConfig.defaultConfig.copy(
-      responseHeaderTimeout = 30.seconds // high timeout because jsonplaceholder takes a while to respond
-    ))
+  def client[F[_]: ConcurrentEffect] =
+    Http1Client[F](
+      BlazeClientConfig.defaultConfig.copy(
+        responseHeaderTimeout = 30.seconds // high timeout because jsonplaceholder takes a while to respond
+      ))
 
   // a DataSource that can fetch Users with their UserId.
 
-  implicit val userDS = new DataSource[UserId, User] {
+  object Users extends DataSource[UserId, User] {
     override def name = "UserH4s"
-    override def fetch(id: UserId): IO[Option[User]] = {
+
+    override def fetch[F[_]: ConcurrentEffect](id: UserId): F[Option[User]] = {
       val url = s"https://jsonplaceholder.typicode.com/users?id=${id.id}"
-      client >>= ((c) => c.expect(url)(jsonOf[IO, List[User]]).map(_.headOption))
+      client[F] >>= ((c) => c.expect(url)(jsonOf[F, List[User]]).map(_.headOption))
     }
 
-    override def batch(ids: NonEmptyList[UserId])(
-        implicit P: Parallel[IO, IO.Par]
-    ): IO[Map[UserId, User]] = {
+    override def batch[F[_]: ConcurrentEffect: Par](
+        ids: NonEmptyList[UserId]
+    ): F[Map[UserId, User]] = {
       val filterIds = ids.map("id=" + _.id).toList.mkString("&")
       val url       = s"https://jsonplaceholder.typicode.com/users?$filterIds"
-      val io        = client >>= ((c) => c.expect(url)(jsonOf[IO, List[User]]))
+      val io        = client[F] >>= ((c) => c.expect(url)(jsonOf[F, List[User]]))
       io.map(users => users.map(user => user.id -> user).toMap)
     }
   }
 
   // a datasource that can fetch all the Posts using a UserId
 
-  implicit val postsForUserDS = new DataSource[UserId, List[Post]] {
+  object Posts extends DataSource[UserId, List[Post]] {
     override def name = "PostH4s"
-    override def fetch(id: UserId): IO[Option[List[Post]]] = {
+    override def fetch[F[_]: ConcurrentEffect](id: UserId): F[Option[List[Post]]] = {
       val url = s"https://jsonplaceholder.typicode.com/posts?userId=${id.id}"
-      client >>= ((c) => c.expect(url)(jsonOf[IO, List[Post]]).map(Option.apply))
+      client[F] >>= ((c) => c.expect(url)(jsonOf[F, List[Post]]).map(Option.apply))
     }
 
-    override def batch(ids: NonEmptyList[UserId])(
-        implicit P: Parallel[IO, IO.Par]
-    ): IO[Map[UserId, List[Post]]] = {
+    override def batch[F[_]: ConcurrentEffect: Par](
+        ids: NonEmptyList[UserId]): F[Map[UserId, List[Post]]] = {
       val filterIds = ids.map("userId=" + _.id).toList.mkString("&")
       val url       = s"https://jsonplaceholder.typicode.com/posts?$filterIds"
-      client >>= ((c) => c.expect(url)(jsonOf[IO, List[Post]]).map(_.groupBy(_.userId).toMap))
+      client[F] >>= ((c) => c.expect(url)(jsonOf[F, List[Post]]).map(_.groupBy(_.userId).toMap))
     }
   }
 
   // some helper methods to create Fetches
 
-  def user(id: UserId): Fetch[User]               = Fetch(id, userDS)
-  def postsForUser(id: UserId): Fetch[List[Post]] = Fetch(id, postsForUserDS)
+  def user[F[_]: ConcurrentEffect](id: UserId): Fetch[F, User] =
+    Fetch(id, Users)
+
+  def postsForUser[F[_]: ConcurrentEffect](id: UserId): Fetch[F, List[Post]] =
+    Fetch(id, Posts)
 
   "We can fetch one user" in {
-    val fetch: Fetch[User]  = user(UserId(1))
-    val io: IO[(Env, User)] = Fetch.runEnv(fetch)
+    def fetch[F[_]: ConcurrentEffect] = user(UserId(1))
+
+    val io: IO[(Env, User)] = Fetch.runEnv[IO](fetch)
 
     val (env, result) = io.unsafeRunSync
 
@@ -116,8 +122,10 @@ class Http4sExample extends WordSpec with Matchers {
   }
 
   "We can fetch multiple users in parallel" in {
-    val fetch: Fetch[List[User]] = List(1, 2, 3).traverse(i => user(UserId(i)))
-    val io                       = Fetch.runEnv(fetch)
+    def fetch[F[_]: ConcurrentEffect]: Fetch[F, List[User]] =
+      List(1, 2, 3).traverse(i => user(UserId(i)))
+
+    val io = Fetch.runEnv[IO](fetch)
 
     val (env, result) = io.unsafeRunSync
 
@@ -126,14 +134,15 @@ class Http4sExample extends WordSpec with Matchers {
   }
 
   "We can fetch multiple users with their posts" in {
-    val fetch: Fetch[List[(User, List[Post])]] =
+    def fetch[F[_]: ConcurrentEffect]: Fetch[F, List[(User, List[Post])]] =
       for {
-        users <- List(UserId(1), UserId(2)).traverse(user)
+        users <- List(UserId(1), UserId(2)).traverse(user[F])
         usersWithPosts <- users.traverse { user =>
           postsForUser(user.id).map(posts => (user, posts))
         }
       } yield usersWithPosts
-    val io = Fetch.runEnv(fetch)
+
+    val io = Fetch.runEnv[IO](fetch)
 
     val (env, results) = io.unsafeRunSync
 
