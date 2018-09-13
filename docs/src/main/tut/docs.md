@@ -67,18 +67,16 @@ If something is missing in Fetch that stops you from using it we'd appreciate if
 In order to tell Fetch how to retrieve data, we must implement the `DataSource` typeclass.
 
 ```scala
-import cats.Parallel
+import cats.temp.par.__
 import cats.data.NonEmptyList
 
 trait DataSource[Identity, Result]{
   def name: String
   
-  def fetch(id: Identity): IO[Option[Result]]
+  def fetch[F[_] : ConcurrentEffect](id: Identity): F[Option[Result]]
   
   /* `batch` is implemented in terms of `fetch` by default */
-  def batch(ids: NonEmptyList[Identity])(
-    implicit P: Parallel[IO, IO.Par]
-  ): IO[Map[Identity, Result]]
+  def batch[F[_] : ConcurrentEffect : Par](ids: NonEmptyList[Identity]): F[Map[Identity, Result]]
 }
 ```
 
@@ -88,10 +86,10 @@ It takes two type parameters:
  - `Result`: the type of the data we retrieve (a `User` if we were fetching users)
 
 There are two methods: `fetch` and `batch`. `fetch` receives one identity and must return
-an `IO` containing
+a `ConcurrentEffect` containing
 an optional result. Returning an `Option` Fetch can detect whether an identity couldn't be fetched or no longer exists.
 
-The `batch` method takes a non-empty list of identities and must return an `IO` containing
+The `batch` method takes a non-empty list of identities and must return a `ConcurrentEffect` containing
 a map from identities to results. Accepting a list of identities gives Fetch the ability to batch requests to
 the same data source, and returning a mapping from identities to results, Fetch can detect whenever an identity
 couldn't be fetched or no longer exists.
@@ -101,7 +99,7 @@ couldn't be fetched or no longer exists.
 Since `Fetch` relies on `IO` from the `cats-effect` library, we'll need a runtime for executing our `IO` instances. This includes a `ContextShift[IO]` used for running the `IO` instances and a `Timer[IO]` that is used for scheduling, let's go ahead and create them, we'll use a `java.util.concurrent.ScheduledThreadPoolExecutor` with a couple of threads to run our fetches.
 
 ```tut:silent
-import cats.effect.{ IO, Timer, ContextShift }
+import cats.effect._
 import java.util.concurrent._
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
@@ -128,17 +126,16 @@ We'll simulate unpredictable latency with this function.
 ```tut:silent
 import cats.syntax.all._
 
-def latency[A](result: A, msg: String): IO[A] = for {
-  _ <- IO.delay(println(s"--> [${Thread.currentThread.getId}] $msg"))
-  _ <- IO.sleep(100.milliseconds)
-  _ <- IO.delay(println(s"<-- [${Thread.currentThread.getId}] $msg"))
+def latency[F[_] : ConcurrentEffect, A](result: A, msg: String): F[A] = for {
+  _ <- Sync[F].delay(println(s"--> [${Thread.currentThread.getId}] $msg"))
+  _ <- Sync[F].delay(println(s"<-- [${Thread.currentThread.getId}] $msg"))
 } yield result
 ```
 
 And now we're ready to write our user data source; we'll emulate a database with an in-memory map.
 
 ```tut:silent
-import cats.Parallel
+import cats.temp.par._
 import cats.data.NonEmptyList
 import cats.instances.list._
 import fetch._
@@ -153,12 +150,10 @@ val userDatabase: Map[UserId, User] = Map(
 implicit object UserSource extends DataSource[UserId, User]{
   override def name = "User"
 
-  override def fetch(id: UserId): IO[Option[User]] =
+  override def fetch[F[_] : ConcurrentEffect](id: UserId): F[Option[User]] =
     latency(userDatabase.get(id), s"One User $id")
 
-  override def batch(ids: NonEmptyList[UserId])(
-    implicit P: Parallel[IO, IO.Par]
-  ): IO[Map[UserId, User]] =
+  override def batch[F[_] : ConcurrentEffect : Par](ids: NonEmptyList[UserId]): F[Map[UserId, User]] =
     latency(userDatabase.filterKeys(ids.toList.toSet), s"Batch Users $ids")
 }
 ```
@@ -167,14 +162,15 @@ Now that we have a data source we can write a function for fetching users
 given an id, we just have to pass a `UserId` as an argument to `Fetch`.
 
 ```tut:silent
-def getUser(id: UserId): Fetch[User] = Fetch(id, UserSource)
+def getUser[F[_] : ConcurrentEffect](id: UserId): Fetch[F, User] =
+  Fetch(id, UserSource)
 ```
 
-### Data sources that don't support batching
+### TODO Data sources that don't support batching
 
 If your data source doesn't support batching, you can simply leave the `batch` method unimplemented. Note that it will use the `fetch` implementation for requesting identities in parallel.
 
-```tut:silent
+```scala
 implicit object UnbatchedSource extends DataSource[Int, Int]{
   override def name = "Unbatched"
 
@@ -183,11 +179,11 @@ implicit object UnbatchedSource extends DataSource[Int, Int]{
 }
 ```
 
-#### Batching individuals requests sequentially
+#### TODO Batching individuals requests sequentially
 
 The default `batch` implementation run requests to the data source in parallel, but you can easily override it. We can make `batch` sequential using `NonEmptyList.traverse` for fetching individual identities.
 
-```tut:silent
+```scala
 implicit object UnbatchedSeqSource extends DataSource[Int, Int]{
   override def name = "UnbatchedSeq"
 
@@ -204,11 +200,11 @@ implicit object UnbatchedSeqSource extends DataSource[Int, Int]{
 ```
 
 
-### Data sources that only support batching
+### TODO Data sources that only support batching
 
 If your data source only supports querying it in batches, you can implement `fetch` in terms of `batch`.
 
-```tut:silent
+```scala
 implicit object OnlyBatchedSource extends DataSource[Int, Int]{
   override def name = "OnlyBatched"
 
@@ -222,6 +218,23 @@ implicit object OnlyBatchedSource extends DataSource[Int, Int]{
 }
 ```
 
+## Creating a runtime
+
+Since we'lll use `IO` from the `cats-effect` library to execute our fetches, we'll need a runtime for executing our `IO` instances. This includes a `ContextShift[IO]` used for running the `IO` instances and a `Timer[IO]` that is used for scheduling, let's go ahead and create them, we'll use a `java.util.concurrent.ScheduledThreadPoolExecutor` with a couple of threads to run our fetches.
+
+```tut:silent
+import cats.effect._
+import java.util.concurrent._
+import scala.concurrent.ExecutionContext
+import scala.concurrent.duration._
+
+val executor = new ScheduledThreadPoolExecutor(2)
+val executionContext: ExecutionContext = ExecutionContext.fromExecutor(executor)
+
+implicit val timer: Timer[IO] = IO.timer(executionContext)
+implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
+```
+
 ## Creating and running a fetch
 
 We are now ready to create and run fetches. Note the distinction between Fetch creation and execution.
@@ -229,7 +242,8 @@ When we are creating and combining `Fetch` values, we are just constructing a re
 dependencies.
 
 ```tut:silent
-val fetchUser: Fetch[User] = getUser(1)
+def fetchUser[F[_] : ConcurrentEffect]: Fetch[F, User] =
+  getUser(1)
 ```
 
 A `Fetch` is just a value, and in order to be able to get its value we need to run it to an `IO` first. 
@@ -237,13 +251,13 @@ A `Fetch` is just a value, and in order to be able to get its value we need to r
 ```tut:book
 import cats.effect.IO
 
-Fetch.run(fetchUser)
+Fetch.run[IO](fetchUser)
 ```
 
 We can now run the `IO` and see its result:
 
 ```tut:book
-Fetch.run(fetchUser).unsafeRunTimed(5.seconds)
+Fetch.run[IO](fetchUser).unsafeRunTimed(5.seconds)
 ```
 
 ### Sequencing
@@ -251,7 +265,7 @@ Fetch.run(fetchUser).unsafeRunTimed(5.seconds)
 When we have two fetches that depend on each other, we can use `flatMap` to combine them. The most straightforward way is to use a for comprehension:
 
 ```tut:silent
-val fetchTwoUsers: Fetch[(User, User)] = for {
+def fetchTwoUsers[F[_] : ConcurrentEffect]: Fetch[F, (User, User)] = for {
   aUser <- getUser(1)
   anotherUser <- getUser(aUser.id + 1)
 } yield (aUser, anotherUser)
@@ -260,7 +274,7 @@ val fetchTwoUsers: Fetch[(User, User)] = for {
 When composing fetches with `flatMap` we are telling Fetch that the second one depends on the previous one, so it isn't able to make any optimizations. When running the above fetch, we will query the user data source in two rounds: one for the user with id 1 and another for the user with id 2.
 
 ```tut:book
-Fetch.run(fetchTwoUsers).unsafeRunTimed(5.seconds)
+Fetch.run[IO](fetchTwoUsers).unsafeRunTimed(5.seconds)
 ```
 
 ### Batching
@@ -270,13 +284,14 @@ automatically batch them together into a single request. Applicative operations 
 help us tell the library that those fetches are independent, and thus can be batched if they use the same data source:
 
 ```tut:silent
-val fetchProduct: Fetch[(User, User)] = (getUser(1), getUser(2)).tupled
+def fetchProduct[F[_] : ConcurrentEffect]: Fetch[F, (User, User)] =
+  (getUser(1), getUser(2)).tupled
 ```
 
 Note how both ids (1 and 2) are requested in a single query to the data source when executing the fetch.
 
 ```tut:book
-Fetch.run(fetchProduct).unsafeRunTimed(5.seconds)
+Fetch.run[IO](fetchProduct).unsafeRunTimed(5.seconds)
 ```
 
 ### Deduplication
@@ -284,13 +299,14 @@ Fetch.run(fetchProduct).unsafeRunTimed(5.seconds)
 If two independent requests ask for the same identity, Fetch will detect it and deduplicate the id.
 
 ```tut:silent
-val fetchDuped: Fetch[(User, User)] = (getUser(1), getUser(1)).tupled
+def fetchDuped[F[_] : ConcurrentEffect]: Fetch[F, (User, User)] =
+  (getUser(1), getUser(1)).tupled
 ```
 
 Note that when running the fetch, the identity 1 is only requested once even when it is needed by both fetches.
 
 ```tut:book
-Fetch.run(fetchDuped).unsafeRunTimed(5.seconds)
+Fetch.run[IO](fetchDuped).unsafeRunTimed(5.seconds)
 ```
 
 ### Caching
@@ -301,7 +317,7 @@ was in memory; furthermore, it also avoids re-fetching an identity that may have
 during the course of a fetch execution, which can lead to inconsistencies in the data.
 
 ```tut:silent
-val fetchCached: Fetch[(User, User)] = for {
+def fetchCached[F[_] : ConcurrentEffect]: Fetch[F, (User, User)] = for {
   aUser <- getUser(1)
   anotherUser <- getUser(1)
 } yield (aUser, anotherUser)
@@ -310,7 +326,7 @@ val fetchCached: Fetch[(User, User)] = for {
 The above fetch asks for the same identity multiple times. Let's see what happens when executing it.
 
 ```tut:book
-Fetch.run(fetchCached).unsafeRunTimed(5.seconds)
+Fetch.run[IO](fetchCached).unsafeRunTimed(5.seconds)
 ```
 
 As you can see, the `User` with id 1 was fetched only once in a single round-trip. The next
@@ -342,16 +358,15 @@ val postDatabase: Map[PostId, Post] = Map(
 implicit object PostSource extends DataSource[PostId, Post]{
   override def name = "Post"
 
-  override def fetch(id: PostId): IO[Option[Post]] =
+  override def fetch[F[_] : ConcurrentEffect](id: PostId): F[Option[Post]] =
     latency(postDatabase.get(id), s"One Post $id")
 
-  override def batch(ids: NonEmptyList[PostId])(
-    implicit P: Parallel[IO, IO.Par]
-  ): IO[Map[PostId, Post]] =
+  override def batch[F[_] : ConcurrentEffect : Par](ids: NonEmptyList[PostId]): F[Map[PostId, Post]] =
     latency(postDatabase.filterKeys(ids.toList.toSet), s"Batch Posts $ids")
 }
 
-def getPost(id: PostId): Fetch[Post] = Fetch(id, PostSource)
+def getPost[F[_] : ConcurrentEffect](id: PostId): Fetch[F, Post] =
+  Fetch(id, PostSource)
 ```
 
 Apart from posts, we are going to add another data source: one for post topics.
@@ -366,26 +381,25 @@ We'll implement a data source for retrieving a post topic given a post id.
 implicit object PostTopicSource extends DataSource[Post, PostTopic]{
   override def name = "Post topic"
 
-  override def fetch(id: Post): IO[Option[PostTopic]] = {
+  override def fetch[F[_] : ConcurrentEffect](id: Post): F[Option[PostTopic]] = {
     val topic = if (id.id % 2 == 0) "monad" else "applicative"
     latency(Option(topic), s"One Post Topic $id")
   }
 
-  override def batch(ids: NonEmptyList[Post])(
-    implicit P: Parallel[IO, IO.Par]
-  ): IO[Map[Post, PostTopic]] = {
+  override def batch[F[_] : ConcurrentEffect : Par](ids: NonEmptyList[Post]): F[Map[Post, PostTopic]] = {
     val result = ids.toList.map(id => (id, if (id.id % 2 == 0) "monad" else "applicative")).toMap
     latency(result, s"Batch Post Topics $ids")
   }
 }
 
-def getPostTopic(post: Post): Fetch[PostTopic] = Fetch(post, PostTopicSource)
+def getPostTopic[F[_] : ConcurrentEffect](post: Post): Fetch[F, PostTopic] =
+  Fetch(post, PostTopicSource)
 ```
 
 Now that we have multiple sources let's mix them in the same fetch.
 
 ```tut:silent
-val fetchMulti: Fetch[(Post, PostTopic)] = for {
+def fetchMulti[F[_] : ConcurrentEffect]: Fetch[F, (Post, PostTopic)] = for {
   post <- getPost(1)
   topic <- getPostTopic(post)
 } yield (post, topic)
@@ -394,7 +408,7 @@ val fetchMulti: Fetch[(Post, PostTopic)] = for {
 We can now run the previous fetch, querying the posts data source first and the user data source afterwards.
 
 ```tut:book
-Fetch.run(fetchMulti).unsafeRunTimed(5.seconds)
+Fetch.run[IO](fetchMulti).unsafeRunTimed(5.seconds)
 ```
 
 In the previous example, we fetched a post given its id and then fetched its topic. This
@@ -412,13 +426,14 @@ In the following example we are fetching from different data sources so both req
 evaluated together.
 
 ```tut:silent
-val fetchConcurrent: Fetch[(Post, User)] = (getPost(1), getUser(2)).tupled
+def fetchConcurrent[F[_] : ConcurrentEffect]: Fetch[F, (Post, User)] =
+  (getPost(1), getUser(2)).tupled
 ```
 
 The above example combines data from two different sources, and the library knows they are independent.
 
 ```tut:book
-Fetch.run(fetchConcurrent).unsafeRunTimed(5.seconds)
+Fetch.run[IO](fetchConcurrent).unsafeRunTimed(5.seconds)
 ```
 
 ## Combinators
@@ -436,13 +451,14 @@ data source and running fetches to different sources in parallel. Note that the 
 import cats.instances.list._
 import cats.syntax.traverse._
 
-val fetchSequence: Fetch[List[User]] = List(getUser(1), getUser(2), getUser(3)).sequence
+def fetchSequence[F[_] : ConcurrentEffect]: Fetch[F, List[User]] =
+  List(getUser(1), getUser(2), getUser(3)).sequence
 ```
 
 Since `sequence` uses applicative operations internally, the library is able to perform optimizations across all the sequenced fetches.
 
 ```tut:book
-Fetch.run(fetchSequence).unsafeRunTimed(5.seconds)
+Fetch.run[IO](fetchSequence).unsafeRunTimed(5.seconds)
 ```
 
 As you can see, requests to the user data source were batched, thus fetching all the data in one round.
@@ -452,13 +468,14 @@ As you can see, requests to the user data source were batched, thus fetching all
 Another interesting combinator is `traverse`, which is the composition of `map` and `sequence`.
 
 ```tut:silent
-val fetchTraverse: Fetch[List[User]] = List(1, 2, 3).traverse(getUser)
+def fetchTraverse[F[_] : ConcurrentEffect]: Fetch[F, List[User]] =
+  List(1, 2, 3).traverse(getUser[F])
 ```
 
 As you may have guessed, all the optimizations made by `sequence` still apply when using `traverse`.
 
 ```tut:book
-Fetch.run(fetchTraverse).unsafeRunTimed(5.seconds)
+Fetch.run[IO](fetchTraverse).unsafeRunTimed(5.seconds)
 ```
 
 # Caching
@@ -481,20 +498,21 @@ val cache = InMemoryCache.from(
 We can pass a cache as the second argument when running a fetch with `Fetch.run`.
 
 ```tut:book
-Fetch.run(fetchUser, cache).unsafeRunTimed(5.seconds)
+Fetch.run[IO](fetchUser, cache).unsafeRunTimed(5.seconds)
 ```
 
 As you can see, when all the data is cached, no query to the data sources is executed since the results are available
 in the cache.
 
 ```tut:silent
-val fetchManyUsers: Fetch[List[User]] = List(1, 2, 3).traverse(getUser)
+def fetchManyUsers[F[_] : ConcurrentEffect]: Fetch[F, List[User]] =
+  List(1, 2, 3).traverse(getUser[F])
 ```
 
 If only part of the data is cached, the cached data won't be asked for:
 
 ```tut:book
-Fetch.run(fetchManyUsers, cache).unsafeRunTimed(5.seconds)
+Fetch.run[IO](fetchManyUsers, cache).unsafeRunTimed(5.seconds)
 ```
 
 ## Replaying a fetch without querying any data source
@@ -505,9 +523,9 @@ Knowing this, we can replay a fetch reusing the cache of a previous one. The rep
 data sources.
 
 ```tut:book
-val (populatedCache, result) = Fetch.runCache(fetchManyUsers).unsafeRunSync
+val (populatedCache, result) = Fetch.runCache[IO](fetchManyUsers).unsafeRunSync
 
-Fetch.run(fetchManyUsers, populatedCache).unsafeRunTimed(5.seconds)
+Fetch.run[IO](fetchManyUsers, populatedCache).unsafeRunTimed(5.seconds)
 ```
 
 ## Implementing a custom cache
@@ -518,29 +536,31 @@ There is no need for the cache to be mutable since fetch executions run in an in
 
 ```scala
 trait DataSourceCache {
-  def insert[I, A](i: I, ds: DataSource[I, A], v: A): DataSourceIdentity, v: A): IO[DataSourceCache]
-  def lookup[I, A](i: I, ds: DataSource[I, A]): IO[Option[A]]
+  def insert[F[_] : ConcurrentEffect, I, A](i: I, ds: DataSource[I, A], v: A): DataSourceIdentity, v: A): F[DataSourceCache]
+  def lookup[F[_] : ConcurrentEffect, I, A](i: I, ds: DataSource[I, A]): F[Option[A]]
 }
 ```
 
 Let's implement a cache that forgets everything we store in it.
 
 ```tut:silent
+import cats.Applicative
+
 final case class ForgetfulCache() extends DataSourceCache {
-  def insert[I, A](i: I, v: A, ds: DataSource[I, A]): IO[ForgetfulCache] = IO.pure(this)
-  def lookup[I, A](i: I, ds: DataSource[I, A]): IO[Option[A]] = IO.pure(None)
+  def insert[F[_] : ConcurrentEffect, I, A](i: I, v: A, ds: DataSource[I, A]): F[DataSourceCache] = Applicative[F].pure(this)
+  def lookup[F[_] : ConcurrentEffect, I, A](i: I, ds: DataSource[I, A]): F[Option[A]] = Applicative[F].pure(None)
 }
 ```
 
 We can now use our implementation of the cache when running a fetch.
 
 ```tut:book
-val fetchSameTwice: Fetch[(User, User)] = for {
+def fetchSameTwice[F[_] : ConcurrentEffect]: Fetch[F, (User, User)] = for {
   one <- getUser(1)
   another <- getUser(1)
 } yield (one, another)
 
-Fetch.run(fetchSameTwice, ForgetfulCache()).unsafeRunTimed(5.seconds)
+Fetch.run[IO](fetchSameTwice, ForgetfulCache()).unsafeRunTimed(5.seconds)
 ```
 
 # Batching
@@ -559,25 +579,25 @@ implicit object BatchedUserSource extends DataSource[UserId, User]{
 
   override def maxBatchSize: Option[Int] = Some(2)
 
-  override def fetch(id: UserId): IO[Option[User]] =
+  override def fetch[F[_] : ConcurrentEffect](id: UserId): F[Option[User]] =
     latency(userDatabase.get(id), s"One User $id")
 
-  override def batch(ids: NonEmptyList[UserId])(
-    implicit P: Parallel[IO, IO.Par]
-  ): IO[Map[UserId, User]] =
+  override def batch[F[_] : ConcurrentEffect : Par](ids: NonEmptyList[UserId]): F[Map[UserId, User]] =
     latency(userDatabase.filterKeys(ids.toList.toSet), s"Batch Users $ids")
 }
 
-def getBatchedUser(id: Int): Fetch[User] = Fetch(id, BatchedUserSource)
+def getBatchedUser[F[_] : ConcurrentEffect](id: Int): Fetch[F, User] =
+  Fetch(id, BatchedUserSource)
 ```
 
 We have defined the maximum batch size to be 2, let's see what happens when running a fetch that needs more
 than two users:
 
 ```tut:book
-val fetchManyBatchedUsers: Fetch[List[User]] = List(1, 2, 3, 4).traverse(getBatchedUser)
+def fetchManyBatchedUsers[F[_] : ConcurrentEffect]: Fetch[F, List[User]] =
+  List(1, 2, 3, 4).traverse(getBatchedUser[F])
 
-Fetch.run(fetchManyBatchedUsers).unsafeRunTimed(5.seconds)
+Fetch.run[IO](fetchManyBatchedUsers).unsafeRunTimed(5.seconds)
 ```
 
 ## Batch execution strategy
@@ -592,25 +612,25 @@ implicit object SequentialUserSource extends DataSource[UserId, User]{
 
   override def batchExecution: BatchExecution = Sequentially // defaults to `InParallel`
 
-  override def fetch(id: UserId): IO[Option[User]] =
+  override def fetch[F[_] : ConcurrentEffect](id: UserId): F[Option[User]] =
     latency(userDatabase.get(id), s"One User $id")
 
-  override def batch(ids: NonEmptyList[UserId])(
-    implicit P: Parallel[IO, IO.Par]
-  ): IO[Map[UserId, User]] =
+  override def batch[F[_] : ConcurrentEffect : Par](ids: NonEmptyList[UserId]): F[Map[UserId, User]] =
     latency(userDatabase.filterKeys(ids.toList.toSet), s"Batch Users $ids")
 }
 
-def getSequentialUser(id: Int): Fetch[User] = Fetch(id, SequentialUserSource)
+def getSequentialUser[F[_] : ConcurrentEffect](id: Int): Fetch[F, User] =
+  Fetch(id, SequentialUserSource)
 ```
 
 We have defined the maximum batch size to be 2 and the batch execution to be sequential, let's see what happens when running a fetch that needs more than one batch:
 
 
 ```tut:book
-val fetchManySeqBatchedUsers: Fetch[List[User]] = List(1, 2, 3, 4).traverse(getSequentialUser)
+def fetchManySeqBatchedUsers[F[_] : ConcurrentEffect]: Fetch[F, List[User]] =
+  List(1, 2, 3, 4).traverse(getSequentialUser[F])
 
-Fetch.run(fetchManySeqBatchedUsers).unsafeRunTimed(5.seconds)
+Fetch.run[IO](fetchManySeqBatchedUsers).unsafeRunTimed(5.seconds)
 ```
 
 # Error handling
@@ -630,13 +650,14 @@ you want.
 What happens if we run a fetch and fails with an exception? We'll create a fetch that always fails to learn about it.
 
 ```tut:silent
-val fetchException: Fetch[User] = Fetch.error(new Exception("Oh noes"))
+def fetchException[F[_] : ConcurrentEffect]: Fetch[F, User] =
+  Fetch.error(new Exception("Oh noes"))
 ```
 
 If we try to execute to `IO` the exception will be thrown wrapped in a `fetch.UnhandledException`.
 
 ```tut:fail
-Fetch.run(fetchException).unsafeRunTimed(5.seconds)
+Fetch.run[IO](fetchException).unsafeRunTimed(5.seconds)
 ```
 
 A safer version would use Cats' `.attempt` method:
@@ -644,7 +665,7 @@ A safer version would use Cats' `.attempt` method:
 ```tut:book
 import cats.syntax.applicativeError._
 
-Fetch.run(fetchException).attempt.unsafeRunTimed(5.seconds)
+Fetch.run[IO](fetchException).attempt.unsafeRunTimed(5.seconds)
 ```
 
 ### Debugging exceptions
@@ -653,13 +674,13 @@ Using fetch's debugging facilities, we can visualize a failed fetch's execution 
 a fetch that fails after a couple rounds to see it in action:
 
 ```tut:silent
-val failingFetch: Fetch[String] = for {
+def failingFetch[F[_] : ConcurrentEffect]: Fetch[F, String] = for {
   a <- getUser(1)
   b <- getUser(2)
   c <- fetchException
 } yield s"${a.username} loves ${b.username}"
 
-val result: IO[Either[Throwable, (Env, String)]] = Fetch.runEnv(failingFetch).attempt
+val result: IO[Either[Throwable, (Env, String)]] = Fetch.runEnv[IO](failingFetch).attempt
 ```
 
 Now let's use the `fetch.debug.describe` function for describing the error if we find one:
@@ -681,9 +702,10 @@ You've probably noticed that `DataSource.fetch` and `DataSource.batch` return ty
 identity was not found. Whenever an identity cannot be found, the fetch execution will fail with an instance of `MissingIdentity`.
 
 ```tut:silent
-val missingUser = getUser(5)
+def missingUser[F[_] : ConcurrentEffect] =
+  getUser(5)
 
-val result: IO[Either[Throwable, (Env, User)]] = Fetch.runEnv(missingUser).attempt
+val result: IO[Either[Throwable, (Env, User)]] = Fetch.runEnv[IO](missingUser).attempt
 ```
 
 And now we can execute the fetch and describe its execution:
@@ -724,13 +746,14 @@ Note that using cats syntax gives you a plethora of combinators, much richer tha
 Plain values can be lifted to the Fetch monad with `Fetch#pure`:
 
 ```tut:silent
-val fetchPure: Fetch[Int] = Fetch.pure(42)
+def fetchPure[F[_] : ConcurrentEffect]: Fetch[F, Int] =
+  Fetch.pure(42)
 ```
 
 Executing a pure fetch doesn't query any data source, as expected.
 
 ```tut:book
-Fetch.run(fetchPure).unsafeRunTimed(5.seconds)
+Fetch.run[IO](fetchPure).unsafeRunTimed(5.seconds)
 ```
 
 ### error
@@ -738,18 +761,19 @@ Fetch.run(fetchPure).unsafeRunTimed(5.seconds)
 Errors can also be lifted to the Fetch monad via `Fetch#error`.
 
 ```tut:silent
-val fetchFail: Fetch[Int] = Fetch.error(new Exception("Something went terribly wrong"))
+def fetchFail[F[_] : ConcurrentEffect]: Fetch[F, Int] =
+  Fetch.error(new Exception("Something went terribly wrong"))
 ```
 
-Note that interpreting an errorful fetch to `Id` will throw the exception.
+Note that interpreting an errorful fetch can throw an exception.
 
 ```tut:fail
-Fetch.run(fetchFail).unsafeRunTimed(5.seconds)
+Fetch.run[IO](fetchFail).unsafeRunTimed(5.seconds)
 ```
 
 ## cats
 
-Fetch is built using Cats' Free monad construction and thus works out of the box with
+Fetch is built using Cats' data types and typeclasses and thus works out of the box with
 cats syntax. Using Cats' syntax, we can make fetch declarations more concise, without
 the need to use the combinators in the `Fetch` companion object.
 
@@ -764,29 +788,30 @@ we wouldn't have information about the independency of multiple fetches.
 
 The tuple apply syntax allows us to combine multiple independent fetches, even when they
 are from different types, and apply a pure function to their results. We can use it
-as a more powerful alternative to the `product` method or `Fetch#join`:
+as a more powerful alternative to the `product` method:
 
 ```tut:silent
 import cats.syntax.apply._
 
-val fetchThree: Fetch[(Post, User, Post)] = (getPost(1), getUser(2), getPost(2)).tupled
+def fetchThree[F[_] : ConcurrentEffect]: Fetch[F, (Post, User, Post)] =
+  (getPost(1), getUser(2), getPost(2)).tupled
 ```
 
 Notice how the queries to posts are batched.
 
 ```tut:book
-Fetch.run(fetchThree).unsafeRunTimed(5.seconds)
+Fetch.run[IO](fetchThree).unsafeRunTimed(5.seconds)
 ```
 
 More interestingly, we can use it to apply a pure function to the results of various
 fetches.
 
 ```tut:book
-val fetchFriends: Fetch[String] = (getUser(1), getUser(2)).mapN { (one, other) =>
+def fetchFriends[F[_] : ConcurrentEffect]: Fetch[F, String] = (getUser(1), getUser(2)).mapN { (one, other) =>
   s"${one.username} is friends with ${other.username}"
 }
 
-Fetch.run(fetchFriends).unsafeRunTimed(5.seconds)
+Fetch.run[IO](fetchFriends).unsafeRunTimed(5.seconds)
 ```
 
 # Debugging
@@ -806,18 +831,26 @@ We are going to create an interesting fetch that applies all the optimizations a
 visualize fetch executions using the environment.
 
 ```tut:silent
-val batched: Fetch[List[User]] = List(1, 2).traverse(getUser)
-val cached: Fetch[User] = getUser(2)
-val notCached: Fetch[User] = getUser(4)
-val concurrent: Fetch[(List[User], List[Post])] = (List(1, 2, 3).traverse(getUser), List(1, 2, 3).traverse(getPost)).tupled
+def batched[F[_] : ConcurrentEffect]: Fetch[F, List[User]] =
+  List(1, 2).traverse(getUser[F])
+  
+def cached[F[_] : ConcurrentEffect]: Fetch[F, User] =
+  getUser(2)
+  
+def notCached[F[_] : ConcurrentEffect]: Fetch[F, User] =
+  getUser(4)
+  
+def concurrent[F[_] : ConcurrentEffect]: Fetch[F, (List[User], List[Post])] =
+  (List(1, 2, 3).traverse(getUser[F]), List(1, 2, 3).traverse(getPost[F])).tupled
 
-val interestingFetch: Fetch[String] = batched >> cached >> notCached >> concurrent >> Fetch.pure("done")
+def interestingFetch[F[_] : ConcurrentEffect]: Fetch[F, String] =
+  batched >> cached >> notCached >> concurrent >> Fetch.pure("done")
 ```
 
 Now that we have the fetch let's run it, get the environment and visualize its execution using the `describe` function:
 
 ```tut:book
-val io = Fetch.runEnv(interestingFetch)
+val io = Fetch.runEnv[IO](interestingFetch)
 
 val (env, result) = io.unsafeRunSync
 
