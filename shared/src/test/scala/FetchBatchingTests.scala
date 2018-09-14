@@ -21,6 +21,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import org.scalatest.{AsyncFreeSpec, Matchers}
 
 import cats._
+import cats.temp.par._
 import cats.data.NonEmptyList
 import cats.instances.list._
 import cats.syntax.all._
@@ -36,10 +37,11 @@ class FetchBatchingTests extends AsyncFreeSpec with Matchers {
   implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
 
   case class BatchedDataSeq(id: Int)
-  implicit object MaxBatchSourceSeq extends DataSource[BatchedDataSeq, Int] {
+
+  object MaxBatchSourceSeq extends DataSource[BatchedDataSeq, Int] {
     override def name = "BatchSourceSeq"
 
-    override def fetch[F[_] : ConcurrentEffect](id: BatchedDataSeq): F[Option[Int]] =
+    override def fetch[F[_] : ConcurrentEffect : Par](id: BatchedDataSeq): F[Option[Int]] =
       Applicative[F].pure(Some(id.id))
 
     override val maxBatchSize = Some(2)
@@ -48,10 +50,11 @@ class FetchBatchingTests extends AsyncFreeSpec with Matchers {
   }
 
   case class BatchedDataPar(id: Int)
-  implicit object MaxBatchSourcePar extends DataSource[BatchedDataPar, Int] {
+
+  object MaxBatchSourcePar extends DataSource[BatchedDataPar, Int] {
     override def name = "BatchSourcePar"
 
-    override def fetch[F[_] : ConcurrentEffect](id: BatchedDataPar): F[Option[Int]] =
+    override def fetch[F[_] : ConcurrentEffect : Par](id: BatchedDataPar): F[Option[Int]] =
       Applicative[F].pure(Some(id.id))
 
     override val maxBatchSize = Some(2)

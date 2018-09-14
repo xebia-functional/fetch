@@ -67,7 +67,7 @@ If something is missing in Fetch that stops you from using it we'd appreciate if
 In order to tell Fetch how to retrieve data, we must implement the `DataSource` typeclass.
 
 ```scala
-import cats.temp.par.__
+import cats.temp.par._
 import cats.data.NonEmptyList
 
 trait DataSource[Identity, Result]{
@@ -94,22 +94,6 @@ a map from identities to results. Accepting a list of identities gives Fetch the
 the same data source, and returning a mapping from identities to results, Fetch can detect whenever an identity
 couldn't be fetched or no longer exists.
 
-## A note on IO
-
-Since `Fetch` relies on `IO` from the `cats-effect` library, we'll need a runtime for executing our `IO` instances. This includes a `ContextShift[IO]` used for running the `IO` instances and a `Timer[IO]` that is used for scheduling, let's go ahead and create them, we'll use a `java.util.concurrent.ScheduledThreadPoolExecutor` with a couple of threads to run our fetches.
-
-```tut:silent
-import cats.effect._
-import java.util.concurrent._
-import scala.concurrent.ExecutionContext
-import scala.concurrent.duration._
-
-val executor = new ScheduledThreadPoolExecutor(2)
-val executionContext: ExecutionContext = ExecutionContext.fromExecutor(executor)
-
-implicit val timer: Timer[IO] = IO.timer(executionContext)
-implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
-```
 
 ## Writing your first data source
 
@@ -124,6 +108,7 @@ case class User(id: UserId, username: String)
 We'll simulate unpredictable latency with this function.
 
 ```tut:silent
+import cats.effect._
 import cats.syntax.all._
 
 def latency[F[_] : ConcurrentEffect, A](result: A, msg: String): F[A] = for {
@@ -147,10 +132,10 @@ val userDatabase: Map[UserId, User] = Map(
   4 -> User(4, "@four")
 )
 
-implicit object UserSource extends DataSource[UserId, User]{
+object UserSource extends DataSource[UserId, User]{
   override def name = "User"
 
-  override def fetch[F[_] : ConcurrentEffect](id: UserId): F[Option[User]] =
+  override def fetch[F[_] : ConcurrentEffect : Par](id: UserId): F[Option[User]] =
     latency(userDatabase.get(id), s"One User $id")
 
   override def batch[F[_] : ConcurrentEffect : Par](ids: NonEmptyList[UserId]): F[Map[UserId, User]] =
@@ -166,33 +151,31 @@ def getUser[F[_] : ConcurrentEffect](id: UserId): Fetch[F, User] =
   Fetch(id, UserSource)
 ```
 
-### TODO Data sources that don't support batching
+### Data sources that don't support batching
 
 If your data source doesn't support batching, you can simply leave the `batch` method unimplemented. Note that it will use the `fetch` implementation for requesting identities in parallel.
 
-```scala
+```tut:silent
 implicit object UnbatchedSource extends DataSource[Int, Int]{
   override def name = "Unbatched"
 
-  override def fetch(id: Int): IO[Option[Int]] =
-    IO.pure(Option(id))
+  override def fetch[F[_] : ConcurrentEffect : Par](id: Int): F[Option[Int]] =
+    Sync[F].pure(Option(id))
 }
 ```
 
-#### TODO Batching individuals requests sequentially
+#### Batching individuals requests sequentially
 
 The default `batch` implementation run requests to the data source in parallel, but you can easily override it. We can make `batch` sequential using `NonEmptyList.traverse` for fetching individual identities.
 
-```scala
-implicit object UnbatchedSeqSource extends DataSource[Int, Int]{
+```tut:silent
+object UnbatchedSeqSource extends DataSource[Int, Int]{
   override def name = "UnbatchedSeq"
 
-  override def fetch(id: Int): IO[Option[Int]] =
-    IO.pure(Option(id))
+  override def fetch[F[_] : ConcurrentEffect : Par](id: Int): F[Option[Int]] =
+    Sync[F].pure(Option(id))
     
-  override def batch(ids: NonEmptyList[Int])(
-    implicit P: Parallel[IO, IO.Par]
-  ): IO[Map[Int, Int]] =
+  override def batch[F[_] : ConcurrentEffect : Par](ids: NonEmptyList[Int]): F[Map[Int, Int]] =
     ids.traverse(
       (id) => fetch(id).map(v => (id, v))
     ).map(_.collect { case (i, Some(x)) => (i, x) }.toMap)
@@ -200,21 +183,19 @@ implicit object UnbatchedSeqSource extends DataSource[Int, Int]{
 ```
 
 
-### TODO Data sources that only support batching
+### Data sources that only support batching
 
 If your data source only supports querying it in batches, you can implement `fetch` in terms of `batch`.
 
-```scala
-implicit object OnlyBatchedSource extends DataSource[Int, Int]{
+```tut:silent
+object OnlyBatchedSource extends DataSource[Int, Int]{
   override def name = "OnlyBatched"
 
-  override def fetch(id: Int): IO[Option[Int]] =
+  override def fetch[F[_] : ConcurrentEffect : Par](id: Int): F[Option[Int]] =
     batch(NonEmptyList(id, List())).map(_.get(id))
 
-  override def batch(ids: NonEmptyList[Int])(
-    implicit P: Parallel[IO, IO.Par]
-  ): IO[Map[Int, Int]] =
-    IO.pure(ids.map(x => (x, x)).toList.toMap)
+  override def batch[F[_] : ConcurrentEffect : Par](ids: NonEmptyList[Int]): F[Map[Int, Int]] =
+    Sync[F].pure(ids.map(x => (x, x)).toList.toMap)
 }
 ```
 
@@ -228,7 +209,7 @@ import java.util.concurrent._
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
-val executor = new ScheduledThreadPoolExecutor(2)
+val executor = new ScheduledThreadPoolExecutor(4)
 val executionContext: ExecutionContext = ExecutionContext.fromExecutor(executor)
 
 implicit val timer: Timer[IO] = IO.timer(executionContext)
@@ -358,7 +339,7 @@ val postDatabase: Map[PostId, Post] = Map(
 implicit object PostSource extends DataSource[PostId, Post]{
   override def name = "Post"
 
-  override def fetch[F[_] : ConcurrentEffect](id: PostId): F[Option[Post]] =
+  override def fetch[F[_] : ConcurrentEffect : Par](id: PostId): F[Option[Post]] =
     latency(postDatabase.get(id), s"One Post $id")
 
   override def batch[F[_] : ConcurrentEffect : Par](ids: NonEmptyList[PostId]): F[Map[PostId, Post]] =
@@ -381,7 +362,7 @@ We'll implement a data source for retrieving a post topic given a post id.
 implicit object PostTopicSource extends DataSource[Post, PostTopic]{
   override def name = "Post topic"
 
-  override def fetch[F[_] : ConcurrentEffect](id: Post): F[Option[PostTopic]] = {
+  override def fetch[F[_] : ConcurrentEffect : Par](id: Post): F[Option[PostTopic]] = {
     val topic = if (id.id % 2 == 0) "monad" else "applicative"
     latency(Option(topic), s"One Post Topic $id")
   }
@@ -579,7 +560,7 @@ implicit object BatchedUserSource extends DataSource[UserId, User]{
 
   override def maxBatchSize: Option[Int] = Some(2)
 
-  override def fetch[F[_] : ConcurrentEffect](id: UserId): F[Option[User]] =
+  override def fetch[F[_] : ConcurrentEffect : Par](id: UserId): F[Option[User]] =
     latency(userDatabase.get(id), s"One User $id")
 
   override def batch[F[_] : ConcurrentEffect : Par](ids: NonEmptyList[UserId]): F[Map[UserId, User]] =
@@ -612,7 +593,7 @@ implicit object SequentialUserSource extends DataSource[UserId, User]{
 
   override def batchExecution: BatchExecution = Sequentially // defaults to `InParallel`
 
-  override def fetch[F[_] : ConcurrentEffect](id: UserId): F[Option[User]] =
+  override def fetch[F[_] : ConcurrentEffect : Par](id: UserId): F[Option[User]] =
     latency(userDatabase.get(id), s"One User $id")
 
   override def batch[F[_] : ConcurrentEffect : Par](ids: NonEmptyList[UserId]): F[Map[UserId, User]] =

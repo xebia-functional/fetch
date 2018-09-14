@@ -58,8 +58,8 @@ import cats.temp.par.Par
 
 trait DataSource[Identity, Result]{
   def name: String
-  def fetch[F[__] : ConcurrentEffect](id: Identity): F[Option[Result]]
-  def batch[F[__] : ConcurrentEffect : Par](ids: NonEmptyList[Identity]): F[Map[Identity, Result]]
+  def fetch[F[_] : ConcurrentEffect](id: Identity): F[Option[Result]]
+  def batch[F[_] : ConcurrentEffect : Par](ids: NonEmptyList[Identity]): F[Map[Identity, Result]]
 }
 ```
 
@@ -78,10 +78,10 @@ import cats.syntax.all._
 
 import fetch._
 
-implicit object ToStringSource extends DataSource[Int, String]{
+object ToStringSource extends DataSource[Int, String]{
   override def name = "ToString"
 
-  override def fetch[F[_] : ConcurrentEffect](id: Int): F[Option[String]] = {
+  override def fetch[F[_] : ConcurrentEffect : Par](id: Int): F[Option[String]] = {
     Sync[F].delay(println(s"--> [${Thread.currentThread.getId}] One ToString $id")) >>
     Sync[F].delay(println(s"<-- [${Thread.currentThread.getId}] One ToString $id")) >>
     Sync[F].pure(Option(id.toString))
@@ -108,7 +108,7 @@ For executing `IO` we need a `ContextShift[IO]` used for running `IO` instances 
 import java.util.concurrent._
 import scala.concurrent.ExecutionContext
 
-val executor = new ScheduledThreadPoolExecutor(2)
+val executor = new ScheduledThreadPoolExecutor(4)
 val executionContext: ExecutionContext = ExecutionContext.fromExecutor(executor)
 
 implicit val timer: Timer[IO] = IO.timer(executionContext)
@@ -150,10 +150,10 @@ Fetch.run[IO](fetchThree).unsafeRunTimed(5.seconds)
 Note that the `DataSource#batch` method is not mandatory, it will be implemented in terms of `DataSource#fetch` if you don't provide an implementation.
 
 ```tut:silent
-implicit object UnbatchedToStringSource extends DataSource[Int, String]{
+object UnbatchedToStringSource extends DataSource[Int, String]{
   override def name = "UnbatchedToString"
 
-  override def fetch[F[_] : ConcurrentEffect](id: Int): F[Option[String]] = {
+  override def fetch[F[_] : ConcurrentEffect : Par](id: Int): F[Option[String]] = {
     Sync[F].delay(println(s"--> [${Thread.currentThread.getId}] One UnbatchedToString $id")) >>
     Sync[F].delay(println(s"<-- [${Thread.currentThread.getId}] One UnbatchedToString $id")) >>
     Sync[F].pure(Option(id.toString))
@@ -182,10 +182,10 @@ Fetch.run[IO](fetchUnbatchedThree).unsafeRunTimed(5.seconds)
 If we combine two independent fetches from different data sources, the fetches can be run in parallel. First, let's add a data source that fetches a string's size.
 
 ```tut:silent
-implicit object LengthSource extends DataSource[String, Int]{
+object LengthSource extends DataSource[String, Int]{
   override def name = "Length"
 
-  override def fetch[F[_] : ConcurrentEffect](id: String): F[Option[Int]] = {
+  override def fetch[F[_] : ConcurrentEffect : Par](id: String): F[Option[Int]] = {
     Sync[F].delay(println(s"--> [${Thread.currentThread.getId}] One Length $id")) >>
     Sync[F].delay(println(s"<-- [${Thread.currentThread.getId}] One Length $id")) >>
     Sync[F].pure(Option(id.size))
@@ -234,7 +234,7 @@ Fetch.run[IO](fetchTwice).unsafeRunTimed(5.seconds)
 ```
 
 
-```tut:silent
+```tut:invisible
 executor.shutdownNow()
 ```
 ---
