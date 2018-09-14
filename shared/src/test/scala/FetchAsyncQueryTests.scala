@@ -21,6 +21,7 @@ import org.scalatest.{AsyncFreeSpec, Matchers}
 import cats.instances.list._
 import cats.effect._
 import cats.syntax.all._
+import cats.temp.par._
 
 import fetch._
 
@@ -94,10 +95,10 @@ object DataSources {
     def author: Int = id + 1
   }
 
-  implicit object ArticleAsync extends DataSource[ArticleId, Article] {
+  object ArticleAsync extends DataSource[ArticleId, Article] {
     override def name = "ArticleAsync"
 
-    override def fetch[F[_] : ConcurrentEffect](id: ArticleId): F[Option[Article]] =
+    override def fetch[F[_] : ConcurrentEffect : Par](id: ArticleId): F[Option[Article]] =
       Async[F].async[Option[Article]]((cb) => {
         cb(
           Right(
@@ -113,10 +114,10 @@ object DataSources {
   case class AuthorId(id: Int)
   case class Author(id: Int, name: String)
 
-  implicit object AuthorAsync extends DataSource[AuthorId, Author] {
+  object AuthorAsync extends DataSource[AuthorId, Author] {
     override def name = "AuthorAsync"
 
-    override def fetch[F[_] : ConcurrentEffect](id: AuthorId): F[Option[Author]] =
+    override def fetch[F[_] : ConcurrentEffect : Par](id: AuthorId): F[Option[Author]] =
       Async[F].async((cb => {
         cb(
           Right(

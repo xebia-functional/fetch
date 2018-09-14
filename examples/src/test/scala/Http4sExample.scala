@@ -70,7 +70,7 @@ class Http4sExample extends WordSpec with Matchers {
   object Users extends DataSource[UserId, User] {
     override def name = "UserH4s"
 
-    override def fetch[F[_]: ConcurrentEffect](id: UserId): F[Option[User]] = {
+    override def fetch[F[_]: ConcurrentEffect: Par](id: UserId): F[Option[User]] = {
       val url = s"https://jsonplaceholder.typicode.com/users?id=${id.id}"
       client[F] >>= ((c) => c.expect(url)(jsonOf[F, List[User]]).map(_.headOption))
     }
@@ -89,7 +89,7 @@ class Http4sExample extends WordSpec with Matchers {
 
   object Posts extends DataSource[UserId, List[Post]] {
     override def name = "PostH4s"
-    override def fetch[F[_]: ConcurrentEffect](id: UserId): F[Option[List[Post]]] = {
+    override def fetch[F[_]: ConcurrentEffect: Par](id: UserId): F[Option[List[Post]]] = {
       val url = s"https://jsonplaceholder.typicode.com/posts?userId=${id.id}"
       client[F] >>= ((c) => c.expect(url)(jsonOf[F, List[Post]]).map(Option.apply))
     }

@@ -69,7 +69,7 @@ class DoobieExample extends WordSpec with Matchers {
   val authorDS = new DataSource[AuthorId, Author] {
     override def name = "AuthorDoobie"
 
-    override def fetch[F[_]: ConcurrentEffect](id: AuthorId): F[Option[Author]] =
+    override def fetch[F[_]: ConcurrentEffect: Par](id: AuthorId): F[Option[Author]] =
       LiftIO[F].liftIO(fetchById(id).transact(xa))
 
     override def batch[F[_]: ConcurrentEffect: Par](
