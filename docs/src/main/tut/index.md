@@ -54,11 +54,12 @@ Data Sources take two type parameters:
 
 ```scala
 import cats.data.NonEmptyList
+import cats.effect.ConcurrentEffect
 import cats.temp.par.Par
 
 trait DataSource[Identity, Result]{
   def name: String
-  def fetch[F[_] : ConcurrentEffect](id: Identity): F[Option[Result]]
+  def fetch[F[_] : ConcurrentEffect : Par](id: Identity): F[Option[Result]]
   def batch[F[_] : ConcurrentEffect : Par](ids: NonEmptyList[Identity]): F[Map[Identity, Result]]
 }
 ```
