@@ -58,11 +58,12 @@ Data Sources take two type parameters:
 
 ```scala
 import cats.data.NonEmptyList
+import cats.effect.ConcurrentEffect
 import cats.temp.par.Par
 
 trait DataSource[Identity, Result]{
   def name: String
-  def fetch[F[_] : ConcurrentEffect](id: Identity): F[Option[Result]]
+  def fetch[F[_] : ConcurrentEffect : Par](id: Identity): F[Option[Result]]
   def batch[F[_] : ConcurrentEffect : Par](ids: NonEmptyList[Identity]): F[Map[Identity, Result]]
 }
 ```
@@ -241,6 +242,10 @@ Fetch.run[IO](fetchTwice).unsafeRunTimed(5.seconds)
 ```tut:invisible
 executor.shutdownNow()
 ```
+---
+
+For more in-depth information take a look at our [documentation](http://47deg.github.io/fetch/docs.html).
+
 
 ## Fetch in the wild
 
