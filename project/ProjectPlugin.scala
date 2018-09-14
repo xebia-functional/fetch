@@ -78,10 +78,11 @@ object ProjectPlugin extends AutoPlugin {
         "validateJVM",
         List(
           "fetchJVM/compile",
+          "fetchJVM/test",
           "project root").asCmd) ++
       addCommandAlias(
         "validateJS",
-        List("fetchJS/compile", "project root").asCmd)
+        List("fetchJS/compile", "fetchJS/test", "project root").asCmd)
 
   override def projectSettings: Seq[Def.Setting[_]] =
     commandAliases ++
