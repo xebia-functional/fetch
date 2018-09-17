@@ -41,7 +41,7 @@ object `package` {
     def identities: NonEmptyList[I]
   }
   private[fetch] final case class FetchOne[I, A](id: I, ds: DataSource[I, A]) extends FetchQuery[I, A] {
-    override def identities: NonEmptyList[I] = NonEmptyList(id, List.empty[I])
+    override def identities: NonEmptyList[I] = NonEmptyList.one(id)
     override def dataSource: DataSource[I, A] = ds
   }
   private[fetch] final case class Batch[I, A](ids: NonEmptyList[I], ds: DataSource[I, A]) extends FetchQuery[I, A] {
@@ -65,7 +65,7 @@ object `package` {
 
   // In-progress request
 
-  final case class BlockedRequest[F[_]](request: FetchRequest, result: FetchStatus => F[Unit])
+  private[fetch] final case class BlockedRequest[F[_]](request: FetchRequest, result: FetchStatus => F[Unit])
 
   /* Combines the identities of two `FetchQuery` to the same data source. */
   private def combineIdentities[I, A](x: FetchQuery[I, A], y: FetchQuery[I, A]): NonEmptyList[I] = {
@@ -130,7 +130,7 @@ object `package` {
   }
 
   /* A map from datasources to blocked requests used to group requests to the same data source. */
-  final case class RequestMap[F[_]](m: Map[DataSource[Any, Any], BlockedRequest[F]])
+  private[fetch] final case class RequestMap[F[_]](m: Map[DataSource[Any, Any], BlockedRequest[F]])
 
   /* Combine two `RequestMap` instances to batch requests to the same data source. */
   private def combineRequestMaps[F[_] : Monad](x: RequestMap[F], y: RequestMap[F]): RequestMap[F] =
@@ -155,7 +155,7 @@ object `package` {
   sealed trait Fetch[F[_], A] {
     private[fetch] def run: F[FetchResult[F, A]]
   }
-  final case class Unfetch[F[_], A](
+  private[fetch] final case class Unfetch[F[_], A](
     private[fetch] run: F[FetchResult[F, A]]
   ) extends Fetch[F, A]
 
@@ -203,7 +203,7 @@ object `package` {
         result: Fetch[F, B] = fetch match {
           case Done(v) => f(v)
           case Throw(e) => Unfetch[F, B](Monad[F].pure(Throw[F, B](e)))
-          case Blocked(br, cont: Fetch[F, A]) =>
+          case Blocked(br, cont) =>
             Unfetch[F, B](
               Monad[F].pure(
                 Blocked(br, flatMap(cont)(f))
@@ -239,11 +239,11 @@ object `package` {
           anyDs = ds.asInstanceOf[DataSource[Any, Any]]
           blockedRequest = RequestMap(Map(anyDs -> blocked))
         } yield Blocked(blockedRequest, Unfetch[F, A](
-          deferred.get.flatMap {
-            case FetchDone(a: A) =>
-              Applicative[F].pure(Done(a))
+          deferred.get.map {
+            case FetchDone(a) =>
+              Done(a).asInstanceOf[FetchResult[F, A]]
             case FetchMissing() =>
-              Applicative[F].pure(Throw((env) => MissingIdentity(id, request, env)))
+              Throw((env) => MissingIdentity(id, request, env))
           }
         ))
       )
@@ -341,7 +341,7 @@ object `package` {
           env.fold(
             Applicative[F].pure(FetchEnv() : Env)
           )(_.get).flatMap((e: Env) =>
-            Sync[F].raiseError(envToThrowable(e)).asInstanceOf[F[A]]
+            Sync[F].raiseError[A](envToThrowable(e))
           )
       }
     } yield value
@@ -452,24 +452,20 @@ object `package` {
 
       // Remove cached IDs
       idLookups <- q.ids.traverse[F, (Any, Option[Any])](
-        (i) => c.lookup(i, q.ds).map( m => (i, m) )
+        (i) => c.lookup(i, q.ds).tupleLeft(i)
       )
-      cachedResults = idLookups.collect({
-        case (i, Some(a)) => (i, a)
-      }).toMap
-      uncachedIds = idLookups.collect({
-        case (i, None) => i
-      })
-
-      result <- uncachedIds match {
+      (uncachedIds, cached) = idLookups.toList.partitionEither {
+        case (i, result) => result.tupleLeft(i).toRight(i)
+      }
+      cachedResults = cached.toMap
+      result <- uncachedIds.toNel match {
         // All cached
-        case Nil => putResult(FetchDone[Map[Any, Any]](cachedResults)).as(Nil)
+        case None => putResult(FetchDone[Map[Any, Any]](cachedResults)).as(Nil)
 
         // Some uncached
-        case l@_ => for {
+        case Some(uncached) => for {
           startTime <- T.clock.monotonic(MILLISECONDS)
 
-          uncached = NonEmptyList.fromListUnsafe(l)
           request = Batch(uncached, q.ds)
 
           batchedRequest <- request.ds.maxBatchSize match {
