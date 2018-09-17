@@ -79,7 +79,7 @@ object `package` {
     case (a@FetchOne(aId, ds), b@FetchOne(anotherId, _)) =>
       if (aId == anotherId)  {
         val newRequest = FetchOne(aId, ds)
-        val newResult = (r: FetchStatus) => (x.result(r), y.result(r)).tupled >> Applicative[F].unit
+        val newResult = (r: FetchStatus) => (x.result(r), y.result(r)).tupled.void
         BlockedRequest(newRequest, newResult)
       } else {
         val newRequest = Batch(combineIdentities(a, b), ds)
@@ -87,11 +87,11 @@ object `package` {
           case FetchDone(m : Map[Any, Any]) => {
             val xResult = m.get(aId).map(FetchDone(_)).getOrElse(FetchMissing())
             val yResult = m.get(anotherId).map(FetchDone(_)).getOrElse(FetchMissing())
-              (x.result(xResult), y.result(yResult)).tupled >> Applicative[F].unit
+              (x.result(xResult), y.result(yResult)).tupled.void
           }
 
           case FetchMissing() =>
-            (x.result(r), y.result(r)).tupled >> Applicative[F].unit
+            (x.result(r), y.result(r)).tupled.void
         }
         BlockedRequest(newRequest, newResult)
       }
@@ -102,11 +102,11 @@ object `package` {
         case FetchDone(m : Map[Any, Any]) => {
           val oneResult = m.get(oneId).map(FetchDone(_)).getOrElse(FetchMissing())
 
-          (x.result(oneResult), y.result(r)).tupled >> Applicative[F].unit
+          (x.result(oneResult), y.result(r)).tupled.void
         }
 
         case FetchMissing() =>
-          (x.result(r), y.result(r)).tupled >> Applicative[F].unit
+          (x.result(r), y.result(r)).tupled.void
       }
       BlockedRequest(newRequest, newResult)
 
@@ -115,17 +115,17 @@ object `package` {
       val newResult = (r: FetchStatus) => r match {
         case FetchDone(m : Map[Any, Any]) => {
           val oneResult = m.get(oneId).map(FetchDone(_)).getOrElse(FetchMissing())
-            (x.result(r), y.result(oneResult)).tupled >> Applicative[F].unit
+            (x.result(r), y.result(oneResult)).tupled.void
         }
 
         case FetchMissing() =>
-          (x.result(r), y.result(r)).tupled >> Applicative[F].unit
+          (x.result(r), y.result(r)).tupled.void
       }
       BlockedRequest(newRequest, newResult)
 
     case (a@Batch(manyId, ds), b@Batch(otherId, _)) =>
       val newRequest = Batch(combineIdentities(a, b), ds)
-      val newResult = (r: FetchStatus) => (x.result(r), y.result(r)).tupled >> Applicative[F].unit
+      val newResult = (r: FetchStatus) => (x.result(r), y.result(r)).tupled.void
       BlockedRequest(newRequest, newResult)
   }
 
@@ -407,7 +407,7 @@ object `package` {
       maybeCached <- c.lookup(q.id, q.ds)
       result <- maybeCached match {
         // Cached
-        case Some(v) => putResult(FetchDone(v)) >> Applicative[F].pure(Nil)
+        case Some(v) => putResult(FetchDone(v)).as(Nil)
 
         // Not cached, must fetch
         case None => for {
@@ -424,7 +424,7 @@ object `package` {
 
             // Missing
             case None =>
-              putResult(FetchMissing()) >> Applicative[F].pure(List(Request(q, startTime, endTime)))
+              putResult(FetchMissing()).as(List(Request(q, startTime, endTime)))
           }
         } yield result
       }
@@ -463,7 +463,7 @@ object `package` {
 
       result <- uncachedIds match {
         // All cached
-        case Nil => putResult(FetchDone[Map[Any, Any]](cachedResults)) >> Applicative[F].pure(Nil)
+        case Nil => putResult(FetchDone[Map[Any, Any]](cachedResults)).as(Nil)
 
         // Some uncached
         case l@_ => for {
