@@ -34,38 +34,38 @@ import cats.temp.par._
 object `package` {
   // Fetch queries
 
-  sealed trait FetchRequest extends Product with Serializable
+  private[fetch] sealed trait FetchRequest extends Product with Serializable
 
-  sealed trait FetchQuery[I, A] extends FetchRequest {
+  private[fetch] sealed trait FetchQuery[I, A] extends FetchRequest {
     def dataSource: DataSource[I, A]
     def identities: NonEmptyList[I]
   }
-  case class FetchOne[I, A](id: I, ds: DataSource[I, A]) extends FetchQuery[I, A] {
-    override def identities: NonEmptyList[I] = NonEmptyList(id, List.empty[I])
+  private[fetch] final case class FetchOne[I, A](id: I, ds: DataSource[I, A]) extends FetchQuery[I, A] {
+    override def identities: NonEmptyList[I] = NonEmptyList.one(id)
     override def dataSource: DataSource[I, A] = ds
   }
-  case class Batch[I, A](ids: NonEmptyList[I], ds: DataSource[I, A]) extends FetchQuery[I, A] {
+  private[fetch] final case class Batch[I, A](ids: NonEmptyList[I], ds: DataSource[I, A]) extends FetchQuery[I, A] {
     override def identities: NonEmptyList[I] = ids
     override def dataSource: DataSource[I, A] = ds
   }
 
   // Fetch result states
 
-  sealed trait FetchStatus
-  case class FetchDone[A](result: A) extends FetchStatus
-  case class FetchMissing() extends FetchStatus
+  private[fetch] sealed trait FetchStatus extends Product with Serializable
+  private[fetch] final case class FetchDone[A](result: A) extends FetchStatus
+  private[fetch] final case class FetchMissing() extends FetchStatus
 
   // Fetch errors
 
   sealed trait FetchException extends Throwable with NoStackTrace {
     def environment: Env
   }
-  case class MissingIdentity[I, A](i: I, request: FetchQuery[I, A], environment: Env) extends FetchException
-  case class UnhandledException(e: Throwable, environment: Env) extends FetchException
+  final case class MissingIdentity[I, A](i: I, request: FetchQuery[I, A], environment: Env) extends FetchException
+  final case class UnhandledException(e: Throwable, environment: Env) extends FetchException
 
   // In-progress request
 
-  case class BlockedRequest[F[_]](request: FetchRequest, result: FetchStatus => F[Unit])
+  private[fetch] final case class BlockedRequest[F[_]](request: FetchRequest, result: FetchStatus => F[Unit])
 
   /* Combines the identities of two `FetchQuery` to the same data source. */
   private def combineIdentities[I, A](x: FetchQuery[I, A], y: FetchQuery[I, A]): NonEmptyList[I] = {
@@ -79,7 +79,7 @@ object `package` {
     case (a@FetchOne(aId, ds), b@FetchOne(anotherId, _)) =>
       if (aId == anotherId)  {
         val newRequest = FetchOne(aId, ds)
-        val newResult = (r: FetchStatus) => (x.result(r), y.result(r)).tupled >> Applicative[F].unit
+        val newResult = (r: FetchStatus) => (x.result(r), y.result(r)).tupled.void
         BlockedRequest(newRequest, newResult)
       } else {
         val newRequest = Batch(combineIdentities(a, b), ds)
@@ -87,11 +87,11 @@ object `package` {
           case FetchDone(m : Map[Any, Any]) => {
             val xResult = m.get(aId).map(FetchDone(_)).getOrElse(FetchMissing())
             val yResult = m.get(anotherId).map(FetchDone(_)).getOrElse(FetchMissing())
-              (x.result(xResult), y.result(yResult)).tupled >> Applicative[F].unit
+              (x.result(xResult), y.result(yResult)).tupled.void
           }
 
           case FetchMissing() =>
-            (x.result(r), y.result(r)).tupled >> Applicative[F].unit
+            (x.result(r), y.result(r)).tupled.void
         }
         BlockedRequest(newRequest, newResult)
       }
@@ -102,11 +102,11 @@ object `package` {
         case FetchDone(m : Map[Any, Any]) => {
           val oneResult = m.get(oneId).map(FetchDone(_)).getOrElse(FetchMissing())
 
-          (x.result(oneResult), y.result(r)).tupled >> Applicative[F].unit
+          (x.result(oneResult), y.result(r)).tupled.void
         }
 
         case FetchMissing() =>
-          (x.result(r), y.result(r)).tupled >> Applicative[F].unit
+          (x.result(r), y.result(r)).tupled.void
       }
       BlockedRequest(newRequest, newResult)
 
@@ -115,22 +115,22 @@ object `package` {
       val newResult = (r: FetchStatus) => r match {
         case FetchDone(m : Map[Any, Any]) => {
           val oneResult = m.get(oneId).map(FetchDone(_)).getOrElse(FetchMissing())
-            (x.result(r), y.result(oneResult)).tupled >> Applicative[F].unit
+            (x.result(r), y.result(oneResult)).tupled.void
         }
 
         case FetchMissing() =>
-          (x.result(r), y.result(r)).tupled >> Applicative[F].unit
+          (x.result(r), y.result(r)).tupled.void
       }
       BlockedRequest(newRequest, newResult)
 
     case (a@Batch(manyId, ds), b@Batch(otherId, _)) =>
       val newRequest = Batch(combineIdentities(a, b), ds)
-      val newResult = (r: FetchStatus) => (x.result(r), y.result(r)).tupled >> Applicative[F].unit
+      val newResult = (r: FetchStatus) => (x.result(r), y.result(r)).tupled.void
       BlockedRequest(newRequest, newResult)
   }
 
   /* A map from datasources to blocked requests used to group requests to the same data source. */
-  case class RequestMap[F[_]](m: Map[DataSource[Any, Any], BlockedRequest[F]])
+  private[fetch] final case class RequestMap[F[_]](m: Map[DataSource[Any, Any], BlockedRequest[F]])
 
   /* Combine two `RequestMap` instances to batch requests to the same data source. */
   private def combineRequestMaps[F[_] : Monad](x: RequestMap[F], y: RequestMap[F]): RequestMap[F] =
@@ -145,18 +145,18 @@ object `package` {
 
   // Fetch result data type
 
-  sealed trait FetchResult[F[_], A]
-  case class Done[F[_], A](x: A) extends FetchResult[F, A]
-  case class Blocked[F[_], A](rs: RequestMap[F], cont: Fetch[F, A]) extends FetchResult[F, A]
-  case class Throw[F[_], A](e: Env => FetchException) extends FetchResult[F, A]
+  private[fetch] sealed trait FetchResult[F[_], A] extends Product with Serializable
+  private[fetch] final case class Done[F[_], A](x: A) extends FetchResult[F, A]
+  private[fetch] final case class Blocked[F[_], A](rs: RequestMap[F], cont: Fetch[F, A]) extends FetchResult[F, A]
+  private[fetch] final case class Throw[F[_], A](e: Env => FetchException) extends FetchResult[F, A]
 
   // Fetch data type
 
   sealed trait Fetch[F[_], A] {
-    def run: F[FetchResult[F, A]]
+    private[fetch] def run: F[FetchResult[F, A]]
   }
-  case class Unfetch[F[_], A](
-    run: F[FetchResult[F, A]]
+  private[fetch] final case class Unfetch[F[_], A](
+    private[fetch] run: F[FetchResult[F, A]]
   ) extends Fetch[F, A]
 
   // Fetch Monad
@@ -198,20 +198,13 @@ object `package` {
       } yield result)
 
     def flatMap[A, B](fa: Fetch[F, A])(f: A => Fetch[F, B]): Fetch[F, B] =
-      Unfetch(for {
-        fetch <- fa.run
-        result: Fetch[F, B] = fetch match {
-          case Done(v) => f(v)
-          case Throw(e) => Unfetch[F, B](Monad[F].pure(Throw[F, B](e)))
-          case Blocked(br, cont: Fetch[F, A]) =>
-            Unfetch[F, B](
-              Monad[F].pure(
-                Blocked(br, flatMap(cont)(f))
-              )
-            )
-        }
-        value <- result.run
-      } yield value)
+      Unfetch(fa.run.flatMap {
+        case Done(v) => f(v).run
+        case Throw(e) =>
+          Applicative[F].pure(Throw[F, B](e))
+        case Blocked(br, cont) =>
+          Applicative[F].pure(Blocked(br, flatMap(cont)(f)))
+      })
   }
 
   object Fetch {
@@ -239,11 +232,11 @@ object `package` {
           anyDs = ds.asInstanceOf[DataSource[Any, Any]]
           blockedRequest = RequestMap(Map(anyDs -> blocked))
         } yield Blocked(blockedRequest, Unfetch[F, A](
-          deferred.get.flatMap {
-            case FetchDone(a: A) =>
-              Applicative[F].pure(Done(a))
+          deferred.get.map {
+            case FetchDone(a) =>
+              Done(a).asInstanceOf[FetchResult[F, A]]
             case FetchMissing() =>
-              Applicative[F].pure(Throw((env) => MissingIdentity(id, request, env)))
+              Throw((env) => MissingIdentity(id, request, env))
           }
         ))
       )
@@ -341,7 +334,7 @@ object `package` {
           env.fold(
             Applicative[F].pure(FetchEnv() : Env)
           )(_.get).flatMap((e: Env) =>
-            Sync[F].raiseError(envToThrowable(e)).asInstanceOf[F[A]]
+            Sync[F].raiseError[A](envToThrowable(e))
           )
       }
     } yield value
@@ -407,7 +400,7 @@ object `package` {
       maybeCached <- c.lookup(q.id, q.ds)
       result <- maybeCached match {
         // Cached
-        case Some(v) => putResult(FetchDone(v)) >> Applicative[F].pure(Nil)
+        case Some(v) => putResult(FetchDone(v)).as(Nil)
 
         // Not cached, must fetch
         case None => for {
@@ -424,7 +417,7 @@ object `package` {
 
             // Missing
             case None =>
-              putResult(FetchMissing()) >> Applicative[F].pure(List(Request(q, startTime, endTime)))
+              putResult(FetchMissing()).as(List(Request(q, startTime, endTime)))
           }
         } yield result
       }
@@ -452,24 +445,20 @@ object `package` {
 
       // Remove cached IDs
       idLookups <- q.ids.traverse[F, (Any, Option[Any])](
-        (i) => c.lookup(i, q.ds).map( m => (i, m) )
+        (i) => c.lookup(i, q.ds).tupleLeft(i)
       )
-      cachedResults = idLookups.collect({
-        case (i, Some(a)) => (i, a)
-      }).toMap
-      uncachedIds = idLookups.collect({
-        case (i, None) => i
-      })
-
-      result <- uncachedIds match {
+      (uncachedIds, cached) = idLookups.toList.partitionEither {
+        case (i, result) => result.tupleLeft(i).toRight(i)
+      }
+      cachedResults = cached.toMap
+      result <- uncachedIds.toNel match {
         // All cached
-        case Nil => putResult(FetchDone[Map[Any, Any]](cachedResults)) >> Applicative[F].pure(Nil)
+        case None => putResult(FetchDone[Map[Any, Any]](cachedResults)).as(Nil)
 
         // Some uncached
-        case l@_ => for {
+        case Some(uncached) => for {
           startTime <- T.clock.monotonic(MILLISECONDS)
 
-          uncached = NonEmptyList.fromListUnsafe(l)
           request = Batch(uncached, q.ds)
 
           batchedRequest <- request.ds.maxBatchSize match {
