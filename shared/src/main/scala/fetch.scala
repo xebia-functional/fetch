@@ -34,38 +34,38 @@ import cats.temp.par._
 object `package` {
   // Fetch queries
 
-  sealed trait FetchRequest extends Product with Serializable
+  private[fetch] sealed trait FetchRequest extends Product with Serializable
 
-  sealed trait FetchQuery[I, A] extends FetchRequest {
+  private[fetch] sealed trait FetchQuery[I, A] extends FetchRequest {
     def dataSource: DataSource[I, A]
     def identities: NonEmptyList[I]
   }
-  case class FetchOne[I, A](id: I, ds: DataSource[I, A]) extends FetchQuery[I, A] {
+  private[fetch] final case class FetchOne[I, A](id: I, ds: DataSource[I, A]) extends FetchQuery[I, A] {
     override def identities: NonEmptyList[I] = NonEmptyList(id, List.empty[I])
     override def dataSource: DataSource[I, A] = ds
   }
-  case class Batch[I, A](ids: NonEmptyList[I], ds: DataSource[I, A]) extends FetchQuery[I, A] {
+  private[fetch] final case class Batch[I, A](ids: NonEmptyList[I], ds: DataSource[I, A]) extends FetchQuery[I, A] {
     override def identities: NonEmptyList[I] = ids
     override def dataSource: DataSource[I, A] = ds
   }
 
   // Fetch result states
 
-  sealed trait FetchStatus
-  case class FetchDone[A](result: A) extends FetchStatus
-  case class FetchMissing() extends FetchStatus
+  private[fetch] sealed trait FetchStatus extends Product with Serializable
+  private[fetch] final case class FetchDone[A](result: A) extends FetchStatus
+  private[fetch] final case class FetchMissing() extends FetchStatus
 
   // Fetch errors
 
   sealed trait FetchException extends Throwable with NoStackTrace {
     def environment: Env
   }
-  case class MissingIdentity[I, A](i: I, request: FetchQuery[I, A], environment: Env) extends FetchException
-  case class UnhandledException(e: Throwable, environment: Env) extends FetchException
+  final case class MissingIdentity[I, A](i: I, request: FetchQuery[I, A], environment: Env) extends FetchException
+  final case class UnhandledException(e: Throwable, environment: Env) extends FetchException
 
   // In-progress request
 
-  case class BlockedRequest[F[_]](request: FetchRequest, result: FetchStatus => F[Unit])
+  final case class BlockedRequest[F[_]](request: FetchRequest, result: FetchStatus => F[Unit])
 
   /* Combines the identities of two `FetchQuery` to the same data source. */
   private def combineIdentities[I, A](x: FetchQuery[I, A], y: FetchQuery[I, A]): NonEmptyList[I] = {
@@ -130,7 +130,7 @@ object `package` {
   }
 
   /* A map from datasources to blocked requests used to group requests to the same data source. */
-  case class RequestMap[F[_]](m: Map[DataSource[Any, Any], BlockedRequest[F]])
+  final case class RequestMap[F[_]](m: Map[DataSource[Any, Any], BlockedRequest[F]])
 
   /* Combine two `RequestMap` instances to batch requests to the same data source. */
   private def combineRequestMaps[F[_] : Monad](x: RequestMap[F], y: RequestMap[F]): RequestMap[F] =
@@ -145,18 +145,18 @@ object `package` {
 
   // Fetch result data type
 
-  sealed trait FetchResult[F[_], A]
-  case class Done[F[_], A](x: A) extends FetchResult[F, A]
-  case class Blocked[F[_], A](rs: RequestMap[F], cont: Fetch[F, A]) extends FetchResult[F, A]
-  case class Throw[F[_], A](e: Env => FetchException) extends FetchResult[F, A]
+  private[fetch] sealed trait FetchResult[F[_], A] extends Product with Serializable
+  private[fetch] final case class Done[F[_], A](x: A) extends FetchResult[F, A]
+  private[fetch] final case class Blocked[F[_], A](rs: RequestMap[F], cont: Fetch[F, A]) extends FetchResult[F, A]
+  private[fetch] final case class Throw[F[_], A](e: Env => FetchException) extends FetchResult[F, A]
 
   // Fetch data type
 
   sealed trait Fetch[F[_], A] {
-    def run: F[FetchResult[F, A]]
+    private[fetch] def run: F[FetchResult[F, A]]
   }
-  case class Unfetch[F[_], A](
-    run: F[FetchResult[F, A]]
+  final case class Unfetch[F[_], A](
+    private[fetch] run: F[FetchResult[F, A]]
   ) extends Fetch[F, A]
 
   // Fetch Monad
