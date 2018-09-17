@@ -198,20 +198,13 @@ object `package` {
       } yield result)
 
     def flatMap[A, B](fa: Fetch[F, A])(f: A => Fetch[F, B]): Fetch[F, B] =
-      Unfetch(for {
-        fetch <- fa.run
-        result: Fetch[F, B] = fetch match {
-          case Done(v) => f(v)
-          case Throw(e) => Unfetch[F, B](Monad[F].pure(Throw[F, B](e)))
-          case Blocked(br, cont) =>
-            Unfetch[F, B](
-              Monad[F].pure(
-                Blocked(br, flatMap(cont)(f))
-              )
-            )
-        }
-        value <- result.run
-      } yield value)
+      Unfetch(fa.run.flatMap {
+        case Done(v) => f(v).run
+        case Throw(e) =>
+          Applicative[F].pure(Throw[F, B](e))
+        case Blocked(br, cont) =>
+          Applicative[F].pure(Blocked(br, flatMap(cont)(f)))
+      })
   }
 
   object Fetch {
