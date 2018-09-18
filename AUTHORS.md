@@ -12,6 +12,7 @@ These are the people that have contributed to the Fetch project:
 
 * [AntonioMateoGomez](https://github.com/AntonioMateoGomez)
 * Adelbert Chang <[adelbertc](https://github.com/adelbertc)>
+* Alejandro Gómez <[purrgrammer](https://github.com/purrgrammer)>
 * Alessandro Lacava <[lambdista](https://github.com/lambdista)>
 * Chris Vale <[chris-vale-ck](https://github.com/chris-vale-ck)>
 * Fede Fernández <[fedefernandez](https://github.com/fedefernandez)>
@@ -25,4 +26,5 @@ These are the people that have contributed to the Fetch project:
 * Raúl Raja Martínez <[raulraja](https://github.com/raulraja)>
 * Suhas Gaddam <[suhasgaddam](https://github.com/suhasgaddam)>
 * The Gitter Badger <[gitter-badger](https://github.com/gitter-badger)>
+* Tristan Lohman <[gatorcse](https://github.com/gatorcse)>
 * William Ho <[williamho](https://github.com/williamho)>
