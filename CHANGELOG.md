@@ -1,5 +1,13 @@
 # Changelog
 
+## 09/18/2018 - Version 1.0.0-RC1
+
+Release changes:
+
+* Restore AUTHORS ([#154](https://github.com/47deg/fetch/pull/154))
+* Redesign ([#155](https://github.com/47deg/fetch/pull/155))
+
+
 ## Unreleased - Version 1.0.0
 
 Release changes:
