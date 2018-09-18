@@ -17,91 +17,41 @@
 package fetch
 
 import scala.concurrent.{ExecutionContext, Future}
+
 import org.scalatest.{AsyncFreeSpec, Matchers}
-import cats.instances.list._
+
+import cats.syntax.all._
+import cats.effect._
+
 import fetch._
-import fetch.implicits._
+import fetch.syntax._
 
 class FetchSyntaxTests extends AsyncFreeSpec with Matchers {
-  import fetch.syntax._
   import TestHelper._
 
-  val ME = FetchMonadError[Future]
-
-  implicit override def executionContext = ExecutionContext.Implicits.global
-
-  "Cartesian syntax is implicitly concurrent" in {
-    import cats.syntax.apply._
-
-    val fetch: Fetch[(Int, List[Int])] = (one(1), many(3)).tupled
-
-    val fut = Fetch.runEnv[Future](fetch)
-
-    fut.map(env => {
-      env.rounds.size shouldEqual 1
-    })
-  }
-
-  "Apply syntax is implicitly concurrent" in {
-    import cats.syntax.apply._
-
-    val fetch: Fetch[Int] = Fetch.pure((x: Int, y: Int) => x + y).ap2(one(1), one(2))
-
-    val fut = Fetch.runEnv[Future](fetch)
-
-    fut.map(env => {
-      val rounds = env.rounds
-
-      rounds.size shouldEqual 1
-      totalBatches(rounds) shouldEqual 1
-      totalFetched(rounds) shouldEqual 2
-    })
-  }
+  override val executionContext: ExecutionContext = ExecutionContext.Implicits.global
+  implicit val timer: Timer[IO] = IO.timer(executionContext)
+  implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
 
   "`fetch` syntax allows lifting of any value to the context of a fetch" in {
-    Fetch.pure(42) shouldEqual 42.fetch
+    Fetch.pure[IO, Int](42) shouldEqual 42.fetch[IO]
   }
 
   "`fetch` syntax allows lifting of any `Throwable` as a failure on a fetch" in {
     case object Ex extends RuntimeException
 
-    val fut1 = Fetch.run[Future](Fetch.error(Ex): Fetch[Int])
-    val fut2 = Fetch.run[Future](Ex.fetch: Fetch[Int])
+    def f1[F[_] : ConcurrentEffect : ContextShift] =
+      Fetch.error[F, Int](Ex)
 
-    val e1 = ME.handleError(fut1)(err => 42)
-    val e2 = ME.handleError(fut2)(err => 42)
+    def f2[F[_] : ConcurrentEffect : ContextShift] =
+      Ex.fetch[F]
 
-    ME.map2(e1, e2)(_ shouldEqual _)
-  }
+    val io1 = Fetch.run[IO](f1)
+    val io2 = Fetch.run[IO](f2)
 
-  "`join` syntax is equivalent to `Fetch#join`" in {
-    val join1 = Fetch.join(one(1), many(3))
-    val join2 = one(1).join(many(3))
+    val e1 = io1.handleError(err => 42)
+    val e2 = io2.handleError(err => 42)
 
-    ME.map2(Fetch.run[Future](join1), Fetch.run[Future](join2))(_ shouldEqual _)
-  }
-
-  "`runF` syntax is equivalent to `Fetch#runFetch`" in {
-
-    val rf1 = Fetch.runFetch[Future](1.fetch)
-    val rf2 = 1.fetch.runF[Future]
-
-    ME.map2(rf1, rf2)(_ shouldEqual _)
-  }
-
-  "`runE` syntax is equivalent to `Fetch#runEnv`" in {
-
-    val rf1 = Fetch.runEnv[Future](1.fetch)
-    val rf2 = 1.fetch.runE[Future]
-
-    ME.map2(rf1, rf2)(_ shouldEqual _)
-  }
-
-  "`runA` syntax is equivalent to `Fetch#run`" in {
-
-    val rf1 = Fetch.run[Future](1.fetch)
-    val rf2 = 1.fetch.runA[Future]
-
-    ME.map2(rf1, rf2)(_ shouldEqual _)
+    (e1, e2).mapN(_ shouldEqual _).unsafeToFuture
   }
 }

@@ -16,580 +16,555 @@
 
 package fetch
 
-import scala.concurrent.{ExecutionContext, Future}
 import org.scalatest.{AsyncFreeSpec, Matchers}
 
-import cats.data.NonEmptyList
-import cats.instances.list._
-import cats.syntax.apply._
-
 import fetch._
-import fetch.implicits._
+
+import scala.concurrent._
+import scala.concurrent.duration._
+
+import cats._
+import cats.effect._
+import cats.instances.list._
+import cats.data.NonEmptyList
+import cats.syntax.cartesian._
+import cats.syntax.all._
 
 class FetchTests extends AsyncFreeSpec with Matchers {
   import TestHelper._
 
-  val ME = FetchMonadError[Future]
+  override val executionContext: ExecutionContext = ExecutionContext.Implicits.global
+  implicit val timer: Timer[IO] = IO.timer(executionContext)
+  implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
 
-  implicit override def executionContext = ExecutionContext.Implicits.global
+  // Fetch ops
 
   "We can lift plain values to Fetch" in {
-    val fetch: Fetch[Int] = Fetch.pure(42)
-    Fetch.run[Future](fetch).map(_ shouldEqual 42)
-  }
+    def fetch[F[_] : ConcurrentEffect]: Fetch[F, Int] =
+      Fetch.pure[F, Int](42)
 
-  "Data sources with errors throw fetch failures" in {
-    val fetch: Fetch[Int] = Fetch(Never())
-    val fut               = Fetch.runEnv[Future](fetch)
-
-    ME.attempt(fut)
-      .map(either =>
-        either should matchPattern {
-          case Left(NotFound(env, FetchOne(Never(), _))) =>
-      })
-  }
-
-  "Data sources with errors throw fetch failures that can be handled" in {
-    val fetch: Fetch[Int] = Fetch(Never())
-    val fut               = Fetch.run[Future](fetch)
-    ME.handleErrorWith(fut)(err => Future.successful(42)).map(_ shouldEqual 42)
-  }
-
-  "Data sources with errors and cached values throw fetch failures with the cache" in {
-    val fetch: Fetch[Int] = Fetch(Never())
-    val cache = InMemoryCache(
-      OneSource.identity(One(1)) -> 1
-    )
-
-    ME.attempt(Fetch.run[Future](fetch, cache)).map {
-      case Left(NotFound(env, _)) => env.cache shouldEqual cache
-      case _                      => fail("Cache should be populated")
-    }
-  }
-
-  "Data sources with errors won't fail if they're cached" in {
-    val fetch: Fetch[Int] = Fetch(Never())
-    val cache = InMemoryCache(
-      NeverSource.identity(Never()) -> 1
-    )
-    Fetch.run[Future](fetch, cache).map(_ shouldEqual 1)
-  }
-
-  "We can lift errors to Fetch" in {
-    val fetch: Fetch[Int] = Fetch.error(DidNotFound())
-
-    ME.attempt(Fetch.run[Future](fetch)).map {
-      case Left(UnhandledException(_, DidNotFound())) => assert(true)
-      case _                                          => fail("Should've thrown NotFound exception")
-    }
-  }
-
-  "We can lift handle and recover from errors in Fetch" in {
-    import cats.syntax.applicativeError._
-
-    val fetch: Fetch[Int] = Fetch.error(DidNotFound())
-    val fut               = Fetch.run[Future](fetch)
-    ME.handleErrorWith(fut)(err => Future.successful(42)).map(_ shouldEqual 42)
+    Fetch.run[IO](fetch).map(_ shouldEqual 42).unsafeToFuture
   }
 
   "We can lift values which have a Data Source to Fetch" in {
-    Fetch.run[Future](one(1)).map(_ shouldEqual 1)
+    Fetch.run[IO](one(1)).map(_ shouldEqual 1).unsafeToFuture
   }
 
   "We can map over Fetch values" in {
-    val fetch = one(1).map(_ + 1)
-    Fetch.run[Future](fetch).map(_ shouldEqual 2)
+    def fetch[F[_] : ConcurrentEffect : ContextShift]: Fetch[F, (Int)] =
+      one(1).map(_ + 1)
+
+    Fetch.run[IO](fetch).map(_ shouldEqual 2).unsafeToFuture
   }
 
   "We can use fetch inside a for comprehension" in {
-    val fetch = for {
+    def fetch[F[_] : ContextShift : ConcurrentEffect]: Fetch[F, (Int, Int)] = for {
       o <- one(1)
       t <- one(2)
     } yield (o, t)
 
-    Fetch.run[Future](fetch).map(_ shouldEqual (1, 2))
-  }
-
-  "Monadic bind implies sequential execution" in {
-    val fetch = for {
-      o <- one(1)
-      t <- one(2)
-    } yield (o, t)
-
-    Fetch.runEnv[Future](fetch).map(_.rounds.size shouldEqual 2)
+    Fetch.run[IO](fetch).map(_ shouldEqual (1, 2)).unsafeToFuture
   }
 
   "We can mix data sources" in {
-    val fetch: Fetch[(Int, List[Int])] = for {
+    def fetch[F[_] : ContextShift : ConcurrentEffect]: Fetch[F, (Int, List[Int])] = for {
       o <- one(1)
       m <- many(3)
     } yield (o, m)
 
-    Fetch.run[Future](fetch).map(_ shouldEqual (1, List(0, 1, 2)))
+    Fetch.run[IO](fetch).map(_ shouldEqual (1, List(0, 1, 2))).unsafeToFuture
   }
 
   "We can use Fetch as a cartesian" in {
-    import cats.syntax.cartesian._
+    def fetch[F[_] : ContextShift : ConcurrentEffect]: Fetch[F, (Int, List[Int])] = (one(1), many(3)).tupled
 
-    val fetch: Fetch[(Int, List[Int])] = (one(1), many(3)).tupled
-    val fut                            = Fetch.run[Future](fetch)
+    val io = Fetch.run[IO](fetch)
 
-    fut.map(_ shouldEqual (1, List(0, 1, 2)))
+    io.map(_ shouldEqual (1, List(0, 1, 2))).unsafeToFuture
   }
 
   "We can use Fetch as an applicative" in {
-    import cats.syntax.cartesian._
+    def fetch[F[_] : ContextShift : ConcurrentEffect]: Fetch[F, Int] = (one(1), one(2), one(3)).mapN(_ + _ + _)
 
-    val fetch: Fetch[Int] = (one(1), one(2), one(3)).mapN(_ + _ + _)
-    val fut               = Fetch.run[Future](fetch)
+    val io = Fetch.run[IO](fetch)
 
-    fut.map(_ shouldEqual 6)
+    io.map(_ shouldEqual 6).unsafeToFuture
   }
 
   "We can traverse over a list with a Fetch for each element" in {
-    import cats.syntax.traverse._
-
-    val fetch: Fetch[List[Int]] = for {
+    def fetch[F[_] : ContextShift : ConcurrentEffect]: Fetch[F, List[Int]] = for {
       manies <- many(3)
-      ones   <- manies.traverse(one)
+      ones   <- manies.traverse(one[F])
     } yield ones
 
-    val fut = Fetch.run[Future](fetch)
-    fut.map(_ shouldEqual List(0, 1, 2))
+    val io = Fetch.run[IO](fetch)
+
+    io.map(_ shouldEqual List(0, 1, 2)).unsafeToFuture
   }
 
-  "Traversals are implicitly batched" in {
-    import cats.syntax.traverse._
-
-    val fetch: Fetch[List[Int]] = for {
-      manies <- many(3)
-      ones   <- manies.traverse(one)
-    } yield ones
-
-    Fetch
-      .runEnv[Future](fetch)
-      .map(env => {
-        env.rounds.size shouldEqual 2
-      })
-  }
-
-  "Fetch's custom traverse doesn't cause stack overflows for long lists" in {
-    val length = 2000
-    val fetch  = Fetch.traverse(List.range(0, length))(one)
-
-    Fetch
-      .runEnv[Future](fetch)
-      .map { env =>
-        env.rounds.size shouldEqual 1
-      }
-  }
-
-  "Identities are deduped when batched" in {
-    import cats.syntax.traverse._
-
-    val manies = List(1, 1, 2)
-    val fetch: Fetch[List[Int]] = for {
-      ones <- manies.traverse(one)
-    } yield ones
-
-    Fetch
-      .runEnv[Future](fetch)
-      .map(env => {
-        env.rounds.size shouldEqual 1
-        env.rounds.head.request should matchPattern {
-          case Concurrent(
-              NonEmptyList(FetchMany(NonEmptyList(One(1), List(One(2))), source), Nil)) =>
-        }
-      })
-  }
-
-  "The product of two fetches implies parallel fetching" in {
-    val fetch: Fetch[(Int, List[Int])] = Fetch.join(one(1), many(3))
-
-    Fetch
-      .runEnv[Future](fetch)
-      .map(env => {
-        env.rounds.size shouldEqual 1
-      })
-  }
-
-  "Concurrent fetching calls batches only wen it can" in {
-    val fetch: Fetch[(Int, List[Int])] = Fetch.join(one(1), many(3))
-
-    Fetch
-      .runEnv[Future](fetch)
-      .map(env => {
-        totalBatches(env.rounds) shouldEqual 0
-      })
-  }
-
-  "If a fetch fails in the left hand of a product the product will fail" in {
-    val fetch: Fetch[(Int, List[Int])] = Fetch.join(Fetch.error(DidNotFound()), many(3))
-    val fut                            = Fetch.run[Future](fetch)
-
-    ME.attempt(Fetch.run[Future](fetch)).map {
-      case Left(UnhandledException(_, DidNotFound())) => assert(true)
-      case _                                          => fail("Should've thrown NotFound exception")
-    }
-  }
-
-  "If a fetch fails in the right hand of a product the product will fail" in {
-    val fetch: Fetch[(List[Int], Int)] = Fetch.join(many(3), Fetch.error(DidNotFound()))
-    val fut                            = Fetch.run[Future](fetch)
-
-    ME.attempt(Fetch.run[Future](fetch)).map {
-      case Left(UnhandledException(_, DidNotFound())) => assert(true)
-      case _                                          => fail("Should've thrown NotFound exception")
-    }
-  }
-
-  "If there is a missing identity in the left hand of a product the product will fail" in {
-    val fetch: Fetch[(Int, List[Int])] = Fetch.join(Fetch(Never()), many(3))
-    val fut                            = Fetch.run[Future](fetch)
-
-    ME.attempt(Fetch.run[Future](fetch)).map {
-      case Left(MissingIdentities(_, missing)) =>
-        missing shouldEqual Map(NeverSource.name -> List(Never()))
-      case _ => fail("Should've thrown a fetch failure")
-    }
-  }
-
-  "If there is a missing identity in the right hand of a product the product will fail" in {
-    val fetch: Fetch[(List[Int], Int)] = Fetch.join(many(3), Fetch(Never()))
-    val fut                            = Fetch.run[Future](fetch)
-
-    ME.attempt(fut).map {
-      case Left(MissingIdentities(_, missing)) =>
-        missing shouldEqual Map(NeverSource.name -> List(Never()))
-      case _ => fail("Should've thrown a fetch failure")
-    }
-  }
-
-  "The product of concurrent fetches implies everything fetched concurrently" in {
-    val fetch = Fetch.join(
-      Fetch.join(
-        one(1),
-        Fetch.join(one(2), one(3))
-      ),
-      one(4)
-    )
-
-    Fetch
-      .runEnv[Future](fetch)
-      .map(env => {
-        val rounds = env.rounds
-        val stats  = (rounds.size, totalBatches(rounds), totalFetched(rounds))
-
-        stats shouldEqual (1, 1, 4)
-      })
-  }
-
-  "The product of concurrent fetches of the same type implies everything fetched in a single batch" in {
-    val fetch = Fetch.join(
-      Fetch.join(
-        for {
-          a <- one(1)
-          b <- one(2)
-          c <- one(3)
-        } yield c,
-        for {
-          a <- one(2)
-          m <- many(4)
-          c <- one(3)
-        } yield c
-      ),
-      one(3)
-    )
-
-    Fetch
-      .runEnv[Future](fetch)
-      .map(env => {
-        val rounds = env.rounds
-        val stats  = (rounds.size, totalBatches(rounds), totalFetched(rounds))
-
-        stats shouldEqual (2, 1, 4)
-      })
-  }
-
-  "Every level of joined concurrent fetches is combined and batched" in {
-    val fetch = Fetch.join(
-      for {
-        a <- one(2)
-        b <- many(1)
-        c <- one(5)
-      } yield c,
-      for {
-        a <- one(3)
-        b <- many(2)
-        c <- one(4)
-      } yield c
-    )
-
-    Fetch
-      .runEnv[Future](fetch)
-      .map(env => {
-        val rounds = env.rounds
-        val stats  = (rounds.size, totalBatches(rounds), totalFetched(rounds))
-
-        stats shouldEqual (3, 3, 6)
-      })
-  }
-
-  "Every level of sequenced concurrent fetches is batched" in {
-    val fetch = Fetch.join(
-      Fetch.join(
-        for {
-          a <- Fetch.sequence(List(one(2), one(3), one(4)))
-          b <- Fetch.sequence(List(many(0), many(1)))
-          c <- Fetch.sequence(List(one(9), one(10), one(11)))
-        } yield c,
-        for {
-          a <- Fetch.sequence(List(one(5), one(6), one(7)))
-          b <- Fetch.sequence(List(many(2), many(3)))
-          c <- Fetch.sequence(List(one(12), one(13), one(14)))
-        } yield c
-      ),
-      Fetch.sequence(List(one(15), one(16), one(17)))
-    )
-
-    Fetch
-      .runEnv[Future](fetch)
-      .map(env => {
-        val rounds = env.rounds
-        val stats  = (rounds.size, totalBatches(rounds), totalFetched(rounds))
-
-        stats shouldEqual (3, 3, 9 + 4 + 6)
-      })
-  }
-
-  "The product of two fetches from the same data source implies batching" in {
-    val fetch: Fetch[(Int, Int)] = Fetch.join(one(1), one(3))
-
-    Fetch
-      .runEnv[Future](fetch)
-      .map(env => {
-        val rounds = env.rounds
-
-        rounds.size shouldEqual 1
-        totalBatches(rounds) shouldEqual 1
-      })
-  }
   "We can depend on previous computations of Fetch values" in {
-    val fetch: Fetch[Int] = for {
+    def fetch[F[_] : ContextShift : ConcurrentEffect]: Fetch[F, Int] = for {
       o <- one(1)
       t <- one(o + 1)
     } yield o + t
 
-    Fetch.run[Future](fetch).map(_ shouldEqual 3)
+    val io = Fetch.run[IO](fetch)
+
+    io.map(_ shouldEqual 3).unsafeToFuture
   }
 
   "We can collect a list of Fetch into one" in {
-    val sources: List[Fetch[Int]] = List(one(1), one(2), one(3))
-    val fetch: Fetch[List[Int]]   = Fetch.sequence(sources)
+    def fetch[F[_] : ContextShift : ConcurrentEffect]: Fetch[F, List[Int]] =
+      List(one(1), one(2), one(3)).sequence
 
-    Fetch.run[Future](fetch).map(_ shouldEqual List(1, 2, 3))
+    val io = Fetch.run[IO](fetch)
+
+    io.map(_ shouldEqual List(1, 2, 3)).unsafeToFuture
   }
 
   "We can collect a list of Fetches with heterogeneous sources" in {
-    val sources: List[Fetch[Int]] = List(one(1), one(2), one(3), anotherOne(4), anotherOne(5))
-    val fetch: Fetch[List[Int]]   = Fetch.sequence(sources)
+    def fetch[F[_] : ContextShift : ConcurrentEffect]: Fetch[F, List[Int]] =
+      List(one(1), one(2), one(3), anotherOne(4), anotherOne(5)).sequence
 
-    Fetch.run[Future](fetch).map(_ shouldEqual List(1, 2, 3, 4, 5))
-  }
+    val io = Fetch.run[IO](fetch)
 
-  "Sequenced fetches are run concurrently" in {
-    val sources: List[Fetch[Int]] = List(one(1), one(2), one(3), anotherOne(4), anotherOne(5))
-    val fetch: Fetch[List[Int]]   = Fetch.sequence(sources)
-
-    Fetch
-      .runEnv[Future](fetch)
-      .map(env => {
-        val rounds = env.rounds
-
-        rounds.size shouldEqual 1
-        totalBatches(rounds) shouldEqual 2
-      })
-  }
-
-  "Sequenced fetches are deduped" in {
-    val sources: List[Fetch[Int]] = List(one(1), one(2), one(1))
-    val fetch: Fetch[List[Int]]   = Fetch.sequence(sources)
-
-    Fetch
-      .runEnv[Future](fetch)
-      .map(env => {
-        val rounds = env.rounds
-
-        rounds.size shouldEqual 1
-        totalFetched(rounds) shouldEqual 2
-      })
-  }
-
-  "Sequenced fetches are not asked for when cached" in {
-    val sources: List[Fetch[Int]] = List(one(1), one(2), one(3), one(4))
-    val fetch: Fetch[List[Int]]   = Fetch.sequence(sources)
-
-    val fut = Fetch.runEnv[Future](
-      fetch,
-      InMemoryCache(
-        OneSource.identity(One(1)) -> 1,
-        OneSource.identity(One(2)) -> 2
-      )
-    )
-
-    fut.map(env => {
-      val rounds = env.rounds
-
-      rounds.size shouldEqual 1
-      totalFetched(rounds) shouldEqual 2
-    })
+    io.map(_ shouldEqual List(1, 2, 3, 4, 5)).unsafeToFuture
   }
 
   "We can collect the results of a traversal" in {
-    val fetch = Fetch.traverse(List(1, 2, 3))(one)
+    def fetch[F[_] : ContextShift : ConcurrentEffect]: Fetch[F, List[Int]] =
+      List(1, 2, 3).traverse(one[F])
 
-    Fetch.run[Future](fetch).map(_ shouldEqual List(1, 2, 3))
+    val io = Fetch.run[IO](fetch)
+
+    io.map(_ shouldEqual List(1, 2, 3)).unsafeToFuture
+  }
+
+  // Execution model
+
+  "Monadic bind implies sequential execution" in {
+    def fetch[F[_] : ContextShift : ConcurrentEffect]: Fetch[F, (Int, Int)] =
+      for {
+        o <- one(1)
+        t <- one(2)
+      } yield (o, t)
+
+    val io = Fetch.runEnv[IO](fetch)
+
+    io.map({
+      case (env, result) => {
+        result shouldEqual (1, 2)
+        env.rounds.size shouldEqual 2
+      }
+    }).unsafeToFuture
+  }
+
+  "Traversals are implicitly batched" in {
+    def fetch[F[_] : ContextShift : ConcurrentEffect]: Fetch[F, List[Int]] =
+      for {
+        manies <- many(3)
+        ones   <- manies.traverse(one[F])
+      } yield ones
+
+    val io = Fetch.runEnv[IO](fetch)
+
+    io.map({
+      case (env, result) => {
+        result shouldEqual List(0, 1, 2)
+        env.rounds.size shouldEqual 2
+      }
+    }).unsafeToFuture
+  }
+
+  "Sequencing is implicitly batched" in {
+    def fetch[F[_] : ContextShift : ConcurrentEffect]: Fetch[F, List[Int]] =
+      List(one(1), one(2), one(3)).sequence
+
+    val io = Fetch.runEnv[IO](fetch)
+
+    io.map({
+      case (env, result) => {
+        result shouldEqual List(1, 2, 3)
+        env.rounds.size shouldEqual 1
+        totalFetched(env.rounds) shouldEqual 3
+        totalBatches(env.rounds) shouldEqual 1
+      }
+    }).unsafeToFuture
+  }
+
+  "Identities are deduped when batched" in {
+    val sources = List(1, 1, 2)
+    def fetch[F[_] : ContextShift : ConcurrentEffect]: Fetch[F, List[Int]] =
+      sources.traverse(one[F])
+
+    val io = Fetch.runEnv[IO](fetch)
+
+    io.map({
+      case (env, result) => {
+        result shouldEqual sources
+        env.rounds.size shouldEqual 1
+        env.rounds.head.queries.size shouldEqual 1
+        env.rounds.head.queries.head.request should matchPattern {
+          case Batch(NonEmptyList(One(1), List(One(2))), _) =>
+        }
+      }
+    }).unsafeToFuture
+  }
+
+  "The product of two fetches implies parallel fetching" in {
+    def fetch[F[_] : ContextShift : ConcurrentEffect]: Fetch[F, (Int, List[Int])] =
+      (one(1), many(3)).tupled
+
+    val io = Fetch.runEnv[IO](fetch)
+
+    io.map({
+      case (env, result) => {
+        result shouldEqual (1, List(0, 1, 2))
+        env.rounds.size shouldEqual 1
+        env.rounds.head.queries.size shouldEqual 2
+      }
+    }).unsafeToFuture
+  }
+
+  "Concurrent fetching calls batches only when it can" in {
+    def fetch[F[_] : ContextShift : ConcurrentEffect]: Fetch[F, (Int, List[Int])] =
+      (one(1), many(3)).tupled
+
+    val io = Fetch.runEnv[IO](fetch)
+
+    io.map({
+      case (env, result) => {
+        result shouldEqual (1, List(0, 1, 2))
+        env.rounds.size shouldEqual 1
+        totalBatches(env.rounds) shouldEqual 0
+      }
+    }).unsafeToFuture
+  }
+
+  "Concurrent fetching performs requests to multiple data sources in parallel" in {
+    def fetch[F[_] : ContextShift : ConcurrentEffect]: Fetch[F, ((Int, List[Int]), Int)] =
+      ((one(1), many(2)).tupled, anotherOne(3)).tupled
+
+    val io = Fetch.runEnv[IO](fetch)
+
+    io.map({
+      case (env, result) => {
+        result shouldEqual ((1, List(0, 1)), 3)
+        env.rounds.size shouldEqual 1
+        totalBatches(env.rounds) shouldEqual 0
+      }
+    }).unsafeToFuture
+  }
+
+  "The product of concurrent fetches implies everything fetched concurrently" in {
+    def fetch[F[_] : ContextShift : ConcurrentEffect] = (
+      (
+        one(1),
+        (one(2), one(3)).tupled
+      ).tupled,
+      one(4)
+    ).tupled
+
+    val io = Fetch.runEnv[IO](fetch)
+
+    io.map({
+      case (env, result) => {
+        result shouldEqual ((1, (2, 3)), 4)
+        env.rounds.size shouldEqual 1
+        totalBatches(env.rounds) shouldEqual 1
+        totalFetched(env.rounds) shouldEqual 4
+      }
+    }).unsafeToFuture
+  }
+
+  "The product of concurrent fetches of the same type implies everything fetched in a single batch" in {
+    def aFetch[F[_] : ContextShift : ConcurrentEffect] = for {
+      a <- one(1)  // round 1
+      b <- many(1) // round 2
+      c <- one(1)
+    } yield c
+    def anotherFetch[F[_] : ContextShift : ConcurrentEffect] = for {
+      a <- one(2)  // round 1
+      m <- many(2) // round 2
+      c <- one(2)
+    } yield c
+
+    def fetch[F[_] : ContextShift : ConcurrentEffect] = (
+      (aFetch[F], anotherFetch[F]).tupled,
+      one(3)       // round 1
+    ).tupled
+
+    val io = Fetch.runEnv[IO](fetch)
+
+    io.map({
+      case (env, result) => {
+        result shouldEqual ((1, 2), 3)
+        env.rounds.size shouldEqual 2
+        totalBatches(env.rounds) shouldEqual 2
+        totalFetched(env.rounds) shouldEqual 5
+      }
+    }).unsafeToFuture
+  }
+
+  "Every level of joined concurrent fetches is combined and batched" in {
+    def aFetch[F[_] : ContextShift : ConcurrentEffect] = for {
+      a <- one(1)  // round 1
+      b <- many(1) // round 2
+      c <- one(1)
+    } yield c
+    def anotherFetch[F[_] : ContextShift : ConcurrentEffect] = for {
+      a <- one(2)  // round 1
+      m <- many(2) // round 2
+      c <- one(2)
+    } yield c
+
+    def fetch[F[_] : ContextShift : ConcurrentEffect] = (aFetch[F], anotherFetch[F]).tupled
+
+    val io = Fetch.runEnv[IO](fetch)
+
+    io.map({
+      case (env, result) => {
+        result shouldEqual (1, 2)
+        env.rounds.size shouldEqual 2
+        totalBatches(env.rounds) shouldEqual 2
+        totalFetched(env.rounds) shouldEqual 4
+      }
+    }).unsafeToFuture
+  }
+
+  "Every level of sequenced concurrent fetches is batched" in {
+    def aFetch[F[_] : ContextShift : ConcurrentEffect] =
+      for {
+        a <- List(2, 3, 4).traverse(one[F])   // round 1
+        b <- List(0, 1).traverse(many[F])     // round 2
+        c <- List(9, 10, 11).traverse(one[F]) // round 3
+      } yield c
+
+    def anotherFetch[F[_] : ContextShift : ConcurrentEffect] =
+      for {
+        a <- List(5, 6, 7).traverse(one[F])    // round 1
+        b <- List(2, 3).traverse(many[F])      // round 2
+        c <- List(12, 13, 14).traverse(one[F]) // round 3
+      } yield c
+
+    def fetch[F[_] : ContextShift : ConcurrentEffect] = (
+       (aFetch[F], anotherFetch[F]).tupled,
+       List(15, 16, 17).traverse(one[F])       // round 1
+    ).tupled
+
+    val io = Fetch.runEnv[IO](fetch)
+
+    io.map({
+      case (env, result) => {
+        result shouldEqual ((List(9, 10, 11), List(12, 13, 14)), List(15, 16, 17))
+        env.rounds.size shouldEqual 3
+        totalBatches(env.rounds) shouldEqual 3
+        totalFetched(env.rounds) shouldEqual 9 + 4 + 6
+      }
+    }).unsafeToFuture
+  }
+
+  "The product of two fetches from the same data source implies batching" in {
+    def fetch[F[_] : ContextShift : ConcurrentEffect]: Fetch[F, (Int, Int)] = (one(1), one(3)).tupled
+
+    val io = Fetch.runEnv[IO](fetch)
+
+    io.map({
+      case (env, result) => {
+        result shouldEqual (1, 3)
+        env.rounds.size shouldEqual 1
+        totalBatches(env.rounds) shouldEqual 1
+        totalFetched(env.rounds) shouldEqual 2
+      }
+    }).unsafeToFuture
+  }
+
+  "Sequenced fetches are run concurrently" in {
+    def fetch[F[_] : ContextShift : ConcurrentEffect]: Fetch[F, List[Int]] =
+      List(one(1), one(2), one(3), anotherOne(4), anotherOne(5)).sequence
+
+    val io = Fetch.runEnv[IO](fetch)
+
+    io.map({
+      case (env, result) => {
+        result shouldEqual List(1, 2, 3, 4, 5)
+        env.rounds.size shouldEqual 1
+        totalBatches(env.rounds) shouldEqual 2
+      }
+    }).unsafeToFuture
+  }
+
+  "Sequenced fetches are deduped" in {
+    def fetch[F[_] : ContextShift : ConcurrentEffect]: Fetch[F, List[Int]] =
+      List(one(1), one(2), one(1)).sequence
+
+    val io = Fetch.runEnv[IO](fetch)
+
+    io.map({
+      case (env, result) => {
+        result shouldEqual List(1, 2, 1)
+        env.rounds.size shouldEqual 1
+        totalBatches(env.rounds) shouldEqual 1
+        totalFetched(env.rounds) shouldEqual 2
+      }
+    }).unsafeToFuture
   }
 
   "Traversals are batched" in {
-    val fetch = Fetch.traverse(List(1, 2, 3))(one)
+    def fetch[F[_] : ContextShift : ConcurrentEffect]: Fetch[F, List[Int]] =
+      List(1, 2, 3).traverse(one[F])
 
-    Fetch
-      .runEnv[Future](fetch)
-      .map(env => {
+    val io = Fetch.runEnv[IO](fetch)
+
+    io.map({
+      case (env, result) => {
+        result shouldEqual List(1, 2, 3)
         env.rounds.size shouldEqual 1
-      })
+        totalBatches(env.rounds) shouldEqual 1
+      }
+    }).unsafeToFuture
   }
 
   "Duplicated sources are only fetched once" in {
-    val fetch = Fetch.traverse(List(1, 2, 1))(one)
+    def fetch[F[_] : ContextShift : ConcurrentEffect]: Fetch[F, List[Int]] =
+      List(1, 2, 1).traverse(one[F])
 
-    Fetch
-      .runEnv[Future](fetch)
-      .map(env => {
-        val rounds = env.rounds
+    val io = Fetch.runEnv[IO](fetch)
 
-        rounds.size shouldEqual 1
-        totalFetched(rounds) shouldEqual 2
-      })
+    io.map({
+      case (env, result) => {
+        result shouldEqual List(1, 2, 1)
+        env.rounds.size shouldEqual 1
+        totalFetched(env.rounds) shouldEqual 2
+      }
+    }).unsafeToFuture
   }
 
   "Sources that can be fetched concurrently inside a for comprehension will be" in {
-    val fetch = for {
-      v      <- Fetch.pure(List(1, 2, 1))
-      result <- Fetch.traverse(v)(one)
-    } yield result
+    def fetch[F[_] : ContextShift : ConcurrentEffect] =
+      for {
+        v      <- Fetch.pure[F, List[Int]](List(1, 2, 1))
+        result <- v.traverse(one[F])
+      } yield result
 
-    Fetch
-      .runEnv[Future](fetch)
-      .map(env => {
-        val rounds = env.rounds
+    val io = Fetch.runEnv[IO](fetch)
 
-        rounds.size shouldEqual 1
-        totalFetched(rounds) shouldEqual 2
-      })
+    io.map({
+      case (env, result) => {
+        result shouldEqual List(1, 2, 1)
+        env.rounds.size shouldEqual 1
+        totalFetched(env.rounds) shouldEqual 2
+      }
+    }).unsafeToFuture
   }
 
+  "Pure Fetches allow to explore further in the Fetch" in {
+    def aFetch[F[_] : ContextShift : ConcurrentEffect] =
+      for {
+        a <- Fetch.pure[F, Int](2)
+        b <- one[F](3)
+      } yield a + b
+
+    def fetch[F[_] : ContextShift : ConcurrentEffect]: Fetch[F, (Int, Int)] =
+      (one(1), aFetch[F]).tupled
+
+    val io = Fetch.runEnv[IO](fetch)
+
+    io.map({
+      case (env, result) => {
+        result shouldEqual (1, 5)
+        env.rounds.size shouldEqual 1
+        totalFetched(env.rounds) shouldEqual 2
+      }
+    }).unsafeToFuture
+  }
+
+  // Caching
+
   "Elements are cached and thus not fetched more than once" in {
-    val fetch = for {
+    def fetch[F[_] : ContextShift : ConcurrentEffect] = for {
       aOne       <- one(1)
       anotherOne <- one(1)
       _          <- one(1)
       _          <- one(2)
       _          <- one(3)
       _          <- one(1)
-      _          <- Fetch.traverse(List(1, 2, 3))(one)
+      _          <- List(1, 2, 3).traverse(one[F])
       _          <- one(1)
     } yield aOne + anotherOne
 
-    Fetch
-      .runEnv[Future](fetch)
-      .map(env => {
-        val rounds = env.rounds
+    val io = Fetch.runEnv[IO](fetch)
 
-        totalFetched(rounds) shouldEqual 3
-      })
+    io.map({
+      case (env, result) => {
+        result shouldEqual 2
+        totalFetched(env.rounds) shouldEqual 3
+      }
+    }).unsafeToFuture
+  }
+
+  "Batched elements are cached and thus not fetched more than once" in {
+    def fetch[F[_] : ContextShift : ConcurrentEffect] = for {
+      _          <- List(1, 2, 3).traverse(one[F])
+      aOne       <- one(1)
+      anotherOne <- one(1)
+      _          <- one(1)
+      _          <- one(2)
+      _          <- one(3)
+      _          <- one(1)
+      _          <- one(1)
+    } yield aOne + anotherOne
+
+    val io = Fetch.runEnv(fetch)
+
+    io.map({
+      case (env, result) => {
+        result shouldEqual 2
+        env.rounds.size shouldEqual 1
+        totalFetched(env.rounds) shouldEqual 3
+      }
+    }).unsafeToFuture
   }
 
   "Elements that are cached won't be fetched" in {
-    val fetch = for {
+    def fetch[F[_] : ContextShift : ConcurrentEffect] = for {
       aOne       <- one(1)
       anotherOne <- one(1)
       _          <- one(1)
       _          <- one(2)
       _          <- one(3)
       _          <- one(1)
-      _          <- Fetch.traverse(List(1, 2, 3))(one)
+      _          <- List(1, 2, 3).traverse(one[F])
       _          <- one(1)
     } yield aOne + anotherOne
 
-    val fut = Fetch.runEnv[Future](
-      fetch,
-      InMemoryCache(
-        OneSource.identity(One(1)) -> 1,
-        OneSource.identity(One(2)) -> 2,
-        OneSource.identity(One(3)) -> 3
-      )
+    val cache = InMemoryCache.from(
+      (OneSource.name, One(1)) -> 1,
+      (OneSource.name, One(2)) -> 2,
+      (OneSource.name, One(3)) -> 3
     )
 
-    fut.map(env => {
-      val rounds = env.rounds
+    val io = Fetch.runEnv[IO](fetch, cache)
 
-      rounds.size shouldEqual 0
-    })
-  }
-
-  case class MyCache(state: Map[Any, Any] = Map.empty[Any, Any]) extends DataSourceCache {
-    override def get[A](k: DataSourceIdentity): Option[A] = state.get(k).asInstanceOf[Option[A]]
-    override def update[A](k: DataSourceIdentity, v: A): MyCache =
-      copy(state = state.updated(k, v))
-  }
-
-  val fullCache: MyCache = MyCache(
-    Map(
-      OneSource.identity(One(1))   -> 1,
-      OneSource.identity(One(2))   -> 2,
-      OneSource.identity(One(3))   -> 3,
-      OneSource.identity(One(1))   -> 1,
-      ManySource.identity(Many(2)) -> List(0, 1)
-    )
-  )
-
-  "We can use a custom cache" in {
-    val fetch = for {
-      aOne       <- one(1)
-      anotherOne <- one(1)
-      _          <- one(1)
-      _          <- one(2)
-      _          <- one(3)
-      _          <- one(1)
-      _          <- Fetch.traverse(List(1, 2, 3))(one)
-      _          <- one(1)
-    } yield aOne + anotherOne
-    val fut = Fetch.runEnv[Future](
-      fetch,
-      InMemoryCache(
-        OneSource.identity(One(1))   -> 1,
-        OneSource.identity(One(2))   -> 2,
-        OneSource.identity(One(3))   -> 3,
-        ManySource.identity(Many(2)) -> List(0, 1)
-      )
-    )
-
-    fut.map(env => {
-      val rounds = env.rounds
-
-      rounds.size shouldEqual 0
-    })
+    io.map({
+      case (env, result) => {
+        result shouldEqual 2
+        totalFetched(env.rounds) shouldEqual 0
+        env.rounds.size shouldEqual 0
+      }
+    }).unsafeToFuture
   }
 
   case class ForgetfulCache() extends DataSourceCache {
-    override def get[A](k: DataSourceIdentity): Option[A]               = None
-    override def update[A](k: DataSourceIdentity, v: A): ForgetfulCache = this
+    def insert[F[_] : ConcurrentEffect, I, A](i: I, v: A, ds: DataSource[I, A]): F[DataSourceCache] =
+      Applicative[F].pure(this)
+
+    def lookup[F[_] : ConcurrentEffect, I, A](i: I, ds: DataSource[I, A]): F[Option[A]] =
+      Applicative[F].pure(None)
   }
 
   "We can use a custom cache that discards elements" in {
-    val fetch = for {
+    def fetch[F[_] : ConcurrentEffect : ContextShift] = for {
       aOne       <- one(1)
       anotherOne <- one(1)
       _          <- one(1)
@@ -599,57 +574,147 @@ class FetchTests extends AsyncFreeSpec with Matchers {
       _          <- one(1)
     } yield aOne + anotherOne
 
-    val fut = Fetch.runEnv[Future](fetch, ForgetfulCache())
+    val cache = ForgetfulCache()
+    val io = Fetch.runEnv[IO](fetch, cache)
 
-    fut.map(env => {
-      totalFetched(env.rounds) shouldEqual 7
-    })
+    io.map({
+      case (env, result) => {
+        result shouldEqual 2
+        env.rounds.size shouldEqual 7
+        totalFetched(env.rounds) shouldEqual 7
+      }
+    }).unsafeToFuture
   }
 
   "We can use a custom cache that discards elements together with concurrent fetches" in {
-    val fetch = for {
+    def fetch[F[_] : ConcurrentEffect : ContextShift] = for {
       aOne       <- one(1)
       anotherOne <- one(1)
       _          <- one(1)
       _          <- one(2)
-      _          <- Fetch.traverse(List(1, 2, 3))(one)
+      _          <- List(1, 2, 3).traverse(one[F])
       _          <- one(3)
       _          <- one(1)
       _          <- one(1)
     } yield aOne + anotherOne
 
-    val fut = Fetch.runEnv[Future](fetch, ForgetfulCache())
+    val cache = ForgetfulCache()
+    val io = Fetch.runEnv[IO](fetch, cache)
 
-    fut.map(env => {
-      totalFetched(env.rounds) shouldEqual 10
-    })
+    io.map({
+      case (env, result) => {
+        result shouldEqual 2
+        env.rounds.size shouldEqual 8
+        totalFetched(env.rounds) shouldEqual 10
+      }
+    }).unsafeToFuture
   }
 
-  "We can fetch multiple items at the same time" in {
-    val fetch: Fetch[List[Int]] = Fetch.multiple(One(1), One(2), One(3))
-    Fetch.runFetch[Future](fetch).map {
-      case (env, res) =>
-        res shouldEqual List(1, 2, 3)
-        totalFetched(env.rounds) shouldEqual 3
-        totalBatches(env.rounds) shouldEqual 1
-        env.rounds.size shouldEqual 1
-    }
+  // Errors
+
+  "Data sources with errors throw fetch failures" in {
+    val io = Fetch.run[IO](never)
+
+    io.attempt
+      .map(_ should matchPattern {
+        case Left(MissingIdentity(Never(), _, _)) =>
+      }).unsafeToFuture
   }
 
-  "Pure Fetches should be ignored in the parallel optimization" in {
-    val fetch: Fetch[(Int, Int)] = Fetch.join(
-      one(1),
-      for {
-        a <- Fetch.pure(2)
-        b <- one(3)
-      } yield a + b
+  "Data sources with errors throw fetch failures that can be handled" in {
+    val io = Fetch.run[IO](never)
+
+    io.handleErrorWith(err => IO.pure(42))
+      .map(_ shouldEqual 42)
+      .unsafeToFuture
+  }
+
+  "Data sources with errors won't fail if they're cached" in {
+    val cache = InMemoryCache.from(
+      (NeverSource.name, Never()) -> 1
     )
+    val io = Fetch.run[IO](never, cache)
 
-    Fetch.runFetch[Future](fetch).map {
-      case (env, res) =>
-        res shouldEqual (1, 5)
-        totalFetched(env.rounds) shouldEqual 2
-        env.rounds.size shouldEqual 1
-    }
+    io.map(_ shouldEqual 1).unsafeToFuture
+  }
+
+  def fetchError[F[_] : ConcurrentEffect : ContextShift]: Fetch[F, Int] =
+    Fetch.error(AnException())
+
+  "We can lift errors to Fetch" in {
+    val io = Fetch.run[IO](fetchError)
+
+    io.attempt
+      .map(_ should matchPattern {
+        case Left(UnhandledException(AnException(), _)) =>
+      }).unsafeToFuture
+  }
+
+  "We can lift handle and recover from errors in Fetch" in {
+    val io = Fetch.run[IO](fetchError)
+
+    io.handleErrorWith(err => IO.pure(42))
+      .map(_ shouldEqual 42)
+      .unsafeToFuture
+  }
+
+  "If a fetch fails in the left hand of a product the product will fail" in {
+    def fetch[F[_] : ConcurrentEffect : ContextShift] =
+      (fetchError, many(3)).tupled
+
+    val io = Fetch.run[IO](fetch)
+
+    io.attempt
+      .map(_ should matchPattern {
+        case Left(UnhandledException(AnException(), _)) =>
+      }).unsafeToFuture
+  }
+
+  "If a fetch fails in the right hand of a product the product will fail" in {
+    def fetch[F[_] : ConcurrentEffect : ContextShift] =
+      (many(3), fetchError).tupled
+
+    val io = Fetch.run[IO](fetch)
+
+    io.attempt
+      .map(_ should matchPattern {
+        case Left(UnhandledException(AnException(), _)) =>
+      }).unsafeToFuture
+  }
+
+  "If there is a missing identity in the left hand of a product the product will fail" in {
+    def fetch[F[_] : ConcurrentEffect : ContextShift] =
+      (never, many(3)).tupled
+
+    val io = Fetch.run[IO](fetch)
+
+    io.attempt
+      .map(_ should matchPattern {
+        case Left(MissingIdentity(Never(), _, _)) =>
+      }).unsafeToFuture
+  }
+
+  "If there is a missing identity in the right hand of a product the product will fail" in {
+    def fetch[F[_] : ConcurrentEffect : ContextShift] =
+      (many(3), never).tupled
+
+    val io = Fetch.run[IO](fetch)
+
+    io.attempt
+      .map(_ should matchPattern {
+        case Left(MissingIdentity(Never(), _, _)) =>
+      }).unsafeToFuture
+  }
+
+  "If there are multiple failing identities the fetch will fail" in {
+    def fetch[F[_] : ConcurrentEffect : ContextShift] =
+      (never, never).tupled
+
+    val io = Fetch.run[IO](fetch)
+
+    io.attempt
+      .map(_ should matchPattern {
+        case Left(MissingIdentity(Never(), _, _)) =>
+      }).unsafeToFuture
   }
 }

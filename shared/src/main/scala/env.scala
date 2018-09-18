@@ -23,35 +23,37 @@ import scala.collection.immutable._
  * cache and the list of rounds that have been executed.
  */
 trait Env {
-  def rounds: Seq[Round]
-  def cache: DataSourceCache
-  def evolve(newRound: Round, newCache: DataSourceCache): Env
+  def rounds: List[Round]
+  def evolve(newRound: Round): Env
+}
+
+/**
+  * A data structure that holds information about a request inside a fetch round.
+  */
+case class Request(
+  request: FetchRequest,
+  start: Long,
+  end: Long
+) {
+  def duration: Long = end - start
 }
 
 /**
  * A data structure that holds information about a fetch round.
  */
 case class Round(
-    cache: DataSourceCache,
-    request: FetchRequest,
-    response: Any,
-    start: Long,
-    end: Long
-) {
-  def duration: Double = (end - start) / 1e6
-}
+  queries: List[Request]
+)
 
 /**
  * A concrete implementation of `Env` used in the default Fetch interpreter.
  */
 case class FetchEnv(
-    cache: DataSourceCache,
-    rounds: Queue[Round] = Queue.empty
+    roundsQ: Queue[Round] = Queue.empty
 ) extends Env {
-
+  def rounds = roundsQ.toList
   def evolve(
-      newRound: Round,
-      newCache: DataSourceCache
-  ): FetchEnv =
-    copy(rounds = rounds :+ newRound, cache = newCache)
+      newRound: Round
+  ): Env =
+    copy(roundsQ = roundsQ :+ newRound)
 }
