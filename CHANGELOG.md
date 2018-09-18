@@ -1,5 +1,23 @@
 # Changelog
 
+## Unreleased - Version 1.0.0
+
+Release changes:
+
+* Library redesign ([#155](https://github.com/47deg/fetch/pull/155))
+
+Summary of changes:
+
+* `Query` and `FetchMonadError` types deleted
+* `Fetch#traverse`, `Fetch#sequence`, `Fetch#join` & `Fetch#collect` deleted in favor of usign cats typeclass ops
+* Introduction of `cats-effect` for the implementation and target types
+  - `DataSource` in terms of `ConcurrentEffect` from `cats-effect` and `Par` from `cats-par`
+  - `DataSourceCache` in terms of `ConcurrentEffect`
+  - `Fetch` is now parameterised to `F[_]` with a `ConcurrentEffect[F]` and `Par[F]`
+  - `Fetch#apply` now doesn't require an implicit `DataSource` but it must be provided explicitly
+  - `Fetch#run` now requires a `Timer[F]` and `ContextShift[F]` from `cats-effect`
+  - Removed Monix, Future and Twitter Future subprojects, most of them should work with `cats-effect` abstractions already
+
 ## 08/21/2018 - Version 0.7.3
 
 Release changes:

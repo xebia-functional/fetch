@@ -18,12 +18,10 @@ object ProjectPlugin extends AutoPlugin {
   object autoImport {
 
     lazy val commonCrossDependencies: Seq[ModuleID] =
-      Seq(%%("cats-free"), %%("scalatest") % "test")
-
-    lazy val monixCrossDependencies: Seq[ModuleID] =
-      %%("monix-eval") :: Nil
-
-    lazy val twitterUtilDependencies: Seq[ModuleID] = Seq(%%("catbird-util", "18.1.0"))
+      Seq(
+        "io.chrisdavenport" %% "cats-par" % "0.2.0",
+        "org.typelevel" %% "cats-effect" % "1.0.0",
+          %%("scalatest") % "test")
 
     lazy val micrositeSettings: Seq[Def.Setting[_]] = Seq(
       micrositeName := "Fetch",
@@ -67,8 +65,8 @@ object ProjectPlugin extends AutoPlugin {
       %%("circe-generic"),
       %%("doobie-core"),
       %%("doobie-h2"),
-      %%("http4s-blaze-client"),
-      %%("http4s-circe")
+      "org.http4s" %% "http4s-blaze-client" % "0.19.0-SNAPSHOT",
+      "org.http4s" %% "http4s-circe" % "0.19.0-SNAPSHOT"
     ) ++ commonCrossDependencies
   }
 
@@ -80,15 +78,11 @@ object ProjectPlugin extends AutoPlugin {
         "validateJVM",
         List(
           "fetchJVM/compile",
-          "monixJVM/compile",
-          "twitterJVM/compile",
           "fetchJVM/test",
-          "monixJVM/test",
-          "twitterJVM/test",
           "project root").asCmd) ++
       addCommandAlias(
         "validateJS",
-        List("fetchJS/compile", "monixJS/compile", "fetchJS/test", "monixJS/test", "project root").asCmd)
+        List("fetchJS/compile", "fetchJS/test", "project root").asCmd)
 
   override def projectSettings: Seq[Def.Setting[_]] =
     commandAliases ++
@@ -118,6 +112,9 @@ object ProjectPlugin extends AutoPlugin {
         scalaVersion := "2.12.6",
         crossScalaVersions := List("2.11.12", "2.12.6"),
         resolvers += Resolver.sonatypeRepo("snapshots"),
+        resolvers += Resolver.sonatypeRepo("releases"),
+        addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.7"),
+        addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.2.4"),
         scalacOptions := Seq(
           "-unchecked",
           "-deprecation",

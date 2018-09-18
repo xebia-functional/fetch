@@ -16,57 +16,40 @@
 
 package fetch
 
+import cats.{Functor, Monad}
+import cats.effect._
 import cats.data.NonEmptyList
 import cats.instances.list._
 import cats.instances.option._
-import cats.syntax.functor._
-import cats.syntax.traverse._
+import cats.syntax.all._
+import cats.temp.par._
 
 /**
  * A `DataSource` is the recipe for fetching a certain identity `I`, which yields
  * results of type `A`.
  */
 trait DataSource[I, A] {
-
   /** The name of the data source.
    */
-  def name: DataSourceName
-
-  override def toString: String = "DataSource:" + name
-
-  /**
-   * Derive a `DataSourceIdentity` from an identity, suitable for storing the result
-   * of such identity in a `DataSourceCache`.
-   */
-  def identity(i: I): DataSourceIdentity = (name, i)
+  def name: String
 
   /** Fetch one identity, returning a None if it wasn't found.
    */
-  def fetchOne(id: I): Query[Option[A]]
+  def fetch[F[_] : ConcurrentEffect : Par](id: I): F[Option[A]]
 
   /** Fetch many identities, returning a mapping from identities to results. If an
    * identity wasn't found, it won't appear in the keys.
    */
-  def fetchMany(ids: NonEmptyList[I]): Query[Map[I, A]]
-
-  /** Use `fetchOne` for implementing of `fetchMany`. Use only when the data
-   * source doesn't support batching.
-   */
-  def batchingNotSupported(ids: NonEmptyList[I]): Query[Map[I, A]] = {
-    val fetchOneWithId: I => Query[Option[(I, A)]] = id =>
-      fetchOne(id).map(_.tupleLeft(id))
-
-    ids.toList.traverse(fetchOneWithId).map(_.collect { case Some(x) => x }.toMap)
-  }
-
-  def batchingOnly(id: I): Query[Option[A]] =
-    fetchMany(NonEmptyList.one(id)).map(_ get id)
+  def batch[F[_] : ConcurrentEffect : Par](ids: NonEmptyList[I]): F[Map[I, A]] =
+    ids.parTraverse(
+      (id) => fetch(id).map(_.tupleLeft(id))
+    ).map(_.collect { case Some(x) => x }.toMap)
 
   def maxBatchSize: Option[Int] = None
 
-  def batchExecution: ExecutionType = Parallel
+  def batchExecution: BatchExecution = InParallel
 }
 
-sealed trait ExecutionType extends Product with Serializable
-case object Sequential     extends ExecutionType
-case object Parallel       extends ExecutionType
+sealed trait BatchExecution extends Product with Serializable
+case object Sequentially extends BatchExecution
+case object InParallel   extends BatchExecution

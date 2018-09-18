@@ -8,7 +8,7 @@ lazy val root = project
   .in(file("."))
   .settings(name := "fetch")
   .settings(moduleName := "root")
-  .aggregate(fetchJS, fetchJVM, fetchMonixJVM, fetchMonixJS, debugJVM, debugJS, twitterJVM)
+  .aggregate(fetchJS, fetchJVM, debugJVM, debugJS)
 
 lazy val fetch = crossProject
   .in(file("."))
@@ -19,16 +19,6 @@ lazy val fetch = crossProject
 lazy val fetchJVM = fetch.jvm
 lazy val fetchJS  = fetch.js
 
-lazy val monix = crossProject
-  .in(file("monix"))
-  .dependsOn(fetch % "compile->compile;test->test")
-  .settings(name := "fetch-monix")
-  .jsSettings(sharedJsSettings: _*)
-  .crossDepSettings(commonCrossDependencies ++ monixCrossDependencies: _*)
-
-lazy val fetchMonixJVM = monix.jvm
-lazy val fetchMonixJS  = monix.js
-
 lazy val debug = (crossProject in file("debug"))
   .settings(name := "fetch-debug")
   .dependsOn(fetch)
@@ -38,22 +28,17 @@ lazy val debug = (crossProject in file("debug"))
 lazy val debugJVM = debug.jvm
 lazy val debugJS  = debug.js
 
-lazy val twitter = crossProject
-  .in(file("twitter"))
-  .settings(name := "fetch-twitter")
-  .dependsOn(fetch % "compile->compile;test->test")
-  .crossDepSettings(commonCrossDependencies ++ twitterUtilDependencies: _*)
-
-lazy val twitterJVM = twitter.jvm
-
 lazy val examples = (project in file("examples"))
   .settings(name := "fetch-examples")
   .dependsOn(fetchJVM)
   .settings(noPublishSettings: _*)
   .settings(examplesSettings: _*)
+  .settings(Seq(
+    resolvers += Resolver.sonatypeRepo("snapshots")
+  ))
 
 lazy val docs = (project in file("docs"))
-  .dependsOn(fetchJVM, fetchMonixJVM, debugJVM)
+  .dependsOn(fetchJVM, debugJVM)
   .settings(name := "fetch-docs")
   .settings(docsSettings: _*)
   .settings(noPublishSettings)
