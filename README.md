@@ -19,13 +19,13 @@ For Scala 2.11.x and 2.12.x:
 [comment]: # (Start Replace)
 
 ```scala
-"com.47deg" %% "fetch" % "0.7.3"
+"com.47deg" %% "fetch" % "1.0.0-RC1"
 ```
 
 Or, if using Scala.js (0.6.x):
 
 ```scala
-"com.47deg" %%% "fetch" % "0.7.3"
+"com.47deg" %%% "fetch" % "1.0.0-RC1"
 ```
 
 [comment]: # (End Replace)
@@ -66,8 +66,6 @@ Returning `ConcurrentEffect` instances from the fetch methods allows us to speci
 We'll implement a dummy data source that can convert integers to strings. For convenience, we define a `fetchString` function that lifts identities (`Int` in our dummy data source) to a `Fetch`.
 
 ```scala
-import scala.concurrent.duration._
-
 import cats.data.NonEmptyList
 import cats.effect._
 import cats.temp.par._
@@ -125,9 +123,12 @@ def fetchOne[F[_] : ConcurrentEffect]: Fetch[F, String] =
 Let's run it and wait for the fetch to complete, we'll use `IO#unsafeRunTimed` for testing purposes, which will run an `IO[A]` to `Option[A]` and return `None` if it didn't complete in time:
 
 ```scala
+import scala.concurrent.duration._
+// import scala.concurrent.duration._
+
 Fetch.run[IO](fetchOne).unsafeRunTimed(5.seconds)
-// --> [68] One ToString 1
-// <-- [68] One ToString 1
+// --> [48] One ToString 1
+// <-- [48] One ToString 1
 // res0: Option[String] = Some(1)
 ```
 
@@ -146,8 +147,8 @@ When executing the above fetch, note how the three identities get batched and th
 
 ```scala
 Fetch.run[IO](fetchThree).unsafeRunTimed(5.seconds)
-// --> [69] Batch ToString NonEmptyList(1, 2, 3)
-// <-- [69] Batch ToString NonEmptyList(1, 2, 3)
+// --> [49] Batch ToString NonEmptyList(1, 2, 3)
+// <-- [49] Batch ToString NonEmptyList(1, 2, 3)
 // res1: Option[(String, String, String)] = Some((1,2,3))
 ```
 
@@ -179,12 +180,12 @@ When executing the above fetch, note how the three identities get requested in p
 
 ```scala
 Fetch.run[IO](fetchUnbatchedThree).unsafeRunTimed(5.seconds)
-// --> [69] One UnbatchedToString 2
-// --> [70] One UnbatchedToString 3
-// <-- [70] One UnbatchedToString 3
-// --> [71] One UnbatchedToString 1
-// <-- [69] One UnbatchedToString 2
-// <-- [71] One UnbatchedToString 1
+// --> [49] One UnbatchedToString 2
+// --> [48] One UnbatchedToString 3
+// --> [51] One UnbatchedToString 1
+// <-- [48] One UnbatchedToString 3
+// <-- [49] One UnbatchedToString 2
+// <-- [51] One UnbatchedToString 1
 // res2: Option[(String, String, String)] = Some((1,2,3))
 ```
 
@@ -223,10 +224,10 @@ Note how the two independent data fetches run in parallel, minimizing the latenc
 
 ```scala
 Fetch.run[IO](fetchMulti).unsafeRunTimed(5.seconds)
-// --> [70] One ToString 1
-// <-- [70] One ToString 1
-// --> [68] One Length one
-// <-- [68] One Length one
+// --> [48] One ToString 1
+// <-- [48] One ToString 1
+// --> [50] One Length one
+// <-- [50] One Length one
 // res3: Option[(String, Int)] = Some((1,3))
 ```
 
@@ -247,8 +248,8 @@ While running it, notice that the data source is only queried once. The next tim
 
 ```scala
 Fetch.run[IO](fetchTwice).unsafeRunTimed(5.seconds)
-// --> [71] One ToString 1
-// <-- [71] One ToString 1
+// --> [51] One ToString 1
+// <-- [51] One ToString 1
 // res4: Option[(String, String)] = Some((1,1))
 ```
 

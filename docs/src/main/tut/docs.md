@@ -31,13 +31,13 @@ To begin, add the following dependency to your SBT build file:
 [comment]: # (Start Replace)
 
 ```scala
-"com.47deg" %% "fetch" % "0.7.3"
+"com.47deg" %% "fetch" % "1.0.0-RC1"
 ```
 
 Or, if using Scala.js:
 
 ```scala
-"com.47deg" %%% "fetch" % "0.7.3"
+"com.47deg" %%% "fetch" % "1.0.0-RC1"
 ```
 
 [comment]: # (End Replace)
@@ -67,13 +67,14 @@ If something is missing in Fetch that stops you from using it we'd appreciate if
 In order to tell Fetch how to retrieve data, we must implement the `DataSource` typeclass.
 
 ```scala
+import cats.effect.ConcurrentEffect
 import cats.temp.par._
 import cats.data.NonEmptyList
 
 trait DataSource[Identity, Result]{
   def name: String
   
-  def fetch[F[_] : ConcurrentEffect](id: Identity): F[Option[Result]]
+  def fetch[F[_] : ConcurrentEffect : Par](id: Identity): F[Option[Result]]
   
   /* `batch` is implemented in terms of `fetch` by default */
   def batch[F[_] : ConcurrentEffect : Par](ids: NonEmptyList[Identity]): F[Map[Identity, Result]]
@@ -201,7 +202,7 @@ object OnlyBatchedSource extends DataSource[Int, Int]{
 
 ## Creating a runtime
 
-Since we'lll use `IO` from the `cats-effect` library to execute our fetches, we'll need a runtime for executing our `IO` instances. This includes a `ContextShift[IO]` used for running the `IO` instances and a `Timer[IO]` that is used for scheduling, let's go ahead and create them, we'll use a `java.util.concurrent.ScheduledThreadPoolExecutor` with a couple of threads to run our fetches.
+Since we'lll use `IO` from the `cats-effect` library to execute our fetches, we'll need a runtime for executing our `IO` instances. This includes a `ContextShift[IO]` used for running the `IO` instances and a `Timer[IO]` that is used for scheduling, let's go ahead and create them, we'll use a `java.util.concurrent.ScheduledThreadPoolExecutor` with a few threads to run our fetches.
 
 ```tut:silent
 import cats.effect._

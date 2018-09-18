@@ -15,13 +15,13 @@ For Scala 2.11.x and 2.12.x:
 [comment]: # (Start Replace)
 
 ```scala
-"com.47deg" %% "fetch" % "0.7.3"
+"com.47deg" %% "fetch" % "1.0.0-RC1"
 ```
 
 Or, if using Scala.js (0.6.x):
 
 ```scala
-"com.47deg" %%% "fetch" % "0.7.3"
+"com.47deg" %%% "fetch" % "1.0.0-RC1"
 ```
 
 [comment]: # (End Replace)
@@ -69,8 +69,6 @@ Returning `ConcurrentEffect` instances from the fetch methods allows us to speci
 We'll implement a dummy data source that can convert integers to strings. For convenience, we define a `fetchString` function that lifts identities (`Int` in our dummy data source) to a `Fetch`.
 
 ```tut:silent
-import scala.concurrent.duration._
-
 import cats.data.NonEmptyList
 import cats.effect._
 import cats.temp.par._
@@ -128,6 +126,8 @@ def fetchOne[F[_] : ConcurrentEffect]: Fetch[F, String] =
 Let's run it and wait for the fetch to complete, we'll use `IO#unsafeRunTimed` for testing purposes, which will run an `IO[A]` to `Option[A]` and return `None` if it didn't complete in time:
 
 ```tut:book
+import scala.concurrent.duration._
+
 Fetch.run[IO](fetchOne).unsafeRunTimed(5.seconds)
 ```
 
