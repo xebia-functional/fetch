@@ -41,7 +41,9 @@ object ProjectPlugin extends AutoPlugin {
         "gray-lighter"    -> "#F4F3F9",
         "white-color"     -> "#FFFFFF"
       ),
-      includeFilter in makeSite := "*.html" | "*.css" | "*.png" | "*.jpg" | "*.gif" | "*.js" | "*.swf" | "*.md"
+      includeFilter in makeSite := "*.html" | "*.css" | "*.png" | "*.jpg" | "*.gif" | "*.js" | "*.swf" | "*.md",
+      micrositeGithubToken := getEnvVar("ORG_GITHUB_TOKEN"),
+      micrositePushSiteWith := GitHub4s
     )
 
     lazy val commonTutSettings: Seq[Def.Setting[_]] = Seq(
