@@ -285,7 +285,7 @@ object `package` {
       )(
         implicit
           P: Par[F],
-        C: ConcurrentEffect[F],
+          C: ConcurrentEffect[F],
           CS: ContextShift[F],
           T: Timer[F]
       ): F[A] = for {
@@ -305,9 +305,9 @@ object `package` {
       )(
         implicit
           P: Par[F],
-        C: ConcurrentEffect[F],
-        CS: ContextShift[F],
-        T: Timer[F]
+          C: ConcurrentEffect[F],
+          CS: ContextShift[F],
+          T: Timer[F]
       ): F[(Env, A)] =
         apply(fa, InMemoryCache.empty[F])
 
@@ -317,7 +317,7 @@ object `package` {
       )(
         implicit
           P: Par[F],
-        C: ConcurrentEffect[F],
+          C: ConcurrentEffect[F],
           CS: ContextShift[F],
           T: Timer[F]
       ): F[(Env, A)] = for {
@@ -339,19 +339,19 @@ object `package` {
       )(
         implicit
           P: Par[F],
-        C: ConcurrentEffect[F],
-        CS: ContextShift[F],
-        T: Timer[F]
+          C: ConcurrentEffect[F],
+          CS: ContextShift[F],
+          T: Timer[F]
       ): F[(DataSourceCache[F], A)] =
         apply(fa, InMemoryCache.empty[F])
-      
+
       def apply[A](
         fa: Fetch[F, A],
         cache: DataSourceCache[F]
       )(
         implicit
           P: Par[F],
-        C: ConcurrentEffect[F],
+          C: ConcurrentEffect[F],
           CS: ContextShift[F],
           T: Timer[F]
       ): F[(DataSourceCache[F], A)] = for {
