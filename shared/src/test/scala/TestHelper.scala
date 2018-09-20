@@ -45,7 +45,7 @@ object TestHelper {
       )
   }
 
-  def one[F[_] : ConcurrentEffect](id: Int): Fetch[F, Int] =
+  def one[F[_] : ConcurrentEffect : Par](id: Int): Fetch[F, Int] =
     Fetch(One(id), OneSource)
 
   case class Many(n: Int)
@@ -57,7 +57,7 @@ object TestHelper {
       Applicative[F].pure(Option(0 until id.n toList))
   }
 
-  def many[F[_] : ConcurrentEffect](id: Int): Fetch[F, List[Int]] =
+  def many[F[_] : ConcurrentEffect : Par](id: Int): Fetch[F, List[Int]] =
     Fetch(Many(id), ManySource)
 
   case class AnotherOne(id: Int)
@@ -74,7 +74,7 @@ object TestHelper {
       )
   }
 
-  def anotherOne[F[_] : ConcurrentEffect](id: Int): Fetch[F, Int] =
+  def anotherOne[F[_] : ConcurrentEffect : Par](id: Int): Fetch[F, Int] =
     Fetch(AnotherOne(id), AnotheroneSource)
 
   case class Never()
@@ -86,7 +86,7 @@ object TestHelper {
       Applicative[F].pure(None : Option[Int])
   }
 
-  def never[F[_] : ConcurrentEffect]: Fetch[F, Int] =
+  def never[F[_] : ConcurrentEffect : Par]: Fetch[F, Int] =
     Fetch(Never(), NeverSource)
 
   // Check Env
