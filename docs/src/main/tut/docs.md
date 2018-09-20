@@ -145,11 +145,20 @@ object UserSource extends DataSource[UserId, User]{
 ```
 
 Now that we have a data source we can write a function for fetching users
-given an id, we just have to pass a `UserId` as an argument to `Fetch`.
+given an id, we just have to pass a `UserId` and the data source as arguments to `Fetch`.
 
 ```tut:silent
 def getUser[F[_] : ConcurrentEffect](id: UserId): Fetch[F, User] =
   Fetch(id, UserSource)
+```
+
+### Optional identities
+
+If you want to create a Fetch that doesn't fail if the identity is not found, you can use `Fetch#optional` instead of `Fetch#apply`. Note that instead of a `Fetch[F, A]` you will get a `Fetch[F, Option[A]]`.
+
+```tut:silent
+def maybeGetUser[F[_] : ConcurrentEffect](id: UserId): Fetch[F, Option[User]] =
+  Fetch.optional(id, UserSource)
 ```
 
 ### Data sources that don't support batching
