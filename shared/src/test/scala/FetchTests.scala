@@ -18,16 +18,15 @@ package fetch
 
 import org.scalatest.{AsyncFreeSpec, Matchers}
 
-import fetch._
-
 import scala.concurrent._
 import scala.concurrent.duration._
 
 import cats._
+import cats.temp.par._
 import cats.effect._
 import cats.instances.list._
+import cats.instances.option._
 import cats.data.NonEmptyList
-import cats.syntax.cartesian._
 import cats.syntax.all._
 
 class FetchTests extends AsyncFreeSpec with Matchers {
@@ -716,5 +715,66 @@ class FetchTests extends AsyncFreeSpec with Matchers {
       .map(_ should matchPattern {
         case Left(MissingIdentity(Never(), _, _)) =>
       }).unsafeToFuture
+  }
+
+  // Optional fetches
+
+  case class MaybeMissing(id: Int)
+
+  object MaybeMissingSource extends DataSource[MaybeMissing, Int] {
+    override def name = "Maybe Missing Source"
+
+    override def fetch[F[_]](id: MaybeMissing)(
+      implicit CF: ConcurrentEffect[F], P: Par[F]
+    ): F[Option[Int]] =
+      if (id.id % 2 == 0)
+        Applicative[F].pure(None)
+      else
+        Applicative[F].pure(Option(id.id))
+  }
+
+  def maybeOpt[F[_] : ConcurrentEffect](id: Int): Fetch[F, Option[Int]] =
+    Fetch.optional(MaybeMissing(id), MaybeMissingSource)
+
+  "We can run optional fetches" in {
+    def fetch[F[_] : ConcurrentEffect]: Fetch[F, Option[Int]] =
+      maybeOpt(1)
+
+    Fetch.run[IO](fetch).map(_ shouldEqual Some(1)).unsafeToFuture
+  }
+
+  "We can run optional fetches with traverse" in {
+    def fetch[F[_] : ConcurrentEffect]: Fetch[F, List[Int]] =
+      List(1, 2, 3).traverse(maybeOpt[F]).map(_.flatten)
+
+    Fetch.run[IO](fetch).map(_ shouldEqual List(1, 3)).unsafeToFuture
+  }
+
+  "We can run optional fetches with other data sources" in {
+    def fetch[F[_] : ConcurrentEffect]: Fetch[F, List[Int]] = {
+      val ones = List(1, 2, 3).traverse(one[F])
+      val maybes = List(1, 2, 3).traverse(maybeOpt[F])
+      (ones, maybes).mapN { case (os, ms) => os ++ ms.flatten }
+    }
+
+    Fetch.run[IO](fetch).map(_ shouldEqual List(1, 2, 3, 1, 3)).unsafeToFuture
+  }
+
+  "We can make fetches that depend on optional fetch results when they aren't defined" in {
+    def fetch[F[_] : ConcurrentEffect]: Fetch[F, Int] = for {
+      maybe <- maybeOpt(2)
+      result <- maybe.fold(Fetch.pure(42))(i => one(i))
+    } yield result
+
+    Fetch.run[IO](fetch).map(_ shouldEqual 42).unsafeToFuture
+  }
+
+  "We can make fetches that depend on optional fetch results when they are defined" in {
+    def fetch[F[_] : ConcurrentEffect]: Fetch[F, Int] = for {
+      maybe <- maybeOpt(1)
+      result <- maybe.fold(Fetch.pure(42))(i => one(i))
+    } yield result
+
+    Fetch.run[IO](fetch).map(_ shouldEqual 1).unsafeToFuture
   }
 }
