@@ -481,7 +481,7 @@ We'll be using the default in-memory cache, prepopulated with some data. The cac
 is calculated with the `DataSource`'s `name` method and the request identity.
 
 ```tut:silent
-val cache = InMemoryCache.from(
+def cache[F[_] : ConcurrentEffect : Par] = InMemoryCache.from[F, Int, User](
  (UserSource.name, 1) -> User(1, "@dialelo")
 )
 ```
@@ -537,9 +537,12 @@ Let's implement a cache that forgets everything we store in it.
 ```tut:silent
 import cats.Applicative
 
-final case class ForgetfulCache() extends DataSourceCache {
-  def insert[F[_] : ConcurrentEffect, I, A](i: I, v: A, ds: DataSource[I, A]): F[DataSourceCache] = Applicative[F].pure(this)
-  def lookup[F[_] : ConcurrentEffect, I, A](i: I, ds: DataSource[I, A]): F[Option[A]] = Applicative[F].pure(None)
+final case class ForgetfulCache[F[_] : ConcurrentEffect : Par]() extends DataSourceCache[F] {
+  def insert[I, A](i: I, v: A, ds: DataSource[I, A]): F[DataSourceCache[F]] =
+    Applicative[F].pure(this)
+
+  def lookup[I, A](i: I, ds: DataSource[I, A]): F[Option[A]] =
+    Applicative[F].pure(None)
 }
 ```
 
