@@ -33,31 +33,31 @@ class FetchAsyncQueryTests extends AsyncFreeSpec with Matchers {
   implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
 
   "We can interpret an async fetch into an IO" in {
-    def fetch[F[_] : ConcurrentEffect]: Fetch[F, Article] =
+    def fetch[F[_]: Concurrent: Par]: Fetch[F, Article] =
       article(1)
 
-    val io = Fetch.run[IO](fetch)
+    val io = Fetch.run[IO](fetch, InMemoryCache.empty[IO])
 
     io.map(_ shouldEqual Article(1, "An article with id 1")).unsafeToFuture
   }
 
   "We can combine several async data sources and interpret a fetch into an IO" in {
-    def fetch[F[_] : ConcurrentEffect]: Fetch[F, (Article, Author)] = for {
+    def fetch[F[_]: Concurrent: Par]: Fetch[F, (Article, Author)] = for {
       art    <- article(1)
       author <- author(art)
     } yield (art, author)
 
-    val io = Fetch.run[IO](fetch)
+    val io = Fetch.run[IO](fetch, InMemoryCache.empty[IO])
 
     io.map(_ shouldEqual (Article(1, "An article with id 1"), Author(2, "@egg2"))).unsafeToFuture
   }
 
   "We can use combinators in a for comprehension and interpret a fetch from async sources into an IO" in {
-    def fetch[F[_] : ConcurrentEffect]: Fetch[F, List[Article]] = for {
+    def fetch[F[_]: Concurrent: Par]: Fetch[F, List[Article]] = for {
       articles <- List(1, 1, 2).traverse(article[F])
     } yield articles
 
-    val io = Fetch.run[IO](fetch)
+    val io = Fetch.run[IO](fetch, InMemoryCache.empty[IO])
 
     io.map(_ shouldEqual List(
       Article(1, "An article with id 1"),
@@ -67,12 +67,12 @@ class FetchAsyncQueryTests extends AsyncFreeSpec with Matchers {
   }
 
   "We can use combinators and multiple sources in a for comprehension and interpret a fetch from async sources into an IO" in {
-    def fetch[F[_] : ConcurrentEffect] = for {
+    def fetch[F[_]: Concurrent: Par] = for {
       articles <- List(1, 1, 2).traverse(article[F])
       authors  <- articles.traverse(author[F])
     } yield (articles, authors)
 
-    val io = Fetch.run[IO](fetch)
+    val io = Fetch.run[IO](fetch, InMemoryCache.empty[IO])
 
     io.map(_ shouldEqual (
       List(
@@ -95,10 +95,10 @@ object DataSources {
     def author: Int = id + 1
   }
 
-  object ArticleAsync extends DataSource[ArticleId, Article] {
-    override def name = "ArticleAsync"
+  def ArticleAsync[F[_]: Async: Par] = new BatchedDataSource[F, ArticleId, Article] {
+    def name = "ArticleAsync"
 
-    override def fetch[F[_] : ConcurrentEffect : Par](id: ArticleId): F[Option[Article]] =
+    def fetch(id: ArticleId): F[Option[Article]] =
       Async[F].async[Option[Article]]((cb) => {
         cb(
           Right(
@@ -108,16 +108,16 @@ object DataSources {
       })
   }
 
-  def article[F[_] : ConcurrentEffect](id: Int): Fetch[F, Article] =
+  def article[F[_] : Concurrent: Par](id: Int): Fetch[F, Article] =
     Fetch(ArticleId(id), ArticleAsync)
 
   case class AuthorId(id: Int)
   case class Author(id: Int, name: String)
 
-  object AuthorAsync extends DataSource[AuthorId, Author] {
+  def AuthorAsync[F[_]: Async: Par] = new BatchedDataSource[F, AuthorId, Author] {
     override def name = "AuthorAsync"
 
-    override def fetch[F[_] : ConcurrentEffect : Par](id: AuthorId): F[Option[Author]] =
+    override def fetch(id: AuthorId): F[Option[Author]] =
       Async[F].async((cb => {
         cb(
           Right(
@@ -127,6 +127,6 @@ object DataSources {
       }))
   }
 
-  def author[F[_] : ConcurrentEffect](a: Article): Fetch[F, Author] =
+  def author[F[_] : Concurrent: Par](a: Article): Fetch[F, Author] =
     Fetch(AuthorId(a.author), AuthorAsync)
 }

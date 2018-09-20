@@ -36,29 +36,19 @@ object debug {
     Document.text(f" 🕛 $secs%1.2f seconds")
   }
 
-  def firstRequest(r: Round): Option[Long] = for {
-    aQuery <- r.queries.headOption
-    firstR = r.queries.foldLeft(aQuery.start)({
-      case (acc, q) => acc min q.start
-    })
-  } yield firstR
+  def firstRequest(r: Round): Long =
+    r.queries.map(_.start).minimum
 
-  def lastRequest(r: Round): Option[Long] = for {
-    aQuery <- r.queries.headOption
-    lastR = r.queries.foldLeft(aQuery.end)({
-      case (acc, q) => acc max q.end
-    })
-  } yield lastR
+  def lastRequest(r: Round): Long =
+    r.queries.map(_.end).maximum
 
   def showEnv(env: Env): Document = env.rounds match {
     case Nil => Document.empty
     case _ => {
-      val duration: Option[Long] = for {
-        firstRound <- env.rounds.headOption
-        firstRequestStart <- firstRequest(firstRound)
-        lastRound  <- env.rounds.lastOption
-        lastRequestEnd <- lastRequest(lastRound)
-      } yield lastRequestEnd - firstRequestStart
+      val duration: Option[Long] = (
+        env.rounds.lastOption.map(lastRequest),
+        env.rounds.headOption.map(firstRequest)
+      ).mapN(_ - _)
       val durationDoc =
         duration.fold(Document.empty: Document)((d: Long) =>
           Document.text("Fetch execution") :: showDuration(d))
@@ -68,17 +58,15 @@ object debug {
   }
 
   def showRound(r: Round, n: Int): Document = {
-    val roundDuration = for {
-      f <- firstRequest(r)
-      l <- lastRequest(r)
-    } yield l - f
-
-    val round = Document.text(s"[Round ${n}]") :: roundDuration.fold(Document.text(""))(showDuration(_))
+    val round = Document.text(s"[Round ${n}]") :: showDuration(roundDuration(r))
 
     round :: Document.nest(
-      2, pile(r.queries.map(showRequest))
+      2, pile(r.queries.map(showRequest).toList)
     )
   }
+
+  private def roundDuration(r: Round): Long =
+    lastRequest(r) - firstRequest(r)
 
   def showRequest(r: Request): Document = r.request match {
     case FetchOne(id, ds) =>
@@ -87,7 +75,7 @@ object debug {
       Document.text(s"[Batch] From `${ds.name}` with ids ${ids.toList}") :: showDuration(r.duration)
   }
 
-  def showMissing(ds: DataSource[_, _], ids: List[_]): Document =
+  def showMissing(ds: DataSource[F, _, _] forSome { type F[_] }, ids: List[_]): Document =
     Document.text(s"`${ds.name}` missing identities ${ids}")
 
   def showRoundCount(err: FetchException): Document =

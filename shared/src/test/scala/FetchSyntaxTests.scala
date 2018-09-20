@@ -46,8 +46,8 @@ class FetchSyntaxTests extends AsyncFreeSpec with Matchers {
     def f2[F[_] : ConcurrentEffect : ContextShift] =
       Ex.fetch[F]
 
-    val io1 = Fetch.run[IO](f1)
-    val io2 = Fetch.run[IO](f2)
+    val io1 = Fetch.run[IO](f1, InMemoryCache.empty)
+    val io2 = Fetch.run[IO](f2, InMemoryCache.empty)
 
     val e1 = io1.handleError(err => 42)
     val e2 = io2.handleError(err => 42)

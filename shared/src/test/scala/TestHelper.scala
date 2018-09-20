@@ -17,9 +17,10 @@
 package fetch
 
 import cats._
-import cats.effect._
-import cats.temp.par._
 import cats.data.NonEmptyList
+import cats.effect._
+import cats.instances.int._
+import cats.temp.par._
 
 import scala.collection.immutable.Map
 
@@ -29,64 +30,60 @@ object TestHelper {
 
   case class One(id: Int)
 
-  object OneSource extends DataSource[One, Int] {
-    override def name = "OneSource"
+  def OneSource[F[_]: Applicative] = new DataSource[F, One, Int] {
+    val name = "OneSource"
 
-    override def fetch[F[_]](id: One)(
-      implicit CF: ConcurrentEffect[F], P: Par[F]
-    ): F[Option[Int]] =
+    def fetch(id: One): F[Option[Int]] =
       Applicative[F].pure(Option(id.id))
 
-    override def batch[F[_]](ids: NonEmptyList[One])(
-      implicit CF: ConcurrentEffect[F], P: Par[F]
-    ): F[Map[One, Int]] =
+    def batch(ids: NonEmptyList[One]): F[Map[One, Int]] =
       Applicative[F].pure(
         ids.toList.map((v) => (v, v.id)).toMap
       )
   }
 
-  def one[F[_] : ConcurrentEffect](id: Int): Fetch[F, Int] =
+  def one[F[_] : Concurrent](id: Int): Fetch[F, Int] =
     Fetch(One(id), OneSource)
 
   case class Many(n: Int)
 
-  object ManySource extends DataSource[Many, List[Int]] {
-    override def name = "ManySource"
+  def ManySource[F[_]: Monad: Par] = new BatchedDataSource[F, Many, List[Int]] {
+    val name = "ManySource"
 
-    override def fetch[F[_] : ConcurrentEffect : Par](id: Many): F[Option[List[Int]]] =
+    def fetch(id: Many): F[Option[List[Int]]] =
       Applicative[F].pure(Option(0 until id.n toList))
   }
 
-  def many[F[_] : ConcurrentEffect](id: Int): Fetch[F, List[Int]] =
+  def many[F[_]: Concurrent: Par](id: Int): Fetch[F, List[Int]] =
     Fetch(Many(id), ManySource)
 
   case class AnotherOne(id: Int)
 
-  object AnotheroneSource extends DataSource[AnotherOne, Int] {
-    override def name = "AnotherOneSource"
+  def AnotheroneSource[F[_]: Monad: Par] = new DataSource[F, AnotherOne, Int] {
+    val name = "AnotherOneSource"
 
-    override def fetch[F[_] : ConcurrentEffect : Par](id: AnotherOne): F[Option[Int]] =
+    def fetch(id: AnotherOne): F[Option[Int]] =
       Applicative[F].pure(Option(id.id))
 
-    override def batch[F[_] : ConcurrentEffect : Par](ids: NonEmptyList[AnotherOne]): F[Map[AnotherOne, Int]] =
+    def batch(ids: NonEmptyList[AnotherOne]): F[Map[AnotherOne, Int]] =
       Applicative[F].pure(
         ids.toList.map((v) => (v, v.id)).toMap
       )
   }
 
-  def anotherOne[F[_] : ConcurrentEffect](id: Int): Fetch[F, Int] =
+  def anotherOne[F[_] : Concurrent: Par](id: Int): Fetch[F, Int] =
     Fetch(AnotherOne(id), AnotheroneSource)
 
   case class Never()
 
-  object NeverSource extends DataSource[Never, Int] {
-    override def name = "NeverSource"
+  def NeverSource[F[_]: Monad: Par] = new BatchedDataSource[F, Never, Int] {
+    def name = "NeverSource"
 
-    override def fetch[F[_] : ConcurrentEffect : Par](id: Never): F[Option[Int]] =
-      Applicative[F].pure(None : Option[Int])
+    def fetch(id: Never): F[Option[Int]] =
+      Applicative[F].pure(Option.empty[Int])
   }
 
-  def never[F[_] : ConcurrentEffect]: Fetch[F, Int] =
+  def never[F[_] : Concurrent: Par]: Fetch[F, Int] =
     Fetch(Never(), NeverSource)
 
   // Check Env
@@ -98,7 +95,7 @@ object TestHelper {
     }
 
   def totalFetched(rs: Seq[Round]): Int =
-    rs.map((round: Round) => round.queries.map(countFetches).sum).toList.sum
+    rs.map((round: Round) => round.queries.map(countFetches).reduce).toList.sum
 
   def countBatches(r: Request): Int =
     r.request match {
@@ -107,5 +104,5 @@ object TestHelper {
     }
 
   def totalBatches(rs: Seq[Round]): Int =
-    rs.map((round: Round) => round.queries.map(countBatches).sum).toList.sum
+    rs.map((round: Round) => round.queries.map(countBatches).reduce).toList.sum
 }

@@ -38,10 +38,10 @@ class FetchBatchingTests extends AsyncFreeSpec with Matchers {
 
   case class BatchedDataSeq(id: Int)
 
-  object MaxBatchSourceSeq extends DataSource[BatchedDataSeq, Int] {
+  def MaxBatchSourceSeq[F[_]: Monad: Par] = new BatchedDataSource[F, BatchedDataSeq, Int] {
     override def name = "BatchSourceSeq"
 
-    override def fetch[F[_] : ConcurrentEffect : Par](id: BatchedDataSeq): F[Option[Int]] =
+    override def fetch(id: BatchedDataSeq): F[Option[Int]] =
       Applicative[F].pure(Some(id.id))
 
     override val maxBatchSize = Some(2)
@@ -51,10 +51,10 @@ class FetchBatchingTests extends AsyncFreeSpec with Matchers {
 
   case class BatchedDataPar(id: Int)
 
-  object MaxBatchSourcePar extends DataSource[BatchedDataPar, Int] {
+  def MaxBatchSourcePar[F[_]: Monad: Par] = new BatchedDataSource[F, BatchedDataPar, Int] {
     override def name = "BatchSourcePar"
 
-    override def fetch[F[_] : ConcurrentEffect : Par](id: BatchedDataPar): F[Option[Int]] =
+    override def fetch(id: BatchedDataPar): F[Option[Int]] =
       Applicative[F].pure(Some(id.id))
 
     override val maxBatchSize = Some(2)
@@ -62,17 +62,17 @@ class FetchBatchingTests extends AsyncFreeSpec with Matchers {
     override val batchExecution = InParallel
   }
 
-  def fetchBatchedDataSeq[F[_] : ConcurrentEffect](id: Int): Fetch[F, Int] =
+  def fetchBatchedDataSeq[F[_] : Concurrent: Par](id: Int): Fetch[F, Int] =
     Fetch(BatchedDataSeq(id), MaxBatchSourceSeq)
 
-  def fetchBatchedDataPar[F[_] : ConcurrentEffect](id: Int): Fetch[F, Int] =
+  def fetchBatchedDataPar[F[_] : Concurrent: Par](id: Int): Fetch[F, Int] =
     Fetch(BatchedDataPar(id), MaxBatchSourcePar)
 
   "A large fetch to a datasource with a maximum batch size is split and executed in sequence" in {
-    def fetch[F[_] : ConcurrentEffect]: Fetch[F, List[Int]] =
+    def fetch[F[_] : Concurrent: Par]: Fetch[F, List[Int]] =
       List.range(1, 6).traverse(fetchBatchedDataSeq[F])
 
-    val io = Fetch.runEnv[IO](fetch)
+    val io = Fetch.runEnv[IO](fetch, InMemoryCache.empty)
 
     io.map({
       case (env, result) => {
@@ -85,10 +85,10 @@ class FetchBatchingTests extends AsyncFreeSpec with Matchers {
   }
 
   "A large fetch to a datasource with a maximum batch size is split and executed in parallel" in {
-    def fetch[F[_] : ConcurrentEffect]: Fetch[F, List[Int]] =
+    def fetch[F[_] : Concurrent: Par]: Fetch[F, List[Int]] =
       List.range(1, 6).traverse(fetchBatchedDataPar[F])
 
-    val io = Fetch.runEnv[IO](fetch)
+    val io = Fetch.runEnv[IO](fetch, InMemoryCache.empty)
 
     io.map({
       case (env, result) => {
@@ -101,11 +101,11 @@ class FetchBatchingTests extends AsyncFreeSpec with Matchers {
   }
 
   "Fetches to datasources with a maximum batch size should be split and executed in parallel and sequentially" in {
-    def fetch[F[_] : ConcurrentEffect]: Fetch[F, List[Int]] =
+    def fetch[F[_] : Concurrent: Par]: Fetch[F, List[Int]] =
       List.range(1, 6).traverse(fetchBatchedDataPar[F]) *>
         List.range(1, 6).traverse(fetchBatchedDataSeq[F])
 
-    val io = Fetch.runEnv[IO](fetch)
+    val io = Fetch.runEnv[IO](fetch, InMemoryCache.empty)
 
     io.map({
       case (env, result) => {
@@ -118,10 +118,10 @@ class FetchBatchingTests extends AsyncFreeSpec with Matchers {
   }
 
   "A large (many) fetch to a datasource with a maximum batch size is split and executed in sequence" in {
-    def fetch[F[_] : ConcurrentEffect]: Fetch[F, List[Int]] =
+    def fetch[F[_] : Concurrent: Par]: Fetch[F, List[Int]] =
       List(fetchBatchedDataSeq[F](1), fetchBatchedDataSeq[F](2), fetchBatchedDataSeq[F](3)).sequence
 
-    val io = Fetch.runEnv[IO](fetch)
+    val io = Fetch.runEnv[IO](fetch, InMemoryCache.empty)
 
     io.map({
       case (env, result) => {
@@ -134,10 +134,10 @@ class FetchBatchingTests extends AsyncFreeSpec with Matchers {
   }
 
   "A large (many) fetch to a datasource with a maximum batch size is split and executed in parallel" in {
-    def fetch[F[_] : ConcurrentEffect]: Fetch[F, List[Int]] =
+    def fetch[F[_] : Concurrent: Par]: Fetch[F, List[Int]] =
       List(fetchBatchedDataPar[F](1), fetchBatchedDataPar[F](2), fetchBatchedDataPar[F](3)).sequence
 
-    val io = Fetch.runEnv[IO](fetch)
+    val io = Fetch.runEnv[IO](fetch, InMemoryCache.empty)
 
     io.map({
       case (env, result) => {
@@ -152,13 +152,13 @@ class FetchBatchingTests extends AsyncFreeSpec with Matchers {
   "Very deep fetches don't overflow stack or heap" in {
     val depth = 200
     val list  = (1 to depth).toList
-    def fetch[F[_] : ConcurrentEffect]: Fetch[F, List[Int]] =
+    def fetch[F[_] : Concurrent: Par]: Fetch[F, List[Int]] =
       list.map(x => (0 until x).toList.traverse(fetchBatchedDataSeq[F]))
         .foldLeft(
           Fetch.pure[F, List[Int]](List.empty[Int])
         )(_ >> _)
 
-    val io = Fetch.runEnv[IO](fetch)
+    val io = Fetch.runEnv[IO](fetch, InMemoryCache.empty)
 
     io.map({
       case (env, result) => {

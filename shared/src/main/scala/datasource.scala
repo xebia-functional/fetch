@@ -28,26 +28,41 @@ import cats.temp.par._
  * A `DataSource` is the recipe for fetching a certain identity `I`, which yields
  * results of type `A`.
  */
-trait DataSource[I, A] {
+trait DataSource[F[_], I, A] {
   /** The name of the data source.
    */
   def name: String
 
   /** Fetch one identity, returning a None if it wasn't found.
    */
-  def fetch[F[_] : ConcurrentEffect : Par](id: I): F[Option[A]]
+  def fetch(id: I): F[Option[A]]
 
   /** Fetch many identities, returning a mapping from identities to results. If an
    * identity wasn't found, it won't appear in the keys.
    */
-  def batch[F[_] : ConcurrentEffect : Par](ids: NonEmptyList[I]): F[Map[I, A]] =
-    ids.parTraverse(
-      (id) => fetch(id).map(_.tupleLeft(id))
-    ).map(_.collect { case Some(x) => x }.toMap)
+  def batch(ids: NonEmptyList[I]): F[Map[I, A]]
 
   def maxBatchSize: Option[Int] = None
 
   def batchExecution: BatchExecution = InParallel
+
+  override def toString: String = s"DataSource:$name"
+
+  // without this Fetch no longer works !!
+  override def equals(other: Any): Boolean =
+    other match {
+      case ds: DataSource[F, I, A] => ds.name == name
+      case _ => false
+    }
+}
+
+abstract class BatchedDataSource[F[_]: Par: Monad, I, A] extends DataSource[F, I, A] {
+
+  override def batch(ids: NonEmptyList[I]): F[Map[I, A]] =
+    ids.parTraverse(
+      (id) => fetch(id).map(_.tupleLeft(id))
+    ).map(_.collect { case Some(x) => x }.toMap)
+
 }
 
 sealed trait BatchExecution extends Product with Serializable

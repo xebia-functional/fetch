@@ -16,6 +16,7 @@
 
 package fetch
 
+import cats.data.NonEmptyList
 import scala.collection.immutable._
 
 /**
@@ -30,7 +31,7 @@ trait Env {
 /**
   * A data structure that holds information about a request inside a fetch round.
   */
-case class Request(
+final case class Request(
   request: FetchRequest,
   start: Long,
   end: Long
@@ -41,14 +42,14 @@ case class Request(
 /**
  * A data structure that holds information about a fetch round.
  */
-case class Round(
-  queries: List[Request]
+final case class Round(
+  queries: NonEmptyList[Request]
 )
 
 /**
  * A concrete implementation of `Env` used in the default Fetch interpreter.
  */
-case class FetchEnv(
+final case class FetchEnv(
     roundsQ: Queue[Round] = Queue.empty
 ) extends Env {
   def rounds = roundsQ.toList

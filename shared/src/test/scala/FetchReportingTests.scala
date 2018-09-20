@@ -25,6 +25,7 @@ import fetch._
 import cats.effect._
 import cats.instances.list._
 import cats.syntax.all._
+import cats.temp.par._
 
 class FetchReportingTests extends AsyncFreeSpec with Matchers {
   import TestHelper._
@@ -37,7 +38,7 @@ class FetchReportingTests extends AsyncFreeSpec with Matchers {
     def fetch[F[_] : ConcurrentEffect] =
       Fetch.pure[F, Int](42)
 
-    val io = Fetch.runEnv[IO](fetch)
+    val io = Fetch.runEnv[IO](fetch, InMemoryCache.empty)
 
     io.map({
       case (env, result) => env.rounds.size shouldEqual 0
@@ -48,7 +49,7 @@ class FetchReportingTests extends AsyncFreeSpec with Matchers {
     def fetch[F[_] : ConcurrentEffect] =
       one(1)
 
-    val io = Fetch.runEnv[IO](fetch)
+    val io = Fetch.runEnv[IO](fetch, InMemoryCache.empty)
 
     io.map({
       case (env, result) => env.rounds.size shouldEqual 1
@@ -56,12 +57,12 @@ class FetchReportingTests extends AsyncFreeSpec with Matchers {
   }
 
   "Single fetches are executed in one round per binding in a for comprehension" in {
-    def fetch[F[_] : ConcurrentEffect] = for {
+    def fetch[F[_] : Concurrent] = for {
       o <- one(1)
       t <- one(2)
     } yield (o, t)
 
-    val io = Fetch.runEnv[IO](fetch)
+    val io = Fetch.runEnv[IO](fetch, InMemoryCache.empty)
 
     io.map({
       case (env, result) => env.rounds.size shouldEqual 2
@@ -69,12 +70,12 @@ class FetchReportingTests extends AsyncFreeSpec with Matchers {
   }
 
   "Single fetches for different data sources are executed in multiple rounds if they are in a for comprehension" in {
-    def fetch[F[_] : ConcurrentEffect] = for {
+    def fetch[F[_] : Concurrent: Par] = for {
       o <- one(1)
       m <- many(3)
     } yield (o, m)
 
-    val io = Fetch.runEnv[IO](fetch)
+    val io = Fetch.runEnv[IO](fetch, InMemoryCache.empty)
 
     io.map({
       case (env, result) => env.rounds.size shouldEqual 2
@@ -82,10 +83,10 @@ class FetchReportingTests extends AsyncFreeSpec with Matchers {
   }
 
   "Single fetches combined with cartesian are run in one round" in {
-    def fetch[F[_] : ConcurrentEffect] =
+    def fetch[F[_] : Concurrent : Par] =
       (one(1), many(3)).tupled
 
-    val io = Fetch.runEnv[IO](fetch)
+    val io = Fetch.runEnv[IO](fetch, InMemoryCache.empty)
 
     io.map({
       case (env, result) => env.rounds.size shouldEqual 1
@@ -93,12 +94,12 @@ class FetchReportingTests extends AsyncFreeSpec with Matchers {
   }
 
   "Single fetches combined with traverse are run in one round" in {
-    def fetch[F[_] : ConcurrentEffect] = for {
+    def fetch[F[_] : Concurrent : Par] = for {
       manies <- many(3)                 // round 1
       ones   <- manies.traverse(one[F]) // round 2
     } yield ones
 
-    val io = Fetch.runEnv[IO](fetch)
+    val io = Fetch.runEnv[IO](fetch, InMemoryCache.empty)
 
     io.map({
       case (env, result) => env.rounds.size shouldEqual 2
@@ -106,10 +107,10 @@ class FetchReportingTests extends AsyncFreeSpec with Matchers {
   }
 
   "The product of two fetches from the same data source implies batching" in {
-    def fetch[F[_] : ConcurrentEffect] =
+    def fetch[F[_] : Concurrent] =
       (one(1), one(3)).tupled
 
-    val io = Fetch.runEnv[IO](fetch)
+    val io = Fetch.runEnv[IO](fetch, InMemoryCache.empty)
 
     io.map({
       case (env, result) => env.rounds.size shouldEqual 1
@@ -117,22 +118,22 @@ class FetchReportingTests extends AsyncFreeSpec with Matchers {
   }
 
   "The product of concurrent fetches of the same type implies everything fetched in batches" in {
-    def aFetch[F[_] : ConcurrentEffect] = for {
+    def aFetch[F[_] : Concurrent] = for {
       a <- one(1)  // round 1
       b <- one(2)  // round 2
       c <- one(3)
     } yield c
 
-    def anotherFetch[F[_] : ConcurrentEffect] = for {
+    def anotherFetch[F[_] : Concurrent : Par] = for {
       a <- one(2)  // round 1
       m <- many(4) // round 2
       c <- one(3)
     } yield c
 
-    def fetch[F[_] : ConcurrentEffect] =
+    def fetch[F[_] : Concurrent : Par] =
       ((aFetch, anotherFetch).tupled, one(3)).tupled
 
-    val io = Fetch.runEnv[IO](fetch)
+    val io = Fetch.runEnv[IO](fetch, InMemoryCache.empty)
 
     io.map({
       case (env, result) => env.rounds.size shouldEqual 2
