@@ -526,7 +526,7 @@ The default cache is implemented as an immutable in-memory map, but users are fr
 There is no need for the cache to be mutable since fetch executions run in an interpreter that uses the state monad. Note that the `update` method in the `DataSourceCache` trait yields a new, updated cache.
 
 ```scala
-trait DataSourceCache {
+trait DataSourceCache[F[_]] {
   def insert[F[_] : ConcurrentEffect, I, A](i: I, ds: DataSource[I, A], v: A): DataSourceIdentity, v: A): F[DataSourceCache]
   def lookup[F[_] : ConcurrentEffect, I, A](i: I, ds: DataSource[I, A]): F[Option[A]]
 }
@@ -535,15 +535,19 @@ trait DataSourceCache {
 Let's implement a cache that forgets everything we store in it.
 
 ```tut:silent
-import cats.Applicative
+case class ForgetfulCache[F[_]]() extends DataSourceCache[F] {
+  def insert[I, A](i: I, v: A, ds: DataSource[I, A])(
+    implicit C: ConcurrentEffect[F], P: Par[F]
+  ): F[DataSourceCache[F]] =
+    C.pure(this)
 
-final case class ForgetfulCache[F[_] : ConcurrentEffect : Par]() extends DataSourceCache[F] {
-  def insert[I, A](i: I, v: A, ds: DataSource[I, A]): F[DataSourceCache[F]] =
-    Applicative[F].pure(this)
-
-  def lookup[I, A](i: I, ds: DataSource[I, A]): F[Option[A]] =
-    Applicative[F].pure(None)
+  def lookup[I, A](i: I, ds: DataSource[I, A])(
+    implicit C: ConcurrentEffect[F], P: Par[F]
+  ): F[Option[A]] =
+    C.pure(None)
 }
+
+def forgetfulCache[F[_] : ConcurrentEffect : Par] = ForgetfulCache[F]()
 ```
 
 We can now use our implementation of the cache when running a fetch.
@@ -554,7 +558,7 @@ def fetchSameTwice[F[_] : ConcurrentEffect]: Fetch[F, (User, User)] = for {
   another <- getUser(1)
 } yield (one, another)
 
-Fetch.run[IO](fetchSameTwice, ForgetfulCache()).unsafeRunTimed(5.seconds)
+Fetch.run[IO](fetchSameTwice, forgetfulCache).unsafeRunTimed(5.seconds)
 ```
 
 # Batching
