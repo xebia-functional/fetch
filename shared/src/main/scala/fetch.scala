@@ -241,6 +241,25 @@ object `package` {
         ))
       )
 
+    def optional[F[_] : ConcurrentEffect, I, A](id: I, ds: DataSource[I, A]): Fetch[F, Option[A]] =
+      Unfetch[F, Option[A]](
+        for {
+          deferred <- Deferred[F, FetchStatus]
+          request = FetchOne(id, ds)
+          result = deferred.complete _
+          blocked = BlockedRequest(request, result)
+          anyDs = ds.asInstanceOf[DataSource[Any, Any]]
+          blockedRequest = RequestMap(Map(anyDs -> blocked))
+        } yield Blocked(blockedRequest, Unfetch[F, Option[A]](
+          deferred.get.map {
+            case FetchDone(a) =>
+              Done(Some(a)).asInstanceOf[FetchResult[F, Option[A]]]
+            case FetchMissing() =>
+              Done(Option.empty[A])
+          }
+        ))
+      )
+
     // Running a Fetch
 
     /**
