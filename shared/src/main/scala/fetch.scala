@@ -255,7 +255,7 @@ object `package` {
             case FetchDone(a) =>
               Done(Some(a)).asInstanceOf[FetchResult[F, Option[A]]]
             case FetchMissing() =>
-              Done(None).asInstanceOf[FetchResult[F, Option[A]]]
+              Done(Option.empty[A])
           }
         ))
       )
