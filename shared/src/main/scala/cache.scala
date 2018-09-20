@@ -28,10 +28,10 @@ final class DataSourceResult(val result: Any) extends AnyVal
 /**
  * A `Cache` trait so the users of the library can provide their own cache.
  */
-trait DataSourceCache {
-  def lookup[F[_] : ConcurrentEffect, I, A](i: I, ds: DataSource[I, A]): F[Option[A]]
-  def insert[F[_] : ConcurrentEffect, I, A](i: I, v: A, ds: DataSource[I, A]): F[DataSourceCache]
-  def insertMany[F[_]: ConcurrentEffect, I, A](vs: Map[I, A], ds: DataSource[I, A]): F[DataSourceCache] =
+abstract class DataSourceCache[F[_] : ConcurrentEffect] {
+  def lookup[I, A](i: I, ds: DataSource[I, A]): F[Option[A]]
+  def insert[I, A](i: I, v: A, ds: DataSource[I, A]): F[DataSourceCache[F]]
+  def insertMany[I, A](vs: Map[I, A], ds: DataSource[I, A]): F[DataSourceCache[F]] =
     vs.toList.foldLeftM(this)({
       case (c, (i, v)) => c.insert(i, v, ds)
     })
@@ -40,30 +40,19 @@ trait DataSourceCache {
 /**
  * A cache that stores its elements in memory.
  */
-case class InMemoryCache(state: Map[(DataSourceName, DataSourceId), DataSourceResult]) extends DataSourceCache {
-  def lookup[F[_] : ConcurrentEffect, I, A](i: I, ds: DataSource[I, A]): F[Option[A]] =
+case class InMemoryCache[F[_] : ConcurrentEffect](state: Map[(DataSourceName, DataSourceId), DataSourceResult]) extends DataSourceCache[F] {
+  def lookup[I, A](i: I, ds: DataSource[I, A]): F[Option[A]] =
     Applicative[F].pure(state.get((new DataSourceName(ds.name), new DataSourceId(i))).map(_.result.asInstanceOf[A]))
 
-  def insert[F[_] : ConcurrentEffect, I, A](i: I, v: A, ds: DataSource[I, A]): F[DataSourceCache] =
+  def insert[I, A](i: I, v: A, ds: DataSource[I, A]): F[DataSourceCache[F]] =
     Applicative[F].pure(copy(state = state.updated((new DataSourceName(ds.name), new DataSourceId(i)), new DataSourceResult(v))))
 }
 
 object InMemoryCache {
-  def empty: InMemoryCache = InMemoryCache(Map.empty[(DataSourceName, DataSourceId), DataSourceResult])
+  def empty[F[_] : ConcurrentEffect]: InMemoryCache[F] = InMemoryCache[F](Map.empty[(DataSourceName, DataSourceId), DataSourceResult])
 
-  def from[I, A](results: ((String, I), A)*): InMemoryCache =
-    InMemoryCache(results.foldLeft(Map.empty[(DataSourceName, DataSourceId), DataSourceResult])({
+  def from[F[_]: ConcurrentEffect, I, A](results: ((String, I), A)*): InMemoryCache[F] =
+    InMemoryCache[F](results.foldLeft(Map.empty[(DataSourceName, DataSourceId), DataSourceResult])({
       case (acc, ((s, i), v)) => acc.updated((new DataSourceName(s), new DataSourceId(i)), new DataSourceResult(v))
     }))
-
-  implicit val inMemoryCacheMonoid: Monoid[InMemoryCache] = {
-    implicit val anySemigroup = new Semigroup[Any] {
-      def combine(a: Any, b: Any): Any = b
-    }
-    new Monoid[InMemoryCache] {
-      def empty: InMemoryCache = InMemoryCache.empty
-      def combine(c1: InMemoryCache, c2: InMemoryCache): InMemoryCache =
-        InMemoryCache(c1.state ++ c2.state)
-    }
-  }
 }
