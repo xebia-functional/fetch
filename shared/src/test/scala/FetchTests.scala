@@ -554,12 +554,16 @@ class FetchTests extends AsyncFreeSpec with Matchers {
     }).unsafeToFuture
   }
 
-  case class ForgetfulCache[F[_] : ConcurrentEffect : Par]() extends DataSourceCache[F] {
-    def insert[I, A](i: I, v: A, ds: DataSource[I, A]): F[DataSourceCache[F]] =
-      Applicative[F].pure(this)
+  case class ForgetfulCache[F[_]]() extends DataSourceCache[F] {
+    def insert[I, A](i: I, v: A, ds: DataSource[I, A])(
+      implicit C: ConcurrentEffect[F], P: Par[F]
+    ): F[DataSourceCache[F]] =
+      C.pure(this)
 
-    def lookup[I, A](i: I, ds: DataSource[I, A]): F[Option[A]] =
-      Applicative[F].pure(None)
+    def lookup[I, A](i: I, ds: DataSource[I, A])(
+      implicit C: ConcurrentEffect[F], P: Par[F]
+    ): F[Option[A]] =
+      C.pure(None)
   }
 
   def forgetfulCache[F[_] : ConcurrentEffect : Par] = ForgetfulCache[F]()

@@ -119,15 +119,15 @@ class FetchReportingTests extends AsyncFreeSpec with Matchers {
 
   "The product of concurrent fetches of the same type implies everything fetched in batches" in {
     def aFetch[F[_] : ConcurrentEffect : Par] = for {
-      a <- one(1)  // round 1
-      b <- one(2)  // round 2
-      c <- one(3)
+      a <- one(1)  // round 1 (batched)
+      b <- one(2)  // round 2 (cached)
+      c <- one(3)  // round 3 (deduplicated)
     } yield c
 
     def anotherFetch[F[_] : ConcurrentEffect : Par] = for {
-      a <- one(2)  // round 1
+      a <- one(2)  // round 1 (batched)
       m <- many(4) // round 2
-      c <- one(3)
+      c <- one(3)  // round 3 (deduplicated)
     } yield c
 
     def fetch[F[_] : ConcurrentEffect : Par] =
@@ -136,7 +136,10 @@ class FetchReportingTests extends AsyncFreeSpec with Matchers {
     val io = Fetch.runEnv[IO](fetch)
 
     io.map({
-      case (env, result) => env.rounds.size shouldEqual 2
+      case (env, result) =>
+        env.rounds.size shouldEqual 2
+        totalBatches(env.rounds) shouldEqual 1
+        totalFetched(env.rounds) shouldEqual 3 + 1
     }).unsafeToFuture
   }
 }

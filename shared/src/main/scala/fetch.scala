@@ -526,7 +526,7 @@ object `package` {
           endTime <- T.clock.monotonic(MILLISECONDS)
           resultMap = combineBatchResults(batchedRequest.results, cachedResults)
 
-          updatedCache <- c.insertMany(batchedRequest.results, request.ds)
+          updatedCache <- c.bulkInsert(batchedRequest.results.toList, request.ds)
           _ <- cache.set(updatedCache)
 
           result <- putResult(FetchDone[Map[Any, Any]](resultMap))

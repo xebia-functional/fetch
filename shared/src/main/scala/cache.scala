@@ -17,9 +17,11 @@
 package fetch
 
 import cats._
+import cats.effect._
+import cats.data.NonEmptyList
 import cats.instances.list._
 import cats.syntax.all._
-import cats.effect._
+import cats.temp.par._
 
 final class DataSourceName(val name: String) extends AnyVal
 final class DataSourceId(val id: Any) extends AnyVal
@@ -28,30 +30,48 @@ final class DataSourceResult(val result: Any) extends AnyVal
 /**
  * A `Cache` trait so the users of the library can provide their own cache.
  */
-abstract class DataSourceCache[F[_] : ConcurrentEffect] {
-  def lookup[I, A](i: I, ds: DataSource[I, A]): F[Option[A]]
-  def insert[I, A](i: I, v: A, ds: DataSource[I, A]): F[DataSourceCache[F]]
-  def insertMany[I, A](vs: Map[I, A], ds: DataSource[I, A]): F[DataSourceCache[F]] =
-    vs.toList.foldLeftM(this)({
-      case (c, (i, v)) => c.insert(i, v, ds)
-    })
+trait DataSourceCache[F[_]] {
+  def lookup[I, A](i: I, ds: DataSource[I, A])(
+    implicit C: ConcurrentEffect[F], P: Par[F]
+  ): F[Option[A]]
+
+  def insert[I, A](i: I, v: A, ds: DataSource[I, A])(
+    implicit C: ConcurrentEffect[F], P: Par[F]
+  ): F[DataSourceCache[F]]
+
+  // def delete[I, A](i: I, v: A, ds: DataSource[I, A])(
+  //   implicit C: ConcurrentEffect[F], P: Par[F]
+  // ): F[Unit]
+
+  def bulkInsert[I, A](vs: List[(I, A)], ds: DataSource[I, A])(
+    implicit C: ConcurrentEffect[F], P: Par[F]
+  ): F[DataSourceCache[F]] = {
+    vs.foldLeftM(this){
+      case (acc, (i, v)) =>
+        acc.insert(i, v, ds)
+    }
+  }
 }
 
 /**
  * A cache that stores its elements in memory.
  */
-case class InMemoryCache[F[_] : ConcurrentEffect](state: Map[(DataSourceName, DataSourceId), DataSourceResult]) extends DataSourceCache[F] {
-  def lookup[I, A](i: I, ds: DataSource[I, A]): F[Option[A]] =
-    Applicative[F].pure(state.get((new DataSourceName(ds.name), new DataSourceId(i))).map(_.result.asInstanceOf[A]))
+case class InMemoryCache[F[_]](state: Map[(DataSourceName, DataSourceId), DataSourceResult]) extends DataSourceCache[F] {
+  def lookup[I, A](i: I, ds: DataSource[I, A])(
+    implicit C: ConcurrentEffect[F], P: Par[F]
+  ): F[Option[A]] =
+    C.pure(state.get((new DataSourceName(ds.name), new DataSourceId(i))).map(_.result.asInstanceOf[A]))
 
-  def insert[I, A](i: I, v: A, ds: DataSource[I, A]): F[DataSourceCache[F]] =
-    Applicative[F].pure(copy(state = state.updated((new DataSourceName(ds.name), new DataSourceId(i)), new DataSourceResult(v))))
+  def insert[I, A](i: I, v: A, ds: DataSource[I, A])(
+    implicit C: ConcurrentEffect[F], P: Par[F]
+  ): F[DataSourceCache[F]] =
+    C.pure(copy(state = state.updated((new DataSourceName(ds.name), new DataSourceId(i)), new DataSourceResult(v))))
 }
 
 object InMemoryCache {
-  def empty[F[_] : ConcurrentEffect]: InMemoryCache[F] = InMemoryCache[F](Map.empty[(DataSourceName, DataSourceId), DataSourceResult])
+  def empty[F[_] : ConcurrentEffect : Par]: InMemoryCache[F] = InMemoryCache[F](Map.empty[(DataSourceName, DataSourceId), DataSourceResult])
 
-  def from[F[_]: ConcurrentEffect, I, A](results: ((String, I), A)*): InMemoryCache[F] =
+  def from[F[_]: ConcurrentEffect : Par, I, A](results: ((String, I), A)*): InMemoryCache[F] =
     InMemoryCache[F](results.foldLeft(Map.empty[(DataSourceName, DataSourceId), DataSourceResult])({
       case (acc, ((s, i), v)) => acc.updated((new DataSourceName(s), new DataSourceId(i)), new DataSourceResult(v))
     }))
