@@ -269,16 +269,27 @@ object `package` {
 
     private[fetch] class FetchRunner[F[_]](private val dummy: Boolean = true) extends AnyVal {
       def apply[A](
-        fa: Fetch[F, A],
-        cache: DataSourceCache = InMemoryCache.empty
+        fa: Fetch[F, A]
       )(
         implicit
           P: Par[F],
           C: ConcurrentEffect[F],
           CS: ContextShift[F],
           T: Timer[F]
+      ): F[A] =
+        apply(fa, InMemoryCache.empty[F])
+
+      def apply[A](
+        fa: Fetch[F, A],
+        cache: DataSourceCache[F]
+      )(
+        implicit
+          P: Par[F],
+        C: ConcurrentEffect[F],
+          CS: ContextShift[F],
+          T: Timer[F]
       ): F[A] = for {
-        cache <- Ref.of[F, DataSourceCache](cache)
+        cache <- Ref.of[F, DataSourceCache[F]](cache)
         result <- performRun(fa, cache, None)
       } yield result
     }
@@ -290,17 +301,28 @@ object `package` {
 
     private[fetch] class FetchRunnerEnv[F[_]](private val dummy: Boolean = true) extends AnyVal {
       def apply[A](
-        fa: Fetch[F, A],
-        cache: DataSourceCache = InMemoryCache.empty
+        fa: Fetch[F, A]
       )(
         implicit
           P: Par[F],
-          C: ConcurrentEffect[F],
+        C: ConcurrentEffect[F],
+        CS: ContextShift[F],
+        T: Timer[F]
+      ): F[(Env, A)] =
+        apply(fa, InMemoryCache.empty[F])
+
+      def apply[A](
+        fa: Fetch[F, A],
+        cache: DataSourceCache[F]
+      )(
+        implicit
+          P: Par[F],
+        C: ConcurrentEffect[F],
           CS: ContextShift[F],
           T: Timer[F]
       ): F[(Env, A)] = for {
         env <- Ref.of[F, Env](FetchEnv())
-        cache <- Ref.of[F, DataSourceCache](cache)
+        cache <- Ref.of[F, DataSourceCache[F]](cache)
         result <- performRun(fa, cache, Some(env))
         e <- env.get
       } yield (e, result)
@@ -313,16 +335,27 @@ object `package` {
 
     private[fetch] class FetchRunnerCache[F[_]](private val dummy: Boolean = true) extends AnyVal {
       def apply[A](
-        fa: Fetch[F, A],
-        cache: DataSourceCache = InMemoryCache.empty
+        fa: Fetch[F, A]
       )(
         implicit
           P: Par[F],
-          C: ConcurrentEffect[F],
+        C: ConcurrentEffect[F],
+        CS: ContextShift[F],
+        T: Timer[F]
+      ): F[(DataSourceCache[F], A)] =
+        apply(fa, InMemoryCache.empty[F])
+      
+      def apply[A](
+        fa: Fetch[F, A],
+        cache: DataSourceCache[F]
+      )(
+        implicit
+          P: Par[F],
+        C: ConcurrentEffect[F],
           CS: ContextShift[F],
           T: Timer[F]
-      ): F[(DataSourceCache, A)] = for {
-        cache <- Ref.of[F, DataSourceCache](cache)
+      ): F[(DataSourceCache[F], A)] = for {
+        cache <- Ref.of[F, DataSourceCache[F]](cache)
         result <- performRun(fa, cache, None)
         c <- cache.get
       } yield (c, result)
@@ -332,7 +365,7 @@ object `package` {
 
     private def performRun[F[_], A](
       fa: Fetch[F, A],
-      cache: Ref[F, DataSourceCache],
+      cache: Ref[F, DataSourceCache[F]],
       env: Option[Ref[F, Env]]
     )(
       implicit
@@ -360,7 +393,7 @@ object `package` {
 
     private def fetchRound[F[_], A](
       rs: RequestMap[F],
-      cache: Ref[F, DataSourceCache],
+      cache: Ref[F, DataSourceCache[F]],
       env: Option[Ref[F, Env]]
     )(
       implicit
@@ -387,7 +420,7 @@ object `package` {
 
     private def runBlockedRequest[F[_], A](
       blocked: BlockedRequest[F],
-      cache: Ref[F, DataSourceCache],
+      cache: Ref[F, DataSourceCache[F]],
       env: Option[Ref[F, Env]]
     )(
       implicit
@@ -405,7 +438,7 @@ object `package` {
   private def runFetchOne[F[_]](
     q: FetchOne[Any, Any],
     putResult: FetchStatus => F[Unit],
-    cache: Ref[F, DataSourceCache],
+    cache: Ref[F, DataSourceCache[F]],
     env: Option[Ref[F, Env]]
   )(
     implicit
@@ -450,7 +483,7 @@ object `package` {
   private def runBatch[F[_]](
     q: Batch[Any, Any],
     putResult: FetchStatus => F[Unit],
-    cache: Ref[F, DataSourceCache],
+    cache: Ref[F, DataSourceCache[F]],
     env: Option[Ref[F, Env]]
   )(
     implicit
