@@ -759,4 +759,22 @@ class FetchTests extends AsyncFreeSpec with Matchers {
 
     Fetch.run[IO](fetch).map(_ shouldEqual List(1, 2, 3, 1, 3)).unsafeToFuture
   }
+
+  "We can make fetches that depend on optional fetch results when they aren't defined" in {
+    def fetch[F[_] : ConcurrentEffect]: Fetch[F, Int] = for {
+      maybe <- maybeOpt(2)
+      result <- maybe.fold(Fetch.pure(42))(i => one(i))
+    } yield result
+
+    Fetch.run[IO](fetch).map(_ shouldEqual 42).unsafeToFuture
+  }
+
+  "We can make fetches that depend on optional fetch results when they are defined" in {
+    def fetch[F[_] : ConcurrentEffect]: Fetch[F, Int] = for {
+      maybe <- maybeOpt(1)
+      result <- maybe.fold(Fetch.pure(42))(i => one(i))
+    } yield result
+
+    Fetch.run[IO](fetch).map(_ shouldEqual 1).unsafeToFuture
+  }
 }
