@@ -535,6 +535,8 @@ trait DataSourceCache[F[_]] {
 Let's implement a cache that forgets everything we store in it.
 
 ```tut:silent
+import cats.{Applicative, Monad}
+
 case class ForgetfulCache[F[_] : Monad]() extends DataSourceCache[F] {
   def insert[I, A](i: I, v: A, ds: DataSource[I, A]): F[DataSourceCache[F]] =
     Applicative[F].pure(this)
