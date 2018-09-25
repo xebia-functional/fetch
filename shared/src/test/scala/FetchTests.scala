@@ -554,16 +554,87 @@ class FetchTests extends AsyncFreeSpec with Matchers {
     }).unsafeToFuture
   }
 
+  "Fetch#run accepts a cache as the second (optional) parameter" in {
+    def fetch[F[_] : ConcurrentEffect : Par] = for {
+      aOne       <- one(1)
+      anotherOne <- one(1)
+      _          <- one(1)
+      _          <- one(2)
+      _          <- one(3)
+      _          <- one(1)
+      _          <- List(1, 2, 3).traverse(one[F])
+      _          <- one(1)
+    } yield aOne + anotherOne
+
+    def cache[F[_] : ConcurrentEffect : Par] = InMemoryCache.from[F, One, Int](
+      (OneSource.name, One(1)) -> 1,
+      (OneSource.name, One(2)) -> 2,
+      (OneSource.name, One(3)) -> 3
+    )
+
+    val io = Fetch.run[IO](fetch, cache)
+
+    io.map(_ shouldEqual 2).unsafeToFuture
+  }
+
+  "Fetch#runCache accepts a cache as the second (optional) parameter" in {
+    def fetch[F[_] : ConcurrentEffect : Par] = for {
+      aOne       <- one(1)
+      anotherOne <- one(1)
+      _          <- one(1)
+      _          <- one(2)
+      _          <- one(3)
+      _          <- one(1)
+      _          <- List(1, 2, 3).traverse(one[F])
+      _          <- one(1)
+    } yield aOne + anotherOne
+
+    def cache[F[_] : ConcurrentEffect : Par] = InMemoryCache.from[F, One, Int](
+      (OneSource.name, One(1)) -> 1,
+      (OneSource.name, One(2)) -> 2,
+      (OneSource.name, One(3)) -> 3
+    )
+
+    val io = Fetch.runCache[IO](fetch, cache)
+
+    io.map({
+      case (c, result) => {
+        result shouldEqual 2
+      }
+    }).unsafeToFuture
+  }
+
+  "Fetch#runCache works without the optional cache parameter" in {
+    def fetch[F[_] : ConcurrentEffect : Par] = for {
+      aOne       <- one(1)
+      anotherOne <- one(1)
+      _          <- one(1)
+      _          <- one(2)
+      _          <- one(3)
+      _          <- one(1)
+      _          <- List(1, 2, 3).traverse(one[F])
+      _          <- one(1)
+    } yield aOne + anotherOne
+
+    val io = Fetch.runCache[IO](fetch)
+
+    io.map({
+      case (c, result) => {
+        result shouldEqual 2
+      }
+    }).unsafeToFuture
+  }
+
   case class ForgetfulCache[F[_]]() extends DataSourceCache[F] {
     def insert[I, A](i: I, v: A, ds: DataSource[I, A])(
       implicit C: ConcurrentEffect[F], P: Par[F]
     ): F[DataSourceCache[F]] =
-      C.pure(this)
+      Applicative[F].pure(this)
 
     def lookup[I, A](i: I, ds: DataSource[I, A])(
       implicit C: ConcurrentEffect[F], P: Par[F]
     ): F[Option[A]] =
-      C.pure(None)
+      Applicative[F].pure(None)
   }
 
   def forgetfulCache[F[_] : ConcurrentEffect : Par] = ForgetfulCache[F]()
