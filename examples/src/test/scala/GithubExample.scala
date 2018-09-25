@@ -55,19 +55,31 @@ class GithubExample extends WordSpec with Matchers {
 
   val GITHUB: Uri = Uri.unsafeFromString("https://api.github.com")
 
-  val REL_NEXT = """ rel="next" """".trim
+  val REL_NEXT = "rel=\"next\"".r
 
   def hasNext[F[_]: ConcurrentEffect](res: Response[F]): Boolean =
-    res.headers.get(CaseInsensitiveString("link")).fold(false)(_.value.contains(REL_NEXT))
+    res.headers
+      .get(CaseInsensitiveString("Link"))
+      .fold(false)({ h =>
+        REL_NEXT.findFirstIn(h.value).isDefined
+      })
 
-  def getNextLink(raw: String): String =
-    raw.value.takeWhile(_ != ';').dropWhile(_ == '<').takeWhile(_ != '>').trim
+  def getNextLink[F[_]: ConcurrentEffect](raw: String): F[String] = {
+    REL_NEXT
+      .findFirstMatchIn(raw)
+      .fold(
+        Sync[F].raiseError[String](new Exception("Couldn't find next link"))
+      )(m => {
+        Sync[F].pure(m.before.toString.split(",").last.trim.dropWhile(_ == '<').takeWhile(_ != '>'))
+      })
+  }
 
   def getNext[F[_]: ConcurrentEffect](res: Response[F]): F[Uri] =
     res.headers
-      .get(CaseInsensitiveString("link"))
-      .fold(Sync[F].raiseError[Uri](new Exception("next not found")))(raw =>
-        Applicative[F].pure(Uri.unsafeFromString(getNextLink(raw.value))))
+      .get(CaseInsensitiveString("Link"))
+      .fold(Sync[F].raiseError[Uri](new Exception("next not found")))(
+        raw => getNextLink(raw.value).map(Uri.unsafeFromString(_))
+      )
 
   // -- repos
 
@@ -84,7 +96,6 @@ class GithubExample extends WordSpec with Matchers {
 
   implicit val repoD: Decoder[Repo] = deriveDecoder
 
-  // todo: correctly parse NEXT links
   private def fetchOrgRepos[F[_]](c: Client[F], req: Request[F])(
       implicit C: ConcurrentEffect[F]
   ): F[List[Repo]] = {
@@ -92,7 +103,7 @@ class GithubExample extends WordSpec with Matchers {
 
     for {
       result <- c.fetch[List[Repo]](req) {
-        case Status.Ok(res) =>
+        case Status.Ok(res) => {
           if (hasNext(res)) {
             for {
               repos <- res.as[List[Repo]]
@@ -102,6 +113,7 @@ class GithubExample extends WordSpec with Matchers {
             } yield repos ++ moreRepos
           } else
             res.as[List[Repo]]
+        }
         case res => {
           C.raiseError(new Exception(res.body.toString))
         }
@@ -166,8 +178,17 @@ class GithubExample extends WordSpec with Matchers {
 
     for {
       result <- c.fetch[List[Language]](req) {
-        case Status.Ok(res) =>
-          res.as[JsonObject].map(j => j.toList.map(_._1))
+        case Status.Ok(res) => {
+          if (hasNext(res)) {
+            for {
+              langs <- res.as[JsonObject].map(j => j.toList.map(_._1))
+              nxt   <- getNext(res)
+              newReq = req.withUri(nxt)
+              moreLangs <- fetchLanguages(c, newReq)
+            } yield langs ++ moreLangs
+          } else
+            res.as[JsonObject].map(j => j.toList.map(_._1))
+        }
         case res => {
           C.raiseError(new Exception(res.body.toString))
         }
@@ -199,7 +220,6 @@ class GithubExample extends WordSpec with Matchers {
 
   implicit val contribD: Decoder[Contributor] = deriveDecoder
 
-  // todo: correctly parse NEXT links
   private def fetchContributors[F[_]](c: Client[F], req: Request[F])(
       implicit C: ConcurrentEffect[F]
   ): F[List[Contributor]] = {
@@ -207,8 +227,17 @@ class GithubExample extends WordSpec with Matchers {
 
     for {
       result <- c.fetch[List[Contributor]](req) {
-        case Status.Ok(res) =>
-          res.as[List[Contributor]]
+        case Status.Ok(res) => {
+          if (hasNext(res)) {
+            for {
+              contribs <- res.as[List[Contributor]]
+              nxt      <- getNext(res)
+              newReq = req.withUri(nxt)
+              moreContribs <- fetchContributors(c, newReq)
+            } yield contribs ++ moreContribs
+          } else
+            res.as[List[Contributor]]
+        }
         case res => {
           C.raiseError(new Exception(res.body.toString))
         }
