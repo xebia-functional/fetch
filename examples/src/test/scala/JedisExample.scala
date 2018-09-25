@@ -114,7 +114,7 @@ object Binary {
     val baos = new ByteArrayOutputStream()
     val oos  = new ObjectOutputStream(baos)
     Sync[F].bracket(Sync[F].pure(oos))({ in =>
-      Sync[F].delay({
+      Sync[F].pure({
         in.writeObject(v)
         in.flush()
         baos.toByteArray
@@ -134,7 +134,7 @@ object Binary {
           Sync[F].pure((bais, oos))
         )({
           case (b, o) =>
-            Sync[F].delay({
+            Sync[F].pure({
               val res = o.readObject()
               Option(res.asInstanceOf[A])
             })
@@ -153,45 +153,33 @@ object Binary {
 class JedisExample extends WordSpec with Matchers {
   import DataSources._
 
-  case class RedisCache[F[_]](host: String) extends DataSourceCache[F] {
+  case class RedisCache[F[_]: Sync](host: String) extends DataSourceCache[F] {
     private val binaryClient = new BinaryJedis(host)
 
-    def client[F[_]: Sync]: F[BinaryJedis] =
+    def client: F[BinaryJedis] =
       Sync[F].pure(binaryClient)
 
-    private def get(i: Array[Byte])(
-        implicit C: ConcurrentEffect[F],
-        P: Par[F]
-    ): F[Option[Array[Byte]]] =
-      C.bracket(client)({ c =>
-        C.pure(Option(c.get(i)))
+    private def get(i: Array[Byte]): F[Option[Array[Byte]]] =
+      Sync[F].bracket(client)({ c =>
+        Sync[F].pure(Option(c.get(i)))
       })({ in =>
-        C.pure(in.close())
+        Sync[F].pure(in.close())
       })
 
-    private def set(i: Array[Byte], v: Array[Byte])(
-        implicit C: ConcurrentEffect[F],
-        P: Par[F]
-    ): F[Unit] =
-      C.bracket(client)({ c =>
-        C.pure(c.set(i, v)).void
+    private def set(i: Array[Byte], v: Array[Byte]): F[Unit] =
+      Sync[F].bracket(client)({ c =>
+        Sync[F].pure(c.set(i, v)).void
       })({ in =>
-        C.pure(in.close())
+        Sync[F].pure(in.close())
       })
 
     private def identity[I, A](i: I, ds: DataSource[I, A]): Array[Byte] =
       Binary.fromString(s"${ds.name} ${i}")
 
-    def lookup[I, A](i: I, ds: DataSource[I, A])(
-        implicit C: ConcurrentEffect[F],
-        P: Par[F]
-    ): F[Option[A]] =
+    def lookup[I, A](i: I, ds: DataSource[I, A]): F[Option[A]] =
       get(identity(i, ds)) >>= { case (raw) => Binary.deserialize(raw) }
 
-    def insert[I, A](i: I, v: A, ds: DataSource[I, A])(
-        implicit C: ConcurrentEffect[F],
-        P: Par[F]
-    ): F[DataSourceCache[F]] =
+    def insert[I, A](i: I, v: A, ds: DataSource[I, A]): F[DataSourceCache[F]] =
       for {
         s <- Binary.serialize(v)
         _ <- set(identity(i, ds), s)
