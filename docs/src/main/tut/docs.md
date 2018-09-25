@@ -481,7 +481,7 @@ We'll be using the default in-memory cache, prepopulated with some data. The cac
 is calculated with the `DataSource`'s `name` method and the request identity.
 
 ```tut:silent
-val cache = InMemoryCache.from(
+def cache[F[_] : ConcurrentEffect : Par] = InMemoryCache.from[F, Int, User](
  (UserSource.name, 1) -> User(1, "@dialelo")
 )
 ```
@@ -526,32 +526,37 @@ The default cache is implemented as an immutable in-memory map, but users are fr
 There is no need for the cache to be mutable since fetch executions run in an interpreter that uses the state monad. Note that the `update` method in the `DataSourceCache` trait yields a new, updated cache.
 
 ```scala
-trait DataSourceCache {
-  def insert[F[_] : ConcurrentEffect, I, A](i: I, ds: DataSource[I, A], v: A): DataSourceIdentity, v: A): F[DataSourceCache]
-  def lookup[F[_] : ConcurrentEffect, I, A](i: I, ds: DataSource[I, A]): F[Option[A]]
+trait DataSourceCache[F[_]] {
+  def insert[I, A](i: I, ds: DataSource[I, A], v: A): DataSourceIdentity, v: A): F[DataSourceCache[F]]
+  def lookup[I, A](i: I, ds: DataSource[I, A]): F[Option[A]]
 }
 ```
 
 Let's implement a cache that forgets everything we store in it.
 
 ```tut:silent
-import cats.Applicative
+import cats.{Applicative, Monad}
 
-final case class ForgetfulCache() extends DataSourceCache {
-  def insert[F[_] : ConcurrentEffect, I, A](i: I, v: A, ds: DataSource[I, A]): F[DataSourceCache] = Applicative[F].pure(this)
-  def lookup[F[_] : ConcurrentEffect, I, A](i: I, ds: DataSource[I, A]): F[Option[A]] = Applicative[F].pure(None)
+case class ForgetfulCache[F[_] : Monad]() extends DataSourceCache[F] {
+  def insert[I, A](i: I, v: A, ds: DataSource[I, A]): F[DataSourceCache[F]] =
+    Applicative[F].pure(this)
+
+  def lookup[I, A](i: I, ds: DataSource[I, A]): F[Option[A]] =
+    Applicative[F].pure(None)
 }
+
+def forgetfulCache[F[_] : ConcurrentEffect : Par] = ForgetfulCache[F]()
 ```
 
 We can now use our implementation of the cache when running a fetch.
 
 ```tut:book
-def fetchSameTwice[F[_] : ConcurrentEffect]: Fetch[F, (User, User)] = for {
+def fetchSameTwice[F[_] : ConcurrentEffect : Par]: Fetch[F, (User, User)] = for {
   one <- getUser(1)
   another <- getUser(1)
 } yield (one, another)
 
-Fetch.run[IO](fetchSameTwice, ForgetfulCache()).unsafeRunTimed(5.seconds)
+Fetch.run[IO](fetchSameTwice, forgetfulCache).unsafeRunTimed(5.seconds)
 ```
 
 # Batching
