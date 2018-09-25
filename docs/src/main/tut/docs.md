@@ -535,16 +535,12 @@ trait DataSourceCache[F[_]] {
 Let's implement a cache that forgets everything we store in it.
 
 ```tut:silent
-case class ForgetfulCache[F[_]]() extends DataSourceCache[F] {
-  def insert[I, A](i: I, v: A, ds: DataSource[I, A])(
-    implicit C: ConcurrentEffect[F], P: Par[F]
-  ): F[DataSourceCache[F]] =
-    C.pure(this)
+case class ForgetfulCache[F[_] : Monad]() extends DataSourceCache[F] {
+  def insert[I, A](i: I, v: A, ds: DataSource[I, A]): F[DataSourceCache[F]] =
+    Applicative[F].pure(this)
 
-  def lookup[I, A](i: I, ds: DataSource[I, A])(
-    implicit C: ConcurrentEffect[F], P: Par[F]
-  ): F[Option[A]] =
-    C.pure(None)
+  def lookup[I, A](i: I, ds: DataSource[I, A]): F[Option[A]] =
+    Applicative[F].pure(None)
 }
 
 def forgetfulCache[F[_] : ConcurrentEffect : Par] = ForgetfulCache[F]()
@@ -553,7 +549,7 @@ def forgetfulCache[F[_] : ConcurrentEffect : Par] = ForgetfulCache[F]()
 We can now use our implementation of the cache when running a fetch.
 
 ```tut:book
-def fetchSameTwice[F[_] : ConcurrentEffect]: Fetch[F, (User, User)] = for {
+def fetchSameTwice[F[_] : ConcurrentEffect : Par]: Fetch[F, (User, User)] = for {
   one <- getUser(1)
   another <- getUser(1)
 } yield (one, another)
