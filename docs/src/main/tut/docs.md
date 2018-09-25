@@ -527,8 +527,8 @@ There is no need for the cache to be mutable since fetch executions run in an in
 
 ```scala
 trait DataSourceCache[F[_]] {
-  def insert[F[_] : ConcurrentEffect, I, A](i: I, ds: DataSource[I, A], v: A): DataSourceIdentity, v: A): F[DataSourceCache]
-  def lookup[F[_] : ConcurrentEffect, I, A](i: I, ds: DataSource[I, A]): F[Option[A]]
+  def insert[I, A](i: I, ds: DataSource[I, A], v: A): DataSourceIdentity, v: A): F[DataSourceCache[F]]
+  def lookup[I, A](i: I, ds: DataSource[I, A]): F[Option[A]]
 }
 ```
 
