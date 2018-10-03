@@ -720,6 +720,18 @@ class FetchTests extends AsyncFreeSpec with Matchers {
       }).unsafeToFuture
   }
 
+  "We can catch errors in Fetch" in {
+    def safeFetch[F[_] : ConcurrentEffect : Par] = Fetch.recover(fetchError)({
+      case AnException() => Fetch.pure(42)
+    })
+    val io = Fetch.run[IO](safeFetch)
+
+    io.attempt
+      .map(_ should matchPattern {
+        case Right(42) =>
+      }).unsafeToFuture
+  }
+
   "We can lift handle and recover from errors in Fetch" in {
     val io = Fetch.run[IO](fetchError)
 

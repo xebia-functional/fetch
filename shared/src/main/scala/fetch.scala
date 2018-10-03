@@ -192,6 +192,10 @@ object `package` {
             Blocked[F, (A, B)](br, product(c, fb))
           case (Blocked(br, c), Blocked(br2, c2)) =>
             Blocked[F, (A, B)](combineRequestMaps(br, br2), product(c, c2))
+          case (Blocked(br, c), Throw(e)) =>
+            Blocked[F, (A, B)](br, product(c,
+              Unfetch(Applicative[F].pure(Throw(e)))
+            ))
           case (_, Throw(e)) =>
             Throw[F, (A, B)](e)
         }
@@ -216,8 +220,38 @@ object `package` {
     def pure[F[_]: ConcurrentEffect, A](a: A): Fetch[F, A] =
       Unfetch(Applicative[F].pure(Done(a)))
 
+    private def blocked[F[_] : ConcurrentEffect, A](br: RequestMap[F], cont: Fetch[F, A]): Fetch[F, A] =
+      Unfetch(Applicative[F].pure(Blocked(br, cont)))
+
     def exception[F[_]: ConcurrentEffect, A](e: Env => FetchException): Fetch[F, A] =
       Unfetch(Applicative[F].pure(Throw[F, A](e)))
+
+    def recover[F[_] : ConcurrentEffect, A](f: Fetch[F, A])(r: PartialFunction[Throwable, Fetch[F, A]]): Fetch[F, A] =
+      Unfetch(
+        for {
+          l <- f.run
+          result <- l match {
+            case Done(x) =>
+              Applicative[F].pure(Done[F, A](x))
+
+            case Blocked(br, cont) =>
+              Applicative[F].pure(Blocked[F, A](br, recover(cont)(r)))
+
+            case Throw(ex) => {
+              val env = FetchEnv() // todo
+              val err = ex(env)
+
+              ex(env) match {
+                case UnhandledException(e, _) if r.isDefinedAt(e) =>
+                  r(e).run
+
+                case _ =>
+                  Applicative[F].pure(Throw[F, A](ex))
+              }
+            }
+          }
+        } yield result
+      )
 
     def error[F[_]: ConcurrentEffect, A](e: Throwable): Fetch[F, A] =
       exception((env) => UnhandledException(e, env))
