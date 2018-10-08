@@ -26,3 +26,6 @@ script:
 after_success:
 - bash <(curl -s https://codecov.io/bash)
 - sbt ++$TRAVIS_SCALA_VERSION orgAfterCISuccess
+
+services:
+- redis-server
