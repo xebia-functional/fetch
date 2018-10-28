@@ -21,7 +21,6 @@ import org.scalatest.{AsyncFreeSpec, Matchers}
 import cats.instances.list._
 import cats.effect._
 import cats.syntax.all._
-import cats.temp.par._
 
 import fetch._
 
@@ -33,7 +32,7 @@ class FetchAsyncQueryTests extends AsyncFreeSpec with Matchers {
   implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
 
   "We can interpret an async fetch into an IO" in {
-    def fetch[F[_] : ConcurrentEffect : Par]: Fetch[F, Article] =
+    def fetch[F[_] : ConcurrentEffect]: Fetch[F, Article] =
       article(1)
 
     val io = Fetch.run[IO](fetch)
@@ -42,7 +41,7 @@ class FetchAsyncQueryTests extends AsyncFreeSpec with Matchers {
   }
 
   "We can combine several async data sources and interpret a fetch into an IO" in {
-    def fetch[F[_] : ConcurrentEffect : Par]: Fetch[F, (Article, Author)] = for {
+    def fetch[F[_] : ConcurrentEffect]: Fetch[F, (Article, Author)] = for {
       art    <- article(1)
       author <- author(art)
     } yield (art, author)
@@ -53,7 +52,7 @@ class FetchAsyncQueryTests extends AsyncFreeSpec with Matchers {
   }
 
   "We can use combinators in a for comprehension and interpret a fetch from async sources into an IO" in {
-    def fetch[F[_] : ConcurrentEffect : Par]: Fetch[F, List[Article]] = for {
+    def fetch[F[_] : ConcurrentEffect]: Fetch[F, List[Article]] = for {
       articles <- List(1, 1, 2).traverse(article[F])
     } yield articles
 
@@ -67,7 +66,7 @@ class FetchAsyncQueryTests extends AsyncFreeSpec with Matchers {
   }
 
   "We can use combinators and multiple sources in a for comprehension and interpret a fetch from async sources into an IO" in {
-    def fetch[F[_] : ConcurrentEffect : Par] = for {
+    def fetch[F[_] : ConcurrentEffect] = for {
       articles <- List(1, 1, 2).traverse(article[F])
       authors  <- articles.traverse(author[F])
     } yield (articles, authors)
@@ -98,7 +97,7 @@ object DataSources {
   object ArticleAsync extends DataSource[ArticleId, Article] {
     override def name = "ArticleAsync"
 
-    override def fetch[F[_] : ConcurrentEffect : Par](id: ArticleId): F[Option[Article]] =
+    override def fetch[F[_] : ConcurrentEffect](id: ArticleId): F[Option[Article]] =
       Async[F].async[Option[Article]]((cb) => {
         cb(
           Right(
@@ -108,7 +107,7 @@ object DataSources {
       })
   }
 
-  def article[F[_] : ConcurrentEffect : Par](id: Int): Fetch[F, Article] =
+  def article[F[_] : ConcurrentEffect](id: Int): Fetch[F, Article] =
     Fetch(ArticleId(id), ArticleAsync)
 
   case class AuthorId(id: Int)
@@ -117,7 +116,7 @@ object DataSources {
   object AuthorAsync extends DataSource[AuthorId, Author] {
     override def name = "AuthorAsync"
 
-    override def fetch[F[_] : ConcurrentEffect : Par](id: AuthorId): F[Option[Author]] =
+    override def fetch[F[_] : ConcurrentEffect](id: AuthorId): F[Option[Author]] =
       Async[F].async((cb => {
         cb(
           Right(
@@ -127,6 +126,6 @@ object DataSources {
       }))
   }
 
-  def author[F[_] : ConcurrentEffect : Par](a: Article): Fetch[F, Author] =
+  def author[F[_] : ConcurrentEffect](a: Article): Fetch[F, Author] =
     Fetch(AuthorId(a.author), AuthorAsync)
 }

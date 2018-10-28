@@ -17,7 +17,6 @@
 package fetch
 
 import cats._
-import cats.temp.par._
 import cats.effect._
 
 object syntax {
