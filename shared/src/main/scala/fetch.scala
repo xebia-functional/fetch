@@ -28,8 +28,6 @@ import cats.implicits._
 import cats.effect._
 import cats.effect.concurrent.{ Ref, Deferred }
 
-import cats.temp.par._
-
 
 object `package` {
   // Fetch queries
@@ -272,7 +270,6 @@ object `package` {
         fa: Fetch[F, A]
       )(
         implicit
-          P: Par[F],
           C: ConcurrentEffect[F],
           CS: ContextShift[F],
           T: Timer[F]
@@ -284,7 +281,6 @@ object `package` {
         cache: DataSourceCache[F]
       )(
         implicit
-          P: Par[F],
           C: ConcurrentEffect[F],
           CS: ContextShift[F],
           T: Timer[F]
@@ -304,7 +300,6 @@ object `package` {
         fa: Fetch[F, A]
       )(
         implicit
-          P: Par[F],
           C: ConcurrentEffect[F],
           CS: ContextShift[F],
           T: Timer[F]
@@ -316,7 +311,6 @@ object `package` {
         cache: DataSourceCache[F]
       )(
         implicit
-          P: Par[F],
           C: ConcurrentEffect[F],
           CS: ContextShift[F],
           T: Timer[F]
@@ -338,7 +332,6 @@ object `package` {
         fa: Fetch[F, A]
       )(
         implicit
-          P: Par[F],
           C: ConcurrentEffect[F],
           CS: ContextShift[F],
           T: Timer[F]
@@ -350,7 +343,6 @@ object `package` {
         cache: DataSourceCache[F]
       )(
         implicit
-          P: Par[F],
           C: ConcurrentEffect[F],
           CS: ContextShift[F],
           T: Timer[F]
@@ -369,7 +361,6 @@ object `package` {
       env: Option[Ref[F, Env]]
     )(
       implicit
-        P: Par[F],
         C: ConcurrentEffect[F],
         CS: ContextShift[F],
         T: Timer[F]
@@ -397,7 +388,6 @@ object `package` {
       env: Option[Ref[F, Env]]
     )(
       implicit
-        P: Par[F],
         C: ConcurrentEffect[F],
         CS: ContextShift[F],
         T: Timer[F]
@@ -406,9 +396,9 @@ object `package` {
       if (blocked.isEmpty) Applicative[F].unit
       else
         for {
-          requests <- NonEmptyList.fromListUnsafe(blocked).parTraverse(
+          requests <- NonEmptyList.fromListUnsafe(blocked).traverse(
             runBlockedRequest(_, cache, env)
-          )
+          ) // todo: parallel
           performedRequests = requests.foldLeft(List.empty[Request])(_ ++ _)
           _ <- if (performedRequests.isEmpty) Applicative[F].unit
           else env match {
@@ -424,7 +414,6 @@ object `package` {
       env: Option[Ref[F, Env]]
     )(
       implicit
-        P: Par[F],
         C: ConcurrentEffect[F],
         CS: ContextShift[F],
         T: Timer[F]
@@ -442,7 +431,6 @@ object `package` {
     env: Option[Ref[F, Env]]
   )(
     implicit
-      P: Par[F],
       C: ConcurrentEffect[F],
       CS: ContextShift[F],
       T: Timer[F]
@@ -487,7 +475,6 @@ object `package` {
     env: Option[Ref[F, Env]]
   )(
     implicit
-      P: Par[F],
       C: ConcurrentEffect[F],
       CS: ContextShift[F],
       T: Timer[F]
@@ -541,7 +528,6 @@ object `package` {
     e: BatchExecution
   )(
     implicit
-      P: Par[F],
       C: ConcurrentEffect[F],
       CS: ContextShift[F],
       T: Timer[F]
@@ -557,7 +543,7 @@ object `package` {
       case Sequentially =>
         batches.traverse(q.ds.batch[F])
       case InParallel =>
-        batches.parTraverse(q.ds.batch[F])
+        batches.traverse(q.ds.batch[F]) // todo: parallel
     }
 
     results.map(_.toList.reduce(combineBatchResults)).map(BatchedRequest(reqs, _))

@@ -19,7 +19,6 @@ object ProjectPlugin extends AutoPlugin {
 
     lazy val commonCrossDependencies: Seq[ModuleID] =
       Seq(
-        "io.chrisdavenport" %% "cats-par" % "0.2.0",
         "org.typelevel" %% "cats-effect" % "1.0.0",
           %%("scalatest") % "test")
 
