@@ -17,12 +17,10 @@
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
-import cats.Parallel
 import cats.data.NonEmptyList
 import cats.effect._
 import cats.instances.list._
 import cats.syntax.all._
-import cats.temp.par._
 
 import io.circe._
 import io.circe.generic.semiauto._
@@ -66,12 +64,12 @@ object DataSources {
   object Users extends DataSource[UserId, User] {
     override def name = "UserH4s"
 
-    override def fetch[F[_]: ConcurrentEffect: Par](id: UserId): F[Option[User]] = {
+    override def fetch[F[_]: ConcurrentEffect](id: UserId): F[Option[User]] = {
       val url = s"https://jsonplaceholder.typicode.com/users?id=${id.id}"
       client[F] >>= ((c) => c.expect(url)(jsonOf[F, List[User]]).map(_.headOption))
     }
 
-    override def batch[F[_]: ConcurrentEffect: Par](
+    override def batch[F[_]: ConcurrentEffect](
         ids: NonEmptyList[UserId]
     ): F[Map[UserId, User]] = {
       val filterIds = ids.map("id=" + _.id).toList.mkString("&")
@@ -89,7 +87,7 @@ object DataSources {
   object Numbers extends DataSource[Int, Int] {
     override def name = "Numbers"
 
-    override def fetch[F[_]: ConcurrentEffect: Par](id: Int): F[Option[Int]] =
+    override def fetch[F[_]: ConcurrentEffect](id: Int): F[Option[Int]] =
       Sync[F].pure(Option(id))
   }
 
