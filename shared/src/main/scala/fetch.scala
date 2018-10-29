@@ -546,7 +546,7 @@ object `package` {
       case InParallel =>
         for {
           fibers <- batches.traverse((ids) => Concurrent[F].start(q.ds.batch[F](ids)))
-          maps <- fibers.traverse((fiber) => fiber.join)
+          maps <- fibers.traverse(_.join)
         } yield maps
     }
 
