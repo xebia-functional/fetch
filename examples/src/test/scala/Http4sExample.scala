@@ -17,12 +17,10 @@
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
-import cats.Parallel
 import cats.data.NonEmptyList
 import cats.effect._
 import cats.instances.list._
 import cats.syntax.all._
-import cats.temp.par._
 
 import io.circe._
 import io.circe.generic.semiauto._
@@ -70,12 +68,12 @@ class Http4sExample extends WordSpec with Matchers {
   object Users extends DataSource[UserId, User] {
     override def name = "UserH4s"
 
-    override def fetch[F[_]: ConcurrentEffect: Par](id: UserId): F[Option[User]] = {
+    override def fetch[F[_]: ConcurrentEffect](id: UserId): F[Option[User]] = {
       val url = s"https://jsonplaceholder.typicode.com/users?id=${id.id}"
       client[F] >>= ((c) => c.expect(url)(jsonOf[F, List[User]]).map(_.headOption))
     }
 
-    override def batch[F[_]: ConcurrentEffect: Par](
+    override def batch[F[_]: ConcurrentEffect](
         ids: NonEmptyList[UserId]
     ): F[Map[UserId, User]] = {
       val filterIds = ids.map("id=" + _.id).toList.mkString("&")
@@ -89,12 +87,12 @@ class Http4sExample extends WordSpec with Matchers {
 
   object Posts extends DataSource[UserId, List[Post]] {
     override def name = "PostH4s"
-    override def fetch[F[_]: ConcurrentEffect: Par](id: UserId): F[Option[List[Post]]] = {
+    override def fetch[F[_]: ConcurrentEffect](id: UserId): F[Option[List[Post]]] = {
       val url = s"https://jsonplaceholder.typicode.com/posts?userId=${id.id}"
       client[F] >>= ((c) => c.expect(url)(jsonOf[F, List[Post]]).map(Option.apply))
     }
 
-    override def batch[F[_]: ConcurrentEffect: Par](
+    override def batch[F[_]: ConcurrentEffect](
         ids: NonEmptyList[UserId]): F[Map[UserId, List[Post]]] = {
       val filterIds = ids.map("userId=" + _.id).toList.mkString("&")
       val url       = s"https://jsonplaceholder.typicode.com/posts?$filterIds"
