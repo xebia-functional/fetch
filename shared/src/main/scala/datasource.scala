@@ -40,9 +40,11 @@ trait DataSource[I, A] {
    * identity wasn't found, it won't appear in the keys.
    */
   def batch[F[_] : ConcurrentEffect](ids: NonEmptyList[I]): F[Map[I, A]] =
-    ids.traverse(
-      (id) => fetch(id).map(_.tupleLeft(id))
-    ).map(_.collect { case Some(x) => x }.toMap) // todo: parallelism
+    for {
+      fibers <- ids.traverse((id) => Concurrent[F].start(fetch(id)).map((v) => id -> v))
+      tuples <- fibers.traverse({ case (id, fiber) => fiber.join.map( id -> _ ) })
+      results = tuples.collect({ case (id, Some(x)) => id -> x }).toMap
+    } yield results
 
   def maxBatchSize: Option[Int] = None
 
