@@ -41,7 +41,9 @@ trait DataSource[I, A] {
    */
   def batch[F[_] : ConcurrentEffect](ids: NonEmptyList[I]): F[Map[I, A]] =
     for {
-      fibers <- ids.traverse((id) => Concurrent[F].start(fetch(id)).map((v) => id -> v))
+      fibers <- ids.traverse(
+        (id) => FetchExecution.spawn(fetch(id)).map((v) => id -> v)
+      )
       tuples <- fibers.traverse({ case (id, fiber) => fiber.join.map( id -> _ ) })
       results = tuples.collect({ case (id, Some(x)) => id -> x }).toMap
     } yield results
