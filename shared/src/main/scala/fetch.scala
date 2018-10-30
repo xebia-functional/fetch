@@ -419,7 +419,7 @@ object `package` {
         CS: ContextShift[F],
         T: Timer[F]
     ): F[Fiber[F, List[Request]]] =
-      Concurrent[F].start(blocked.request match {
+      FetchExecution.spawn(blocked.request match {
         case q @ FetchOne(id, ds) => runFetchOne[F](q, blocked.result, cache, env)
         case q @ Batch(ids, ds) => runBatch[F](q, blocked.result, cache, env)
       })
@@ -545,7 +545,7 @@ object `package` {
         batches.traverse(q.ds.batch[F])
       case InParallel =>
         for {
-          fibers <- batches.traverse((ids) => Concurrent[F].start(q.ds.batch[F](ids)))
+          fibers <- batches.traverse((ids) => FetchExecution.spawn(q.ds.batch[F](ids)))
           maps <- fibers.traverse(_.join)
         } yield maps
     }
