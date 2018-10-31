@@ -14,22 +14,14 @@
  * limitations under the License.
  */
 
-import scala.concurrent.{ExecutionContext, Future}
-
-import org.scalatest.{AsyncFreeSpec, Matchers}
-
 import cats.instances.list._
 import cats.effect._
 import cats.syntax.all._
 
 import fetch._
 
-class FetchAsyncQueryTests extends AsyncFreeSpec with Matchers {
+class FetchAsyncQueryTests extends FetchSpec {
   import DataSources._
-
-  implicit override val executionContext = ExecutionContext.Implicits.global
-  implicit val timer: Timer[IO] = IO.timer(executionContext)
-  implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
 
   "We can interpret an async fetch into an IO" in {
     def fetch[F[_] : ConcurrentEffect]: Fetch[F, Article] =

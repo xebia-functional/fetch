@@ -19,6 +19,7 @@ package fetch
 import org.scalatest.{AsyncFreeSpec, Matchers}
 
 import scala.concurrent._
+import java.util.concurrent._
 import scala.concurrent.duration._
 
 import cats._
@@ -28,12 +29,8 @@ import cats.instances.option._
 import cats.data.NonEmptyList
 import cats.syntax.all._
 
-class FetchTests extends AsyncFreeSpec with Matchers {
+class FetchTests extends FetchSpec {
   import TestHelper._
-
-  override val executionContext: ExecutionContext = ExecutionContext.Implicits.global
-  implicit val timer: Timer[IO] = IO.timer(executionContext)
-  implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
 
   // Fetch ops
 

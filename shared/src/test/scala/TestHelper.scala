@@ -88,23 +88,4 @@ object TestHelper {
   def never[F[_] : ConcurrentEffect]: Fetch[F, Int] =
     Fetch(Never(), NeverSource)
 
-  // Check Env
-
-  def countFetches(r: Request): Int =
-    r.request match {
-      case FetchOne(_, _)       => 1
-      case Batch(ids, _)    => ids.toList.size
-    }
-
-  def totalFetched(rs: Seq[Round]): Int =
-    rs.map((round: Round) => round.queries.map(countFetches).sum).toList.sum
-
-  def countBatches(r: Request): Int =
-    r.request match {
-      case FetchOne(_, _)    => 0
-      case Batch(_, _) => 1
-    }
-
-  def totalBatches(rs: Seq[Round]): Int =
-    rs.map((round: Round) => round.queries.map(countBatches).sum).toList.sum
 }

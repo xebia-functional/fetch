@@ -16,10 +16,6 @@
 
 package fetch
 
-import scala.concurrent.{ExecutionContext, Future}
-
-import org.scalatest.{AsyncFreeSpec, Matchers}
-
 import cats._
 import cats.data.NonEmptyList
 import cats.instances.list._
@@ -28,12 +24,8 @@ import cats.effect._
 
 import fetch._
 
-class FetchBatchingTests extends AsyncFreeSpec with Matchers {
+class FetchBatchingTests extends FetchSpec {
   import TestHelper._
-
-  override val executionContext: ExecutionContext = ExecutionContext.Implicits.global
-  implicit val timer: Timer[IO] = IO.timer(executionContext)
-  implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
 
   case class BatchedDataSeq(id: Int)
 

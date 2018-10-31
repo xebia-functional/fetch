@@ -16,22 +16,12 @@
 
 package fetch
 
-import scala.concurrent.{ExecutionContext, Future}
-
-import org.scalatest.{AsyncFreeSpec, Matchers}
-
-import fetch._
-
 import cats.effect._
 import cats.instances.list._
 import cats.syntax.all._
 
-class FetchReportingTests extends AsyncFreeSpec with Matchers {
+class FetchReportingTests extends FetchSpec {
   import TestHelper._
-
-  override implicit val executionContext = ExecutionContext.Implicits.global
-  implicit val timer: Timer[IO] = IO.timer(executionContext)
-  implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
 
   "Plain values have no rounds of execution" in {
     def fetch[F[_] : ConcurrentEffect] =
