@@ -396,10 +396,9 @@ object `package` {
       if (blocked.isEmpty) Applicative[F].unit
       else
         for {
-          fibers <- NonEmptyList.fromListUnsafe(blocked).traverse(
+          requests <- FetchExecution.parallel(NonEmptyList.fromListUnsafe(blocked).map(
             runBlockedRequest(_, cache, env)
-          )
-          requests <- fibers.traverse(_.join)
+          ))
           performedRequests = requests.foldLeft(List.empty[Request])(_ ++ _)
           _ <- if (performedRequests.isEmpty) Applicative[F].unit
           else env match {
@@ -418,11 +417,11 @@ object `package` {
         C: ConcurrentEffect[F],
         CS: ContextShift[F],
         T: Timer[F]
-    ): F[Fiber[F, List[Request]]] =
-      FetchExecution.spawn(blocked.request match {
+    ): F[List[Request]] =
+      blocked.request match {
         case q @ FetchOne(id, ds) => runFetchOne[F](q, blocked.result, cache, env)
         case q @ Batch(ids, ds) => runBatch[F](q, blocked.result, cache, env)
-      })
+      }
   }
 
   private def runFetchOne[F[_]](
@@ -544,10 +543,11 @@ object `package` {
       case Sequentially =>
         batches.traverse(q.ds.batch[F])
       case InParallel =>
-        for {
-          fibers <- batches.traverse((ids) => FetchExecution.spawn(q.ds.batch[F](ids)))
-          maps <- fibers.traverse(_.join)
-        } yield maps
+        FetchExecution.parallel(batches.map(q.ds.batch(_)))
+        //for {
+        //  fibers <- batches.traverse((ids) => FetchExecution.spawn(q.ds.batch[F](ids)))
+        //  maps <- fibers.traverse(_.join)
+        //} yield maps
     }
 
     results.map(_.toList.reduce(combineBatchResults)).map(BatchedRequest(reqs, _))

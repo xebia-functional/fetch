@@ -16,12 +16,22 @@
 
 package fetch
 
+import cats.data.NonEmptyList
 import cats.effect._
+import cats.syntax.all._
 
-object FetchExecution {
-  /* Spawns a computation that can't be cancelled. Returns a `Fiber` that can be joined to obtain the result of the computation.  */
-  def spawn[F[_] : Concurrent, A](f: F[A]): F[Fiber[F, A]] =
-    Concurrent[F].start(Concurrent[F].uncancelable(f))
+private object FetchExecution {
+  def parallel[F[_], A](effects: NonEmptyList[F[A]])(
+    implicit CF: ConcurrentEffect[F]
+  ): F[NonEmptyList[A]] =
+    for {
+      fibers <- effects.traverse(CF.start(_))
+      runFibers = fibers.traverse(_.join)
+      _ <- CF.handleErrorWith(runFibers)(error => {
+        fibers.traverse(_.cancel *> CF.raiseError(error))
+      })
+      results <- runFibers
+    } yield results
 
 }
 
