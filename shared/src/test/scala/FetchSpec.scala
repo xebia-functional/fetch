@@ -26,7 +26,7 @@ import cats.effect._
 
 @DoNotDiscover
 class FetchSpec extends AsyncFreeSpec with Matchers {
-  override val executionContext: ExecutionContext = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(2))
+  override val executionContext: ExecutionContext = ExecutionContext.Implicits.global
   implicit val timer: Timer[IO] = IO.timer(executionContext)
   implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
 
