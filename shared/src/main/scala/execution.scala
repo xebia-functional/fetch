@@ -28,7 +28,7 @@ private object FetchExecution {
       fibers <- effects.traverse(CF.start(_))
       runFibers = fibers.traverse(_.join)
       _ <- CF.handleErrorWith(runFibers)(error => {
-        fibers.traverse(_.cancel *> CF.raiseError(error))
+        fibers.traverse(_.cancel) *> CF.raiseError(error)
       })
       results <- runFibers
     } yield results
