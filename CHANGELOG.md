@@ -19,9 +19,9 @@ Summary of changes:
 * `Query` and `FetchMonadError` types deleted
 * `Fetch#traverse`, `Fetch#sequence`, `Fetch#join` & `Fetch#collect` deleted in favor of usign cats typeclass ops
 * Introduction of `cats-effect` for the implementation and target types
-  - `DataSource` in terms of `ConcurrentEffect` from `cats-effect` and `Par` from `cats-par`
+  - `DataSource` in terms of `ConcurrentEffect` from `cats-effect`
   - `DataSourceCache` in terms of `ConcurrentEffect`
-  - `Fetch` is now parameterised to `F[_]` with a `ConcurrentEffect[F]` and `Par[F]`
+  - `Fetch` is now parameterised to `F[_]` with a `ConcurrentEffect[F]`
   - `Fetch#apply` now doesn't require an implicit `DataSource` but it must be provided explicitly
   - `Fetch#run` now requires a `Timer[F]` and `ContextShift[F]` from `cats-effect`
   - Removed Monix, Future and Twitter Future subprojects, most of them should work with `cats-effect` abstractions already
