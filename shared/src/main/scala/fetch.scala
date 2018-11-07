@@ -544,10 +544,6 @@ object `package` {
         batches.traverse(q.ds.batch[F])
       case InParallel =>
         FetchExecution.parallel(batches.map(q.ds.batch(_)))
-        //for {
-        //  fibers <- batches.traverse((ids) => FetchExecution.spawn(q.ds.batch[F](ids)))
-        //  maps <- fibers.traverse(_.join)
-        //} yield maps
     }
 
     results.map(_.toList.reduce(combineBatchResults)).map(BatchedRequest(reqs, _))
