@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-import cats.Parallel
-import cats.temp.par._
 import cats.data.NonEmptyList
 import cats.effect._
 import cats.instances.list._
@@ -69,10 +67,10 @@ class DoobieExample extends WordSpec with Matchers {
   val authorDS = new DataSource[AuthorId, Author] {
     override def name = "AuthorDoobie"
 
-    override def fetch[F[_]: ConcurrentEffect: Par](id: AuthorId): F[Option[Author]] =
+    override def fetch[F[_]: ConcurrentEffect](id: AuthorId): F[Option[Author]] =
       LiftIO[F].liftIO(fetchById(id).transact(xa))
 
-    override def batch[F[_]: ConcurrentEffect: Par](
+    override def batch[F[_]: ConcurrentEffect](
         ids: NonEmptyList[AuthorId]): F[Map[AuthorId, Author]] =
       LiftIO[F].liftIO(
         fetchByIds(ids)
