@@ -22,7 +22,6 @@ import cats.data.NonEmptyList
 import cats.instances.list._
 import cats.instances.option._
 import cats.syntax.all._
-import cats.temp.par._
 
 /**
  * A `DataSource` is the recipe for fetching a certain identity `I`, which yields
@@ -35,15 +34,18 @@ trait DataSource[I, A] {
 
   /** Fetch one identity, returning a None if it wasn't found.
    */
-  def fetch[F[_] : ConcurrentEffect : Par](id: I): F[Option[A]]
+  def fetch[F[_] : ConcurrentEffect](id: I): F[Option[A]]
 
   /** Fetch many identities, returning a mapping from identities to results. If an
    * identity wasn't found, it won't appear in the keys.
    */
-  def batch[F[_] : ConcurrentEffect : Par](ids: NonEmptyList[I]): F[Map[I, A]] =
-    ids.parTraverse(
-      (id) => fetch(id).map(_.tupleLeft(id))
-    ).map(_.collect { case Some(x) => x }.toMap)
+  def batch[F[_] : ConcurrentEffect](ids: NonEmptyList[I]): F[Map[I, A]] =
+    for {
+      tuples <- FetchExecution.parallel(
+        ids.map(id => fetch(id).map((v) => id -> v))
+      )
+      results = tuples.collect({ case (id, Some(x)) => id -> x }).toMap
+    } yield results
 
   def maxBatchSize: Option[Int] = None
 

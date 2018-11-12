@@ -19,27 +19,23 @@ package fetch
 import org.scalatest.{AsyncFreeSpec, Matchers}
 
 import scala.concurrent._
+import java.util.concurrent._
 import scala.concurrent.duration._
 
 import cats._
-import cats.temp.par._
 import cats.effect._
 import cats.instances.list._
 import cats.instances.option._
 import cats.data.NonEmptyList
 import cats.syntax.all._
 
-class FetchTests extends AsyncFreeSpec with Matchers {
+class FetchTests extends FetchSpec {
   import TestHelper._
-
-  override val executionContext: ExecutionContext = ExecutionContext.Implicits.global
-  implicit val timer: Timer[IO] = IO.timer(executionContext)
-  implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
 
   // Fetch ops
 
   "We can lift plain values to Fetch" in {
-    def fetch[F[_] : ConcurrentEffect : Par]: Fetch[F, Int] =
+    def fetch[F[_] : ConcurrentEffect]: Fetch[F, Int] =
       Fetch.pure[F, Int](42)
 
     Fetch.run[IO](fetch).map(_ shouldEqual 42).unsafeToFuture
@@ -50,14 +46,14 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   }
 
   "We can map over Fetch values" in {
-    def fetch[F[_] : ConcurrentEffect : Par]: Fetch[F, (Int)] =
+    def fetch[F[_] : ConcurrentEffect]: Fetch[F, (Int)] =
       one(1).map(_ + 1)
 
     Fetch.run[IO](fetch).map(_ shouldEqual 2).unsafeToFuture
   }
 
   "We can use fetch inside a for comprehension" in {
-    def fetch[F[_] : ConcurrentEffect : Par]: Fetch[F, (Int, Int)] = for {
+    def fetch[F[_] : ConcurrentEffect]: Fetch[F, (Int, Int)] = for {
       o <- one(1)
       t <- one(2)
     } yield (o, t)
@@ -66,7 +62,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   }
 
   "We can mix data sources" in {
-    def fetch[F[_] : ConcurrentEffect : Par]: Fetch[F, (Int, List[Int])] = for {
+    def fetch[F[_] : ConcurrentEffect]: Fetch[F, (Int, List[Int])] = for {
       o <- one(1)
       m <- many(3)
     } yield (o, m)
@@ -75,7 +71,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   }
 
   "We can use Fetch as a cartesian" in {
-    def fetch[F[_] : ConcurrentEffect : Par]: Fetch[F, (Int, List[Int])] = (one(1), many(3)).tupled
+    def fetch[F[_] : ConcurrentEffect]: Fetch[F, (Int, List[Int])] = (one(1), many(3)).tupled
 
     val io = Fetch.run[IO](fetch)
 
@@ -83,7 +79,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   }
 
   "We can use Fetch as an applicative" in {
-    def fetch[F[_] : ConcurrentEffect : Par]: Fetch[F, Int] = (one(1), one(2), one(3)).mapN(_ + _ + _)
+    def fetch[F[_] : ConcurrentEffect]: Fetch[F, Int] = (one(1), one(2), one(3)).mapN(_ + _ + _)
 
     val io = Fetch.run[IO](fetch)
 
@@ -91,7 +87,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   }
 
   "We can traverse over a list with a Fetch for each element" in {
-    def fetch[F[_] : ConcurrentEffect : Par]: Fetch[F, List[Int]] = for {
+    def fetch[F[_] : ConcurrentEffect]: Fetch[F, List[Int]] = for {
       manies <- many(3)
       ones   <- manies.traverse(one[F])
     } yield ones
@@ -102,7 +98,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   }
 
   "We can depend on previous computations of Fetch values" in {
-    def fetch[F[_] : ConcurrentEffect : Par]: Fetch[F, Int] = for {
+    def fetch[F[_] : ConcurrentEffect]: Fetch[F, Int] = for {
       o <- one(1)
       t <- one(o + 1)
     } yield o + t
@@ -113,7 +109,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   }
 
   "We can collect a list of Fetch into one" in {
-    def fetch[F[_] : ConcurrentEffect : Par]: Fetch[F, List[Int]] =
+    def fetch[F[_] : ConcurrentEffect]: Fetch[F, List[Int]] =
       List(one(1), one(2), one(3)).sequence
 
     val io = Fetch.run[IO](fetch)
@@ -122,7 +118,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   }
 
   "We can collect a list of Fetches with heterogeneous sources" in {
-    def fetch[F[_] : ConcurrentEffect : Par]: Fetch[F, List[Int]] =
+    def fetch[F[_] : ConcurrentEffect]: Fetch[F, List[Int]] =
       List(one(1), one(2), one(3), anotherOne(4), anotherOne(5)).sequence
 
     val io = Fetch.run[IO](fetch)
@@ -131,7 +127,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   }
 
   "We can collect the results of a traversal" in {
-    def fetch[F[_] : ConcurrentEffect : Par]: Fetch[F, List[Int]] =
+    def fetch[F[_] : ConcurrentEffect]: Fetch[F, List[Int]] =
       List(1, 2, 3).traverse(one[F])
 
     val io = Fetch.run[IO](fetch)
@@ -142,7 +138,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   // Execution model
 
   "Monadic bind implies sequential execution" in {
-    def fetch[F[_] : ConcurrentEffect : Par]: Fetch[F, (Int, Int)] =
+    def fetch[F[_] : ConcurrentEffect]: Fetch[F, (Int, Int)] =
       for {
         o <- one(1)
         t <- one(2)
@@ -159,7 +155,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   }
 
   "Traversals are implicitly batched" in {
-    def fetch[F[_] : ConcurrentEffect : Par]: Fetch[F, List[Int]] =
+    def fetch[F[_] : ConcurrentEffect]: Fetch[F, List[Int]] =
       for {
         manies <- many(3)
         ones   <- manies.traverse(one[F])
@@ -176,7 +172,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   }
 
   "Sequencing is implicitly batched" in {
-    def fetch[F[_] : ConcurrentEffect : Par]: Fetch[F, List[Int]] =
+    def fetch[F[_] : ConcurrentEffect]: Fetch[F, List[Int]] =
       List(one(1), one(2), one(3)).sequence
 
     val io = Fetch.runEnv[IO](fetch)
@@ -193,7 +189,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
 
   "Identities are deduped when batched" in {
     val sources = List(1, 1, 2)
-    def fetch[F[_] : ConcurrentEffect : Par]: Fetch[F, List[Int]] =
+    def fetch[F[_] : ConcurrentEffect]: Fetch[F, List[Int]] =
       sources.traverse(one[F])
 
     val io = Fetch.runEnv[IO](fetch)
@@ -211,7 +207,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   }
 
   "The product of two fetches implies parallel fetching" in {
-    def fetch[F[_] : ConcurrentEffect : Par]: Fetch[F, (Int, List[Int])] =
+    def fetch[F[_] : ConcurrentEffect]: Fetch[F, (Int, List[Int])] =
       (one(1), many(3)).tupled
 
     val io = Fetch.runEnv[IO](fetch)
@@ -226,7 +222,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   }
 
   "Concurrent fetching calls batches only when it can" in {
-    def fetch[F[_] : ConcurrentEffect : Par]: Fetch[F, (Int, List[Int])] =
+    def fetch[F[_] : ConcurrentEffect]: Fetch[F, (Int, List[Int])] =
       (one(1), many(3)).tupled
 
     val io = Fetch.runEnv[IO](fetch)
@@ -241,7 +237,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   }
 
   "Concurrent fetching performs requests to multiple data sources in parallel" in {
-    def fetch[F[_] : ConcurrentEffect : Par]: Fetch[F, ((Int, List[Int]), Int)] =
+    def fetch[F[_] : ConcurrentEffect]: Fetch[F, ((Int, List[Int]), Int)] =
       ((one(1), many(2)).tupled, anotherOne(3)).tupled
 
     val io = Fetch.runEnv[IO](fetch)
@@ -256,7 +252,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   }
 
   "The product of concurrent fetches implies everything fetched concurrently" in {
-    def fetch[F[_] : ConcurrentEffect : Par] = (
+    def fetch[F[_] : ConcurrentEffect] = (
       (
         one(1),
         (one(2), one(3)).tupled
@@ -277,18 +273,18 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   }
 
   "The product of concurrent fetches of the same type implies everything fetched in a single batch" in {
-    def aFetch[F[_] : ConcurrentEffect : Par] = for {
+    def aFetch[F[_] : ConcurrentEffect] = for {
       a <- one(1)  // round 1
       b <- many(1) // round 2
       c <- one(1)
     } yield c
-    def anotherFetch[F[_] : ConcurrentEffect : Par] = for {
+    def anotherFetch[F[_] : ConcurrentEffect] = for {
       a <- one(2)  // round 1
       m <- many(2) // round 2
       c <- one(2)
     } yield c
 
-    def fetch[F[_] : ConcurrentEffect : Par] = (
+    def fetch[F[_] : ConcurrentEffect] = (
       (aFetch[F], anotherFetch[F]).tupled,
       one(3)       // round 1
     ).tupled
@@ -306,18 +302,18 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   }
 
   "Every level of joined concurrent fetches is combined and batched" in {
-    def aFetch[F[_] : ConcurrentEffect : Par] = for {
+    def aFetch[F[_] : ConcurrentEffect] = for {
       a <- one(1)  // round 1
       b <- many(1) // round 2
       c <- one(1)
     } yield c
-    def anotherFetch[F[_] : ConcurrentEffect : Par] = for {
+    def anotherFetch[F[_] : ConcurrentEffect] = for {
       a <- one(2)  // round 1
       m <- many(2) // round 2
       c <- one(2)
     } yield c
 
-    def fetch[F[_] : ConcurrentEffect : Par] = (aFetch[F], anotherFetch[F]).tupled
+    def fetch[F[_] : ConcurrentEffect] = (aFetch[F], anotherFetch[F]).tupled
 
     val io = Fetch.runEnv[IO](fetch)
 
@@ -332,21 +328,21 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   }
 
   "Every level of sequenced concurrent fetches is batched" in {
-    def aFetch[F[_] : ConcurrentEffect : Par] =
+    def aFetch[F[_] : ConcurrentEffect] =
       for {
         a <- List(2, 3, 4).traverse(one[F])   // round 1
         b <- List(0, 1).traverse(many[F])     // round 2
         c <- List(9, 10, 11).traverse(one[F]) // round 3
       } yield c
 
-    def anotherFetch[F[_] : ConcurrentEffect : Par] =
+    def anotherFetch[F[_] : ConcurrentEffect] =
       for {
         a <- List(5, 6, 7).traverse(one[F])    // round 1
         b <- List(2, 3).traverse(many[F])      // round 2
         c <- List(12, 13, 14).traverse(one[F]) // round 3
       } yield c
 
-    def fetch[F[_] : ConcurrentEffect : Par] = (
+    def fetch[F[_] : ConcurrentEffect] = (
        (aFetch[F], anotherFetch[F]).tupled,
        List(15, 16, 17).traverse(one[F])       // round 1
     ).tupled
@@ -364,7 +360,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   }
 
   "The product of two fetches from the same data source implies batching" in {
-    def fetch[F[_] : ConcurrentEffect : Par]: Fetch[F, (Int, Int)] = (one(1), one(3)).tupled
+    def fetch[F[_] : ConcurrentEffect]: Fetch[F, (Int, Int)] = (one(1), one(3)).tupled
 
     val io = Fetch.runEnv[IO](fetch)
 
@@ -379,7 +375,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   }
 
   "Sequenced fetches are run concurrently" in {
-    def fetch[F[_] : ConcurrentEffect : Par]: Fetch[F, List[Int]] =
+    def fetch[F[_] : ConcurrentEffect]: Fetch[F, List[Int]] =
       List(one(1), one(2), one(3), anotherOne(4), anotherOne(5)).sequence
 
     val io = Fetch.runEnv[IO](fetch)
@@ -394,7 +390,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   }
 
   "Sequenced fetches are deduped" in {
-    def fetch[F[_] : ConcurrentEffect : Par]: Fetch[F, List[Int]] =
+    def fetch[F[_] : ConcurrentEffect]: Fetch[F, List[Int]] =
       List(one(1), one(2), one(1)).sequence
 
     val io = Fetch.runEnv[IO](fetch)
@@ -410,7 +406,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   }
 
   "Traversals are batched" in {
-    def fetch[F[_] : ConcurrentEffect : Par]: Fetch[F, List[Int]] =
+    def fetch[F[_] : ConcurrentEffect]: Fetch[F, List[Int]] =
       List(1, 2, 3).traverse(one[F])
 
     val io = Fetch.runEnv[IO](fetch)
@@ -425,7 +421,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   }
 
   "Duplicated sources are only fetched once" in {
-    def fetch[F[_] : ConcurrentEffect : Par]: Fetch[F, List[Int]] =
+    def fetch[F[_] : ConcurrentEffect]: Fetch[F, List[Int]] =
       List(1, 2, 1).traverse(one[F])
 
     val io = Fetch.runEnv[IO](fetch)
@@ -440,7 +436,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   }
 
   "Sources that can be fetched concurrently inside a for comprehension will be" in {
-    def fetch[F[_] : ConcurrentEffect : Par] =
+    def fetch[F[_] : ConcurrentEffect] =
       for {
         v      <- Fetch.pure[F, List[Int]](List(1, 2, 1))
         result <- v.traverse(one[F])
@@ -458,13 +454,13 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   }
 
   "Pure Fetches allow to explore further in the Fetch" in {
-    def aFetch[F[_] : ConcurrentEffect : Par] =
+    def aFetch[F[_] : ConcurrentEffect] =
       for {
         a <- Fetch.pure[F, Int](2)
         b <- one[F](3)
       } yield a + b
 
-    def fetch[F[_] : ConcurrentEffect : Par]: Fetch[F, (Int, Int)] =
+    def fetch[F[_] : ConcurrentEffect]: Fetch[F, (Int, Int)] =
       (one(1), aFetch[F]).tupled
 
     val io = Fetch.runEnv[IO](fetch)
@@ -481,7 +477,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   // Caching
 
   "Elements are cached and thus not fetched more than once" in {
-    def fetch[F[_] : ConcurrentEffect : Par] = for {
+    def fetch[F[_] : ConcurrentEffect] = for {
       aOne       <- one(1)
       anotherOne <- one(1)
       _          <- one(1)
@@ -503,7 +499,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   }
 
   "Batched elements are cached and thus not fetched more than once" in {
-    def fetch[F[_] : ConcurrentEffect : Par] = for {
+    def fetch[F[_] : ConcurrentEffect] = for {
       _          <- List(1, 2, 3).traverse(one[F])
       aOne       <- one(1)
       anotherOne <- one(1)
@@ -526,7 +522,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   }
 
   "Elements that are cached won't be fetched" in {
-    def fetch[F[_] : ConcurrentEffect : Par] = for {
+    def fetch[F[_] : ConcurrentEffect] = for {
       aOne       <- one(1)
       anotherOne <- one(1)
       _          <- one(1)
@@ -537,7 +533,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
       _          <- one(1)
     } yield aOne + anotherOne
 
-    def cache[F[_] : ConcurrentEffect : Par] = InMemoryCache.from[F, One, Int](
+    def cache[F[_] : ConcurrentEffect] = InMemoryCache.from[F, One, Int](
       (OneSource.name, One(1)) -> 1,
       (OneSource.name, One(2)) -> 2,
       (OneSource.name, One(3)) -> 3
@@ -555,7 +551,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   }
 
   "Fetch#run accepts a cache as the second (optional) parameter" in {
-    def fetch[F[_] : ConcurrentEffect : Par] = for {
+    def fetch[F[_] : ConcurrentEffect] = for {
       aOne       <- one(1)
       anotherOne <- one(1)
       _          <- one(1)
@@ -566,7 +562,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
       _          <- one(1)
     } yield aOne + anotherOne
 
-    def cache[F[_] : ConcurrentEffect : Par] = InMemoryCache.from[F, One, Int](
+    def cache[F[_] : ConcurrentEffect] = InMemoryCache.from[F, One, Int](
       (OneSource.name, One(1)) -> 1,
       (OneSource.name, One(2)) -> 2,
       (OneSource.name, One(3)) -> 3
@@ -578,7 +574,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   }
 
   "Fetch#runCache accepts a cache as the second (optional) parameter" in {
-    def fetch[F[_] : ConcurrentEffect : Par] = for {
+    def fetch[F[_] : ConcurrentEffect] = for {
       aOne       <- one(1)
       anotherOne <- one(1)
       _          <- one(1)
@@ -589,7 +585,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
       _          <- one(1)
     } yield aOne + anotherOne
 
-    def cache[F[_] : ConcurrentEffect : Par] = InMemoryCache.from[F, One, Int](
+    def cache[F[_] : ConcurrentEffect] = InMemoryCache.from[F, One, Int](
       (OneSource.name, One(1)) -> 1,
       (OneSource.name, One(2)) -> 2,
       (OneSource.name, One(3)) -> 3
@@ -605,7 +601,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   }
 
   "Fetch#runCache works without the optional cache parameter" in {
-    def fetch[F[_] : ConcurrentEffect : Par] = for {
+    def fetch[F[_] : ConcurrentEffect] = for {
       aOne       <- one(1)
       anotherOne <- one(1)
       _          <- one(1)
@@ -633,10 +629,10 @@ class FetchTests extends AsyncFreeSpec with Matchers {
       Applicative[F].pure(None)
   }
 
-  def forgetfulCache[F[_] : ConcurrentEffect : Par] = ForgetfulCache[F]()
+  def forgetfulCache[F[_] : ConcurrentEffect] = ForgetfulCache[F]()
 
   "We can use a custom cache that discards elements" in {
-    def fetch[F[_] : ConcurrentEffect : Par] = for {
+    def fetch[F[_] : ConcurrentEffect] = for {
       aOne       <- one(1)
       anotherOne <- one(1)
       _          <- one(1)
@@ -658,7 +654,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   }
 
   "We can use a custom cache that discards elements together with concurrent fetches" in {
-    def fetch[F[_] : ConcurrentEffect : Par] = for {
+    def fetch[F[_] : ConcurrentEffect] = for {
       aOne       <- one(1)
       anotherOne <- one(1)
       _          <- one(1)
@@ -700,7 +696,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   }
 
   "Data sources with errors won't fail if they're cached" in {
-    def cache[F[_] : ConcurrentEffect : Par] = InMemoryCache.from[F, Never, Int](
+    def cache[F[_] : ConcurrentEffect] = InMemoryCache.from[F, Never, Int](
       (NeverSource.name, Never()) -> 1
     )
     val io = Fetch.run[IO](never, cache)
@@ -708,7 +704,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
     io.map(_ shouldEqual 1).unsafeToFuture
   }
 
-  def fetchError[F[_] : ConcurrentEffect : Par]: Fetch[F, Int] =
+  def fetchError[F[_] : ConcurrentEffect]: Fetch[F, Int] =
     Fetch.error(AnException())
 
   "We can lift errors to Fetch" in {
@@ -729,7 +725,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   }
 
   "If a fetch fails in the left hand of a product the product will fail" in {
-    def fetch[F[_] : ConcurrentEffect : Par] =
+    def fetch[F[_] : ConcurrentEffect] =
       (fetchError, many(3)).tupled
 
     val io = Fetch.run[IO](fetch)
@@ -741,7 +737,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   }
 
   "If a fetch fails in the right hand of a product the product will fail" in {
-    def fetch[F[_] : ConcurrentEffect : Par] =
+    def fetch[F[_] : ConcurrentEffect] =
       (many(3), fetchError).tupled
 
     val io = Fetch.run[IO](fetch)
@@ -753,7 +749,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   }
 
   "If there is a missing identity in the left hand of a product the product will fail" in {
-    def fetch[F[_] : ConcurrentEffect : Par] =
+    def fetch[F[_] : ConcurrentEffect] =
       (never, many(3)).tupled
 
     val io = Fetch.run[IO](fetch)
@@ -765,7 +761,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   }
 
   "If there is a missing identity in the right hand of a product the product will fail" in {
-    def fetch[F[_] : ConcurrentEffect : Par] =
+    def fetch[F[_] : ConcurrentEffect] =
       (many(3), never).tupled
 
     val io = Fetch.run[IO](fetch)
@@ -777,7 +773,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   }
 
   "If there are multiple failing identities the fetch will fail" in {
-    def fetch[F[_] : ConcurrentEffect : Par] =
+    def fetch[F[_] : ConcurrentEffect] =
       (never, never).tupled
 
     val io = Fetch.run[IO](fetch)
@@ -796,7 +792,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
     override def name = "Maybe Missing Source"
 
     override def fetch[F[_]](id: MaybeMissing)(
-      implicit CF: ConcurrentEffect[F], P: Par[F]
+      implicit CF: ConcurrentEffect[F]
     ): F[Option[Int]] =
       if (id.id % 2 == 0)
         Applicative[F].pure(None)
@@ -804,25 +800,25 @@ class FetchTests extends AsyncFreeSpec with Matchers {
         Applicative[F].pure(Option(id.id))
   }
 
-  def maybeOpt[F[_] : ConcurrentEffect : Par](id: Int): Fetch[F, Option[Int]] =
+  def maybeOpt[F[_] : ConcurrentEffect](id: Int): Fetch[F, Option[Int]] =
     Fetch.optional(MaybeMissing(id), MaybeMissingSource)
 
   "We can run optional fetches" in {
-    def fetch[F[_] : ConcurrentEffect : Par]: Fetch[F, Option[Int]] =
+    def fetch[F[_] : ConcurrentEffect]: Fetch[F, Option[Int]] =
       maybeOpt(1)
 
     Fetch.run[IO](fetch).map(_ shouldEqual Some(1)).unsafeToFuture
   }
 
   "We can run optional fetches with traverse" in {
-    def fetch[F[_] : ConcurrentEffect : Par]: Fetch[F, List[Int]] =
+    def fetch[F[_] : ConcurrentEffect]: Fetch[F, List[Int]] =
       List(1, 2, 3).traverse(maybeOpt[F]).map(_.flatten)
 
     Fetch.run[IO](fetch).map(_ shouldEqual List(1, 3)).unsafeToFuture
   }
 
   "We can run optional fetches with other data sources" in {
-    def fetch[F[_] : ConcurrentEffect : Par]: Fetch[F, List[Int]] = {
+    def fetch[F[_] : ConcurrentEffect]: Fetch[F, List[Int]] = {
       val ones = List(1, 2, 3).traverse(one[F])
       val maybes = List(1, 2, 3).traverse(maybeOpt[F])
       (ones, maybes).mapN { case (os, ms) => os ++ ms.flatten }
@@ -832,7 +828,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   }
 
   "We can make fetches that depend on optional fetch results when they aren't defined" in {
-    def fetch[F[_] : ConcurrentEffect : Par]: Fetch[F, Int] = for {
+    def fetch[F[_] : ConcurrentEffect]: Fetch[F, Int] = for {
       maybe <- maybeOpt(2)
       result <- maybe.fold(Fetch.pure(42))(i => one(i))
     } yield result
@@ -841,7 +837,7 @@ class FetchTests extends AsyncFreeSpec with Matchers {
   }
 
   "We can make fetches that depend on optional fetch results when they are defined" in {
-    def fetch[F[_] : ConcurrentEffect : Par]: Fetch[F, Int] = for {
+    def fetch[F[_] : ConcurrentEffect]: Fetch[F, Int] = for {
       maybe <- maybeOpt(1)
       result <- maybe.fold(Fetch.pure(42))(i => one(i))
     } yield result

@@ -16,23 +16,16 @@
 
 package fetch
 
-import cats._
+import cats.data.NonEmptyList
 import cats.effect._
+import cats.syntax.all._
 
-object syntax {
-
-  /** Implicit syntax to lift any value to the context of Fetch via pure */
-  implicit class FetchIdSyntax[A](val a: A) extends AnyVal {
-
-    def fetch[F[_] : ConcurrentEffect]: Fetch[F, A] =
-      Fetch.pure[F, A](a)
-  }
-
-  /** Implicit syntax to lift exception to Fetch errors */
-  implicit class FetchExceptionSyntax[B](val a: Throwable) extends AnyVal {
-
-    def fetch[F[_] : ConcurrentEffect]: Fetch[F, B] =
-      Fetch.error[F, B](a)
-  }
+private object FetchExecution {
+  def parallel[F[_], A](effects: NonEmptyList[F[A]])(
+    implicit CF: ConcurrentEffect[F]
+  ): F[NonEmptyList[A]] =
+    effects.traverse(CF.start(_)).flatMap(fibers =>
+      fibers.traverse(_.join).onError({ case _ => fibers.traverse_(_.cancel) })
+    )
 }
 

@@ -55,12 +55,11 @@ Data Sources take two type parameters:
 ```scala
 import cats.data.NonEmptyList
 import cats.effect.ConcurrentEffect
-import cats.temp.par.Par
 
 trait DataSource[Identity, Result]{
   def name: String
-  def fetch[F[_] : ConcurrentEffect : Par](id: Identity): F[Option[Result]]
-  def batch[F[_] : ConcurrentEffect : Par](ids: NonEmptyList[Identity]): F[Map[Identity, Result]]
+  def fetch[F[_] : ConcurrentEffect](id: Identity): F[Option[Result]]
+  def batch[F[_] : ConcurrentEffect](ids: NonEmptyList[Identity]): F[Map[Identity, Result]]
 }
 ```
 
@@ -71,7 +70,6 @@ We'll implement a dummy data source that can convert integers to strings. For co
 ```tut:silent
 import cats.data.NonEmptyList
 import cats.effect._
-import cats.temp.par._
 import cats.instances.list._
 import cats.syntax.all._
 
@@ -80,13 +78,13 @@ import fetch._
 object ToStringSource extends DataSource[Int, String]{
   override def name = "ToString"
 
-  override def fetch[F[_] : ConcurrentEffect : Par](id: Int): F[Option[String]] = {
+  override def fetch[F[_] : ConcurrentEffect](id: Int): F[Option[String]] = {
     Sync[F].delay(println(s"--> [${Thread.currentThread.getId}] One ToString $id")) >>
     Sync[F].delay(println(s"<-- [${Thread.currentThread.getId}] One ToString $id")) >>
     Sync[F].pure(Option(id.toString))
   }
 
-  override def batch[F[_] : ConcurrentEffect : Par](ids: NonEmptyList[Int]): F[Map[Int, String]] = {
+  override def batch[F[_] : ConcurrentEffect](ids: NonEmptyList[Int]): F[Map[Int, String]] = {
     Sync[F].delay(println(s"--> [${Thread.currentThread.getId}] Batch ToString $ids")) >>
     Sync[F].delay(println(s"<-- [${Thread.currentThread.getId}] Batch ToString $ids")) >>
     Sync[F].pure(ids.toList.map(i => (i, i.toString)).toMap)
@@ -154,7 +152,7 @@ Note that the `DataSource#batch` method is not mandatory, it will be implemented
 object UnbatchedToStringSource extends DataSource[Int, String]{
   override def name = "UnbatchedToString"
 
-  override def fetch[F[_] : ConcurrentEffect : Par](id: Int): F[Option[String]] = {
+  override def fetch[F[_] : ConcurrentEffect](id: Int): F[Option[String]] = {
     Sync[F].delay(println(s"--> [${Thread.currentThread.getId}] One UnbatchedToString $id")) >>
     Sync[F].delay(println(s"<-- [${Thread.currentThread.getId}] One UnbatchedToString $id")) >>
     Sync[F].pure(Option(id.toString))
@@ -186,12 +184,12 @@ If we combine two independent fetches from different data sources, the fetches c
 object LengthSource extends DataSource[String, Int]{
   override def name = "Length"
 
-  override def fetch[F[_] : ConcurrentEffect : Par](id: String): F[Option[Int]] = {
+  override def fetch[F[_] : ConcurrentEffect](id: String): F[Option[Int]] = {
     Sync[F].delay(println(s"--> [${Thread.currentThread.getId}] One Length $id")) >>
     Sync[F].delay(println(s"<-- [${Thread.currentThread.getId}] One Length $id")) >>
     Sync[F].pure(Option(id.size))
   }
-  override def batch[F[_] : ConcurrentEffect : Par](ids: NonEmptyList[String]): F[Map[String, Int]] = {
+  override def batch[F[_] : ConcurrentEffect](ids: NonEmptyList[String]): F[Map[String, Int]] = {
     Sync[F].delay(println(s"--> [${Thread.currentThread.getId}] Batch Length $ids")) >>
     Sync[F].delay(println(s"<-- [${Thread.currentThread.getId}] Batch Length $ids")) >>
     Sync[F].pure(ids.toList.map(i => (i, i.size)).toMap)

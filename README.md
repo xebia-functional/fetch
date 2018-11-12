@@ -2,7 +2,7 @@
 
 [comment]: # (Start Badges)
 
-[![Join the chat at https://gitter.im/47deg/fetch](https://badges.gitter.im/47deg/fetch.svg)](https://gitter.im/47deg/fetch?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) [![Build Status](https://travis-ci.org/47deg/fetch.svg?branch=master)](https://travis-ci.org/47deg/fetch) [![codecov.io](http://codecov.io/github/47deg/fetch/coverage.svg?branch=master)](http://codecov.io/github/47deg/fetch?branch=master) [![Maven Central](https://img.shields.io/badge/maven%20central-1.0.0-RC1-green.svg)](https://oss.sonatype.org/#nexus-search;gav~com.47deg~fetch*) [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](https://raw.githubusercontent.com/47deg/fetch/master/LICENSE) [![Latest version](https://img.shields.io/badge/fetch-1.0.0-RC1-green.svg)](https://index.scala-lang.org/47deg/fetch) [![Scala.js](http://scala-js.org/assets/badges/scalajs-0.6.17.svg)](http://scala-js.org) [![GitHub Issues](https://img.shields.io/github/issues/47deg/fetch.svg)](https://github.com/47deg/fetch/issues)
+[![Join the chat at https://gitter.im/47deg/fetch](https://badges.gitter.im/47deg/fetch.svg)](https://gitter.im/47deg/fetch?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) [![Build Status](https://travis-ci.org/47deg/fetch.svg?branch=master)](https://travis-ci.org/47deg/fetch) [![codecov.io](http://codecov.io/github/47deg/fetch/coverage.svg?branch=master)](http://codecov.io/github/47deg/fetch?branch=master) [![Maven Central](https://img.shields.io/badge/maven%20central-0.6.1-green.svg)](https://oss.sonatype.org/#nexus-search;gav~com.47deg~fetch*) [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](https://raw.githubusercontent.com/47deg/fetch/master/LICENSE) [![Latest version](https://img.shields.io/badge/fetch-0.6.1-green.svg)](https://index.scala-lang.org/47deg/fetch) [![Scala.js](http://scala-js.org/assets/badges/scalajs-0.6.15.svg)](http://scala-js.org) [![GitHub Issues](https://img.shields.io/github/issues/47deg/fetch.svg)](https://github.com/47deg/fetch/issues)
 
 [comment]: # (End Badges)
 
@@ -52,12 +52,11 @@ Data Sources take two type parameters:
 ```scala
 import cats.data.NonEmptyList
 import cats.effect.ConcurrentEffect
-import cats.temp.par.Par
 
 trait DataSource[Identity, Result]{
   def name: String
-  def fetch[F[_] : ConcurrentEffect : Par](id: Identity): F[Option[Result]]
-  def batch[F[_] : ConcurrentEffect : Par](ids: NonEmptyList[Identity]): F[Map[Identity, Result]]
+  def fetch[F[_] : ConcurrentEffect](id: Identity): F[Option[Result]]
+  def batch[F[_] : ConcurrentEffect](ids: NonEmptyList[Identity]): F[Map[Identity, Result]]
 }
 ```
 
@@ -68,7 +67,6 @@ We'll implement a dummy data source that can convert integers to strings. For co
 ```scala
 import cats.data.NonEmptyList
 import cats.effect._
-import cats.temp.par._
 import cats.instances.list._
 import cats.syntax.all._
 
@@ -77,13 +75,13 @@ import fetch._
 object ToStringSource extends DataSource[Int, String]{
   override def name = "ToString"
 
-  override def fetch[F[_] : ConcurrentEffect : Par](id: Int): F[Option[String]] = {
+  override def fetch[F[_] : ConcurrentEffect](id: Int): F[Option[String]] = {
     Sync[F].delay(println(s"--> [${Thread.currentThread.getId}] One ToString $id")) >>
     Sync[F].delay(println(s"<-- [${Thread.currentThread.getId}] One ToString $id")) >>
     Sync[F].pure(Option(id.toString))
   }
 
-  override def batch[F[_] : ConcurrentEffect : Par](ids: NonEmptyList[Int]): F[Map[Int, String]] = {
+  override def batch[F[_] : ConcurrentEffect](ids: NonEmptyList[Int]): F[Map[Int, String]] = {
     Sync[F].delay(println(s"--> [${Thread.currentThread.getId}] Batch ToString $ids")) >>
     Sync[F].delay(println(s"<-- [${Thread.currentThread.getId}] Batch ToString $ids")) >>
     Sync[F].pure(ids.toList.map(i => (i, i.toString)).toMap)
@@ -127,8 +125,8 @@ import scala.concurrent.duration._
 // import scala.concurrent.duration._
 
 Fetch.run[IO](fetchOne).unsafeRunTimed(5.seconds)
-// --> [48] One ToString 1
-// <-- [48] One ToString 1
+// --> [179] One ToString 1
+// <-- [179] One ToString 1
 // res0: Option[String] = Some(1)
 ```
 
@@ -147,8 +145,8 @@ When executing the above fetch, note how the three identities get batched and th
 
 ```scala
 Fetch.run[IO](fetchThree).unsafeRunTimed(5.seconds)
-// --> [49] Batch ToString NonEmptyList(1, 2, 3)
-// <-- [49] Batch ToString NonEmptyList(1, 2, 3)
+// --> [179] Batch ToString NonEmptyList(1, 2, 3)
+// <-- [179] Batch ToString NonEmptyList(1, 2, 3)
 // res1: Option[(String, String, String)] = Some((1,2,3))
 ```
 
@@ -158,7 +156,7 @@ Note that the `DataSource#batch` method is not mandatory, it will be implemented
 object UnbatchedToStringSource extends DataSource[Int, String]{
   override def name = "UnbatchedToString"
 
-  override def fetch[F[_] : ConcurrentEffect : Par](id: Int): F[Option[String]] = {
+  override def fetch[F[_] : ConcurrentEffect](id: Int): F[Option[String]] = {
     Sync[F].delay(println(s"--> [${Thread.currentThread.getId}] One UnbatchedToString $id")) >>
     Sync[F].delay(println(s"<-- [${Thread.currentThread.getId}] One UnbatchedToString $id")) >>
     Sync[F].pure(Option(id.toString))
@@ -180,12 +178,12 @@ When executing the above fetch, note how the three identities get requested in p
 
 ```scala
 Fetch.run[IO](fetchUnbatchedThree).unsafeRunTimed(5.seconds)
-// --> [49] One UnbatchedToString 2
-// --> [48] One UnbatchedToString 3
-// --> [51] One UnbatchedToString 1
-// <-- [48] One UnbatchedToString 3
-// <-- [49] One UnbatchedToString 2
-// <-- [51] One UnbatchedToString 1
+// --> [179] One UnbatchedToString 1
+// --> [181] One UnbatchedToString 3
+// <-- [181] One UnbatchedToString 3
+// --> [182] One UnbatchedToString 2
+// <-- [182] One UnbatchedToString 2
+// <-- [179] One UnbatchedToString 1
 // res2: Option[(String, String, String)] = Some((1,2,3))
 ```
 
@@ -197,12 +195,12 @@ If we combine two independent fetches from different data sources, the fetches c
 object LengthSource extends DataSource[String, Int]{
   override def name = "Length"
 
-  override def fetch[F[_] : ConcurrentEffect : Par](id: String): F[Option[Int]] = {
+  override def fetch[F[_] : ConcurrentEffect](id: String): F[Option[Int]] = {
     Sync[F].delay(println(s"--> [${Thread.currentThread.getId}] One Length $id")) >>
     Sync[F].delay(println(s"<-- [${Thread.currentThread.getId}] One Length $id")) >>
     Sync[F].pure(Option(id.size))
   }
-  override def batch[F[_] : ConcurrentEffect : Par](ids: NonEmptyList[String]): F[Map[String, Int]] = {
+  override def batch[F[_] : ConcurrentEffect](ids: NonEmptyList[String]): F[Map[String, Int]] = {
     Sync[F].delay(println(s"--> [${Thread.currentThread.getId}] Batch Length $ids")) >>
     Sync[F].delay(println(s"<-- [${Thread.currentThread.getId}] Batch Length $ids")) >>
     Sync[F].pure(ids.toList.map(i => (i, i.size)).toMap)
@@ -224,10 +222,10 @@ Note how the two independent data fetches run in parallel, minimizing the latenc
 
 ```scala
 Fetch.run[IO](fetchMulti).unsafeRunTimed(5.seconds)
-// --> [48] One ToString 1
-// <-- [48] One ToString 1
-// --> [50] One Length one
-// <-- [50] One Length one
+// --> [181] One ToString 1
+// <-- [181] One ToString 1
+// --> [180] One Length one
+// <-- [180] One Length one
 // res3: Option[(String, Int)] = Some((1,3))
 ```
 
@@ -248,8 +246,8 @@ While running it, notice that the data source is only queried once. The next tim
 
 ```scala
 Fetch.run[IO](fetchTwice).unsafeRunTimed(5.seconds)
-// --> [51] One ToString 1
-// <-- [51] One ToString 1
+// --> [182] One ToString 1
+// <-- [182] One ToString 1
 // res4: Option[(String, String)] = Some((1,1))
 ```
 
@@ -266,6 +264,7 @@ For more in-depth information take a look at our [documentation](http://47deg.gi
 If you wish to add your library here please consider a PR to include it in the list below.
 
 [comment]: # (Start Copyright)
+
 # Copyright
 
 Fetch is designed and developed by 47 Degrees

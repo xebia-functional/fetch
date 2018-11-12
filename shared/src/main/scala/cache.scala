@@ -21,7 +21,6 @@ import cats.effect._
 import cats.data.NonEmptyList
 import cats.instances.list._
 import cats.syntax.all._
-import cats.temp.par._
 
 final class DataSourceName(val name: String) extends AnyVal
 final class DataSourceId(val id: Any) extends AnyVal

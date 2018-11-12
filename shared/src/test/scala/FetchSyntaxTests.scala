@@ -16,22 +16,13 @@
 
 package fetch
 
-import scala.concurrent.{ExecutionContext, Future}
-
-import org.scalatest.{AsyncFreeSpec, Matchers}
-
 import cats.syntax.all._
 import cats.effect._
 
-import fetch._
 import fetch.syntax._
 
-class FetchSyntaxTests extends AsyncFreeSpec with Matchers {
+class FetchSyntaxTests extends FetchSpec {
   import TestHelper._
-
-  override val executionContext: ExecutionContext = ExecutionContext.Implicits.global
-  implicit val timer: Timer[IO] = IO.timer(executionContext)
-  implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
 
   "`fetch` syntax allows lifting of any value to the context of a fetch" in {
     Fetch.pure[IO, Int](42) shouldEqual 42.fetch[IO]
