@@ -24,14 +24,8 @@ private object FetchExecution {
   def parallel[F[_], A](effects: NonEmptyList[F[A]])(
     implicit CF: ConcurrentEffect[F]
   ): F[NonEmptyList[A]] =
-    for {
-      fibers <- effects.traverse(CF.start(_))
-      runFibers = fibers.traverse(_.join)
-      _ <- CF.handleErrorWith(runFibers)(error => {
-        fibers.traverse(_.cancel) *> CF.raiseError(error)
-      })
-      results <- runFibers
-    } yield results
-
+    effects.traverse(CF.start(_)).flatMap(fibers =>
+      fibers.traverse(_.join).onError({ case _ => fibers.traverse_(_.cancel) })
+    )
 }
 
