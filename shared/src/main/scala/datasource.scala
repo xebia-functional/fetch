@@ -25,21 +25,26 @@ import cats.syntax.all._
 
 /**
  * A `DataSource` is the recipe for fetching a certain identity `I`, which yields
- * results of type `A`.
+ * results of type `A` performing an effect of type `F[_]`.
  */
-trait DataSource[I, A] {
+trait DataSource[F[_], I, A] {
   /** The name of the data source.
    */
   def name: String
 
+  /** The identity of the data source.
+   */
+  def identity: DataSourceIdentity =
+    DataSourceIdentity(name)
+
   /** Fetch one identity, returning a None if it wasn't found.
    */
-  def fetch[F[_] : ConcurrentEffect](id: I): F[Option[A]]
+  def fetch(id: I)(implicit C: ConcurrentEffect[F]): F[Option[A]]
 
   /** Fetch many identities, returning a mapping from identities to results. If an
    * identity wasn't found, it won't appear in the keys.
    */
-  def batch[F[_] : ConcurrentEffect](ids: NonEmptyList[I]): F[Map[I, A]] =
+  def batch(ids: NonEmptyList[I])(implicit C: ConcurrentEffect[F]): F[Map[I, A]] =
     for {
       tuples <- FetchExecution.parallel(
         ids.map(id => fetch(id).map((v) => id -> v))
@@ -51,6 +56,8 @@ trait DataSource[I, A] {
 
   def batchExecution: BatchExecution = InParallel
 }
+
+final case class DataSourceIdentity(name: String)
 
 sealed trait BatchExecution extends Product with Serializable
 case object Sequentially extends BatchExecution

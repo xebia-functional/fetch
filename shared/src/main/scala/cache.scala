@@ -30,13 +30,11 @@ final class DataSourceResult(val result: Any) extends AnyVal
  * A `Cache` trait so the users of the library can provide their own cache.
  */
 trait DataSourceCache[F[_]] {
-  def lookup[I, A](i: I, ds: DataSource[I, A]): F[Option[A]]
+  def lookup[I, A](i: I, ds: DataSource[F, I, A]): F[Option[A]]
 
-  def insert[I, A](i: I, v: A, ds: DataSource[I, A]): F[DataSourceCache[F]]
+  def insert[I, A](i: I, v: A, ds: DataSource[F, I, A]): F[DataSourceCache[F]]
 
-  // def delete[I, A](i: I, v: A, ds: DataSource[I, A]): F[Unit]
-
-  def bulkInsert[I, A](vs: List[(I, A)], ds: DataSource[I, A])(
+  def bulkInsert[I, A](vs: List[(I, A)], ds: DataSource[F, I, A])(
     implicit M: Monad[F]
   ): F[DataSourceCache[F]] = {
     vs.foldLeftM(this){
@@ -50,10 +48,10 @@ trait DataSourceCache[F[_]] {
  * A cache that stores its elements in memory.
  */
 case class InMemoryCache[F[_] : Monad](state: Map[(DataSourceName, DataSourceId), DataSourceResult]) extends DataSourceCache[F] {
-  def lookup[I, A](i: I, ds: DataSource[I, A]): F[Option[A]] =
+  def lookup[I, A](i: I, ds: DataSource[F, I, A]): F[Option[A]] =
     Applicative[F].pure(state.get((new DataSourceName(ds.name), new DataSourceId(i))).map(_.result.asInstanceOf[A]))
 
-  def insert[I, A](i: I, v: A, ds: DataSource[I, A]): F[DataSourceCache[F]] =
+  def insert[I, A](i: I, v: A, ds: DataSource[F, I, A]): F[DataSourceCache[F]] =
     Applicative[F].pure(copy(state = state.updated((new DataSourceName(ds.name), new DataSourceId(i)), new DataSourceResult(v))))
 }
 

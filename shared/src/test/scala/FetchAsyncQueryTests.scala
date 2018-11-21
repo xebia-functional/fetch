@@ -86,11 +86,13 @@ object DataSources {
     def author: Int = id + 1
   }
 
-  object ArticleAsync extends DataSource[ArticleId, Article] {
+  implicit def ArticleAsync[F[_] : ConcurrentEffect]: DataSource[F, ArticleId, Article] = new DataSource[F, ArticleId, Article] {
     override def name = "ArticleAsync"
 
-    override def fetch[F[_] : ConcurrentEffect](id: ArticleId): F[Option[Article]] =
-      Async[F].async[Option[Article]]((cb) => {
+    override def fetch(id: ArticleId)(
+      implicit CF: ConcurrentEffect[F]
+    ): F[Option[Article]] =
+      CF.async[Option[Article]]((cb) => {
         cb(
           Right(
             Option(Article(id.id, "An article with id " + id.id))
@@ -100,16 +102,18 @@ object DataSources {
   }
 
   def article[F[_] : ConcurrentEffect](id: Int): Fetch[F, Article] =
-    Fetch(ArticleId(id), ArticleAsync)
+    Fetch(ArticleId(id), ArticleAsync[F])
 
   case class AuthorId(id: Int)
   case class Author(id: Int, name: String)
 
-  object AuthorAsync extends DataSource[AuthorId, Author] {
+  implicit def AuthorAsync[F[_] : ConcurrentEffect]: DataSource[F, AuthorId, Author] = new DataSource[F, AuthorId, Author]  {
     override def name = "AuthorAsync"
 
-    override def fetch[F[_] : ConcurrentEffect](id: AuthorId): F[Option[Author]] =
-      Async[F].async((cb => {
+    override def fetch(id: AuthorId)(
+      implicit CF: ConcurrentEffect[F]
+    ): F[Option[Author]] =
+      CF.async((cb => {
         cb(
           Right(
             Option(Author(id.id, "@egg" + id.id))
@@ -119,5 +123,5 @@ object DataSources {
   }
 
   def author[F[_] : ConcurrentEffect](a: Article): Fetch[F, Author] =
-    Fetch(AuthorId(a.author), AuthorAsync)
+    Fetch(AuthorId(a.author), AuthorAsync[F])
 }
