@@ -128,7 +128,7 @@ object `package` {
       BlockedRequest(newRequest, newResult)
   }
 
-  /* A map fromreq datasources to blocked requests used to group requests to the same data source. */
+  /* A map from datasource identities to (data source, blocked request) pairs used to group requests to the same data source. */
   private[fetch] final case class RequestMap[F[_]](
     m: Map[DataSourceIdentity,
            (DataSource[F, Any, Any], BlockedRequest[F])])
