@@ -200,7 +200,7 @@ class FetchTests extends FetchSpec {
         env.rounds.size shouldEqual 1
         env.rounds.head.queries.size shouldEqual 1
         env.rounds.head.queries.head.request should matchPattern {
-          case Batch(NonEmptyList(One(1), List(One(2))), _) =>
+          case Batch(NonEmptyList(1, List(2)), _) =>
         }
       }
     }).unsafeToFuture
@@ -533,10 +533,10 @@ class FetchTests extends FetchSpec {
       _          <- one(1)
     } yield aOne + anotherOne
 
-    def cache[F[_] : ConcurrentEffect] = InMemoryCache.from[F, One, Int](
-      (OneSource.name, One(1)) -> 1,
-      (OneSource.name, One(2)) -> 2,
-      (OneSource.name, One(3)) -> 3
+    def cache[F[_] : ConcurrentEffect] = InMemoryCache.from[F, Int, Int](
+      (One, 1) -> 1,
+      (One, 2) -> 2,
+      (One, 3) -> 3
     )
 
     val io = Fetch.runEnv[IO](fetch, cache)
@@ -562,10 +562,10 @@ class FetchTests extends FetchSpec {
       _          <- one(1)
     } yield aOne + anotherOne
 
-    def cache[F[_] : ConcurrentEffect] = InMemoryCache.from[F, One, Int](
-      (OneSource.name, One(1)) -> 1,
-      (OneSource.name, One(2)) -> 2,
-      (OneSource.name, One(3)) -> 3
+    def cache[F[_] : ConcurrentEffect] = InMemoryCache.from[F, Int, Int](
+      (One, 1) -> 1,
+      (One, 2) -> 2,
+      (One, 3) -> 3
     )
 
     val io = Fetch.run[IO](fetch, cache)
@@ -585,10 +585,10 @@ class FetchTests extends FetchSpec {
       _          <- one(1)
     } yield aOne + anotherOne
 
-    def cache[F[_] : ConcurrentEffect] = InMemoryCache.from[F, One, Int](
-      (OneSource.name, One(1)) -> 1,
-      (OneSource.name, One(2)) -> 2,
-      (OneSource.name, One(3)) -> 3
+    def cache[F[_] : ConcurrentEffect] = InMemoryCache.from[F, Int, Int](
+      (One, 1) -> 1,
+      (One, 2) -> 2,
+      (One, 3) -> 3
     )
 
     val io = Fetch.runCache[IO](fetch, cache)
@@ -621,11 +621,11 @@ class FetchTests extends FetchSpec {
     }).unsafeToFuture
   }
 
-  case class ForgetfulCache[F[_] : Monad]() extends DataSourceCache[F] {
-    def insert[I, A](i: I, v: A, ds: DataSource[I, A]): F[DataSourceCache[F]] =
+  case class ForgetfulCache[F[_] : Monad]() extends DataCache[F] {
+    def insert[I, A](i: I, v: A, d: Data[I, A]): F[DataCache[F]] =
       Applicative[F].pure(this)
 
-    def lookup[I, A](i: I, ds: DataSource[I, A]): F[Option[A]] =
+    def lookup[I, A](i: I, d: Data[I, A]): F[Option[A]] =
       Applicative[F].pure(None)
   }
 
@@ -697,7 +697,7 @@ class FetchTests extends FetchSpec {
 
   "Data sources with errors won't fail if they're cached" in {
     def cache[F[_] : ConcurrentEffect] = InMemoryCache.from[F, Never, Int](
-      (NeverSource.name, Never()) -> 1
+      (Never, Never()) -> 1
     )
     val io = Fetch.run[IO](never, cache)
 
@@ -788,20 +788,27 @@ class FetchTests extends FetchSpec {
 
   case class MaybeMissing(id: Int)
 
-  object MaybeMissingSource extends DataSource[MaybeMissing, Int] {
-    override def name = "Maybe Missing Source"
+  object MaybeMissing extends Data[MaybeMissing, Int] {
+    def name = "Maybe Missing"
 
-    override def fetch[F[_]](id: MaybeMissing)(
-      implicit CF: ConcurrentEffect[F]
-    ): F[Option[Int]] =
-      if (id.id % 2 == 0)
-        Applicative[F].pure(None)
-      else
-        Applicative[F].pure(Option(id.id))
+    implicit def source[F[_] : ConcurrentEffect] = new DataSource[F, MaybeMissing, Int] {
+      override def data = MaybeMissing
+
+      override def fetch(id: MaybeMissing)(
+        implicit CF: ConcurrentEffect[F]
+      ): F[Option[Int]] =
+        if (id.id % 2 == 0)
+          CF.pure(None)
+        else
+          CF.pure(Option(id.id))
+    }
+
   }
 
   def maybeOpt[F[_] : ConcurrentEffect](id: Int): Fetch[F, Option[Int]] =
-    Fetch.optional(MaybeMissing(id), MaybeMissingSource)
+    Fetch.optional(
+      MaybeMissing(id),
+      MaybeMissing.source)
 
   "We can run optional fetches" in {
     def fetch[F[_] : ConcurrentEffect]: Fetch[F, Option[Int]] =

@@ -86,38 +86,51 @@ object DataSources {
     def author: Int = id + 1
   }
 
-  object ArticleAsync extends DataSource[ArticleId, Article] {
-    override def name = "ArticleAsync"
+  object Article extends Data[ArticleId, Article] {
+    def name = "Articles"
 
-    override def fetch[F[_] : ConcurrentEffect](id: ArticleId): F[Option[Article]] =
-      Async[F].async[Option[Article]]((cb) => {
-        cb(
-          Right(
-            Option(Article(id.id, "An article with id " + id.id))
+    implicit def async[F[_] : ConcurrentEffect]: DataSource[F, ArticleId, Article] = new DataSource[F, ArticleId, Article] {
+      override def data = Article 
+
+      override def fetch(id: ArticleId)(
+        implicit CF: ConcurrentEffect[F]
+      ): F[Option[Article]] =
+        CF.async[Option[Article]]((cb) => {
+          cb(
+            Right(
+              Option(Article(id.id, "An article with id " + id.id))
+            )
           )
-        )
-      })
+        })
+    }
   }
 
   def article[F[_] : ConcurrentEffect](id: Int): Fetch[F, Article] =
-    Fetch(ArticleId(id), ArticleAsync)
+    Fetch(ArticleId(id), Article.async)
 
   case class AuthorId(id: Int)
   case class Author(id: Int, name: String)
 
-  object AuthorAsync extends DataSource[AuthorId, Author] {
-    override def name = "AuthorAsync"
+  object Author extends Data[AuthorId, Author] {
+    def name = "Authors"
 
-    override def fetch[F[_] : ConcurrentEffect](id: AuthorId): F[Option[Author]] =
-      Async[F].async((cb => {
-        cb(
-          Right(
-            Option(Author(id.id, "@egg" + id.id))
+    implicit def async[F[_] : ConcurrentEffect]: DataSource[F, AuthorId, Author] = new DataSource[F, AuthorId, Author]  {
+      override def data = Author
+
+      override def fetch(id: AuthorId)(
+        implicit CF: ConcurrentEffect[F]
+      ): F[Option[Author]] =
+        CF.async((cb => {
+          cb(
+            Right(
+              Option(Author(id.id, "@egg" + id.id))
+            )
           )
-        )
-      }))
+        }))
+    }
   }
 
+
   def author[F[_] : ConcurrentEffect](a: Article): Fetch[F, Author] =
-    Fetch(AuthorId(a.author), AuthorAsync)
+    Fetch(AuthorId(a.author), Author.async)
 }

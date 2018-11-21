@@ -22,30 +22,40 @@ import cats.data.NonEmptyList
 import cats.instances.list._
 import cats.instances.option._
 import cats.syntax.all._
+import cats.kernel.{ Hash => H }
+
+/**
+ * `Data` is a trait used to identify and optimize access to a `DataSource`.
+ **/
+trait Data[I, A] { self =>
+  def name: String
+
+  def identity: Data.Identity =
+    H.fromUniversalHashCode.hash(self)
+}
+
+object Data {
+  type Identity = Int
+}
 
 /**
  * A `DataSource` is the recipe for fetching a certain identity `I`, which yields
- * results of type `A`.
+ * results of type `A` performing an effect of type `F[_]`.
  */
-trait DataSource[I, A] {
-  /** The name of the data source.
-   */
-  def name: String
+trait DataSource[F[_], I, A] {
+  def data: Data[I, A]
 
   /** Fetch one identity, returning a None if it wasn't found.
    */
-  def fetch[F[_] : ConcurrentEffect](id: I): F[Option[A]]
+  def fetch(id: I)(implicit C: ConcurrentEffect[F]): F[Option[A]]
 
   /** Fetch many identities, returning a mapping from identities to results. If an
    * identity wasn't found, it won't appear in the keys.
    */
-  def batch[F[_] : ConcurrentEffect](ids: NonEmptyList[I]): F[Map[I, A]] =
-    for {
-      tuples <- FetchExecution.parallel(
-        ids.map(id => fetch(id).map((v) => id -> v))
-      )
-      results = tuples.collect({ case (id, Some(x)) => id -> x }).toMap
-    } yield results
+  def batch(ids: NonEmptyList[I])(implicit C: ConcurrentEffect[F]): F[Map[I, A]] =
+    FetchExecution.parallel(
+      ids.map(id => fetch(id).map((v) => id -> v))
+    ).map(_.collect({ case (id, Some(x)) => id -> x }).toMap)
 
   def maxBatchSize: Option[Int] = None
 

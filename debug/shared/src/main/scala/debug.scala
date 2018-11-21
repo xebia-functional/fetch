@@ -81,21 +81,21 @@ object debug {
   }
 
   def showRequest(r: Request): Document = r.request match {
-    case FetchOne(id, ds) =>
-      Document.text(s"[Fetch one] From `${ds.name}` with id ${id}") :: showDuration(r.duration)
-    case Batch(ids, ds) =>
-      Document.text(s"[Batch] From `${ds.name}` with ids ${ids.toList}") :: showDuration(r.duration)
+    case FetchOne(id, d) =>
+      Document.text(s"[Fetch one] From `${d.name}` with id ${id}") :: showDuration(r.duration)
+    case Batch(ids, d) =>
+      Document.text(s"[Batch] From `${d.name}` with ids ${ids.toList}") :: showDuration(r.duration)
   }
 
-  def showMissing(ds: DataSource[_, _], ids: List[_]): Document =
-    Document.text(s"`${ds.name}` missing identities ${ids}")
+  def showMissing(d: Data[_, _], ids: List[_]): Document =
+    Document.text(s"`${d.name}` missing identities ${ids}")
 
   def showRoundCount(err: FetchException): Document =
     Document.text(s", fetch interrupted after ${err.environment.rounds.size} rounds")
 
   def showException(err: FetchException): Document = err match {
     case MissingIdentity(id, q, env) =>
-      Document.text(s"[ERROR] Identity with id `${id}` for data source `${q.dataSource.name}` not found") :: showRoundCount(err)
+      Document.text(s"[ERROR] Identity with id `${id}` for data source `${q.data.name}` not found") :: showRoundCount(err)
     case UnhandledException(exc, env) =>
       Document
         .text(s"[ERROR] Unhandled `${exc.getClass.getName}`: '${exc.getMessage}'") :: showRoundCount(err)
