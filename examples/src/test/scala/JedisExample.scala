@@ -25,8 +25,6 @@ import cats.syntax.all._
 import io.circe._
 import io.circe.generic.semiauto._
 
-import org.http4s.circe._
-import org.http4s.client.blaze._
 import org.scalatest.{Matchers, WordSpec}
 
 import java.io._
@@ -36,71 +34,23 @@ import redis.clients.jedis._
 import fetch._
 
 object DataSources {
-  // the User and Post classes
-
-  case class UserId(id: Int)
-  case class PostId(id: Int)
-
-  case class User(id: UserId, name: String, username: String, email: String)
-  case class Post(id: PostId, userId: UserId, title: String, body: String)
-
-  // some circe decoders
-
-  implicit val userIdDecoder: Decoder[UserId] = Decoder[Int].map(UserId.apply)
-  implicit val postIdDecoder: Decoder[PostId] = Decoder[Int].map(PostId.apply)
-  implicit val userDecoder: Decoder[User]     = deriveDecoder
-  implicit val postDecoder: Decoder[Post]     = deriveDecoder
-
-  // http4s client which is used by the datasources
-
-  def client[F[_]: ConcurrentEffect] =
-    Http1Client[F](
-      BlazeClientConfig.defaultConfig.copy(
-        responseHeaderTimeout = 30.seconds // high timeout because jsonplaceholder takes a while to respond
-      ))
-
-  // a DataSource that can fetch Users with their UserId.
-
-  object Users extends DataSource[UserId, User] {
-    override def name = "UserH4s"
-
-    override def fetch[F[_]: ConcurrentEffect](id: UserId): F[Option[User]] = {
-      val url = s"https://jsonplaceholder.typicode.com/users?id=${id.id}"
-      client[F] >>= ((c) => c.expect(url)(jsonOf[F, List[User]]).map(_.headOption))
-    }
-
-    override def batch[F[_]: ConcurrentEffect](
-        ids: NonEmptyList[UserId]
-    ): F[Map[UserId, User]] = {
-      val filterIds = ids.map("id=" + _.id).toList.mkString("&")
-      val url       = s"https://jsonplaceholder.typicode.com/users?$filterIds"
-      val io        = client[F] >>= ((c) => c.expect(url)(jsonOf[F, List[User]]))
-      io.map(users => users.map(user => user.id -> user).toMap)
-    }
-  }
-
-  // some helper methods to create Fetches
-
-  def user[F[_]: ConcurrentEffect](id: UserId): Fetch[F, User] =
-    Fetch(id, Users)
-
-  object Numbers extends DataSource[Int, Int] {
+  def numbers[F[_]]: DataSource[F, Int, Int] = new DataSource[F, Int, Int] {
     override def name = "Numbers"
 
-    override def fetch[F[_]: ConcurrentEffect](id: Int): F[Option[Int]] =
-      Sync[F].pure(Option(id))
+    override def fetch(id: Int)(implicit C: ConcurrentEffect[F]): F[Option[Int]] =
+      C.pure(Option(id))
   }
 
-  def number[F[_]: ConcurrentEffect](id: Int): Fetch[F, Int] =
-    Fetch(id, Numbers)
+  def fetchNumber[F[_]: ConcurrentEffect](id: Int): Fetch[F, Int] =
+    Fetch(id, numbers[F])
 
-  def fetch[F[_]: ConcurrentEffect]: Fetch[F, User] =
+  def fetch[F[_]: ConcurrentEffect]: Fetch[F, HttpExample.User] =
     for {
-      _ <- user(UserId(1))
-      n <- number(1)
-      _ <- user(UserId(n))
-      _ <- number(n)
-      u <- user(UserId(n))
+      _ <- HttpExample.Data.fetchUser(1)
+      n <- fetchNumber(1)
+      _ <- HttpExample.Data.fetchUser(n)
+      _ <- fetchNumber(n)
+      u <- HttpExample.Data.fetchUser(n)
     } yield u
 }
 
@@ -148,59 +98,58 @@ object Binary {
 
 }
 
+case class RedisCache[F[_]: Sync](host: String) extends DataSourceCache[F] {
+  private val binaryClient = new BinaryJedis(host)
+
+  def client: F[BinaryJedis] =
+    Sync[F].pure(binaryClient)
+
+  private def get(i: Array[Byte]): F[Option[Array[Byte]]] =
+    Sync[F].bracket(client)({ c =>
+      Sync[F].pure(Option(c.get(i)))
+    })({ in =>
+      Sync[F].pure(in.close())
+    })
+
+  private def set(i: Array[Byte], v: Array[Byte]): F[Unit] =
+    Sync[F].bracket(client)({ c =>
+      Sync[F].pure(c.set(i, v)).void
+    })({ in =>
+      Sync[F].pure(in.close())
+    })
+
+  private def identity[I, A](i: I, ds: DataSource[F, I, A]): Array[Byte] =
+    Binary.fromString(s"${ds.name} ${i}")
+
+  def lookup[I, A](i: I, ds: DataSource[F, I, A]): F[Option[A]] =
+    get(identity(i, ds)) >>= { case (raw) => Binary.deserialize(raw) }
+
+  def insert[I, A](i: I, v: A, ds: DataSource[F, I, A]): F[DataSourceCache[F]] =
+    for {
+      s <- Binary.serialize(v)
+      _ <- set(identity(i, ds), s)
+    } yield this
+}
+
 class JedisExample extends WordSpec with Matchers {
   import DataSources._
 
-  case class RedisCache[F[_]: Sync](host: String) extends DataSourceCache[F] {
-    private val binaryClient = new BinaryJedis(host)
-
-    def client: F[BinaryJedis] =
-      Sync[F].pure(binaryClient)
-
-    private def get(i: Array[Byte]): F[Option[Array[Byte]]] =
-      Sync[F].bracket(client)({ c =>
-        Sync[F].pure(Option(c.get(i)))
-      })({ in =>
-        Sync[F].pure(in.close())
-      })
-
-    private def set(i: Array[Byte], v: Array[Byte]): F[Unit] =
-      Sync[F].bracket(client)({ c =>
-        Sync[F].pure(c.set(i, v)).void
-      })({ in =>
-        Sync[F].pure(in.close())
-      })
-
-    private def identity[I, A](i: I, ds: DataSource[I, A]): Array[Byte] =
-      Binary.fromString(s"${ds.name} ${i}")
-
-    def lookup[I, A](i: I, ds: DataSource[I, A]): F[Option[A]] =
-      get(identity(i, ds)) >>= { case (raw) => Binary.deserialize(raw) }
-
-    def insert[I, A](i: I, v: A, ds: DataSource[I, A]): F[DataSourceCache[F]] =
-      for {
-        s <- Binary.serialize(v)
-        _ <- set(identity(i, ds), s)
-      } yield this
-  }
-
   // runtime
-
   val executionContext              = ExecutionContext.Implicits.global
   implicit val t: Timer[IO]         = IO.timer(executionContext)
   implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
 
   "We can use a Redis cache" in {
-    val cache               = RedisCache[IO]("localhost")
-    val io: IO[(Env, User)] = Fetch.runEnv[IO](fetch, cache)
+    val cache                           = RedisCache[IO]("localhost")
+    val io: IO[(Env, HttpExample.User)] = Fetch.runEnv[IO](fetch, cache)
 
     val (env, result) = io.unsafeRunSync
 
     println(result)
     env.rounds.size shouldEqual 2
 
-    val io2: IO[(Env, User)] = Fetch.runEnv[IO](fetch, cache)
-    val (env2, result2)      = io2.unsafeRunSync
+    val io2: IO[(Env, HttpExample.User)] = Fetch.runEnv[IO](fetch, cache)
+    val (env2, result2)                  = io2.unsafeRunSync
 
     println(result2)
     env2.rounds.size shouldEqual 0
