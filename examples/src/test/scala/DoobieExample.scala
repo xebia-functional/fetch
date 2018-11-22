@@ -75,7 +75,7 @@ object DatabaseExample {
   }
 
   object Data {
-    implicit def authorDS[F[_]]: DataSource[F, AuthorId, Author] =
+    def authors[F[_]]: DataSource[F, AuthorId, Author] =
       new DataSource[F, AuthorId, Author] {
         override def name = "AuthorDoobie"
 
@@ -96,15 +96,14 @@ object DatabaseExample {
       }
 
     def fetchAuthor[F[_]: ConcurrentEffect](id: Int): Fetch[F, Author] =
-      Fetch(AuthorId(id), authorDS[F])
+      Fetch(AuthorId(id), authors[F])
   }
 }
 
 class DoobieExample extends WordSpec with Matchers {
   import DatabaseExample._
 
-  implicit val executionContext = ExecutionContext.Implicits.global
-
+  val executionContext              = ExecutionContext.Implicits.global
   implicit val t: Timer[IO]         = IO.timer(executionContext)
   implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
 

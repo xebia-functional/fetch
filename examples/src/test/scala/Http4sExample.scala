@@ -45,9 +45,7 @@ object HttpExample {
     val executionContext =
       ExecutionContext.fromExecutor(new ScheduledThreadPoolExecutor(2))
 
-    def client[F[_]: ConcurrentEffect](
-        //implicit EC: ExecutionContext
-    ): Resource[F, Client[F]] =
+    def client[F[_]: ConcurrentEffect]: Resource[F, Client[F]] =
       BlazeClientBuilder[F](executionContext).resource
 
     implicit val userIdDecoder: Decoder[UserId] = Decoder[Int].map(UserId.apply)
@@ -59,7 +57,7 @@ object HttpExample {
   object Data {
     import Http._
 
-    implicit def users[F[_]]: DataSource[F, UserId, User] =
+    def users[F[_]]: DataSource[F, UserId, User] =
       new DataSource[F, UserId, User] {
         override def name = "UserHttp"
 
@@ -83,7 +81,7 @@ object HttpExample {
     def fetchUserById[F[_]: ConcurrentEffect](id: UserId): Fetch[F, User] =
       Fetch(id, users[F])
 
-    implicit def posts[F[_]]: DataSource[F, UserId, List[Post]] =
+    def posts[F[_]]: DataSource[F, UserId, List[Post]] =
       new DataSource[F, UserId, List[Post]] {
         override def name = "PostH4s"
         override def fetch(id: UserId)(
