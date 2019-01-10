@@ -32,11 +32,6 @@ trait DataSource[F[_], I, A] {
    */
   def name: String
 
-  /** The identity of the data source.
-   */
-  def identity: DataSourceIdentity =
-    DataSourceIdentity(name)
-
   /** Fetch one identity, returning a None if it wasn't found.
    */
   def fetch(id: I)(implicit C: ConcurrentEffect[F]): F[Option[A]]
@@ -45,19 +40,14 @@ trait DataSource[F[_], I, A] {
    * identity wasn't found, it won't appear in the keys.
    */
   def batch(ids: NonEmptyList[I])(implicit C: ConcurrentEffect[F]): F[Map[I, A]] =
-    for {
-      tuples <- FetchExecution.parallel(
-        ids.map(id => fetch(id).map((v) => id -> v))
-      )
-      results = tuples.collect({ case (id, Some(x)) => id -> x }).toMap
-    } yield results
+    FetchExecution.parallel(
+      ids.map(id => fetch(id).map((v) => id -> v))
+    ).map(_.collect({ case (id, Some(x)) => id -> x }).toMap)
 
   def maxBatchSize: Option[Int] = None
 
   def batchExecution: BatchExecution = InParallel
 }
-
-final case class DataSourceIdentity(name: String)
 
 sealed trait BatchExecution extends Product with Serializable
 case object Sequentially extends BatchExecution

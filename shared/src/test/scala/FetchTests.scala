@@ -534,9 +534,9 @@ class FetchTests extends FetchSpec {
     } yield aOne + anotherOne
 
     def cache[F[_] : ConcurrentEffect] = InMemoryCache.from[F, One, Int](
-      (OneSource.name, One(1)) -> 1,
-      (OneSource.name, One(2)) -> 2,
-      (OneSource.name, One(3)) -> 3
+      (OneSource.dataSource.name, One(1)) -> 1,
+      (OneSource.dataSource.name, One(2)) -> 2,
+      (OneSource.dataSource.name, One(3)) -> 3
     )
 
     val io = Fetch.runEnv[IO](fetch, cache)
@@ -563,9 +563,9 @@ class FetchTests extends FetchSpec {
     } yield aOne + anotherOne
 
     def cache[F[_] : ConcurrentEffect] = InMemoryCache.from[F, One, Int](
-      (OneSource.name, One(1)) -> 1,
-      (OneSource.name, One(2)) -> 2,
-      (OneSource.name, One(3)) -> 3
+      (OneSource.dataSource.name, One(1)) -> 1,
+      (OneSource.dataSource.name, One(2)) -> 2,
+      (OneSource.dataSource.name, One(3)) -> 3
     )
 
     val io = Fetch.run[IO](fetch, cache)
@@ -586,9 +586,9 @@ class FetchTests extends FetchSpec {
     } yield aOne + anotherOne
 
     def cache[F[_] : ConcurrentEffect] = InMemoryCache.from[F, One, Int](
-      (OneSource.name, One(1)) -> 1,
-      (OneSource.name, One(2)) -> 2,
-      (OneSource.name, One(3)) -> 3
+      (OneSource.dataSource.name, One(1)) -> 1,
+      (OneSource.dataSource.name, One(2)) -> 2,
+      (OneSource.dataSource.name, One(3)) -> 3
     )
 
     val io = Fetch.runCache[IO](fetch, cache)
@@ -697,7 +697,7 @@ class FetchTests extends FetchSpec {
 
   "Data sources with errors won't fail if they're cached" in {
     def cache[F[_] : ConcurrentEffect] = InMemoryCache.from[F, Never, Int](
-      (NeverSource.name, Never()) -> 1
+      (neverSource.name, Never()) -> 1
     )
     val io = Fetch.run[IO](never, cache)
 
@@ -788,8 +788,9 @@ class FetchTests extends FetchSpec {
 
   case class MaybeMissing(id: Int)
 
-  implicit def MaybeMissingSource[F[_] : ConcurrentEffect] = new DataSource[F, MaybeMissing, Int] {
-    override def name = "Maybe Missing Source"
+  object MaybeMissingSource
+  implicit def maybeMissingSource[F[_] : ConcurrentEffect] = new DataSource[F, MaybeMissing, Int] {
+    override def name = "Maybe missing"
 
     override def fetch(id: MaybeMissing)(
       implicit CF: ConcurrentEffect[F]
@@ -801,7 +802,7 @@ class FetchTests extends FetchSpec {
   }
 
   def maybeOpt[F[_] : ConcurrentEffect](id: Int): Fetch[F, Option[Int]] =
-    Fetch.optional(MaybeMissing(id), MaybeMissingSource[F])
+    Fetch.optional(MaybeMissing(id), MaybeMissingSource, maybeMissingSource[F])
 
   "We can run optional fetches" in {
     def fetch[F[_] : ConcurrentEffect]: Fetch[F, Option[Int]] =

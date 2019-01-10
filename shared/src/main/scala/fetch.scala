@@ -37,10 +37,10 @@ object `package` {
   private[fetch] sealed trait FetchQuery[I, A] extends FetchRequest {
     def identities: NonEmptyList[I]
   }
-  private[fetch] final case class FetchOne[I, A](id: I, ds: DataSourceIdentity) extends FetchQuery[I, A] {
+  private[fetch] final case class FetchOne[I, A](id: I, ds: AnyRef) extends FetchQuery[I, A] {
     override def identities: NonEmptyList[I] = NonEmptyList.one(id)
   }
-  private[fetch] final case class Batch[I, A](ids: NonEmptyList[I], ds: DataSourceIdentity) extends FetchQuery[I, A] {
+  private[fetch] final case class Batch[I, A](ids: NonEmptyList[I], ds: AnyRef) extends FetchQuery[I, A] {
     override def identities: NonEmptyList[I] = ids
   }
 
@@ -130,7 +130,7 @@ object `package` {
 
   /* A map from datasource identities to (data source, blocked request) pairs used to group requests to the same data source. */
   private[fetch] final case class RequestMap[F[_]](
-    m: Map[DataSourceIdentity,
+    m: Map[AnyRef,
            (DataSource[F, Any, Any], BlockedRequest[F])])
 
   /* Combine two `RequestMap` instances to batch requests to the same data source. */
@@ -229,15 +229,19 @@ object `package` {
     def error[F[_]: ConcurrentEffect, A](e: Throwable): Fetch[F, A] =
       exception((env) => UnhandledException(e, env))
 
-    def apply[F[_] : ConcurrentEffect, I, A](id: I, ds: DataSource[F, I, A]): Fetch[F, A] =
+    def apply[F[_] : ConcurrentEffect, I, A](
+      id: I,
+      dsIdentity: AnyRef,
+      ds: DataSource[F, I, A]
+    ): Fetch[F, A] =
       Unfetch[F, A](
         for {
           deferred <- Deferred[F, FetchStatus]
-          request = FetchOne(id, ds.identity)
+          request = FetchOne(id, dsIdentity)
           result = deferred.complete _
           blocked = BlockedRequest(request, result)
           anyDs = ds.asInstanceOf[DataSource[F, Any, Any]]
-          blockedRequest = RequestMap(Map(anyDs.identity -> (anyDs, blocked)))
+          blockedRequest = RequestMap(Map(dsIdentity -> (anyDs, blocked)))
         } yield Blocked(blockedRequest, Unfetch[F, A](
           deferred.get.map {
             case FetchDone(a) =>
@@ -248,15 +252,19 @@ object `package` {
         ))
       )
 
-    def optional[F[_] : ConcurrentEffect, I, A](id: I, ds: DataSource[F, I, A]): Fetch[F, Option[A]] =
+    def optional[F[_] : ConcurrentEffect, I, A](
+      id: I,
+      dsIdentity: AnyRef,
+      ds: DataSource[F, I, A]
+    ): Fetch[F, Option[A]] =
       Unfetch[F, Option[A]](
         for {
           deferred <- Deferred[F, FetchStatus]
-          request = FetchOne(id, ds.identity)
+          request = FetchOne(id, dsIdentity)
           result = deferred.complete _
           blocked = BlockedRequest(request, result)
           anyDs = ds.asInstanceOf[DataSource[F, Any, Any]]
-          blockedRequest = RequestMap(Map(anyDs.identity -> (anyDs, blocked)))
+          blockedRequest = RequestMap(Map(dsIdentity -> (anyDs, blocked)))
         } yield Blocked(blockedRequest, Unfetch[F, Option[A]](
           deferred.get.map {
             case FetchDone(a) =>
@@ -510,7 +518,7 @@ object `package` {
         case Some(uncached) => for {
           startTime <- T.clock.monotonic(MILLISECONDS)
 
-          request = Batch[Any, Any](uncached, ds.identity)
+          request = Batch[Any, Any](uncached, q.ds)
 
           batchedRequest <- ds.maxBatchSize match {
             // Unbatched
@@ -550,7 +558,7 @@ object `package` {
         .map(batchIds => NonEmptyList.fromListUnsafe(batchIds))
         .toList
     )
-    val reqs = batches.toList.map(Batch[Any, Any](_, ds.identity))
+    val reqs = batches.toList.map(Batch[Any, Any](_, q.ds))
 
     val results = e match {
       case Sequentially =>
