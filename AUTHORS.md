@@ -15,6 +15,7 @@ These are the people that have contributed to the Fetch project:
 * Alejandro Gómez <[purrgrammer](https://github.com/purrgrammer)>
 * Alessandro Lacava <[lambdista](https://github.com/lambdista)>
 * Chris Vale <[chris-vale-ck](https://github.com/chris-vale-ck)>
+* Diego E. Alonso Blas <[diesalbla](https://github.com/diesalbla)>
 * Fede Fernández <[fedefernandez](https://github.com/fedefernandez)>
 * Jisoo Park <[guersam](https://github.com/guersam)>
 * Juan Pedro Moreno <[juanpedromoreno](https://github.com/juanpedromoreno)>
