@@ -29,7 +29,7 @@ import cats.kernel.{ Hash => H }
  **/
 trait Data { self =>
   def hash: Data.Hash =
-    H.fromUniversalHashCode[AnyRef].hash(self)
+    H.fromUniversalHashCode.hash(self)
 }
 
 object Data {
