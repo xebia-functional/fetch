@@ -34,23 +34,25 @@ import redis.clients.jedis._
 import fetch._
 
 object DataSources {
-  def numbers[F[_]]: DataSource[F, Int, Int] = new DataSource[F, Int, Int] {
-    override def name = "Numbers"
+  object Numbers extends Data {
+    def source[F[_]]: DataSource[F, Int, Int] = new DataSource[F, Int, Int] {
+      override def name = "Numbers"
 
-    override def fetch(id: Int)(implicit C: ConcurrentEffect[F]): F[Option[Int]] =
-      C.pure(Option(id))
+      override def fetch(id: Int)(implicit C: ConcurrentEffect[F]): F[Option[Int]] =
+        C.pure(Option(id))
+    }
   }
 
   def fetchNumber[F[_]: ConcurrentEffect](id: Int): Fetch[F, Int] =
-    Fetch(id, numbers[F])
+    Fetch(id, Numbers, Numbers.source)
 
   def fetch[F[_]: ConcurrentEffect]: Fetch[F, HttpExample.User] =
     for {
-      _ <- HttpExample.Data.fetchUser(1)
+      _ <- HttpExample.fetchUser(1)
       n <- fetchNumber(1)
-      _ <- HttpExample.Data.fetchUser(n)
+      _ <- HttpExample.fetchUser(n)
       _ <- fetchNumber(n)
-      u <- HttpExample.Data.fetchUser(n)
+      u <- HttpExample.fetchUser(n)
     } yield u
 }
 
@@ -118,16 +120,16 @@ case class RedisCache[F[_]: Sync](host: String) extends DataSourceCache[F] {
       Sync[F].pure(in.close())
     })
 
-  private def identity[I, A](i: I, ds: DataSource[F, I, A]): Array[Byte] =
+  private def identity[I, A](i: I, data: Data, ds: DataSource[F, I, A]): Array[Byte] =
     Binary.fromString(s"${ds.name} ${i}")
 
-  def lookup[I, A](i: I, ds: DataSource[F, I, A]): F[Option[A]] =
-    get(identity(i, ds)) >>= { case (raw) => Binary.deserialize(raw) }
+  def lookup[I, A](i: I, data: Data, ds: DataSource[F, I, A]): F[Option[A]] =
+    get(identity(i, data, ds)) >>= { case (raw) => Binary.deserialize(raw) }
 
-  def insert[I, A](i: I, v: A, ds: DataSource[F, I, A]): F[DataSourceCache[F]] =
+  def insert[I, A](i: I, v: A, data: Data, ds: DataSource[F, I, A]): F[DataSourceCache[F]] =
     for {
       s <- Binary.serialize(v)
-      _ <- set(identity(i, ds), s)
+      _ <- set(identity(i, data, ds), s)
     } yield this
 }
 

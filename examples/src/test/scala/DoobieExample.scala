@@ -74,8 +74,8 @@ object DatabaseExample {
       } yield xa
   }
 
-  object Data {
-    def authors[F[_]]: DataSource[F, AuthorId, Author] =
+  object Authors extends Data {
+    def db[F[_]]: DataSource[F, AuthorId, Author] =
       new DataSource[F, AuthorId, Author] {
         override def name = "AuthorDoobie"
 
@@ -96,7 +96,7 @@ object DatabaseExample {
       }
 
     def fetchAuthor[F[_]: ConcurrentEffect](id: Int): Fetch[F, Author] =
-      Fetch(AuthorId(id), authors[F])
+      Fetch(AuthorId(id), Authors, Authors.db)
   }
 }
 
@@ -108,7 +108,7 @@ class DoobieExample extends WordSpec with Matchers {
   implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
 
   "We can fetch one author from the DB" in {
-    val io: IO[(Env, Author)] = Fetch.runEnv[IO](Data.fetchAuthor(1))
+    val io: IO[(Env, Author)] = Fetch.runEnv[IO](Authors.fetchAuthor(1))
 
     val (env, result) = io.unsafeRunSync
 
@@ -118,7 +118,7 @@ class DoobieExample extends WordSpec with Matchers {
 
   "We can fetch multiple authors from the DB in parallel" in {
     def fetch[F[_]: ConcurrentEffect]: Fetch[F, List[Author]] =
-      List(1, 2).traverse(Data.fetchAuthor[F])
+      List(1, 2).traverse(Authors.fetchAuthor[F])
 
     val io: IO[(Env, List[Author])] = Fetch.runEnv[IO](fetch)
 
@@ -131,8 +131,8 @@ class DoobieExample extends WordSpec with Matchers {
   "We can fetch multiple authors from the DB using a for comprehension" in {
     def fetch[F[_]: ConcurrentEffect]: Fetch[F, List[Author]] =
       for {
-        a <- Data.fetchAuthor(1)
-        b <- Data.fetchAuthor(a.id + 1)
+        a <- Authors.fetchAuthor(1)
+        b <- Authors.fetchAuthor(a.id + 1)
       } yield List(a, b)
 
     val io: IO[(Env, List[Author])] = Fetch.runEnv[IO](fetch)
