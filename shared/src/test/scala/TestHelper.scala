@@ -28,8 +28,8 @@ object TestHelper {
 
   case class One(id: Int)
 
-  object OneSource {
-    implicit def dataSource[F[_] : ConcurrentEffect]: DataSource[F, One, Int] = new DataSource[F, One, Int] {
+  object One extends Data {
+    implicit def source[F[_] : ConcurrentEffect]: DataSource[F, One, Int] = new DataSource[F, One, Int] {
       override def name = "OneSource"
 
       override def fetch(id: One)(
@@ -44,56 +44,56 @@ object TestHelper {
           ids.toList.map((v) => (v, v.id)).toMap
         )
     }
-
   }
 
   def one[F[_] : ConcurrentEffect](id: Int): Fetch[F, Int] =
-    Fetch(One(id), OneSource, OneSource.dataSource[F])
+    Fetch(One(id), One, One.source)
 
   case class Many(n: Int)
 
-  object ManySource
-  implicit def manySource[F[_] : ConcurrentEffect]: DataSource[F, Many, List[Int]] = new DataSource[F, Many, List[Int]] {
-    override def name = "ManySource"
+  object Many extends Data {
+    implicit def source[F[_] : ConcurrentEffect]: DataSource[F, Many, List[Int]] = new DataSource[F, Many, List[Int]] {
+      override def name = "ManySource"
 
-    override def fetch(id: Many)(implicit C: ConcurrentEffect[F]): F[Option[List[Int]]] =
-      C.pure(Option(0 until id.n toList))
+      override def fetch(id: Many)(implicit C: ConcurrentEffect[F]): F[Option[List[Int]]] =
+        C.pure(Option(0 until id.n toList))
+    }
   }
 
   def many[F[_] : ConcurrentEffect](id: Int): Fetch[F, List[Int]] =
-    Fetch(Many(id), ManySource, manySource[F])
+    Fetch(Many(id), Many, Many.source)
 
   case class AnotherOne(id: Int)
 
-  object AnotherOneSource 
+  object AnotherOne extends Data {
+    implicit def source[F[_] : ConcurrentEffect]: DataSource[F, AnotherOne, Int] = new DataSource[F, AnotherOne, Int] {
+      override def name = "AnotherOneSource"
 
-  implicit def anotheroneSource[F[_] : ConcurrentEffect]: DataSource[F, AnotherOne, Int] = new DataSource[F, AnotherOne, Int] {
-    override def name = "AnotherOneSource"
+      override def fetch(id: AnotherOne)(implicit C: ConcurrentEffect[F]): F[Option[Int]] =
+        C.pure(Option(id.id))
 
-    override def fetch(id: AnotherOne)(implicit C: ConcurrentEffect[F]): F[Option[Int]] =
-      C.pure(Option(id.id))
-
-    override def batch(ids: NonEmptyList[AnotherOne])(implicit C: ConcurrentEffect[F]): F[Map[AnotherOne, Int]] =
-      C.pure(
-        ids.toList.map((v) => (v, v.id)).toMap
-      )
+      override def batch(ids: NonEmptyList[AnotherOne])(implicit C: ConcurrentEffect[F]): F[Map[AnotherOne, Int]] =
+        C.pure(
+          ids.toList.map((v) => (v, v.id)).toMap
+        )
+    }
   }
 
   def anotherOne[F[_] : ConcurrentEffect](id: Int): Fetch[F, Int] =
-    Fetch(AnotherOne(id), AnotherOneSource, anotheroneSource[F])
+    Fetch(AnotherOne(id), AnotherOne, AnotherOne.source)
 
   case class Never()
 
-  object NeverSource 
+  object Never extends Data {
+    implicit def source[F[_] : ConcurrentEffect]: DataSource[F, Never, Int] = new DataSource[F, Never, Int] {
+      override def name = "NeverSource"
 
-  implicit def neverSource[F[_] : ConcurrentEffect]: DataSource[F, Never, Int] = new DataSource[F, Never, Int] {
-    override def name = "NeverSource"
-
-    override def fetch(id: Never)(implicit C: ConcurrentEffect[F]): F[Option[Int]] =
-      C.pure(None : Option[Int])
+      override def fetch(id: Never)(implicit C: ConcurrentEffect[F]): F[Option[Int]] =
+        C.pure(None : Option[Int])
+    }
   }
 
   def never[F[_] : ConcurrentEffect]: Fetch[F, Int] =
-    Fetch(Never(), NeverSource, neverSource[F])
+    Fetch(Never(), Never, Never.source)
 
 }

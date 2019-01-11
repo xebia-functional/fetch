@@ -29,39 +29,43 @@ class FetchBatchingTests extends FetchSpec {
 
   case class BatchedDataSeq(id: Int)
 
-  implicit def MaxBatchSourceSeq[F[_] : ConcurrentEffect]: DataSource[F, BatchedDataSeq, Int] = new DataSource[F, BatchedDataSeq, Int] {
-    override def name = "BatchSourceSeq"
+  object SeqBatch extends Data {
+    implicit def sequential[F[_] : ConcurrentEffect]: DataSource[F, BatchedDataSeq, Int] = new DataSource[F, BatchedDataSeq, Int] {
+      override def name = "BatchSourceSeq"
 
-    override def fetch(id: BatchedDataSeq)(
-      implicit CF: ConcurrentEffect[F]
-    ): F[Option[Int]] =
-      CF.pure(Some(id.id))
+      override def fetch(id: BatchedDataSeq)(
+        implicit CF: ConcurrentEffect[F]
+      ): F[Option[Int]] =
+        CF.pure(Some(id.id))
 
-    override val maxBatchSize = Some(2)
+      override val maxBatchSize = Some(2)
 
-    override val batchExecution = Sequentially
+      override val batchExecution = Sequentially
+    }
   }
 
   case class BatchedDataPar(id: Int)
 
-  implicit def MaxBatchSourcePar[F[_] : ConcurrentEffect]: DataSource[F, BatchedDataPar, Int] = new DataSource[F, BatchedDataPar, Int] {
-    override def name = "BatchSourcePar"
+  object ParBatch extends Data {
+    implicit def parallel[F[_] : ConcurrentEffect]: DataSource[F, BatchedDataPar, Int] = new DataSource[F, BatchedDataPar, Int] {
+      override def name = "BatchSourcePar"
 
-    override def fetch(id: BatchedDataPar)(
-      implicit CF: ConcurrentEffect[F]
-    ): F[Option[Int]] =
-      CF.pure(Some(id.id))
+      override def fetch(id: BatchedDataPar)(
+        implicit CF: ConcurrentEffect[F]
+      ): F[Option[Int]] =
+        CF.pure(Some(id.id))
 
-    override val maxBatchSize = Some(2)
+      override val maxBatchSize = Some(2)
 
-    override val batchExecution = InParallel
+      override val batchExecution = InParallel
+    }
   }
 
   def fetchBatchedDataSeq[F[_] : ConcurrentEffect](id: Int): Fetch[F, Int] =
-    Fetch(BatchedDataSeq(id), MaxBatchSourceSeq[F])
+    Fetch(BatchedDataSeq(id), SeqBatch, SeqBatch.source)
 
   def fetchBatchedDataPar[F[_] : ConcurrentEffect](id: Int): Fetch[F, Int] =
-    Fetch(BatchedDataPar(id), MaxBatchSourcePar[F])
+    Fetch(BatchedDataPar(id), ParBatch, ParBatch.source)
 
   "A large fetch to a datasource with a maximum batch size is split and executed in sequence" in {
     def fetch[F[_] : ConcurrentEffect]: Fetch[F, List[Int]] =

@@ -22,6 +22,19 @@ import cats.data.NonEmptyList
 import cats.instances.list._
 import cats.instances.option._
 import cats.syntax.all._
+import cats.kernel.{ Hash => H }
+
+/**
+ * `Data` is a trait used to identify and optimize access to a `DataSource`.
+ **/
+trait Data { self =>
+  def hash: Data.Hash =
+    H.fromUniversalHashCode[AnyRef].hash(self)
+}
+
+object Data {
+  type Hash = Int
+}
 
 /**
  * A `DataSource` is the recipe for fetching a certain identity `I`, which yields
