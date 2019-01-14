@@ -28,12 +28,12 @@ import cats.kernel.{ Hash => H }
  * `Data` is a trait used to identify and optimize access to a `DataSource`.
  **/
 trait Data { self =>
-  def hash: Data.Hash =
+  def identity: Data.Identity =
     H.fromUniversalHashCode.hash(self)
 }
 
 object Data {
-  type Hash = Int
+  type Identity = Int
 }
 
 /**

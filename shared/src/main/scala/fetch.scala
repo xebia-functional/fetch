@@ -125,7 +125,7 @@ object `package` {
 
   /* A map from datasource identities to (data source, blocked request) pairs used to group requests to the same data source. */
   private[fetch] final case class RequestMap[F[_]](
-    m: Map[Data.Hash,
+    m: Map[Data.Identity,
            (DataSource[F, Any, Any], BlockedRequest[F])])
 
   /* Combine two `RequestMap` instances to batch requests to the same data source. */
@@ -236,7 +236,7 @@ object `package` {
           result = deferred.complete _
           blocked = BlockedRequest(request, result)
           anyDs = ds.asInstanceOf[DataSource[F, Any, Any]]
-          blockedRequest = RequestMap(Map(data.hash -> (anyDs, blocked)))
+          blockedRequest = RequestMap(Map(data.identity -> (anyDs, blocked)))
         } yield Blocked(blockedRequest, Unfetch[F, A](
           deferred.get.map {
             case FetchDone(a) =>
@@ -259,7 +259,7 @@ object `package` {
           result = deferred.complete _
           blocked = BlockedRequest(request, result)
           anyDs = ds.asInstanceOf[DataSource[F, Any, Any]]
-          blockedRequest = RequestMap(Map(data.hash -> (anyDs, blocked)))
+          blockedRequest = RequestMap(Map(data.identity -> (anyDs, blocked)))
         } yield Blocked(blockedRequest, Unfetch[F, Option[A]](
           deferred.get.map {
             case FetchDone(a) =>
