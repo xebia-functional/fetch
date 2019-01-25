@@ -27,7 +27,7 @@ object TestHelper {
   case class AnException() extends Throwable
 
   object One extends Data {
-    implicit def source[F[_] : ConcurrentEffect]: DataSource[F, Int, Int] = new DataSource[F, Int, Int] {
+    def source[F[_] : ConcurrentEffect]: DataSource[F, Int, Int] = new DataSource[F, Int, Int] {
       override def fetch(id: Int)(
         implicit CF: ConcurrentEffect[F]
       ): F[Option[Int]] =
@@ -46,7 +46,7 @@ object TestHelper {
     Fetch(id, One, One.source)
 
   object Many extends Data {
-    implicit def source[F[_] : ConcurrentEffect]: DataSource[F, Int, List[Int]] = new DataSource[F, Int, List[Int]] {
+    def source[F[_] : ConcurrentEffect]: DataSource[F, Int, List[Int]] = new DataSource[F, Int, List[Int]] {
       override def fetch(id: Int)(implicit C: ConcurrentEffect[F]): F[Option[List[Int]]] =
         C.pure(Option(0 until id toList))
     }
@@ -56,7 +56,7 @@ object TestHelper {
     Fetch(id, Many, Many.source)
 
   object AnotherOne extends Data {
-    implicit def source[F[_] : ConcurrentEffect]: DataSource[F, Int, Int] = new DataSource[F, Int, Int] {
+    def source[F[_] : ConcurrentEffect]: DataSource[F, Int, Int] = new DataSource[F, Int, Int] {
       override def fetch(id: Int)(implicit C: ConcurrentEffect[F]): F[Option[Int]] =
         C.pure(Option(id))
 
@@ -73,7 +73,7 @@ object TestHelper {
   case class Never()
 
   object Never extends Data {
-    implicit def source[F[_] : ConcurrentEffect]: DataSource[F, Never, Int] = new DataSource[F, Never, Int] {
+    def source[F[_] : ConcurrentEffect]: DataSource[F, Never, Int] = new DataSource[F, Never, Int] {
       override def fetch(id: Never)(implicit C: ConcurrentEffect[F]): F[Option[Int]] =
         C.pure(None : Option[Int])
     }
