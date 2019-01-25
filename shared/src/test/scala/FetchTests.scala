@@ -200,7 +200,7 @@ class FetchTests extends FetchSpec {
         env.rounds.size shouldEqual 1
         env.rounds.head.queries.size shouldEqual 1
         env.rounds.head.queries.head.request should matchPattern {
-          case Batch(NonEmptyList(One(1), List(One(2))), _) =>
+          case Batch(NonEmptyList(1, List(2)), _) =>
         }
       }
     }).unsafeToFuture
@@ -533,10 +533,10 @@ class FetchTests extends FetchSpec {
       _          <- one(1)
     } yield aOne + anotherOne
 
-    def cache[F[_] : ConcurrentEffect] = InMemoryCache.from[F, One, Int](
-      (One, One(1)) -> 1,
-      (One, One(2)) -> 2,
-      (One, One(3)) -> 3
+    def cache[F[_] : ConcurrentEffect] = InMemoryCache.from[F, Int, Int](
+      (One, 1) -> 1,
+      (One, 2) -> 2,
+      (One, 3) -> 3
     )
 
     val io = Fetch.runEnv[IO](fetch, cache)
@@ -562,10 +562,10 @@ class FetchTests extends FetchSpec {
       _          <- one(1)
     } yield aOne + anotherOne
 
-    def cache[F[_] : ConcurrentEffect] = InMemoryCache.from[F, One, Int](
-      (One, One(1)) -> 1,
-      (One, One(2)) -> 2,
-      (One, One(3)) -> 3
+    def cache[F[_] : ConcurrentEffect] = InMemoryCache.from[F, Int, Int](
+      (One, 1) -> 1,
+      (One, 2) -> 2,
+      (One, 3) -> 3
     )
 
     val io = Fetch.run[IO](fetch, cache)
@@ -585,10 +585,10 @@ class FetchTests extends FetchSpec {
       _          <- one(1)
     } yield aOne + anotherOne
 
-    def cache[F[_] : ConcurrentEffect] = InMemoryCache.from[F, One, Int](
-      (One, One(1)) -> 1,
-      (One, One(2)) -> 2,
-      (One, One(3)) -> 3
+    def cache[F[_] : ConcurrentEffect] = InMemoryCache.from[F, Int, Int](
+      (One, 1) -> 1,
+      (One, 2) -> 2,
+      (One, 3) -> 3
     )
 
     val io = Fetch.runCache[IO](fetch, cache)
