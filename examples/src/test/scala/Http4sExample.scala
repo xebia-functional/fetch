@@ -58,7 +58,6 @@ object HttpExample {
     import Http._
 
     def http[F[_]]: DataSource[F, UserId, User] = new DataSource[F, UserId, User] {
-      override def name = "UserHttp"
       override def fetch(id: UserId)(
           implicit C: ConcurrentEffect[F]
       ): F[Option[User]] = {
@@ -82,7 +81,6 @@ object HttpExample {
 
     def http[F[_]]: DataSource[F, UserId, List[Post]] =
       new DataSource[F, UserId, List[Post]] {
-        override def name = "PostH4s"
         override def fetch(id: UserId)(
             implicit C: ConcurrentEffect[F]
         ): F[Option[List[Post]]] = {

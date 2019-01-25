@@ -77,8 +77,6 @@ object DatabaseExample {
   object Authors extends Data {
     def db[F[_]]: DataSource[F, AuthorId, Author] =
       new DataSource[F, AuthorId, Author] {
-        override def name = "AuthorDoobie"
-
         override def fetch(id: AuthorId)(
             implicit C: ConcurrentEffect[F]
         ): F[Option[Author]] =

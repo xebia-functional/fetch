@@ -36,8 +36,6 @@ import fetch._
 object DataSources {
   object Numbers extends Data {
     def source[F[_]]: DataSource[F, Int, Int] = new DataSource[F, Int, Int] {
-      override def name = "Numbers"
-
       override def fetch(id: Int)(implicit C: ConcurrentEffect[F]): F[Option[Int]] =
         C.pure(Option(id))
     }
