@@ -30,8 +30,6 @@ object TestHelper {
 
   object One extends Data {
     implicit def source[F[_] : ConcurrentEffect]: DataSource[F, One, Int] = new DataSource[F, One, Int] {
-      override def name = "OneSource"
-
       override def fetch(id: One)(
         implicit CF: ConcurrentEffect[F]
       ): F[Option[Int]] =
@@ -53,8 +51,6 @@ object TestHelper {
 
   object Many extends Data {
     implicit def source[F[_] : ConcurrentEffect]: DataSource[F, Many, List[Int]] = new DataSource[F, Many, List[Int]] {
-      override def name = "ManySource"
-
       override def fetch(id: Many)(implicit C: ConcurrentEffect[F]): F[Option[List[Int]]] =
         C.pure(Option(0 until id.n toList))
     }
@@ -67,8 +63,6 @@ object TestHelper {
 
   object AnotherOne extends Data {
     implicit def source[F[_] : ConcurrentEffect]: DataSource[F, AnotherOne, Int] = new DataSource[F, AnotherOne, Int] {
-      override def name = "AnotherOneSource"
-
       override def fetch(id: AnotherOne)(implicit C: ConcurrentEffect[F]): F[Option[Int]] =
         C.pure(Option(id.id))
 
@@ -86,8 +80,6 @@ object TestHelper {
 
   object Never extends Data {
     implicit def source[F[_] : ConcurrentEffect]: DataSource[F, Never, Int] = new DataSource[F, Never, Int] {
-      override def name = "NeverSource"
-
       override def fetch(id: Never)(implicit C: ConcurrentEffect[F]): F[Option[Int]] =
         C.pure(None : Option[Int])
     }

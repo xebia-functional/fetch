@@ -28,6 +28,11 @@ import cats.kernel.{ Hash => H }
  * `Data` is a trait used to identify and optimize access to a `DataSource`.
  **/
 trait Data { self =>
+  /** The name of the data.
+   */
+  def name: String =
+    self.toString
+
   def identity: Data.Identity =
     H.fromUniversalHashCode.hash(self)
 }
@@ -41,10 +46,6 @@ object Data {
  * results of type `A` performing an effect of type `F[_]`.
  */
 trait DataSource[F[_], I, A] {
-  /** The name of the data source.
-   */
-  def name: String
-
   /** Fetch one identity, returning a None if it wasn't found.
    */
   def fetch(id: I)(implicit C: ConcurrentEffect[F]): F[Option[A]]

@@ -790,8 +790,6 @@ class FetchTests extends FetchSpec {
 
   object MaybeMissing extends Data {
     implicit def source[F[_] : ConcurrentEffect] = new DataSource[F, MaybeMissing, Int] {
-      override def name = "Maybe missing"
-
       override def fetch(id: MaybeMissing)(
         implicit CF: ConcurrentEffect[F]
       ): F[Option[Int]] =

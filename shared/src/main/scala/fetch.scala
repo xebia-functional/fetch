@@ -33,6 +33,7 @@ object `package` {
   private[fetch] sealed trait FetchRequest extends Product with Serializable
 
   private[fetch] sealed trait FetchQuery[I, A] extends FetchRequest {
+    def data: Data
     def identities: NonEmptyList[I]
   }
   private[fetch] final case class FetchOne[I, A](id: I, data: Data) extends FetchQuery[I, A] {

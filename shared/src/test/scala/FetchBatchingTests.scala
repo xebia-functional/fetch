@@ -31,8 +31,6 @@ class FetchBatchingTests extends FetchSpec {
 
   object SeqBatch extends Data {
     implicit def source[F[_] : ConcurrentEffect]: DataSource[F, BatchedDataSeq, Int] = new DataSource[F, BatchedDataSeq, Int] {
-      override def name = "BatchSourceSeq"
-
       override def fetch(id: BatchedDataSeq)(
         implicit CF: ConcurrentEffect[F]
       ): F[Option[Int]] =
@@ -48,8 +46,6 @@ class FetchBatchingTests extends FetchSpec {
 
   object ParBatch extends Data {
     implicit def source[F[_] : ConcurrentEffect]: DataSource[F, BatchedDataPar, Int] = new DataSource[F, BatchedDataPar, Int] {
-      override def name = "BatchSourcePar"
-
       override def fetch(id: BatchedDataPar)(
         implicit CF: ConcurrentEffect[F]
       ): F[Option[Int]] =
