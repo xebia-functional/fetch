@@ -27,7 +27,7 @@ import cats.kernel.{ Hash => H }
 /**
  * `Data` is a trait used to identify and optimize access to a `DataSource`.
  **/
-trait Data { self =>
+trait Data[I, A] { self =>
   /** The name of the data.
    */
   def name: String =
@@ -46,6 +46,8 @@ object Data {
  * results of type `A` performing an effect of type `F[_]`.
  */
 trait DataSource[F[_], I, A] {
+  def data: Data[I, A]
+
   /** Fetch one identity, returning a None if it wasn't found.
    */
   def fetch(id: I)(implicit C: ConcurrentEffect[F]): F[Option[A]]

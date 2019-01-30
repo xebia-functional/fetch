@@ -621,11 +621,11 @@ class FetchTests extends FetchSpec {
     }).unsafeToFuture
   }
 
-  case class ForgetfulCache[F[_] : Monad]() extends DataSourceCache[F] {
-    def insert[I, A](i: I, v: A, d: Data, ds: DataSource[F, I, A]): F[DataSourceCache[F]] =
+  case class ForgetfulCache[F[_] : Monad]() extends DataCache[F] {
+    def insert[I, A](i: I, v: A, d: Data[I, A]): F[DataCache[F]] =
       Applicative[F].pure(this)
 
-    def lookup[I, A](i: I, d: Data, ds: DataSource[F, I, A]): F[Option[A]] =
+    def lookup[I, A](i: I, d: Data[I, A]): F[Option[A]] =
       Applicative[F].pure(None)
   }
 
@@ -788,8 +788,10 @@ class FetchTests extends FetchSpec {
 
   case class MaybeMissing(id: Int)
 
-  object MaybeMissing extends Data {
+  object MaybeMissing extends Data[MaybeMissing, Int] {
     implicit def source[F[_] : ConcurrentEffect] = new DataSource[F, MaybeMissing, Int] {
+      override def data = MaybeMissing
+
       override def fetch(id: MaybeMissing)(
         implicit CF: ConcurrentEffect[F]
       ): F[Option[Int]] =
@@ -804,7 +806,6 @@ class FetchTests extends FetchSpec {
   def maybeOpt[F[_] : ConcurrentEffect](id: Int): Fetch[F, Option[Int]] =
     Fetch.optional(
       MaybeMissing(id),
-      MaybeMissing,
       MaybeMissing.source)
 
   "We can run optional fetches" in {

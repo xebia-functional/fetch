@@ -26,8 +26,10 @@ import scala.collection.immutable.Map
 object TestHelper {
   case class AnException() extends Throwable
 
-  object One extends Data {
+  object One extends Data[Int, Int] {
     def source[F[_] : ConcurrentEffect]: DataSource[F, Int, Int] = new DataSource[F, Int, Int] {
+      override def data = One
+
       override def fetch(id: Int)(
         implicit CF: ConcurrentEffect[F]
       ): F[Option[Int]] =
@@ -43,20 +45,24 @@ object TestHelper {
   }
 
   def one[F[_] : ConcurrentEffect](id: Int): Fetch[F, Int] =
-    Fetch(id, One, One.source)
+    Fetch(id, One.source)
 
-  object Many extends Data {
+  object Many extends Data[Int, List[Int]] {
     def source[F[_] : ConcurrentEffect]: DataSource[F, Int, List[Int]] = new DataSource[F, Int, List[Int]] {
+      override def data = Many
+
       override def fetch(id: Int)(implicit C: ConcurrentEffect[F]): F[Option[List[Int]]] =
         C.pure(Option(0 until id toList))
     }
   }
 
   def many[F[_] : ConcurrentEffect](id: Int): Fetch[F, List[Int]] =
-    Fetch(id, Many, Many.source)
+    Fetch(id, Many.source)
 
-  object AnotherOne extends Data {
+  object AnotherOne extends Data[Int, Int] {
     def source[F[_] : ConcurrentEffect]: DataSource[F, Int, Int] = new DataSource[F, Int, Int] {
+      override def data = AnotherOne
+
       override def fetch(id: Int)(implicit C: ConcurrentEffect[F]): F[Option[Int]] =
         C.pure(Option(id))
 
@@ -68,18 +74,20 @@ object TestHelper {
   }
 
   def anotherOne[F[_] : ConcurrentEffect](id: Int): Fetch[F, Int] =
-    Fetch(id, AnotherOne, AnotherOne.source)
+    Fetch(id, AnotherOne.source)
 
   case class Never()
 
-  object Never extends Data {
+  object Never extends Data[Never, Int] {
     def source[F[_] : ConcurrentEffect]: DataSource[F, Never, Int] = new DataSource[F, Never, Int] {
+      override def data = Never
+
       override def fetch(id: Never)(implicit C: ConcurrentEffect[F]): F[Option[Int]] =
         C.pure(None : Option[Int])
     }
   }
 
   def never[F[_] : ConcurrentEffect]: Fetch[F, Int] =
-    Fetch(Never(), Never, Never.source)
+    Fetch(Never(), Never.source)
 
 }

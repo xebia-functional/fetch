@@ -86,8 +86,10 @@ object DataSources {
     def author: Int = id + 1
   }
 
-  object Article extends Data {
+  object Article extends Data[ArticleId, Article] {
     implicit def async[F[_] : ConcurrentEffect]: DataSource[F, ArticleId, Article] = new DataSource[F, ArticleId, Article] {
+      override def data = Article 
+
       override def fetch(id: ArticleId)(
         implicit CF: ConcurrentEffect[F]
       ): F[Option[Article]] =
@@ -102,13 +104,15 @@ object DataSources {
   }
 
   def article[F[_] : ConcurrentEffect](id: Int): Fetch[F, Article] =
-    Fetch(ArticleId(id), Article, Article.async)
+    Fetch(ArticleId(id), Article.async)
 
   case class AuthorId(id: Int)
   case class Author(id: Int, name: String)
 
-  object Author extends Data {
+  object Author extends Data[AuthorId, Author] {
     implicit def async[F[_] : ConcurrentEffect]: DataSource[F, AuthorId, Author] = new DataSource[F, AuthorId, Author]  {
+      override def data = Author
+
       override def fetch(id: AuthorId)(
         implicit CF: ConcurrentEffect[F]
       ): F[Option[Author]] =
@@ -124,5 +128,5 @@ object DataSources {
 
 
   def author[F[_] : ConcurrentEffect](a: Article): Fetch[F, Author] =
-    Fetch(AuthorId(a.author), Author, Author.async)
+    Fetch(AuthorId(a.author), Author.async)
 }

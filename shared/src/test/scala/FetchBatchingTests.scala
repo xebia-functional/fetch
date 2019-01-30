@@ -29,8 +29,10 @@ class FetchBatchingTests extends FetchSpec {
 
   case class BatchedDataSeq(id: Int)
 
-  object SeqBatch extends Data {
+  object SeqBatch extends Data[BatchedDataSeq, Int] {
     implicit def source[F[_] : ConcurrentEffect]: DataSource[F, BatchedDataSeq, Int] = new DataSource[F, BatchedDataSeq, Int] {
+      override def data = SeqBatch
+
       override def fetch(id: BatchedDataSeq)(
         implicit CF: ConcurrentEffect[F]
       ): F[Option[Int]] =
@@ -44,8 +46,10 @@ class FetchBatchingTests extends FetchSpec {
 
   case class BatchedDataPar(id: Int)
 
-  object ParBatch extends Data {
+  object ParBatch extends Data[BatchedDataPar, Int] {
     implicit def source[F[_] : ConcurrentEffect]: DataSource[F, BatchedDataPar, Int] = new DataSource[F, BatchedDataPar, Int] {
+      override def data = ParBatch
+
       override def fetch(id: BatchedDataPar)(
         implicit CF: ConcurrentEffect[F]
       ): F[Option[Int]] =
@@ -58,10 +62,10 @@ class FetchBatchingTests extends FetchSpec {
   }
 
   def fetchBatchedDataSeq[F[_] : ConcurrentEffect](id: Int): Fetch[F, Int] =
-    Fetch(BatchedDataSeq(id), SeqBatch, SeqBatch.source)
+    Fetch(BatchedDataSeq(id), SeqBatch.source)
 
   def fetchBatchedDataPar[F[_] : ConcurrentEffect](id: Int): Fetch[F, Int] =
-    Fetch(BatchedDataPar(id), ParBatch, ParBatch.source)
+    Fetch(BatchedDataPar(id), ParBatch.source)
 
   "A large fetch to a datasource with a maximum batch size is split and executed in sequence" in {
     def fetch[F[_] : ConcurrentEffect]: Fetch[F, List[Int]] =

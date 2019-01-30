@@ -71,8 +71,6 @@ import cats.effect.ConcurrentEffect
 import cats.data.NonEmptyList
 
 trait DataSource[Identity, Result]{
-  def name: String
-  
   def fetch[F[_] : ConcurrentEffect](id: Identity): F[Option[Result]]
   
   /* `batch` is implemented in terms of `fetch` by default */
