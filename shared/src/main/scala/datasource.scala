@@ -45,14 +45,16 @@ object Data {
 trait DataSource[F[_], I, A] {
   def data: Data[I, A]
 
+  implicit def CF: ConcurrentEffect[F]
+
   /** Fetch one identity, returning a None if it wasn't found.
    */
-  def fetch(id: I)(implicit C: ConcurrentEffect[F]): F[Option[A]]
+  def fetch(id: I): F[Option[A]]
 
   /** Fetch many identities, returning a mapping from identities to results. If an
    * identity wasn't found, it won't appear in the keys.
    */
-  def batch(ids: NonEmptyList[I])(implicit C: ConcurrentEffect[F]): F[Map[I, A]] =
+  def batch(ids: NonEmptyList[I]): F[Map[I, A]] =
     FetchExecution.parallel(
       ids.map(id => fetch(id).map((v) => id -> v))
     ).map(_.collect({ case (id, Some(x)) => id -> x }).toMap)

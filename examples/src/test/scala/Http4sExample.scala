@@ -59,25 +59,24 @@ object HttpExample {
 
     def name = "Users"
 
-    def http[F[_]]: DataSource[F, UserId, User] = new DataSource[F, UserId, User] {
-      def data = Users
+    def http[F[_]: ConcurrentEffect]: DataSource[F, UserId, User] =
+      new DataSource[F, UserId, User] {
+        def data = Users
 
-      override def fetch(id: UserId)(
-          implicit C: ConcurrentEffect[F]
-      ): F[Option[User]] = {
-        val url = s"https://jsonplaceholder.typicode.com/users?id=${id.id}"
-        client[F].use((c) => c.expect(url)(jsonOf[F, List[User]])).map(_.headOption)
-      }
+        override def CF = ConcurrentEffect[F]
 
-      override def batch(ids: NonEmptyList[UserId])(
-          implicit C: ConcurrentEffect[F]
-      ): F[Map[UserId, User]] = {
-        val filterIds = ids.map("id=" + _.id).toList.mkString("&")
-        val url       = s"https://jsonplaceholder.typicode.com/users?$filterIds"
-        val io        = client[F].use((c) => c.expect(url)(jsonOf[F, List[User]]))
-        io.map(users => users.map(user => user.id -> user).toMap)
+        override def fetch(id: UserId): F[Option[User]] = {
+          val url = s"https://jsonplaceholder.typicode.com/users?id=${id.id}"
+          client[F].use((c) => c.expect(url)(jsonOf[F, List[User]])).map(_.headOption)
+        }
+
+        override def batch(ids: NonEmptyList[UserId]): F[Map[UserId, User]] = {
+          val filterIds = ids.map("id=" + _.id).toList.mkString("&")
+          val url       = s"https://jsonplaceholder.typicode.com/users?$filterIds"
+          val io        = client[F].use((c) => c.expect(url)(jsonOf[F, List[User]]))
+          io.map(users => users.map(user => user.id -> user).toMap)
+        }
       }
-    }
   }
 
   object Posts extends Data[UserId, List[Post]] {
@@ -85,20 +84,18 @@ object HttpExample {
 
     def name = "Posts"
 
-    def http[F[_]]: DataSource[F, UserId, List[Post]] =
+    def http[F[_]: ConcurrentEffect]: DataSource[F, UserId, List[Post]] =
       new DataSource[F, UserId, List[Post]] {
         def data = Posts
 
-        override def fetch(id: UserId)(
-            implicit C: ConcurrentEffect[F]
-        ): F[Option[List[Post]]] = {
+        override def CF = ConcurrentEffect[F]
+
+        override def fetch(id: UserId): F[Option[List[Post]]] = {
           val url = s"https://jsonplaceholder.typicode.com/posts?userId=${id.id}"
           client[F].use((c) => c.expect(url)(jsonOf[F, List[Post]])).map(Option.apply)
         }
 
-        override def batch(ids: NonEmptyList[UserId])(
-            implicit C: ConcurrentEffect[F]
-        ): F[Map[UserId, List[Post]]] = {
+        override def batch(ids: NonEmptyList[UserId]): F[Map[UserId, List[Post]]] = {
           val filterIds = ids.map("userId=" + _.id).toList.mkString("&")
           val url       = s"https://jsonplaceholder.typicode.com/posts?$filterIds"
           client[F].use((c) => c.expect(url)(jsonOf[F, List[Post]])).map(_.groupBy(_.userId).toMap)

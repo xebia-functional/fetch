@@ -77,19 +77,17 @@ object DatabaseExample {
   object Authors extends Data[AuthorId, Author] {
     def name = "Authors"
 
-    def db[F[_]]: DataSource[F, AuthorId, Author] =
+    def db[F[_]: ConcurrentEffect]: DataSource[F, AuthorId, Author] =
       new DataSource[F, AuthorId, Author] {
         def data = Authors
 
-        override def fetch(id: AuthorId)(
-            implicit C: ConcurrentEffect[F]
-        ): F[Option[Author]] =
+        override def CF = ConcurrentEffect[F]
+
+        override def fetch(id: AuthorId): F[Option[Author]] =
           Database.transactor
             .flatMap(Queries.fetchById(id).transact(_))
 
-        override def batch(ids: NonEmptyList[AuthorId])(
-            implicit C: ConcurrentEffect[F]
-        ): F[Map[AuthorId, Author]] =
+        override def batch(ids: NonEmptyList[AuthorId]): F[Map[AuthorId, Author]] =
           Database.transactor
             .flatMap(Queries.fetchByIds(ids).transact(_))
             .map { authors =>

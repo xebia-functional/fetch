@@ -794,9 +794,9 @@ class FetchTests extends FetchSpec {
     implicit def source[F[_] : ConcurrentEffect] = new DataSource[F, MaybeMissing, Int] {
       override def data = MaybeMissing
 
-      override def fetch(id: MaybeMissing)(
-        implicit CF: ConcurrentEffect[F]
-      ): F[Option[Int]] =
+      override def CF = ConcurrentEffect[F]
+
+      override def fetch(id: MaybeMissing): F[Option[Int]] =
         if (id.id % 2 == 0)
           CF.pure(None)
         else

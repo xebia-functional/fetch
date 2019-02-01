@@ -35,9 +35,9 @@ class FetchBatchingTests extends FetchSpec {
     implicit def source[F[_] : ConcurrentEffect]: DataSource[F, BatchedDataSeq, Int] = new DataSource[F, BatchedDataSeq, Int] {
       override def data = SeqBatch
 
-      override def fetch(id: BatchedDataSeq)(
-        implicit CF: ConcurrentEffect[F]
-      ): F[Option[Int]] =
+      override def CF = ConcurrentEffect[F]
+
+      override def fetch(id: BatchedDataSeq): F[Option[Int]] =
         CF.pure(Some(id.id))
 
       override val maxBatchSize = Some(2)
@@ -54,9 +54,9 @@ class FetchBatchingTests extends FetchSpec {
     implicit def source[F[_] : ConcurrentEffect]: DataSource[F, BatchedDataPar, Int] = new DataSource[F, BatchedDataPar, Int] {
       override def data = ParBatch
 
-      override def fetch(id: BatchedDataPar)(
-        implicit CF: ConcurrentEffect[F]
-      ): F[Option[Int]] =
+      override def CF = ConcurrentEffect[F]
+
+      override def fetch(id: BatchedDataPar): F[Option[Int]] =
         CF.pure(Some(id.id))
 
       override val maxBatchSize = Some(2)
