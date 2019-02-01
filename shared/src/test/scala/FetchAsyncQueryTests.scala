@@ -90,11 +90,11 @@ object DataSources {
     def name = "Articles"
 
     implicit def async[F[_] : ConcurrentEffect]: DataSource[F, ArticleId, Article] = new DataSource[F, ArticleId, Article] {
+      override def CF = ConcurrentEffect[F]
+
       override def data = Article 
 
-      override def fetch(id: ArticleId)(
-        implicit CF: ConcurrentEffect[F]
-      ): F[Option[Article]] =
+      override def fetch(id: ArticleId): F[Option[Article]] =
         CF.async[Option[Article]]((cb) => {
           cb(
             Right(
@@ -115,11 +115,11 @@ object DataSources {
     def name = "Authors"
 
     implicit def async[F[_] : ConcurrentEffect]: DataSource[F, AuthorId, Author] = new DataSource[F, AuthorId, Author]  {
+      override def CF = ConcurrentEffect[F]
+
       override def data = Author
 
-      override def fetch(id: AuthorId)(
-        implicit CF: ConcurrentEffect[F]
-      ): F[Option[Author]] =
+      override def fetch(id: AuthorId): F[Option[Author]] =
         CF.async((cb => {
           cb(
             Right(

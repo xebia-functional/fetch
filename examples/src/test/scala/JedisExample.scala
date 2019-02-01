@@ -37,11 +37,13 @@ object DataSources {
   object Numbers extends Data[Int, Int] {
     def name = "Numbers"
 
-    def source[F[_]]: DataSource[F, Int, Int] = new DataSource[F, Int, Int] {
+    def source[F[_]: ConcurrentEffect]: DataSource[F, Int, Int] = new DataSource[F, Int, Int] {
       def data = Numbers
 
-      override def fetch(id: Int)(implicit C: ConcurrentEffect[F]): F[Option[Int]] =
-        C.pure(Option(id))
+      override def CF = ConcurrentEffect[F]
+
+      override def fetch(id: Int): F[Option[Int]] =
+        CF.pure(Option(id))
     }
   }
 

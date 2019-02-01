@@ -32,14 +32,12 @@ object TestHelper {
     def source[F[_] : ConcurrentEffect]: DataSource[F, Int, Int] = new DataSource[F, Int, Int] {
       override def data = One
 
-      override def fetch(id: Int)(
-        implicit CF: ConcurrentEffect[F]
-      ): F[Option[Int]] =
+      override def CF = ConcurrentEffect[F]
+
+      override def fetch(id: Int): F[Option[Int]] =
         CF.pure(Option(id))
 
-      override def batch(ids: NonEmptyList[Int])(
-        implicit CF: ConcurrentEffect[F]
-      ): F[Map[Int, Int]] =
+      override def batch(ids: NonEmptyList[Int]): F[Map[Int, Int]] =
         CF.pure(
           ids.toList.map((v) => (v, v)).toMap
         )
@@ -55,8 +53,10 @@ object TestHelper {
     def source[F[_] : ConcurrentEffect]: DataSource[F, Int, List[Int]] = new DataSource[F, Int, List[Int]] {
       override def data = Many
 
-      override def fetch(id: Int)(implicit C: ConcurrentEffect[F]): F[Option[List[Int]]] =
-        C.pure(Option(0 until id toList))
+      override def CF = ConcurrentEffect[F]
+
+      override def fetch(id: Int): F[Option[List[Int]]] =
+        CF.pure(Option(0 until id toList))
     }
   }
 
@@ -69,11 +69,13 @@ object TestHelper {
     def source[F[_] : ConcurrentEffect]: DataSource[F, Int, Int] = new DataSource[F, Int, Int] {
       override def data = AnotherOne
 
-      override def fetch(id: Int)(implicit C: ConcurrentEffect[F]): F[Option[Int]] =
-        C.pure(Option(id))
+      override def CF = ConcurrentEffect[F]
 
-      override def batch(ids: NonEmptyList[Int])(implicit C: ConcurrentEffect[F]): F[Map[Int, Int]] =
-        C.pure(
+      override def fetch(id: Int): F[Option[Int]] =
+        CF.pure(Option(id))
+
+      override def batch(ids: NonEmptyList[Int]): F[Map[Int, Int]] =
+        CF.pure(
           ids.toList.map((v) => (v, v)).toMap
         )
     }
@@ -90,8 +92,10 @@ object TestHelper {
     def source[F[_] : ConcurrentEffect]: DataSource[F, Never, Int] = new DataSource[F, Never, Int] {
       override def data = Never
 
-      override def fetch(id: Never)(implicit C: ConcurrentEffect[F]): F[Option[Int]] =
-        C.pure(None : Option[Int])
+      override def CF = ConcurrentEffect[F]
+
+      override def fetch(id: Never): F[Option[Int]] =
+        CF.pure(None : Option[Int])
     }
   }
 

@@ -62,10 +62,9 @@ import cats.effect.ConcurrentEffect
 
 trait DataSource[F[_], Identity, Result]{
   def data: Data[Identity, Result]
+  def CF: ConcurrentEffect[F]
   def fetch(id: Identity): F[Option[Result]]
-  def batch(ids: NonEmptyList[Identity])(
-    implicit E: ConcurrentEffect[F]
-  ): F[Map[Identity, Result]]
+  def batch(ids: NonEmptyList[Identity]): F[Map[Identity, Result]]
 }
 ```
 
@@ -83,24 +82,27 @@ import cats.syntax.all._
 
 import fetch._
 
+def latency[F[_] : Effect](milis: Long): F[Unit] =
+  Effect[F].delay(Thread.sleep(milis))
+
 object ToString extends Data[Int, String] {
   def name = "To String"
 
-  def source[F[_] : Monad]: DataSource[F, Int, String] = new DataSource[F, Int, String]{
+  def source[F[_] : ConcurrentEffect]: DataSource[F, Int, String] = new DataSource[F, Int, String]{
     override def data = ToString
 
-    override def fetch(id: Int)(
-      implicit E: ConcurrentEffect[F]
-    ): F[Option[String]] = for {
-      _ <- E.delay(println(s"--> [${Thread.currentThread.getId}] One ToString $id"))
-      _ <- E.delay(println(s"<-- [${Thread.currentThread.getId}] One ToString $id"))
+    override def CF = ConcurrentEffect[F]
+
+    override def fetch(id: Int): F[Option[String]] = for {
+      _ <- CF.delay(println(s"--> [${Thread.currentThread.getId}] One ToString $id"))
+      _ <- latency(100)
+      _ <- CF.delay(println(s"<-- [${Thread.currentThread.getId}] One ToString $id"))
     } yield Option(id.toString)
 
-    override def batch(ids: NonEmptyList[Int])(
-      implicit E: ConcurrentEffect[F]
-    ): F[Map[Int, String]] = for {
-      _ <- E.delay(println(s"--> [${Thread.currentThread.getId}] Batch ToString $ids"))
-      _ <- E.delay(println(s"<-- [${Thread.currentThread.getId}] Batch ToString $ids"))
+    override def batch(ids: NonEmptyList[Int]): F[Map[Int, String]] = for {
+      _ <- CF.delay(println(s"--> [${Thread.currentThread.getId}] Batch ToString $ids"))
+      _ <- latency(100)
+      _ <- CF.delay(println(s"<-- [${Thread.currentThread.getId}] Batch ToString $ids"))
     } yield ids.toList.map(i => (i, i.toString)).toMap
   }
 }
@@ -166,15 +168,16 @@ Note that the `DataSource#batch` method is not mandatory, it will be implemented
 object UnbatchedToString extends Data[Int, String] {
   def name = "Unbatched to string"
 
-  def source[F[_]] = new DataSource[F, Int, String] {
+  def source[F[_] : ConcurrentEffect] = new DataSource[F, Int, String] {
     override def data = UnbatchedToString
 
-    override def fetch(id: Int)(
-      implicit E: ConcurrentEffect[F] 
-    ): F[Option[String]] = 
-      E.delay(println(s"--> [${Thread.currentThread.getId}] One UnbatchedToString $id")) >>
-      E.delay(println(s"<-- [${Thread.currentThread.getId}] One UnbatchedToString $id")) >>
-      E.pure(Option(id.toString))
+    override def CF = ConcurrentEffect[F]
+
+    override def fetch(id: Int): F[Option[String]] = 
+      CF.delay(println(s"--> [${Thread.currentThread.getId}] One UnbatchedToString $id")) >>
+      latency(100) >>
+      CF.delay(println(s"<-- [${Thread.currentThread.getId}] One UnbatchedToString $id")) >>
+      CF.pure(Option(id.toString))
   }
 }
 
@@ -203,22 +206,22 @@ If we combine two independent fetches from different data sources, the fetches c
 object Length extends Data[String, Int] {
   def name = "Length"
 
-  def source[F[_]] = new DataSource[F, String, Int] {
+  def source[F[_] : ConcurrentEffect] = new DataSource[F, String, Int] {
     override def data = Length
 
-    override def fetch(id: String)(
-      implicit E: ConcurrentEffect[F]
-    ): F[Option[Int]] = for {
-      _ <- E.delay(println(s"--> [${Thread.currentThread.getId}] One Length $id"))
-      _ <- E.delay(println(s"<-- [${Thread.currentThread.getId}] One Length $id"))
+    override def CF = ConcurrentEffect[F]
+
+    override def fetch(id: String): F[Option[Int]] = for {
+      _ <- CF.delay(println(s"--> [${Thread.currentThread.getId}] One Length $id"))
+      _ <- latency(100)
+      _ <- CF.delay(println(s"<-- [${Thread.currentThread.getId}] One Length $id"))
     } yield Option(id.size)
 
-      override def batch(ids: NonEmptyList[String])(
-        implicit E: ConcurrentEffect[F]
-      ): F[Map[String, Int]] = for {
-        _ <- E.delay(println(s"--> [${Thread.currentThread.getId}] Batch Length $ids"))
-        _ <- E.delay(println(s"<-- [${Thread.currentThread.getId}] Batch Length $ids"))
-      } yield ids.toList.map(i => (i, i.size)).toMap
+    override def batch(ids: NonEmptyList[String]): F[Map[String, Int]] = for {
+      _ <- CF.delay(println(s"--> [${Thread.currentThread.getId}] Batch Length $ids"))
+      _ <- latency(100)
+      _ <- CF.delay(println(s"<-- [${Thread.currentThread.getId}] Batch Length $ids"))
+    } yield ids.toList.map(i => (i, i.size)).toMap
   }
 }
 
