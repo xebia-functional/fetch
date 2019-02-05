@@ -53,10 +53,11 @@ Data Sources take two type parameters:
 import cats.data.NonEmptyList
 import cats.effect.ConcurrentEffect
 
-trait DataSource[Identity, Result]{
-  def name: String
-  def fetch[F[_] : ConcurrentEffect](id: Identity): F[Option[Result]]
-  def batch[F[_] : ConcurrentEffect](ids: NonEmptyList[Identity]): F[Map[Identity, Result]]
+trait DataSource[F[_], Identity, Result]{
+  def data: Data[Identity, Result]
+  def CF: ConcurrentEffect[F]
+  def fetch(id: Identity): F[Option[Result]]
+  def batch(ids: NonEmptyList[Identity]): F[Map[Identity, Result]]
 }
 ```
 
@@ -65,31 +66,42 @@ Returning `ConcurrentEffect` instances from the fetch methods allows us to speci
 We'll implement a dummy data source that can convert integers to strings. For convenience, we define a `fetchString` function that lifts identities (`Int` in our dummy data source) to a `Fetch`.
 
 ```scala
+import cats._
 import cats.data.NonEmptyList
 import cats.effect._
 import cats.instances.list._
+import cats.implicits._
 import cats.syntax.all._
 
 import fetch._
 
-object ToStringSource extends DataSource[Int, String]{
-  override def name = "ToString"
+def latency[F[_] : Effect](milis: Long): F[Unit] =
+  Effect[F].delay(Thread.sleep(milis))
 
-  override def fetch[F[_] : ConcurrentEffect](id: Int): F[Option[String]] = {
-    Sync[F].delay(println(s"--> [${Thread.currentThread.getId}] One ToString $id")) >>
-    Sync[F].delay(println(s"<-- [${Thread.currentThread.getId}] One ToString $id")) >>
-    Sync[F].pure(Option(id.toString))
-  }
+object ToString extends Data[Int, String] {
+  def name = "To String"
 
-  override def batch[F[_] : ConcurrentEffect](ids: NonEmptyList[Int]): F[Map[Int, String]] = {
-    Sync[F].delay(println(s"--> [${Thread.currentThread.getId}] Batch ToString $ids")) >>
-    Sync[F].delay(println(s"<-- [${Thread.currentThread.getId}] Batch ToString $ids")) >>
-    Sync[F].pure(ids.toList.map(i => (i, i.toString)).toMap)
+  def source[F[_] : ConcurrentEffect]: DataSource[F, Int, String] = new DataSource[F, Int, String]{
+    override def data = ToString
+
+    override def CF = ConcurrentEffect[F]
+
+    override def fetch(id: Int): F[Option[String]] = for {
+      _ <- CF.delay(println(s"--> [${Thread.currentThread.getId}] One ToString $id"))
+      _ <- latency(100)
+      _ <- CF.delay(println(s"<-- [${Thread.currentThread.getId}] One ToString $id"))
+    } yield Option(id.toString)
+
+    override def batch(ids: NonEmptyList[Int]): F[Map[Int, String]] = for {
+      _ <- CF.delay(println(s"--> [${Thread.currentThread.getId}] Batch ToString $ids"))
+      _ <- latency(100)
+      _ <- CF.delay(println(s"<-- [${Thread.currentThread.getId}] Batch ToString $ids"))
+    } yield ids.toList.map(i => (i, i.toString)).toMap
   }
 }
 
 def fetchString[F[_] : ConcurrentEffect](n: Int): Fetch[F, String] =
-  Fetch(n, ToStringSource)
+  Fetch(n, ToString.source)
 ```
 
 ## Creating a runtime
@@ -125,8 +137,8 @@ import scala.concurrent.duration._
 // import scala.concurrent.duration._
 
 Fetch.run[IO](fetchOne).unsafeRunTimed(5.seconds)
-// --> [179] One ToString 1
-// <-- [179] One ToString 1
+// --> [109] One ToString 1
+// <-- [109] One ToString 1
 // res0: Option[String] = Some(1)
 ```
 
@@ -145,26 +157,32 @@ When executing the above fetch, note how the three identities get batched and th
 
 ```scala
 Fetch.run[IO](fetchThree).unsafeRunTimed(5.seconds)
-// --> [179] Batch ToString NonEmptyList(1, 2, 3)
-// <-- [179] Batch ToString NonEmptyList(1, 2, 3)
+// --> [109] Batch ToString NonEmptyList(1, 2, 3)
+// <-- [109] Batch ToString NonEmptyList(1, 2, 3)
 // res1: Option[(String, String, String)] = Some((1,2,3))
 ```
 
 Note that the `DataSource#batch` method is not mandatory, it will be implemented in terms of `DataSource#fetch` if you don't provide an implementation.
 
 ```scala
-object UnbatchedToStringSource extends DataSource[Int, String]{
-  override def name = "UnbatchedToString"
+object UnbatchedToString extends Data[Int, String] {
+  def name = "Unbatched to string"
 
-  override def fetch[F[_] : ConcurrentEffect](id: Int): F[Option[String]] = {
-    Sync[F].delay(println(s"--> [${Thread.currentThread.getId}] One UnbatchedToString $id")) >>
-    Sync[F].delay(println(s"<-- [${Thread.currentThread.getId}] One UnbatchedToString $id")) >>
-    Sync[F].pure(Option(id.toString))
+  def source[F[_] : ConcurrentEffect] = new DataSource[F, Int, String] {
+    override def data = UnbatchedToString
+
+    override def CF = ConcurrentEffect[F]
+
+    override def fetch(id: Int): F[Option[String]] = 
+      CF.delay(println(s"--> [${Thread.currentThread.getId}] One UnbatchedToString $id")) >>
+      latency(100) >>
+      CF.delay(println(s"<-- [${Thread.currentThread.getId}] One UnbatchedToString $id")) >>
+      CF.pure(Option(id.toString))
   }
 }
 
 def unbatchedString[F[_] : ConcurrentEffect](n: Int): Fetch[F, String] =
-  Fetch(n, UnbatchedToStringSource)
+  Fetch(n, UnbatchedToString.source)
 ```
 
 Let's create a tuple of unbatched string requests.
@@ -178,12 +196,12 @@ When executing the above fetch, note how the three identities get requested in p
 
 ```scala
 Fetch.run[IO](fetchUnbatchedThree).unsafeRunTimed(5.seconds)
-// --> [179] One UnbatchedToString 1
-// --> [181] One UnbatchedToString 3
-// <-- [181] One UnbatchedToString 3
-// --> [182] One UnbatchedToString 2
-// <-- [182] One UnbatchedToString 2
-// <-- [179] One UnbatchedToString 1
+// --> [109] One UnbatchedToString 1
+// --> [111] One UnbatchedToString 3
+// --> [112] One UnbatchedToString 2
+// <-- [109] One UnbatchedToString 1
+// <-- [111] One UnbatchedToString 3
+// <-- [112] One UnbatchedToString 2
 // res2: Option[(String, String, String)] = Some((1,2,3))
 ```
 
@@ -192,23 +210,30 @@ Fetch.run[IO](fetchUnbatchedThree).unsafeRunTimed(5.seconds)
 If we combine two independent fetches from different data sources, the fetches can be run in parallel. First, let's add a data source that fetches a string's size.
 
 ```scala
-object LengthSource extends DataSource[String, Int]{
-  override def name = "Length"
+object Length extends Data[String, Int] {
+  def name = "Length"
 
-  override def fetch[F[_] : ConcurrentEffect](id: String): F[Option[Int]] = {
-    Sync[F].delay(println(s"--> [${Thread.currentThread.getId}] One Length $id")) >>
-    Sync[F].delay(println(s"<-- [${Thread.currentThread.getId}] One Length $id")) >>
-    Sync[F].pure(Option(id.size))
-  }
-  override def batch[F[_] : ConcurrentEffect](ids: NonEmptyList[String]): F[Map[String, Int]] = {
-    Sync[F].delay(println(s"--> [${Thread.currentThread.getId}] Batch Length $ids")) >>
-    Sync[F].delay(println(s"<-- [${Thread.currentThread.getId}] Batch Length $ids")) >>
-    Sync[F].pure(ids.toList.map(i => (i, i.size)).toMap)
+  def source[F[_] : ConcurrentEffect] = new DataSource[F, String, Int] {
+    override def data = Length
+
+    override def CF = ConcurrentEffect[F]
+
+    override def fetch(id: String): F[Option[Int]] = for {
+      _ <- CF.delay(println(s"--> [${Thread.currentThread.getId}] One Length $id"))
+      _ <- latency(100)
+      _ <- CF.delay(println(s"<-- [${Thread.currentThread.getId}] One Length $id"))
+    } yield Option(id.size)
+
+    override def batch(ids: NonEmptyList[String]): F[Map[String, Int]] = for {
+      _ <- CF.delay(println(s"--> [${Thread.currentThread.getId}] Batch Length $ids"))
+      _ <- latency(100)
+      _ <- CF.delay(println(s"<-- [${Thread.currentThread.getId}] Batch Length $ids"))
+    } yield ids.toList.map(i => (i, i.size)).toMap
   }
 }
 
 def fetchLength[F[_] : ConcurrentEffect](s: String): Fetch[F, Int] =
-  Fetch(s, LengthSource)
+  Fetch(s, Length.source)
 ```
 
 And now we can easily receive data from the two sources in a single fetch.
@@ -222,10 +247,10 @@ Note how the two independent data fetches run in parallel, minimizing the latenc
 
 ```scala
 Fetch.run[IO](fetchMulti).unsafeRunTimed(5.seconds)
-// --> [181] One ToString 1
-// <-- [181] One ToString 1
-// --> [180] One Length one
-// <-- [180] One Length one
+// --> [109] One ToString 1
+// --> [110] One Length one
+// <-- [109] One ToString 1
+// <-- [110] One Length one
 // res3: Option[(String, Int)] = Some((1,3))
 ```
 
@@ -246,8 +271,8 @@ While running it, notice that the data source is only queried once. The next tim
 
 ```scala
 Fetch.run[IO](fetchTwice).unsafeRunTimed(5.seconds)
-// --> [182] One ToString 1
-// <-- [182] One ToString 1
+// --> [111] One ToString 1
+// <-- [111] One ToString 1
 // res4: Option[(String, String)] = Some((1,1))
 ```
 
@@ -257,7 +282,6 @@ Fetch.run[IO](fetchTwice).unsafeRunTimed(5.seconds)
 ---
 
 For more in-depth information take a look at our [documentation](http://47deg.github.io/fetch/docs.html).
-
 
 ## Fetch in the wild
 

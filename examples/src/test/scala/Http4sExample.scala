@@ -25,93 +25,110 @@ import cats.syntax.all._
 import io.circe._
 import io.circe.generic.semiauto._
 
+import org.http4s.client.Client
 import org.http4s.circe._
 import org.http4s.client.blaze._
 import org.scalatest.{Matchers, WordSpec}
 
+import java.util.concurrent._
+
 import fetch._
 
-class Http4sExample extends WordSpec with Matchers {
-  implicit val executionContext = ExecutionContext.Implicits.global
-
-  implicit val t: Timer[IO]         = IO.timer(executionContext)
-  implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
-
-  // in this example we are fetching users and their posts via http using http4s
-  // the demo api is https://jsonplaceholder.typicode.com/
-
-  // the User and Post classes
-
+object HttpExample {
   case class UserId(id: Int)
   case class PostId(id: Int)
 
   case class User(id: UserId, name: String, username: String, email: String)
   case class Post(id: PostId, userId: UserId, title: String, body: String)
 
-  // some circe decoders
+  object Http {
+    val executionContext =
+      ExecutionContext.fromExecutor(new ScheduledThreadPoolExecutor(2))
 
-  implicit val userIdDecoder: Decoder[UserId] = Decoder[Int].map(UserId.apply)
-  implicit val postIdDecoder: Decoder[PostId] = Decoder[Int].map(PostId.apply)
-  implicit val userDecoder: Decoder[User]     = deriveDecoder
-  implicit val postDecoder: Decoder[Post]     = deriveDecoder
+    def client[F[_]: ConcurrentEffect]: Resource[F, Client[F]] =
+      BlazeClientBuilder[F](executionContext).resource
 
-  // http4s client which is used by the datasources
-
-  def client[F[_]: ConcurrentEffect] =
-    Http1Client[F](
-      BlazeClientConfig.defaultConfig.copy(
-        responseHeaderTimeout = 30.seconds // high timeout because jsonplaceholder takes a while to respond
-      ))
-
-  // a DataSource that can fetch Users with their UserId.
-
-  object Users extends DataSource[UserId, User] {
-    override def name = "UserH4s"
-
-    override def fetch[F[_]: ConcurrentEffect](id: UserId): F[Option[User]] = {
-      val url = s"https://jsonplaceholder.typicode.com/users?id=${id.id}"
-      client[F] >>= ((c) => c.expect(url)(jsonOf[F, List[User]]).map(_.headOption))
-    }
-
-    override def batch[F[_]: ConcurrentEffect](
-        ids: NonEmptyList[UserId]
-    ): F[Map[UserId, User]] = {
-      val filterIds = ids.map("id=" + _.id).toList.mkString("&")
-      val url       = s"https://jsonplaceholder.typicode.com/users?$filterIds"
-      val io        = client[F] >>= ((c) => c.expect(url)(jsonOf[F, List[User]]))
-      io.map(users => users.map(user => user.id -> user).toMap)
-    }
+    implicit val userIdDecoder: Decoder[UserId] = Decoder[Int].map(UserId.apply)
+    implicit val postIdDecoder: Decoder[PostId] = Decoder[Int].map(PostId.apply)
+    implicit val userDecoder: Decoder[User]     = deriveDecoder
+    implicit val postDecoder: Decoder[Post]     = deriveDecoder
   }
 
-  // a datasource that can fetch all the Posts using a UserId
+  object Users extends Data[UserId, User] {
+    import Http._
 
-  object Posts extends DataSource[UserId, List[Post]] {
-    override def name = "PostH4s"
-    override def fetch[F[_]: ConcurrentEffect](id: UserId): F[Option[List[Post]]] = {
-      val url = s"https://jsonplaceholder.typicode.com/posts?userId=${id.id}"
-      client[F] >>= ((c) => c.expect(url)(jsonOf[F, List[Post]]).map(Option.apply))
-    }
+    def name = "Users"
 
-    override def batch[F[_]: ConcurrentEffect](
-        ids: NonEmptyList[UserId]): F[Map[UserId, List[Post]]] = {
-      val filterIds = ids.map("userId=" + _.id).toList.mkString("&")
-      val url       = s"https://jsonplaceholder.typicode.com/posts?$filterIds"
-      client[F] >>= ((c) => c.expect(url)(jsonOf[F, List[Post]]).map(_.groupBy(_.userId).toMap))
-    }
+    def http[F[_]: ConcurrentEffect]: DataSource[F, UserId, User] =
+      new DataSource[F, UserId, User] {
+        def data = Users
+
+        override def CF = ConcurrentEffect[F]
+
+        override def fetch(id: UserId): F[Option[User]] = {
+          val url = s"https://jsonplaceholder.typicode.com/users?id=${id.id}"
+          client[F].use((c) => c.expect(url)(jsonOf[F, List[User]])).map(_.headOption)
+        }
+
+        override def batch(ids: NonEmptyList[UserId]): F[Map[UserId, User]] = {
+          val filterIds = ids.map("id=" + _.id).toList.mkString("&")
+          val url       = s"https://jsonplaceholder.typicode.com/users?$filterIds"
+          val io        = client[F].use((c) => c.expect(url)(jsonOf[F, List[User]]))
+          io.map(users => users.map(user => user.id -> user).toMap)
+        }
+      }
   }
 
-  // some helper methods to create Fetches
+  object Posts extends Data[UserId, List[Post]] {
+    import Http._
 
-  def user[F[_]: ConcurrentEffect](id: UserId): Fetch[F, User] =
-    Fetch(id, Users)
+    def name = "Posts"
 
-  def postsForUser[F[_]: ConcurrentEffect](id: UserId): Fetch[F, List[Post]] =
-    Fetch(id, Posts)
+    def http[F[_]: ConcurrentEffect]: DataSource[F, UserId, List[Post]] =
+      new DataSource[F, UserId, List[Post]] {
+        def data = Posts
+
+        override def CF = ConcurrentEffect[F]
+
+        override def fetch(id: UserId): F[Option[List[Post]]] = {
+          val url = s"https://jsonplaceholder.typicode.com/posts?userId=${id.id}"
+          client[F].use((c) => c.expect(url)(jsonOf[F, List[Post]])).map(Option.apply)
+        }
+
+        override def batch(ids: NonEmptyList[UserId]): F[Map[UserId, List[Post]]] = {
+          val filterIds = ids.map("userId=" + _.id).toList.mkString("&")
+          val url       = s"https://jsonplaceholder.typicode.com/posts?$filterIds"
+          client[F].use((c) => c.expect(url)(jsonOf[F, List[Post]])).map(_.groupBy(_.userId).toMap)
+        }
+      }
+  }
+
+  def fetchUserById[F[_]: ConcurrentEffect](id: UserId): Fetch[F, User] =
+    Fetch(id, Users.http)
+
+  def fetchPostsForUser[F[_]: ConcurrentEffect](id: UserId): Fetch[F, List[Post]] =
+    Fetch(id, Posts.http)
+
+  def fetchUser[F[_]: ConcurrentEffect](id: Int): Fetch[F, User] =
+    fetchUserById(UserId(id))
+
+  def fetchManyUsers[F[_]: ConcurrentEffect](ids: List[Int]): Fetch[F, List[User]] =
+    ids.traverse(i => fetchUserById(UserId(i)))
+
+  def fetchPosts[F[_]: ConcurrentEffect](user: User): Fetch[F, (User, List[Post])] =
+    fetchPostsForUser(user.id).map(posts => (user, posts))
+}
+
+class Http4sExample extends WordSpec with Matchers {
+  import HttpExample._
+
+  // runtime
+  val executionContext              = ExecutionContext.global
+  implicit val t: Timer[IO]         = IO.timer(executionContext)
+  implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
 
   "We can fetch one user" in {
-    def fetch[F[_]: ConcurrentEffect] = user(UserId(1))
-
-    val io: IO[(Env, User)] = Fetch.runEnv[IO](fetch)
+    val io: IO[(Env, User)] = Fetch.runEnv[IO](fetchUser(1))
 
     val (env, result) = io.unsafeRunSync
 
@@ -120,10 +137,7 @@ class Http4sExample extends WordSpec with Matchers {
   }
 
   "We can fetch multiple users in parallel" in {
-    def fetch[F[_]: ConcurrentEffect]: Fetch[F, List[User]] =
-      List(1, 2, 3).traverse(i => user(UserId(i)))
-
-    val io = Fetch.runEnv[IO](fetch)
+    val io = Fetch.runEnv[IO](fetchManyUsers(List(1, 2, 3)))
 
     val (env, result) = io.unsafeRunSync
 
@@ -134,10 +148,8 @@ class Http4sExample extends WordSpec with Matchers {
   "We can fetch multiple users with their posts" in {
     def fetch[F[_]: ConcurrentEffect]: Fetch[F, List[(User, List[Post])]] =
       for {
-        users <- List(UserId(1), UserId(2)).traverse(user[F])
-        usersWithPosts <- users.traverse { user =>
-          postsForUser(user.id).map(posts => (user, posts))
-        }
+        users          <- fetchManyUsers(List(1, 2))
+        usersWithPosts <- users.traverse(fetchPosts[F])
       } yield usersWithPosts
 
     val io = Fetch.runEnv[IO](fetch)
