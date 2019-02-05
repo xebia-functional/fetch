@@ -19,12 +19,12 @@ package fetch
 import scala.collection.immutable._
 
 /**
- * An environment that is passed along during the fetch rounds. It holds the
- * cache and the list of rounds that have been executed.
+ * A log that is passed along during the fetch rounds to record a fetch execution.
+ * It holds the a list of rounds that have been executed.
  */
-trait Env {
+trait Log {
   def rounds: List[Round]
-  def evolve(newRound: Round): Env
+  def append(round: Round): Log
 }
 
 /**
@@ -46,14 +46,12 @@ case class Round(
 )
 
 /**
- * A concrete implementation of `Env` used in the default Fetch interpreter.
+ * A concrete implementation of `Log` used in Fetch.
  */
-case class FetchEnv(
-    roundsQ: Queue[Round] = Queue.empty
-) extends Env {
-  def rounds = roundsQ.toList
-  def evolve(
-      newRound: Round
-  ): Env =
-    copy(roundsQ = roundsQ :+ newRound)
+case class FetchLog(
+  q: Queue[Round] = Queue.empty
+) extends Log {
+  def rounds = q.toList
+  def append(round: Round): Log =
+    copy(q = q :+ round)
 }

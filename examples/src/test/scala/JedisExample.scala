@@ -147,17 +147,17 @@ class JedisExample extends WordSpec with Matchers {
 
   "We can use a Redis cache" in {
     val cache                           = RedisCache[IO]("localhost")
-    val io: IO[(Env, HttpExample.User)] = Fetch.runEnv[IO](fetch, cache)
+    val io: IO[(Log, HttpExample.User)] = Fetch.runLog[IO](fetch, cache)
 
-    val (env, result) = io.unsafeRunSync
+    val (log, result) = io.unsafeRunSync
 
     println(result)
-    env.rounds.size shouldEqual 2
+    log.rounds.size shouldEqual 2
 
-    val io2: IO[(Env, HttpExample.User)] = Fetch.runEnv[IO](fetch, cache)
-    val (env2, result2)                  = io2.unsafeRunSync
+    val io2: IO[(Log, HttpExample.User)] = Fetch.runLog[IO](fetch, cache)
+    val (log2, result2)                  = io2.unsafeRunSync
 
     println(result2)
-    env2.rounds.size shouldEqual 0
+    log2.rounds.size shouldEqual 0
   }
 }

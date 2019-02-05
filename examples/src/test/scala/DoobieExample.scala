@@ -108,24 +108,24 @@ class DoobieExample extends WordSpec with Matchers {
   implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
 
   "We can fetch one author from the DB" in {
-    val io: IO[(Env, Author)] = Fetch.runEnv[IO](Authors.fetchAuthor(1))
+    val io: IO[(Log, Author)] = Fetch.runLog[IO](Authors.fetchAuthor(1))
 
-    val (env, result) = io.unsafeRunSync
+    val (log, result) = io.unsafeRunSync
 
     result shouldEqual Author(1, "William Shakespeare")
-    env.rounds.size shouldEqual 1
+    log.rounds.size shouldEqual 1
   }
 
   "We can fetch multiple authors from the DB in parallel" in {
     def fetch[F[_]: ConcurrentEffect]: Fetch[F, List[Author]] =
       List(1, 2).traverse(Authors.fetchAuthor[F])
 
-    val io: IO[(Env, List[Author])] = Fetch.runEnv[IO](fetch)
+    val io: IO[(Log, List[Author])] = Fetch.runLog[IO](fetch)
 
-    val (env, result) = io.unsafeRunSync
+    val (log, result) = io.unsafeRunSync
 
     result shouldEqual Author(1, "William Shakespeare") :: Author(2, "Charles Dickens") :: Nil
-    env.rounds.size shouldEqual 1
+    log.rounds.size shouldEqual 1
   }
 
   "We can fetch multiple authors from the DB using a for comprehension" in {
@@ -135,12 +135,12 @@ class DoobieExample extends WordSpec with Matchers {
         b <- Authors.fetchAuthor(a.id + 1)
       } yield List(a, b)
 
-    val io: IO[(Env, List[Author])] = Fetch.runEnv[IO](fetch)
+    val io: IO[(Log, List[Author])] = Fetch.runLog[IO](fetch)
 
-    val (env, result) = io.unsafeRunSync
+    val (log, result) = io.unsafeRunSync
 
     result shouldEqual Author(1, "William Shakespeare") :: Author(2, "Charles Dickens") :: Nil
-    env.rounds.size shouldEqual 2
+    log.rounds.size shouldEqual 2
   }
 
 }

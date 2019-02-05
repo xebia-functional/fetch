@@ -49,10 +49,10 @@ object `package` {
   // Fetch errors
 
   sealed trait FetchException extends Throwable with NoStackTrace {
-    def environment: Env
+    def log: Log
   }
-  final case class MissingIdentity[I, A](i: I, request: FetchQuery[I, A], environment: Env) extends FetchException
-  final case class UnhandledException(e: Throwable, environment: Env) extends FetchException
+  final case class MissingIdentity[I, A](i: I, request: FetchQuery[I, A], log: Log) extends FetchException
+  final case class UnhandledException(e: Throwable, log: Log) extends FetchException
 
   // In-progress request
 
@@ -151,7 +151,7 @@ object `package` {
   private[fetch] sealed trait FetchResult[F[_], A] extends Product with Serializable
   private[fetch] final case class Done[F[_], A](x: A) extends FetchResult[F, A]
   private[fetch] final case class Blocked[F[_], A](rs: RequestMap[F], cont: Fetch[F, A]) extends FetchResult[F, A]
-  private[fetch] final case class Throw[F[_], A](e: Env => FetchException) extends FetchResult[F, A]
+  private[fetch] final case class Throw[F[_], A](e: Log => FetchException) extends FetchResult[F, A]
 
   // Fetch data type
 
@@ -219,11 +219,11 @@ object `package` {
     def pure[F[_]: ConcurrentEffect, A](a: A): Fetch[F, A] =
       Unfetch(Applicative[F].pure(Done(a)))
 
-    def exception[F[_]: ConcurrentEffect, A](e: Env => FetchException): Fetch[F, A] =
+    def exception[F[_]: ConcurrentEffect, A](e: Log => FetchException): Fetch[F, A] =
       Unfetch(Applicative[F].pure(Throw[F, A](e)))
 
     def error[F[_]: ConcurrentEffect, A](e: Throwable): Fetch[F, A] =
-      exception((env) => UnhandledException(e, env))
+      exception((log) => UnhandledException(e, log))
 
     def apply[F[_] : ConcurrentEffect, I, A](
       id: I,
@@ -242,7 +242,7 @@ object `package` {
             case FetchDone(a) =>
               Done(a).asInstanceOf[FetchResult[F, A]]
             case FetchMissing() =>
-              Throw((env) => MissingIdentity(id, request.asInstanceOf[FetchQuery[I, A]], env))
+              Throw((log) => MissingIdentity(id, request.asInstanceOf[FetchQuery[I, A]], log))
           }
         ))
       )
@@ -302,11 +302,11 @@ object `package` {
     }
 
     /**
-      * Run a `Fetch`, the environment and the result in the `F` monad.
+      * Run a `Fetch`, the log and the result in the `F` monad.
       */
-    def runEnv[F[_]]: FetchRunnerEnv[F] = new FetchRunnerEnv[F]
+    def runLog[F[_]]: FetchRunnerLog[F] = new FetchRunnerLog[F]
 
-    private[fetch] class FetchRunnerEnv[F[_]](private val dummy: Boolean = true) extends AnyVal {
+    private[fetch] class FetchRunnerLog[F[_]](private val dummy: Boolean = true) extends AnyVal {
       def apply[A](
         fa: Fetch[F, A]
       )(
@@ -314,7 +314,7 @@ object `package` {
           C: ConcurrentEffect[F],
           CS: ContextShift[F],
           T: Timer[F]
-      ): F[(Env, A)] =
+      ): F[(Log, A)] =
         apply(fa, InMemoryCache.empty[F])
 
       def apply[A](
@@ -325,11 +325,11 @@ object `package` {
           C: ConcurrentEffect[F],
           CS: ContextShift[F],
           T: Timer[F]
-      ): F[(Env, A)] = for {
-        env <- Ref.of[F, Env](FetchEnv())
+      ): F[(Log, A)] = for {
+        log <- Ref.of[F, Log](FetchLog())
         cache <- Ref.of[F, DataCache[F]](cache)
-        result <- performRun(fa, cache, Some(env))
-        e <- env.get
+        result <- performRun(fa, cache, Some(log))
+        e <- log.get
       } yield (e, result)
     }
 
@@ -369,7 +369,7 @@ object `package` {
     private def performRun[F[_], A](
       fa: Fetch[F, A],
       cache: Ref[F, DataCache[F]],
-      env: Option[Ref[F, Env]]
+      log: Option[Ref[F, Log]]
     )(
       implicit
         C: ConcurrentEffect[F],
@@ -381,14 +381,14 @@ object `package` {
       value <- result match {
         case Done(a) => Applicative[F].pure(a)
         case Blocked(rs, cont) => for {
-          _ <- fetchRound(rs, cache, env)
-          result <- performRun(cont, cache, env)
+          _ <- fetchRound(rs, cache, log)
+          result <- performRun(cont, cache, log)
         } yield result
-        case Throw(envToThrowable) =>
-          env.fold(
-            Applicative[F].pure(FetchEnv() : Env)
-          )(_.get).flatMap((e: Env) =>
-            Sync[F].raiseError[A](envToThrowable(e))
+        case Throw(logToThrowable) =>
+          log.fold(
+            Applicative[F].pure(FetchLog() : Log)
+          )(_.get).flatMap((e: Log) =>
+            Sync[F].raiseError[A](logToThrowable(e))
           )
       }
     } yield value
@@ -396,7 +396,7 @@ object `package` {
     private def fetchRound[F[_], A](
       rs: RequestMap[F],
       cache: Ref[F, DataCache[F]],
-      env: Option[Ref[F, Env]]
+      log: Option[Ref[F, Log]]
     )(
       implicit
         C: ConcurrentEffect[F],
@@ -408,12 +408,12 @@ object `package` {
       else
         for {
           requests <- FetchExecution.parallel(NonEmptyList.fromListUnsafe(blocked).map({
-            case (ds, req) => runBlockedRequest(req, ds, cache, env)
+            case (ds, req) => runBlockedRequest(req, ds, cache, log)
           }))
           performedRequests = requests.foldLeft(List.empty[Request])(_ ++ _)
           _ <- if (performedRequests.isEmpty) Applicative[F].unit
-          else env match {
-            case Some(e) => e.modify((oldE) => (oldE.evolve(Round(performedRequests)), oldE))
+          else log match {
+            case Some(l) => l.modify((oldE) => (oldE.append(Round(performedRequests)), oldE))
             case None => Applicative[F].unit
           }
         } yield ()
@@ -423,7 +423,7 @@ object `package` {
       blocked: BlockedRequest[F],
       ds: DataSource[F, Any, Any],
       cache: Ref[F, DataCache[F]],
-      env: Option[Ref[F, Env]]
+      log: Option[Ref[F, Log]]
     )(
       implicit
         C: ConcurrentEffect[F],
@@ -431,8 +431,8 @@ object `package` {
         T: Timer[F]
     ): F[List[Request]] =
       blocked.request match {
-        case q @ FetchOne(id, _) => runFetchOne[F](q, ds, blocked.result, cache, env)
-        case q @ Batch(ids, _) => runBatch[F](q, ds, blocked.result, cache, env)
+        case q @ FetchOne(id, _) => runFetchOne[F](q, ds, blocked.result, cache, log)
+        case q @ Batch(ids, _) => runBatch[F](q, ds, blocked.result, cache, log)
       }
   }
 
@@ -441,7 +441,7 @@ object `package` {
     ds: DataSource[F, Any, Any],
     putResult: FetchStatus => F[Unit],
     cache: Ref[F, DataCache[F]],
-    env: Option[Ref[F, Env]]
+    log: Option[Ref[F, Log]]
   )(
     implicit
       C: ConcurrentEffect[F],
@@ -486,7 +486,7 @@ object `package` {
     ds: DataSource[F, Any, Any],
     putResult: FetchStatus => F[Unit],
     cache: Ref[F, DataCache[F]],
-    env: Option[Ref[F, Env]]
+    log: Option[Ref[F, Log]]
   )(
     implicit
       C: ConcurrentEffect[F],

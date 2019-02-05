@@ -725,7 +725,7 @@ def failingFetch[F[_] : ConcurrentEffect]: Fetch[F, String] = for {
   c <- fetchException
 } yield s"${a.username} loves ${b.username}"
 
-val result: IO[Either[Throwable, (Env, String)]] = Fetch.runEnv[IO](failingFetch).attempt
+val result: IO[Either[Throwable, (Log, String)]] = Fetch.runLog[IO](failingFetch).attempt
 ```
 
 Now let's use the `fetch.debug.describe` function for describing the error if we find one:
@@ -733,7 +733,7 @@ Now let's use the `fetch.debug.describe` function for describing the error if we
 ```tut:book
 import fetch.debug.describe
 
-val value: Either[Throwable, (Env, String)] = result.unsafeRunSync
+val value: Either[Throwable, (Log, String)] = result.unsafeRunSync
 
 println(value.fold(describe, _.toString))
 ```
@@ -750,13 +750,13 @@ identity was not found. Whenever an identity cannot be found, the fetch executio
 def missingUser[F[_] : ConcurrentEffect] =
   getUser(5)
 
-val result: IO[Either[Throwable, (Env, User)]] = Fetch.runEnv[IO](missingUser).attempt
+val result: IO[Either[Throwable, (Log, User)]] = Fetch.runLog[IO](missingUser).attempt
 ```
 
 And now we can execute the fetch and describe its execution:
 
 ```tut:book
-val value: Either[Throwable, (Env, User)] = result.unsafeRunSync
+val value: Either[Throwable, (Log, User)] = result.unsafeRunSync
 
 println(value.fold(describe, _.toString))
 ```
@@ -766,11 +766,11 @@ As you can see in the output, the identity `5` for the user source was not found
 
 ```tut:book
 value match {
-  case Left(mi @ MissingIdentity(id, q, e)) => {
+  case Left(mi @ MissingIdentity(id, q, log)) => {
     println("Data: " + q.data.name)
     println("Identity: " + id)
     
-    println(describe(mi.environment))
+    println(describe(log))
   }
   case _ =>
 }
@@ -862,7 +862,7 @@ Fetch.run[IO](fetchFriends).unsafeRunTimed(5.seconds)
 # Debugging
 
 We have introduced the handy `fetch.debug.describe` function for debugging errors, but it can do more than that. It can also give you a detailed description of
-a fetch execution given an environment.
+a fetch execution given an execution log.
 
 Add the following line to your dependencies for including Fetch's debugging facilities:
 
@@ -873,7 +873,7 @@ Add the following line to your dependencies for including Fetch's debugging faci
 ## Fetch execution
 
 We are going to create an interesting fetch that applies all the optimizations available (caching, batching and concurrent request) for ilustrating how we can
-visualize fetch executions using the environment.
+visualize fetch executions using the execution log.
 
 ```tut:silent
 def batched[F[_] : ConcurrentEffect]: Fetch[F, List[User]] =
@@ -892,15 +892,15 @@ def interestingFetch[F[_] : ConcurrentEffect]: Fetch[F, String] =
   batched >> cached >> notCached >> concurrent >> Fetch.pure("done")
 ```
 
-Now that we have the fetch let's run it, get the environment and visualize its execution using the `describe` function:
+Now that we have the fetch let's run it, get the log and visualize its execution using the `describe` function:
 
 ```tut:book
-val io = Fetch.runEnv[IO](interestingFetch)
+val io = Fetch.runLog[IO](interestingFetch)
 
-val (env, result) = io.unsafeRunSync
+val (log, result) = io.unsafeRunSync
 
 io.unsafeRunTimed(5.seconds) match {
- case Some((env, result)) => println(describe(env))
+ case Some((log, result)) => println(describe(log))
  case None => println("Unable to run fetch")
 }
 ```
