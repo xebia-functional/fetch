@@ -137,8 +137,8 @@ object `package` {
           val combined = acc.get(dsId).fold(
             (ds, blocked)
           )({
-            case (ds, req) => {
-              (ds, combineRequests(blocked, req))
+            case (d, req) => {
+              (d, combineRequests(blocked, req))
             }
           })
           acc.updated(dsId, combined)
