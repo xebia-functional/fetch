@@ -128,21 +128,21 @@ class Http4sExample extends WordSpec with Matchers {
   implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
 
   "We can fetch one user" in {
-    val io: IO[(Env, User)] = Fetch.runEnv[IO](fetchUser(1))
+    val io: IO[(Log, User)] = Fetch.runLog[IO](fetchUser(1))
 
-    val (env, result) = io.unsafeRunSync
+    val (log, result) = io.unsafeRunSync
 
     println(result)
-    env.rounds.size shouldEqual 1
+    log.rounds.size shouldEqual 1
   }
 
   "We can fetch multiple users in parallel" in {
-    val io = Fetch.runEnv[IO](fetchManyUsers(List(1, 2, 3)))
+    val io = Fetch.runLog[IO](fetchManyUsers(List(1, 2, 3)))
 
-    val (env, result) = io.unsafeRunSync
+    val (log, result) = io.unsafeRunSync
 
     result.foreach(println)
-    env.rounds.size shouldEqual 1
+    log.rounds.size shouldEqual 1
   }
 
   "We can fetch multiple users with their posts" in {
@@ -152,9 +152,9 @@ class Http4sExample extends WordSpec with Matchers {
         usersWithPosts <- users.traverse(fetchPosts[F])
       } yield usersWithPosts
 
-    val io = Fetch.runEnv[IO](fetch)
+    val io = Fetch.runLog[IO](fetch)
 
-    val (env, results) = io.unsafeRunSync
+    val (log, results) = io.unsafeRunSync
 
     results
       .map {
@@ -162,7 +162,7 @@ class Http4sExample extends WordSpec with Matchers {
           s"${user.username} has ${posts.size} posts"
       }
       .foreach(println)
-    env.rounds.size shouldEqual 2
+    log.rounds.size shouldEqual 2
   }
 
 }
