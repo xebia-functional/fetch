@@ -1,5 +1,22 @@
 # Changelog
 
+## 02/08/2019 - Version 1.0.0-RC2
+
+Release changes:
+
+* Fixes micrositePushWith Setting ([#158](https://github.com/47deg/fetch/pull/158))
+* Introduce Fetch#optional for performing optional fetches ([#159](https://github.com/47deg/fetch/pull/159))
+* DataSourceCache parameterised to F[_] ([#160](https://github.com/47deg/fetch/pull/160))
+* Proof-of-concept Redis cache implementation of DataSourceCache ([#161](https://github.com/47deg/fetch/pull/161))
+* Upgrade CI build ([#173](https://github.com/47deg/fetch/pull/173))
+* Don't run 'gem update --system' ([#174](https://github.com/47deg/fetch/pull/174))
+* Update Copyright Notices to 2019. ([#172](https://github.com/47deg/fetch/pull/172))
+* Add F[_] type parameter to DataSource ([#171](https://github.com/47deg/fetch/pull/171))
+* s/Env/Log/ ([#176](https://github.com/47deg/fetch/pull/176))
+* Remove Par typeclass ([#166](https://github.com/47deg/fetch/pull/166))
+* Update to RC2 ([#177](https://github.com/47deg/fetch/pull/177))
+
+
 ## Unreleased - Version 1.0.0
 
 Release changes:
