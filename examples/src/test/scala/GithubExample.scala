@@ -50,61 +50,6 @@ class GithubExample extends WordSpec with Matchers {
   def client[F[_]: ConcurrentEffect] =
     Http1Client[F](BlazeClientConfig.defaultConfig)
 
-  // Github HTTP api
-
-  val GITHUB: Uri = Uri.unsafeFromString("https://api.github.com")
-
-  private def fetchCollectionRecursively[F[_], A](c: Client[F], req: Request[F])(
-      implicit CF: ConcurrentEffect[F],
-      E: EntityDecoder[F, List[A]]
-  ): F[List[A]] = {
-    val REL_NEXT = "rel=\"next\"".r
-
-    def hasNext(res: Response[F]): Boolean =
-      res.headers
-        .get(CaseInsensitiveString("Link"))
-        .fold(false)({ h =>
-          REL_NEXT.findFirstIn(h.value).isDefined
-        })
-
-    def getNextLink(raw: String): F[String] = {
-      REL_NEXT
-        .findFirstMatchIn(raw)
-        .fold(
-          Sync[F].raiseError[String](new Exception("Couldn't find next link"))
-        )(m => {
-          Sync[F].pure(
-            m.before.toString.split(",").last.trim.dropWhile(_ == '<').takeWhile(_ != '>'))
-        })
-    }
-
-    def getNext(res: Response[F]): F[Uri] =
-      res.headers
-        .get(CaseInsensitiveString("Link"))
-        .fold(Sync[F].raiseError[Uri](new Exception("next not found")))(
-          raw => getNextLink(raw.value).map(Uri.unsafeFromString(_))
-        )
-
-    for {
-      result <- c.fetch[List[A]](req) {
-        case Status.Ok(res) => {
-          if (hasNext(res)) {
-            for {
-              repos <- res.as[List[A]]
-              nxt   <- getNext(res)
-              newReq = req.withUri(nxt)
-              moreRepos <- fetchCollectionRecursively(c, newReq)
-            } yield repos ++ moreRepos
-          } else
-            res.as[List[A]]
-        }
-        case res => {
-          CF.raiseError(new Exception(res.body.toString))
-        }
-      }
-    } yield result
-  }
-
   // -- repos
 
   type Org = String
@@ -115,18 +60,18 @@ class GithubExample extends WordSpec with Matchers {
       stargazers_count: Int,
       watchers_count: Int,
       languages_url: String,
-      contributors_url: String
-  )
-
-  implicit val repoD: Decoder[Repo] = deriveDecoder
+      contributors_url: String)
 
   object Repos extends Data[(String, String), Repo] {
     def name = "Repositories"
 
-    def source[F[_]: ConcurrentEffect]: DataSource[F, (String, String), Repo] =
+    implicit val repoD: Decoder[Repo] = deriveDecoder
+
+    def source[F[_]: ConcurrentEffect]: DataSource[F, (String, String), Repo] = {
+      implicit val repoED: EntityDecoder[F, Repo]        = jsonOf
+      implicit val reposED: EntityDecoder[F, List[Repo]] = jsonOf
+
       new DataSource[F, (String, String), Repo] {
-        implicit val repoED: EntityDecoder[F, Repo]        = jsonOf
-        implicit val reposED: EntityDecoder[F, List[Repo]] = jsonOf
 
         def CF = ConcurrentEffect[F]
 
@@ -148,6 +93,7 @@ class GithubExample extends WordSpec with Matchers {
           })
         }
       }
+    }
   }
 
   def fetchRepo[F[_]: ConcurrentEffect](r: (String, String)): Fetch[F, Repo] =
@@ -155,6 +101,8 @@ class GithubExample extends WordSpec with Matchers {
 
   object OrgRepos extends Data[Org, List[Repo]] {
     def name = "Org repositories"
+
+    implicit val repoD: Decoder[Repo] = deriveDecoder
 
     def source[F[_]: ConcurrentEffect]: DataSource[F, Org, List[Repo]] =
       new DataSource[F, Org, List[Repo]] {
@@ -277,4 +225,60 @@ class GithubExample extends WordSpec with Matchers {
 
     log.rounds.size shouldEqual 1
   }
+
+  // Github HTTP api
+
+  val GITHUB: Uri = Uri.unsafeFromString("https://api.github.com")
+
+  private def fetchCollectionRecursively[F[_], A](c: Client[F], req: Request[F])(
+      implicit CF: ConcurrentEffect[F],
+      E: EntityDecoder[F, List[A]]
+  ): F[List[A]] = {
+    val REL_NEXT = "rel=\"next\"".r
+
+    def hasNext(res: Response[F]): Boolean =
+      res.headers
+        .get(CaseInsensitiveString("Link"))
+        .fold(false)({ h =>
+          REL_NEXT.findFirstIn(h.value).isDefined
+        })
+
+    def getNextLink(raw: String): F[String] = {
+      REL_NEXT
+        .findFirstMatchIn(raw)
+        .fold(
+          Sync[F].raiseError[String](new Exception("Couldn't find next link"))
+        )(m => {
+          Sync[F].pure(
+            m.before.toString.split(",").last.trim.dropWhile(_ == '<').takeWhile(_ != '>'))
+        })
+    }
+
+    def getNext(res: Response[F]): F[Uri] =
+      res.headers
+        .get(CaseInsensitiveString("Link"))
+        .fold(Sync[F].raiseError[Uri](new Exception("next not found")))(
+          raw => getNextLink(raw.value).map(Uri.unsafeFromString(_))
+        )
+
+    for {
+      result <- c.fetch[List[A]](req) {
+        case Status.Ok(res) => {
+          if (hasNext(res)) {
+            for {
+              repos <- res.as[List[A]]
+              nxt   <- getNext(res)
+              newReq = req.withUri(nxt)
+              moreRepos <- fetchCollectionRecursively(c, newReq)
+            } yield repos ++ moreRepos
+          } else
+            res.as[List[A]]
+        }
+        case res => {
+          CF.raiseError(new Exception(res.body.toString))
+        }
+      }
+    } yield result
+  }
+
 }
