@@ -135,7 +135,9 @@ class GithubExample extends WordSpec with Matchers {
 
     def source[F[_]: ConcurrentEffect]: DataSource[F, Repo, List[Language]] =
       new DataSource[F, Repo, List[Language]] {
-        implicit val langE: EntityDecoder[F, Language]        = jsonOf
+        implicit val langD: Decoder[List[Language]] = Decoder[JsonObject].map(
+          _.toList.map(_._1)
+        )
         implicit val langED: EntityDecoder[F, List[Language]] = jsonOf
 
         def CF = ConcurrentEffect[F]
@@ -275,7 +277,7 @@ class GithubExample extends WordSpec with Matchers {
             res.as[List[A]]
         }
         case res => {
-          CF.raiseError(new Exception(res.body.toString))
+          CF.raiseError(new Exception(s"Couldn't complete request, returned status: ${res.status}"))
         }
       }
     } yield result
