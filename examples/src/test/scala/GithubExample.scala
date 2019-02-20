@@ -189,20 +189,29 @@ class GithubExample extends WordSpec with Matchers {
 
   case class Project(repo: Repo, contributors: List[Contributor], languages: List[Language])
 
+  def fetchProject[F[_]: ConcurrentEffect](repo: Repo): Fetch[F, Project] =
+    (repoContributors(repo), repoLanguages(repo)).mapN({
+      case (contribs, langs) =>
+        Project(repo = repo, contributors = contribs, languages = langs)
+    })
+
+  def fetchOrg[F[_]: ConcurrentEffect](org: String) =
+    for {
+      repos    <- orgRepos(org)
+      projects <- repos.traverse(fetchProject[F])
+    } yield projects
+
+  def fetchOrgStars[F[_]: ConcurrentEffect](org: String): Fetch[F, Int] =
+    fetchOrg(org).map(projects => projects.map(_.repo.stargazers_count).sum)
+
+  def fetchOrgContributors[F[_]: ConcurrentEffect](org: String): Fetch[F, Int] =
+    fetchOrg(org).map(projects => projects.map(_.contributors.toSet).fold(Set())(_ ++ _).size)
+
+  def fetchOrgLanguages[F[_]: ConcurrentEffect](org: String): Fetch[F, Int] =
+    fetchOrg(org).map(projects => projects.map(_.languages.toSet).fold(Set())(_ ++ _).size)
+
   "We can fetch org repos" in {
-    def fetchProject[F[_]: ConcurrentEffect](repo: Repo): Fetch[F, Project] =
-      (repoContributors(repo), repoLanguages(repo)).mapN({
-        case (contribs, langs) =>
-          Project(repo = repo, contributors = contribs, languages = langs)
-      })
-
-    def fetch[F[_]: ConcurrentEffect] =
-      for {
-        repos    <- orgRepos("47deg")
-        projects <- repos.traverse(fetchProject[F])
-      } yield projects
-
-    val io = Fetch.runLog[IO](fetch)
+    val io = Fetch.runLog[IO](fetchOrg("47deg"))
 
     val (log, result) = io.unsafeRunSync
 
@@ -210,7 +219,6 @@ class GithubExample extends WordSpec with Matchers {
   }
 
   "We can fetch multiple repos in parallel" in {
-
     def fetchRepo[F[_]: ConcurrentEffect](r: (String, String)): Fetch[F, Repo] =
       Fetch(r, Repos.source)
 
@@ -226,6 +234,17 @@ class GithubExample extends WordSpec with Matchers {
     val (log, result) = io.unsafeRunSync
 
     log.rounds.size shouldEqual 1
+  }
+
+  "We can combine everything" in {
+    def fetch[F[_]: ConcurrentEffect](org: String): Fetch[F, (List[Project], Int, Int, Int)] =
+      (fetchOrg(org), fetchOrgStars(org), fetchOrgContributors(org), fetchOrgLanguages(org)).tupled
+
+    val io = Fetch.runLog[IO](fetch("47deg"))
+
+    val (log, result) = io.unsafeRunSync
+
+    log.rounds.size shouldEqual 2
   }
 
   // Github HTTP api
