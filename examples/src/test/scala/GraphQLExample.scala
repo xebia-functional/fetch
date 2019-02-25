@@ -18,7 +18,6 @@ package fetch
 
 import org.scalatest.{Matchers, WordSpec}
 
-import fetch.debug.describe
 import atto._, Atto._
 import cats.implicits._
 import cats.data.NonEmptyList
