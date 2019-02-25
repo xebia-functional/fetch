@@ -66,6 +66,7 @@ object ProjectPlugin extends AutoPlugin {
       %%("circe-generic"),
       %%("doobie-core"),
       %%("doobie-h2"),
+      "org.tpolecat" %% "atto-core"    % "0.6.5",
       "org.http4s" %% "http4s-blaze-client" % "0.19.0-M2",
       "org.http4s" %% "http4s-circe" % "0.19.0-M2",
       "redis.clients" % "jedis" % "2.9.0"
