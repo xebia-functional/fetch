@@ -308,9 +308,6 @@ object Sources {
 
         def fetch(id: String): F[Option[List[Repo]]] =
           CF.pure(reposDb.get(id))
-
-        override def batch(ids: NonEmptyList[String]): F[Map[String, List[Repo]]] =
-          ids.traverse(i => fetch(i).map(x => (i, x.getOrElse(List.empty)))).map(_.toList.toMap)
       }
 
     def fetch[F[_]: ConcurrentEffect](org: String): Fetch[F, List[Repo]] =
@@ -332,9 +329,6 @@ object Sources {
 
         def fetch(id: Repo): F[Option[List[String]]] =
           CF.pure(langsDb.get(id))
-
-        override def batch(ids: NonEmptyList[Repo]): F[Map[Repo, List[String]]] =
-          ids.traverse(i => fetch(i).map(x => (i, x.getOrElse(List.empty)))).map(_.toList.toMap)
       }
 
     def fetch[F[_]: ConcurrentEffect](repo: Repo): Fetch[F, List[String]] =
@@ -356,9 +350,6 @@ object Sources {
 
         def fetch(id: Repo): F[Option[List[String]]] =
           CF.pure(collabsDb.get(id))
-
-        override def batch(ids: NonEmptyList[Repo]): F[Map[Repo, List[String]]] =
-          ids.traverse(i => fetch(i).map(x => (i, x.getOrElse(List.empty)))).map(_.toList.toMap)
       }
 
     def fetch[F[_]: ConcurrentEffect](repo: Repo): Fetch[F, List[String]] =
