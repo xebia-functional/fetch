@@ -36,6 +36,7 @@ import org.http4s.client.blaze._
 import org.scalatest.{Matchers, WordSpec}
 
 import fetch.{Data, DataSource, Fetch}
+import fetch.debug.describe
 
 class GithubExample extends WordSpec with Matchers {
   implicit val executionContext = ExecutionContext.Implicits.global
@@ -243,6 +244,8 @@ class GithubExample extends WordSpec with Matchers {
     val io = Fetch.runLog[IO](fetch("47deg"))
 
     val (log, result) = io.unsafeRunSync
+
+    println(describe(log))
 
     log.rounds.size shouldEqual 2
   }
