@@ -242,10 +242,7 @@ class GithubExample extends WordSpec with Matchers {
       (fetchOrg(org), fetchOrgStars(org), fetchOrgContributors(org), fetchOrgLanguages(org)).tupled
 
     val io = Fetch.runLog[IO](fetch("47deg"))
-
     val (log, result) = io.unsafeRunSync
-
-    println(describe(log))
 
     log.rounds.size shouldEqual 2
   }
