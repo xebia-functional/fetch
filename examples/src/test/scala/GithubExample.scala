@@ -36,7 +36,6 @@ import org.http4s.client.blaze._
 import org.scalatest.{Matchers, WordSpec}
 
 import fetch.{Data, DataSource, Fetch}
-import fetch.debug.describe
 
 class GithubExample extends WordSpec with Matchers {
   implicit val executionContext = ExecutionContext.Implicits.global
