@@ -17,10 +17,11 @@ object ProjectPlugin extends AutoPlugin {
 
   object autoImport {
 
-    lazy val commonCrossDependencies: Seq[ModuleID] =
+    lazy val commonCrossDependencies =
       Seq(
-        "org.typelevel" %% "cats-effect" % "1.2.0",
-          %%("scalatest") % "test")
+		libraryDependencies ++=
+		Seq("org.typelevel" %% "cats-effect" % "1.2.0",
+            %%("scalatest") % "test"))
 
     lazy val micrositeSettings: Seq[Def.Setting[_]] = Seq(
       micrositeName := "Fetch",
@@ -62,7 +63,7 @@ object ProjectPlugin extends AutoPlugin {
       tutNameFilter := """README.md""".r
     )
 
-    lazy val examplesSettings: Seq[Def.Setting[_]] = libraryDependencies ++= Seq(
+    lazy val examplesSettings = Seq(libraryDependencies ++= Seq(
       %%("circe-generic"),
       %%("doobie-core"),
       %%("doobie-h2"),
@@ -70,7 +71,7 @@ object ProjectPlugin extends AutoPlugin {
       "org.http4s" %% "http4s-blaze-client" % "0.19.0-M2",
       "org.http4s" %% "http4s-circe" % "0.19.0-M2",
       "redis.clients" % "jedis" % "2.9.0"
-    ) ++ commonCrossDependencies
+    )) ++ commonCrossDependencies
   }
 
   lazy val commandAliases: Seq[Def.Setting[_]] =
