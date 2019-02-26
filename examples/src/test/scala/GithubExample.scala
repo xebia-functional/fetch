@@ -218,34 +218,6 @@ class GithubExample extends WordSpec with Matchers {
     log.rounds.size shouldEqual 2
   }
 
-  "We can fetch multiple repos in parallel" in {
-    def fetchRepo[F[_]: ConcurrentEffect](r: (String, String)): Fetch[F, Repo] =
-      Fetch(r, Repos.source)
-
-    def fetch[F[_]: ConcurrentEffect]: Fetch[F, List[Repo]] =
-      List(
-        ("monix", "monix"),
-        ("typelevel", "cats"),
-        ("typelevel", "cats-effect"),
-        ("47deg", "fetch")).traverse(fetchRepo[F])
-
-    val io = Fetch.runLog[IO](fetch)
-
-    val (log, result) = io.unsafeRunSync
-
-    log.rounds.size shouldEqual 1
-  }
-
-  "We can combine everything" in {
-    def fetch[F[_]: ConcurrentEffect](org: String): Fetch[F, (List[Project], Int, Int, Int)] =
-      (fetchOrg(org), fetchOrgStars(org), fetchOrgContributors(org), fetchOrgLanguages(org)).tupled
-
-    val io = Fetch.runLog[IO](fetch("47deg"))
-    val (log, result) = io.unsafeRunSync
-
-    log.rounds.size shouldEqual 2
-  }
-
   // Github HTTP api
 
   val GITHUB: Uri = Uri.unsafeFromString("https://api.github.com")
