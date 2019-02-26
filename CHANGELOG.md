@@ -1,6 +1,6 @@
 # Changelog
 
-## 02/28/2019 - Version 1.0.0
+## 02/26/2019 - Version 1.0.0
 
 The 1.0.0 release of Fetch is a redesign of the library in terms of `cats-effect` abstractions. It's a backwards-incompatible release that introduces numerous breaking changes as well as a couple of new features. It now should be easier to use and require less work from the user of the library, specially when you are already using `cats-effect`.
 
