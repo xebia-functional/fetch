@@ -19,7 +19,7 @@ object ProjectPlugin extends AutoPlugin {
 
     lazy val commonCrossDependencies: Seq[ModuleID] =
       Seq(
-        "org.typelevel" %% "cats-effect" % "1.0.0",
+        "org.typelevel" %% "cats-effect" % "1.2.0",
           %%("scalatest") % "test")
 
     lazy val micrositeSettings: Seq[Def.Setting[_]] = Seq(
@@ -112,8 +112,8 @@ object ProjectPlugin extends AutoPlugin {
         ),
         orgUpdateDocFilesSetting += baseDirectory.value / "tut",
         scalaOrganization := "org.scala-lang",
-        scalaVersion := "2.12.6",
-        crossScalaVersions := List("2.11.12", "2.12.6"),
+        scalaVersion := "2.12.8",
+        crossScalaVersions := List("2.11.12", "2.12.8"),
         resolvers += Resolver.sonatypeRepo("snapshots"),
         resolvers += Resolver.sonatypeRepo("releases"),
         addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.7"),
