@@ -181,6 +181,25 @@ object `package` {
         }
       } yield result)
 
+    override def map2[A, B, Z](fa: Fetch[F, A], fb: Fetch[F, B])(f: (A, B) => Z): Fetch[F, Z] =
+      Unfetch(for {
+        fab <- (fa.run, fb.run).tupled
+        result = fab match {
+          case (Throw(e), _) =>
+            Throw[F, Z](e)
+          case (Done(a), Done(b)) =>
+            Done[F, Z](f(a, b))
+          case (Done(a), Blocked(br, c)) =>
+            Blocked[F, Z](br, map2(fa, c)(f))
+          case (Blocked(br, c), Done(b)) =>
+            Blocked[F, Z](br, map2(c, fb)(f))
+          case (Blocked(br, c), Blocked(br2, c2)) =>
+            Blocked[F, Z](combineRequestMaps(br, br2), map2(c, c2)(f))
+          case (_, Throw(e)) =>
+            Throw[F, Z](e)
+        }
+      } yield result)
+
     override def product[A, B](fa: Fetch[F, A], fb: Fetch[F, B]): Fetch[F, (A, B)] =
       Unfetch[F, (A, B)](for {
         fab <- (fa.run, fb.run).tupled
@@ -197,6 +216,25 @@ object `package` {
             Blocked[F, (A, B)](combineRequestMaps(br, br2), product(c, c2))
           case (_, Throw(e)) =>
             Throw[F, (A, B)](e)
+        }
+      } yield result)
+
+    override def productR[A, B](fa: Fetch[F, A])(fb: Fetch[F, B]): Fetch[F, B] =
+      Unfetch[F, B](for {
+        fab <- (fa.run, fb.run).tupled
+        result = fab match {
+          case (Throw(e), _) =>
+            Throw[F, B](e)
+          case (Done(a), Done(b)) =>
+            Done[F, B](b)
+          case (Done(a), Blocked(br, c)) =>
+            Blocked[F, B](br, productR(fa)(c))
+          case (Blocked(br, c), Done(b)) =>
+            Blocked[F, B](br, productR(c)(fb))
+          case (Blocked(br, c), Blocked(br2, c2)) =>
+            Blocked[F, B](combineRequestMaps(br, br2), productR(c)(c2))
+          case (_, Throw(e)) =>
+            Throw[F, B](e)
         }
       } yield result)
 
