@@ -30,7 +30,7 @@ lazy val debugJS  = debug.js
 
 lazy val examples = (project in file("examples"))
   .settings(name := "fetch-examples")
-  .dependsOn(fetchJVM)
+  .dependsOn(fetchJVM, debugJVM)
   .settings(noPublishSettings: _*)
   .settings(examplesSettings: _*)
   .settings(Seq(
