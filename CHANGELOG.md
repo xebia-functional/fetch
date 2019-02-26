@@ -32,7 +32,8 @@ The 1.0.0 release of Fetch is a redesign of the library in terms of `cats-effect
 
 - Proof-of-concept Redis cache implementation of `DataCache` ([#161](https://github.com/47deg/fetch/pull/161))
 - Removed Monix, Future and Twitter Future subprojects, most of them should work with `cats-effect` abstractions already
-- GrapQL query interpreter example
+- GrapQL query interpreter example ([#178](https://github.com/47deg/fetch/pull/178))
+- Example using Monix Scheduler and Task to run fetches ([#178](https://github.com/47deg/fetch/pull/178))
 
 ## 08/21/2018 - Version 0.7.3
 
