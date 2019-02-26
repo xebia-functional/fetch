@@ -1,3 +1,5 @@
+import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
+
 pgpPassphrase := Some(getEnvVar("PGP_PASSPHRASE").getOrElse("").toCharArray)
 pgpPublicRing := file(s"$gpgFolder/pubring.gpg")
 pgpSecretRing := file(s"$gpgFolder/secring.gpg")
@@ -10,20 +12,21 @@ lazy val root = project
   .settings(moduleName := "root")
   .aggregate(fetchJS, fetchJVM, debugJVM, debugJS)
 
-lazy val fetch = crossProject
+lazy val fetch = crossProject(JSPlatform, JVMPlatform)
   .in(file("."))
   .settings(name := "fetch")
   .jsSettings(sharedJsSettings: _*)
-  .crossDepSettings(commonCrossDependencies: _*)
+  .settings(commonCrossDependencies)
 
 lazy val fetchJVM = fetch.jvm
 lazy val fetchJS  = fetch.js
 
-lazy val debug = (crossProject in file("debug"))
+lazy val debug =  crossProject(JSPlatform, JVMPlatform)
+  .in(file("debug"))
   .settings(name := "fetch-debug")
   .dependsOn(fetch)
   .jsSettings(sharedJsSettings: _*)
-  .crossDepSettings(commonCrossDependencies: _*)
+  .settings(commonCrossDependencies)
 
 lazy val debugJVM = debug.jvm
 lazy val debugJS  = debug.js
