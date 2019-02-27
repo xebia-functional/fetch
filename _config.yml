@@ -6,6 +6,6 @@ docs: true
 collections:
   tut:
     output: true
-version: 1.0.0-RC2
+version: 1.0.0
 org: 47 Degrees
 markdown: kramdown
