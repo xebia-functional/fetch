@@ -1,39 +1,39 @@
 # Changelog
 
-## 02/08/2019 - Version 1.0.0-RC2
+## 02/26/2019 - Version 1.0.0
 
-Release changes:
+The 1.0.0 release of Fetch is a redesign of the library in terms of `cats-effect` abstractions. It's a backwards-incompatible release that introduces numerous breaking changes as well as a couple of new features. It now should be easier to use and require less work from the user of the library, specially when you are already using `cats-effect`.
 
-* Fixes micrositePushWith Setting ([#158](https://github.com/47deg/fetch/pull/158))
-* Introduce Fetch#optional for performing optional fetches ([#159](https://github.com/47deg/fetch/pull/159))
-* DataSourceCache parameterised to F[_] ([#160](https://github.com/47deg/fetch/pull/160))
-* Proof-of-concept Redis cache implementation of DataSourceCache ([#161](https://github.com/47deg/fetch/pull/161))
-* Upgrade CI build ([#173](https://github.com/47deg/fetch/pull/173))
-* Don't run 'gem update --system' ([#174](https://github.com/47deg/fetch/pull/174))
-* Update Copyright Notices to 2019. ([#172](https://github.com/47deg/fetch/pull/172))
-* Add F[_] type parameter to DataSource ([#171](https://github.com/47deg/fetch/pull/171))
-* s/Env/Log/ ([#176](https://github.com/47deg/fetch/pull/176))
-* Remove Par typeclass ([#166](https://github.com/47deg/fetch/pull/166))
-* Update to RC2 ([#177](https://github.com/47deg/fetch/pull/177))
+### Breaking changes
 
+- Introduced the `Data` typeclass to identify requests to a data source
+- Redesigned `DataSource` to take an extra `F[_]` type parameter
+  + Renamed `fetchOne` to `fetch` and `fetchMany` to `batch`
+  + Data sources now can be implicitly constructed
+  + Automatic parallel implementation of `DataSource#batch` in terms of `ConcurrentEffect[F]`
+- Removed `FetchMonadError`, a Fetch is now interpreted to a `ConcurrentEffect`
+- Removed `Query`, a data source now returns a `F` that has an implicit `ConcurrentEffect[F]`
+- Renamed `DataSourceCache` to `DataCache`, it now takes a `Data` instance as a parameter for insert and lookup and is parameterised to F
+- Renamed `Env` to `Log`
 
-## Unreleased - Version 1.0.0
+### New features
 
-Release changes:
+- Introduced `Fetch#optional`, an alternative to `Fetch#apply` for optional fetches
+- Different Data Sources now can have the same identity and result types
 
-* Library redesign ([#155](https://github.com/47deg/fetch/pull/155))
+### API changes
 
-Summary of changes:
+- `Fetch#run` now requires a `Timer[F]` and `ContextShift[F]` from `cats-effect`
+- `Fetch#apply` no longer requires an implicit `DataSource` and must be passed explicitly
+- Renamed `Fetch#runEnv` to `Fetch#runLog`
+- `Fetch#traverse`, `Fetch#sequence`, `Fetch#join` & `Fetch#collect` deleted in favor of usign cats typeclass ops
 
-* `Query` and `FetchMonadError` types deleted
-* `Fetch#traverse`, `Fetch#sequence`, `Fetch#join` & `Fetch#collect` deleted in favor of usign cats typeclass ops
-* Introduction of `cats-effect` for the implementation and target types
-  - `DataSource` in terms of `ConcurrentEffect` from `cats-effect`
-  - `DataSourceCache` in terms of `ConcurrentEffect`
-  - `Fetch` is now parameterised to `F[_]` with a `ConcurrentEffect[F]`
-  - `Fetch#apply` now doesn't require an implicit `DataSource` but it must be provided explicitly
-  - `Fetch#run` now requires a `Timer[F]` and `ContextShift[F]` from `cats-effect`
-  - Removed Monix, Future and Twitter Future subprojects, most of them should work with `cats-effect` abstractions already
+### Documentation
+
+- Proof-of-concept Redis cache implementation of `DataCache` ([#161](https://github.com/47deg/fetch/pull/161))
+- Removed Monix, Future and Twitter Future subprojects, most of them should work with `cats-effect` abstractions already
+- GrapQL query interpreter example ([#178](https://github.com/47deg/fetch/pull/178))
+- Example using Monix Scheduler and Task to run fetches ([#178](https://github.com/47deg/fetch/pull/178))
 
 ## 08/21/2018 - Version 0.7.3
 
