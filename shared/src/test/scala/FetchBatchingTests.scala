@@ -103,9 +103,26 @@ class FetchBatchingTests extends FetchSpec {
     }).unsafeToFuture
   }
 
-  "Fetches to datasources with a maximum batch size should be split and executed in parallel and sequentially" in {
+  "Fetches to datasources with a maximum batch size should be split and executed in parallel and sequentially when using productR" in {
     def fetch[F[_] : ConcurrentEffect]: Fetch[F, List[Int]] =
       List.range(1, 6).traverse(fetchBatchedDataPar[F]) *>
+        List.range(1, 6).traverse(fetchBatchedDataSeq[F])
+
+    val io = Fetch.runLog[IO](fetch)
+
+    io.map({
+      case (log, result) => {
+        result shouldEqual List(1, 2, 3, 4, 5)
+        log.rounds.size shouldEqual 1
+        totalFetched(log.rounds) shouldEqual 5 + 5
+        totalBatches(log.rounds) shouldEqual 3 + 3
+      }
+    }).unsafeToFuture
+  }
+
+  "Fetches to datasources with a maximum batch size should be split and executed in parallel and sequentially when using productL" in {
+    def fetch[F[_] : ConcurrentEffect]: Fetch[F, List[Int]] =
+      List.range(1, 6).traverse(fetchBatchedDataPar[F]) <*
         List.range(1, 6).traverse(fetchBatchedDataSeq[F])
 
     val io = Fetch.runLog[IO](fetch)
