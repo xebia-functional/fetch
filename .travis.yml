@@ -2,7 +2,7 @@ language: scala
 
 scala:
 - 2.11.12
-- 2.12.6
+- 2.12.8
 
 jdk:
 - oraclejdk9
@@ -24,9 +24,13 @@ script:
 - sbt ++$TRAVIS_SCALA_VERSION orgScriptCI
 - sbt 'examples/test'
 
-after_success:
-- bash <(curl -s https://codecov.io/bash)
-- sbt ++$TRAVIS_SCALA_VERSION orgAfterCISuccess
+jobs:
+  include:
+    - stage: deploy
+      script:
+        - bash <(curl -s https://codecov.io/bash)
+        - sbt ++$TRAVIS_SCALA_VERSION orgAfterCISuccess
+      scala: 2.12.8
 
 services:
 - redis-server
