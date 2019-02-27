@@ -107,7 +107,6 @@ object ProjectPlugin extends AutoPlugin {
         ),
         orgSupportedScalaJSVersion := Some("0.6.20"),
         orgScriptTaskListSetting := List(
-          orgValidateFiles.asRunnableItem,
           "validateDocs".asRunnableItemFull,
           "validateCoverage".asRunnableItemFull
         ),
