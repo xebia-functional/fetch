@@ -107,14 +107,13 @@ object ProjectPlugin extends AutoPlugin {
         ),
         orgSupportedScalaJSVersion := Some("0.6.20"),
         orgScriptTaskListSetting := List(
-          orgValidateFiles.asRunnableItem,
           "validateDocs".asRunnableItemFull,
           "validateCoverage".asRunnableItemFull
         ),
         orgUpdateDocFilesSetting += baseDirectory.value / "tut",
         scalaOrganization := "org.scala-lang",
-        scalaVersion := "2.12.6",
-        crossScalaVersions := List("2.11.12", "2.12.6"),
+        scalaVersion := "2.12.8",
+        crossScalaVersions := List("2.11.12", "2.12.8"),
         resolvers += Resolver.sonatypeRepo("snapshots"),
         resolvers += Resolver.sonatypeRepo("releases"),
         addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.7"),
