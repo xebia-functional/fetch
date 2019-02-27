@@ -117,8 +117,8 @@ has a latency cost, such as databases or web services.</p>
 <span class="c1">// import scala.concurrent.duration._
 </span>
 <span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="n">fetchOne</span><span class="o">).</span><span class="n">unsafeRunTimed</span><span class="o">(</span><span class="mf">5.</span><span class="n">seconds</span><span class="o">)</span>
-<span class="c1">// --&gt; [113] One ToString 1
-// &lt;-- [113] One ToString 1
+<span class="c1">// --&gt; [108] One ToString 1
+// &lt;-- [108] One ToString 1
 // res0: Option[String] = Some(1)
 </span></code></pre>
 </div>
@@ -137,8 +137,8 @@ has a latency cost, such as databases or web services.</p>
 <p>When executing the above fetch, note how the three identities get batched and the data source is only queried once.</p>
 
 <div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="n">fetchThree</span><span class="o">).</span><span class="n">unsafeRunTimed</span><span class="o">(</span><span class="mf">5.</span><span class="n">seconds</span><span class="o">)</span>
-<span class="c1">// --&gt; [113] Batch ToString NonEmptyList(1, 2, 3)
-// &lt;-- [113] Batch ToString NonEmptyList(1, 2, 3)
+<span class="c1">// --&gt; [108] Batch ToString NonEmptyList(1, 2, 3)
+// &lt;-- [108] Batch ToString NonEmptyList(1, 2, 3)
 // res1: Option[(String, String, String)] = Some((1,2,3))
 </span></code></pre>
 </div>
@@ -176,12 +176,12 @@ has a latency cost, such as databases or web services.</p>
 <p>When executing the above fetch, note how the three identities get requested in parallel. You can override <code class="highlighter-rouge">batch</code> to execute queries sequentially if you need to.</p>
 
 <div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="n">fetchUnbatchedThree</span><span class="o">).</span><span class="n">unsafeRunTimed</span><span class="o">(</span><span class="mf">5.</span><span class="n">seconds</span><span class="o">)</span>
-<span class="c1">// --&gt; [113] One UnbatchedToString 1
-// --&gt; [114] One UnbatchedToString 2
-// --&gt; [115] One UnbatchedToString 3
-// &lt;-- [113] One UnbatchedToString 1
-// &lt;-- [114] One UnbatchedToString 2
-// &lt;-- [115] One UnbatchedToString 3
+<span class="c1">// --&gt; [108] One UnbatchedToString 1
+// --&gt; [110] One UnbatchedToString 2
+// --&gt; [111] One UnbatchedToString 3
+// &lt;-- [108] One UnbatchedToString 1
+// &lt;-- [110] One UnbatchedToString 2
+// &lt;-- [111] One UnbatchedToString 3
 // res2: Option[(String, String, String)] = Some((1,2,3))
 </span></code></pre>
 </div>
@@ -227,10 +227,10 @@ has a latency cost, such as databases or web services.</p>
 <p>Note how the two independent data fetches run in parallel, minimizing the latency cost of querying the two data sources.</p>
 
 <div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="n">fetchMulti</span><span class="o">).</span><span class="n">unsafeRunTimed</span><span class="o">(</span><span class="mf">5.</span><span class="n">seconds</span><span class="o">)</span>
-<span class="c1">// --&gt; [113] One ToString 1
-// --&gt; [116] One Length one
-// &lt;-- [113] One ToString 1
-// &lt;-- [116] One Length one
+<span class="c1">// --&gt; [109] One Length one
+// --&gt; [108] One ToString 1
+// &lt;-- [108] One ToString 1
+// &lt;-- [109] One Length one
 // res3: Option[(String, Int)] = Some((1,3))
 </span></code></pre>
 </div>
@@ -251,8 +251,8 @@ has a latency cost, such as databases or web services.</p>
 <p>While running it, notice that the data source is only queried once. The next time the identity is requested it’s served from the cache.</p>
 
 <div class="language-scala highlighter-rouge"><pre class="highlight"><code><span class="nc">Fetch</span><span class="o">.</span><span class="n">run</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="n">fetchTwice</span><span class="o">).</span><span class="n">unsafeRunTimed</span><span class="o">(</span><span class="mf">5.</span><span class="n">seconds</span><span class="o">)</span>
-<span class="c1">// --&gt; [114] One ToString 1
-// &lt;-- [114] One ToString 1
+<span class="c1">// --&gt; [110] One ToString 1
+// &lt;-- [110] One ToString 1
 // res4: Option[(String, String)] = Some((1,1))
 </span></code></pre>
 </div>
