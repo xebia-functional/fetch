@@ -42,7 +42,7 @@ object DatabaseExample {
 
     def fetchByIds(ids: NonEmptyList[AuthorId]): ConnectionIO[List[Author]] = {
       val q = fr"SELECT * FROM author WHERE" ++ Fragments.in(fr"id", ids)
-      q.query[Author].list
+      q.query[Author].to[List]
     }
   }
 
@@ -65,7 +65,7 @@ object DatabaseExample {
       }
 
     def createTransactor[F[_]: ConcurrentEffect] =
-      H2Transactor[F]("jdbc:h2:mem:test;DB_CLOSE_DELAY=-1", "sa", "")
+      H2Transactor.newH2Transactor[F]("jdbc:h2:mem:test;DB_CLOSE_DELAY=-1", "sa", "")
 
     def transactor[F[_]: ConcurrentEffect]: F[Transactor[F]] =
       for {

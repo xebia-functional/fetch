@@ -18,11 +18,11 @@ package fetch
 
 import cats.{Functor, Monad}
 import cats.effect._
-import cats.data.NonEmptyList
+import cats.data.{NonEmptyList, NonEmptyMap}
 import cats.instances.list._
 import cats.instances.option._
 import cats.syntax.all._
-import cats.kernel.{ Hash => H }
+import cats.kernel.{Hash => H}
 
 /**
  * `Data` is a trait used to identify and optimize access to a `DataSource`.
@@ -45,7 +45,7 @@ object Data {
 trait DataSource[F[_], I, A] {
   def data: Data[I, A]
 
-  implicit def CF: ConcurrentEffect[F]
+  implicit def CF: Concurrent[F]
 
   /** Fetch one identity, returning a None if it wasn't found.
    */
@@ -56,8 +56,8 @@ trait DataSource[F[_], I, A] {
    */
   def batch(ids: NonEmptyList[I]): F[Map[I, A]] =
     FetchExecution.parallel(
-      ids.map(id => fetch(id).map((v) => id -> v))
-    ).map(_.collect({ case (id, Some(x)) => id -> x }).toMap)
+      ids.map(id => fetch(id).tupleLeft(id))
+    ).map(_.collect { case (id, Some(x)) => id -> x }.toMap)
 
   def maxBatchSize: Option[Int] = None
 
