@@ -64,12 +64,12 @@ object DatabaseExample {
         case (name, id) => Author(id + 1, name)
       }
 
-    def createTransactor[F[_]: ConcurrentEffect] =
+    def createTransactor[F[_]: Async] =
       H2Transactor.newH2Transactor[F]("jdbc:h2:mem:test;DB_CLOSE_DELAY=-1", "sa", "")
 
-    def transactor[F[_]: ConcurrentEffect]: F[Transactor[F]] =
+    def transactor[F[_]: Async]: F[Transactor[F]] =
       for {
-        xa <- createTransactor
+        xa <- createTransactor[F]
         _  <- (dropTable *> createTable *> authors.traverse(addAuthor)).transact(xa)
       } yield xa
   }
@@ -77,25 +77,27 @@ object DatabaseExample {
   object Authors extends Data[AuthorId, Author] {
     def name = "Authors"
 
-    def db[F[_]: ConcurrentEffect]: DataSource[F, AuthorId, Author] =
+    def db[F[_]: Concurrent]: DataSource[F, AuthorId, Author] =
       new DataSource[F, AuthorId, Author] {
         def data = Authors
 
-        override def CF = ConcurrentEffect[F]
+        override def CF = Concurrent[F]
 
         override def fetch(id: AuthorId): F[Option[Author]] =
-          Database.transactor
+          Database
+            .transactor[F]
             .flatMap(Queries.fetchById(id).transact(_))
 
         override def batch(ids: NonEmptyList[AuthorId]): F[Map[AuthorId, Author]] =
-          Database.transactor
+          Database
+            .transactor[F]
             .flatMap(Queries.fetchByIds(ids).transact(_))
             .map { authors =>
               authors.map(a => AuthorId(a.id) -> a).toMap
             }
       }
 
-    def fetchAuthor[F[_]: ConcurrentEffect](id: Int): Fetch[F, Author] =
+    def fetchAuthor[F[_]: Concurrent](id: Int): Fetch[F, Author] =
       Fetch(AuthorId(id), Authors.db)
   }
 }
