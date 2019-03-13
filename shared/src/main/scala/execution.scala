@@ -22,7 +22,7 @@ import cats.syntax.all._
 
 private object FetchExecution {
   def parallel[F[_], A](effects: NonEmptyList[F[A]])(
-    implicit CF: ConcurrentEffect[F]
+    implicit CF: Concurrent[F]
   ): F[NonEmptyList[A]] =
     effects.traverse(CF.start(_)).flatMap(fibers =>
       fibers.traverse(_.join).onError({ case _ => fibers.traverse_(_.cancel) })

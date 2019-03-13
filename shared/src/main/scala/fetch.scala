@@ -254,16 +254,16 @@ object `package` {
     /**
      * Lift a plain value to the Fetch monad.
      */
-    def pure[F[_]: ConcurrentEffect, A](a: A): Fetch[F, A] =
+    def pure[F[_]: Concurrent, A](a: A): Fetch[F, A] =
       Unfetch(Applicative[F].pure(Done(a)))
 
-    def exception[F[_]: ConcurrentEffect, A](e: Log => FetchException): Fetch[F, A] =
+    def exception[F[_]: Concurrent, A](e: Log => FetchException): Fetch[F, A] =
       Unfetch(Applicative[F].pure(Throw[F, A](e)))
 
-    def error[F[_]: ConcurrentEffect, A](e: Throwable): Fetch[F, A] =
+    def error[F[_]: Concurrent, A](e: Throwable): Fetch[F, A] =
       exception((log) => UnhandledException(e, log))
 
-    def apply[F[_] : ConcurrentEffect, I, A](
+    def apply[F[_]: Concurrent, I, A](
       id: I,
       ds: DataSource[F, I, A]
     ): Fetch[F, A] =
@@ -277,15 +277,15 @@ object `package` {
           blockedRequest = RequestMap(Map(ds.data.identity -> (anyDs, blocked)))
         } yield Blocked(blockedRequest, Unfetch[F, A](
           deferred.get.map {
-            case FetchDone(a) =>
-              Done(a).asInstanceOf[FetchResult[F, A]]
+            case FetchDone(a: A) =>
+              Done(a)
             case FetchMissing() =>
-              Throw((log) => MissingIdentity(id, request.asInstanceOf[FetchQuery[I, A]], log))
+              Throw(log => MissingIdentity(id, request, log))
           }
         ))
       )
 
-    def optional[F[_] : ConcurrentEffect, I, A](
+    def optional[F[_] : Concurrent, I, A](
       id: I,
       ds: DataSource[F, I, A]
     ): Fetch[F, Option[A]] =
@@ -319,7 +319,7 @@ object `package` {
         fa: Fetch[F, A]
       )(
         implicit
-          C: ConcurrentEffect[F],
+          C: Concurrent[F],
           CS: ContextShift[F],
           T: Timer[F]
       ): F[A] =
@@ -330,7 +330,7 @@ object `package` {
         cache: DataCache[F]
       )(
         implicit
-          C: ConcurrentEffect[F],
+          C: Concurrent[F],
           CS: ContextShift[F],
           T: Timer[F]
       ): F[A] = for {
@@ -349,7 +349,7 @@ object `package` {
         fa: Fetch[F, A]
       )(
         implicit
-          C: ConcurrentEffect[F],
+          C: Concurrent[F],
           CS: ContextShift[F],
           T: Timer[F]
       ): F[(Log, A)] =
@@ -360,7 +360,7 @@ object `package` {
         cache: DataCache[F]
       )(
         implicit
-          C: ConcurrentEffect[F],
+          C: Concurrent[F],
           CS: ContextShift[F],
           T: Timer[F]
       ): F[(Log, A)] = for {
@@ -381,7 +381,7 @@ object `package` {
         fa: Fetch[F, A]
       )(
         implicit
-          C: ConcurrentEffect[F],
+          C: Concurrent[F],
           CS: ContextShift[F],
           T: Timer[F]
       ): F[(DataCache[F], A)] =
@@ -392,7 +392,7 @@ object `package` {
         cache: DataCache[F]
       )(
         implicit
-          C: ConcurrentEffect[F],
+          C: Concurrent[F],
           CS: ContextShift[F],
           T: Timer[F]
       ): F[(DataCache[F], A)] = for {
@@ -410,7 +410,7 @@ object `package` {
       log: Option[Ref[F, Log]]
     )(
       implicit
-        C: ConcurrentEffect[F],
+        C: Concurrent[F],
         CS: ContextShift[F],
         T: Timer[F]
     ): F[A] = for {
@@ -437,7 +437,7 @@ object `package` {
       log: Option[Ref[F, Log]]
     )(
       implicit
-        C: ConcurrentEffect[F],
+        C: Concurrent[F],
         CS: ContextShift[F],
         T: Timer[F]
     ): F[Unit] = {
@@ -464,7 +464,7 @@ object `package` {
       log: Option[Ref[F, Log]]
     )(
       implicit
-        C: ConcurrentEffect[F],
+        C: Concurrent[F],
         CS: ContextShift[F],
         T: Timer[F]
     ): F[List[Request]] =
@@ -482,7 +482,7 @@ object `package` {
     log: Option[Ref[F, Log]]
   )(
     implicit
-      C: ConcurrentEffect[F],
+      C: Concurrent[F],
       CS: ContextShift[F],
       T: Timer[F]
   ): F[List[Request]] =
@@ -527,7 +527,7 @@ object `package` {
     log: Option[Ref[F, Log]]
   )(
     implicit
-      C: ConcurrentEffect[F],
+      C: Concurrent[F],
       CS: ContextShift[F],
       T: Timer[F]
   ): F[List[Request]] =
@@ -581,7 +581,7 @@ object `package` {
     e: BatchExecution
   )(
     implicit
-      C: ConcurrentEffect[F],
+      C: Concurrent[F],
       CS: ContextShift[F],
       T: Timer[F]
   ): F[BatchedRequest] = {
