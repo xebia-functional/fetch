@@ -254,14 +254,14 @@ object `package` {
     /**
      * Lift a plain value to the Fetch monad.
      */
-    def pure[F[_]: Concurrent, A](a: A): Fetch[F, A] =
+    def pure[F[_]: Applicative, A](a: A): Fetch[F, A] =
       Unfetch(Applicative[F].pure(Done(a)))
 
-    def exception[F[_]: Concurrent, A](e: Log => FetchException): Fetch[F, A] =
+    def exception[F[_]: Applicative, A](e: Log => FetchException): Fetch[F, A] =
       Unfetch(Applicative[F].pure(Throw[F, A](e)))
 
-    def error[F[_]: Concurrent, A](e: Throwable): Fetch[F, A] =
-      exception((log) => UnhandledException(e, log))
+    def error[F[_]: Applicative, A](e: Throwable): Fetch[F, A] =
+      exception(log => UnhandledException(e, log))
 
     def apply[F[_]: Concurrent, I, A](
       id: I,
@@ -277,8 +277,8 @@ object `package` {
           blockedRequest = RequestMap(Map(ds.data.identity -> (anyDs, blocked)))
         } yield Blocked(blockedRequest, Unfetch[F, A](
           deferred.get.map {
-            case FetchDone(a: A) =>
-              Done(a)
+            case FetchDone(a) =>
+              Done(a.asInstanceOf[A])
             case FetchMissing() =>
               Throw(log => MissingIdentity(id, request, log))
           }
@@ -300,7 +300,7 @@ object `package` {
         } yield Blocked(blockedRequest, Unfetch[F, Option[A]](
           deferred.get.map {
             case FetchDone(a) =>
-              Done(Some(a)).asInstanceOf[FetchResult[F, Option[A]]]
+              Done(Some(a.asInstanceOf[A]))
             case FetchMissing() =>
               Done(Option.empty[A])
           }
@@ -320,7 +320,6 @@ object `package` {
       )(
         implicit
           C: Concurrent[F],
-          CS: ContextShift[F],
           T: Timer[F]
       ): F[A] =
         apply(fa, InMemoryCache.empty[F])
@@ -331,7 +330,6 @@ object `package` {
       )(
         implicit
           C: Concurrent[F],
-          CS: ContextShift[F],
           T: Timer[F]
       ): F[A] = for {
         cache <- Ref.of[F, DataCache[F]](cache)
@@ -350,7 +348,6 @@ object `package` {
       )(
         implicit
           C: Concurrent[F],
-          CS: ContextShift[F],
           T: Timer[F]
       ): F[(Log, A)] =
         apply(fa, InMemoryCache.empty[F])
@@ -361,7 +358,6 @@ object `package` {
       )(
         implicit
           C: Concurrent[F],
-          CS: ContextShift[F],
           T: Timer[F]
       ): F[(Log, A)] = for {
         log <- Ref.of[F, Log](FetchLog())
@@ -382,7 +378,6 @@ object `package` {
       )(
         implicit
           C: Concurrent[F],
-          CS: ContextShift[F],
           T: Timer[F]
       ): F[(DataCache[F], A)] =
         apply(fa, InMemoryCache.empty[F])
@@ -393,7 +388,6 @@ object `package` {
       )(
         implicit
           C: Concurrent[F],
-          CS: ContextShift[F],
           T: Timer[F]
       ): F[(DataCache[F], A)] = for {
         cache <- Ref.of[F, DataCache[F]](cache)
@@ -411,7 +405,6 @@ object `package` {
     )(
       implicit
         C: Concurrent[F],
-        CS: ContextShift[F],
         T: Timer[F]
     ): F[A] = for {
       result <- fa.run
@@ -438,7 +431,6 @@ object `package` {
     )(
       implicit
         C: Concurrent[F],
-        CS: ContextShift[F],
         T: Timer[F]
     ): F[Unit] = {
       val blocked = rs.m.toList.map(_._2)
@@ -465,12 +457,11 @@ object `package` {
     )(
       implicit
         C: Concurrent[F],
-        CS: ContextShift[F],
         T: Timer[F]
     ): F[List[Request]] =
       blocked.request match {
-        case q @ FetchOne(id, _) => runFetchOne[F](q, ds, blocked.result, cache, log)
-        case q @ Batch(ids, _) => runBatch[F](q, ds, blocked.result, cache, log)
+        case q @ FetchOne(_, _) => runFetchOne[F](q, ds, blocked.result, cache, log)
+        case q @ Batch(_, _) => runBatch[F](q, ds, blocked.result, cache, log)
       }
   }
 
@@ -483,7 +474,6 @@ object `package` {
   )(
     implicit
       C: Concurrent[F],
-      CS: ContextShift[F],
       T: Timer[F]
   ): F[List[Request]] =
     for {
@@ -528,7 +518,6 @@ object `package` {
   )(
     implicit
       C: Concurrent[F],
-      CS: ContextShift[F],
       T: Timer[F]
   ): F[List[Request]] =
     for {
@@ -582,7 +571,6 @@ object `package` {
   )(
     implicit
       C: Concurrent[F],
-      CS: ContextShift[F],
       T: Timer[F]
   ): F[BatchedRequest] = {
     val batches = NonEmptyList.fromListUnsafe(
