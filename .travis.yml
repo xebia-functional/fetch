@@ -22,7 +22,7 @@ install:
 
 script:
 - sbt ++$TRAVIS_SCALA_VERSION orgScriptCI
-- sbt 'examples/test'
+- sbt 'examples/test:compile'
 
 jobs:
   include:
