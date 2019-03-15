@@ -17,6 +17,7 @@ These are the people that have contributed to the Fetch project:
 * Chris Vale <[chris-vale-ck](https://github.com/chris-vale-ck)>
 * Diego E. Alonso Blas <[diesalbla](https://github.com/diesalbla)>
 * Fede Fernández <[fedefernandez](https://github.com/fedefernandez)>
+* Jakub Kozłowski <[kubukoz](https://github.com/kubukoz)>
 * Jisoo Park <[guersam](https://github.com/guersam)>
 * Juan Pedro Moreno <[juanpedromoreno](https://github.com/juanpedromoreno)>
 * Justin Heyes-Jones <[justinhj](https://github.com/justinhj)>
