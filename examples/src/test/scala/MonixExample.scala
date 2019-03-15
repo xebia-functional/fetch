@@ -30,7 +30,6 @@ class MonixExample extends AsyncFreeSpec with Matchers {
   implicit val scheduler: Scheduler               = Scheduler.io(name = "test-scheduler")
   override val executionContext: ExecutionContext = scheduler
   implicit val t: Timer[Task]                     = scheduler.timer
-  implicit val cs: ContextShift[Task]             = scheduler.contextShift
 
   import DatabaseExample._
 
