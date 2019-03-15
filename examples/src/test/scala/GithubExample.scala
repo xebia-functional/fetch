@@ -48,7 +48,7 @@ class GithubExample extends WordSpec with Matchers {
   // http4s client which is used by the datasources
 
   def client[F[_]: ConcurrentEffect] =
-    Http1Client[F](BlazeClientConfig.defaultConfig)
+    BlazeClientBuilder[F](executionContext).resource
 
   // -- repos
 
@@ -78,7 +78,7 @@ class GithubExample extends WordSpec with Matchers {
         def data = Repos
 
         def fetch(id: (String, String)): F[Option[Repo]] = {
-          client[F] >>= ((c) => {
+          client[F].use((c) => {
             val (owner, repo) = id
             val url           = GITHUB / "repos" / owner / repo +? ("access_token", ACCESS_TOKEN)
             val req           = Request[F](Method.GET, url)
@@ -109,12 +109,12 @@ class GithubExample extends WordSpec with Matchers {
         implicit val repoED: EntityDecoder[F, Repo]        = jsonOf
         implicit val reposED: EntityDecoder[F, List[Repo]] = jsonOf
 
-        def CF = ConcurrentEffect[F]
+        def CF = Concurrent[F]
 
         def data = OrgRepos
 
         def fetch(org: Org): F[Option[List[Repo]]] = {
-          client[F] >>= ((c) => {
+          client[F].use((c) => {
             val url = GITHUB / "orgs" / org / "repos" +? ("access_token", ACCESS_TOKEN) +? ("type", "public") +? ("per_page", 100)
             val req = Request[F](Method.GET, url)
             fetchCollectionRecursively[F, Repo](c, req).map(Option(_))
@@ -145,7 +145,7 @@ class GithubExample extends WordSpec with Matchers {
         def data = Languages
 
         def fetch(repo: Repo): F[Option[List[Language]]] = {
-          client[F] >>= ((c) => {
+          client[F].use((c) => {
             val url = Uri.unsafeFromString(repo.languages_url) +? ("access_token", ACCESS_TOKEN)
             val req = Request[F](Method.GET, url)
             fetchCollectionRecursively[F, Language](c, req).map(Option(_))
@@ -175,8 +175,9 @@ class GithubExample extends WordSpec with Matchers {
         def data = Contributors
 
         def fetch(repo: Repo): F[Option[List[Contributor]]] = {
-          client[F] >>= ((c) => {
-            val url = Uri.unsafeFromString(repo.contributors_url) +? ("access_token", ACCESS_TOKEN) +? ("type", "public") +? ("per_page", 100)
+          client[F].use((c) => {
+            val url = Uri
+              .unsafeFromString(repo.contributors_url) +? ("access_token", ACCESS_TOKEN) +? ("type", "public") +? ("per_page", 100)
             val req = Request[F](Method.GET, url)
             fetchCollectionRecursively[F, Contributor](c, req).map(Option(_))
           })
@@ -211,7 +212,7 @@ class GithubExample extends WordSpec with Matchers {
     fetchOrg(org).map(projects => projects.map(_.languages.toSet).fold(Set())(_ ++ _).size)
 
   "We can fetch org repos" in {
-    val io = Fetch.runLog[IO](fetchOrg("47deg"))
+    val io = Fetch.runLog[IO](fetchOrg[IO]("47deg"))
 
     val (log, result) = io.unsafeRunSync
 
@@ -223,7 +224,7 @@ class GithubExample extends WordSpec with Matchers {
   val GITHUB: Uri = Uri.unsafeFromString("https://api.github.com")
 
   private def fetchCollectionRecursively[F[_], A](c: Client[F], req: Request[F])(
-      implicit CF: ConcurrentEffect[F],
+      implicit CF: MonadError[F, Throwable],
       E: EntityDecoder[F, List[A]]
   ): F[List[A]] = {
     val REL_NEXT = "rel=\"next\"".r
@@ -239,17 +240,16 @@ class GithubExample extends WordSpec with Matchers {
       REL_NEXT
         .findFirstMatchIn(raw)
         .fold(
-          Sync[F].raiseError[String](new Exception("Couldn't find next link"))
+          CF.raiseError[String](new Exception("Couldn't find next link"))
         )(m => {
-          Sync[F].pure(
-            m.before.toString.split(",").last.trim.dropWhile(_ == '<').takeWhile(_ != '>'))
+          CF.pure(m.before.toString.split(",").last.trim.dropWhile(_ == '<').takeWhile(_ != '>'))
         })
     }
 
     def getNext(res: Response[F]): F[Uri] =
       res.headers
         .get(CaseInsensitiveString("Link"))
-        .fold(Sync[F].raiseError[Uri](new Exception("next not found")))(
+        .fold(CF.raiseError[Uri](new Exception("next not found")))(
           raw => getNextLink(raw.value).map(Uri.unsafeFromString(_))
         )
 
