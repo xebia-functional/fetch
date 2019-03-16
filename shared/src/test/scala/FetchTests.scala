@@ -851,4 +851,37 @@ class FetchTests extends FetchSpec {
 
     Fetch.run[IO](fetch).map(_ shouldEqual 1).unsafeToFuture
   }
+
+  // IO in Fetch
+
+  "We can lift IO actions into Fetch" in {
+    def fetch[F[_] : ConcurrentEffect]: Fetch[F, Int] = 
+      Fetch.liftIO(IO(42))
+
+    Fetch.run[IO](fetch).map(_ shouldEqual 42).unsafeToFuture
+  }
+
+  "A failed IO action lifted into Fetch will cause a Fetch to fail" in {
+    def fetch[F[_] : ConcurrentEffect] =
+      Fetch.liftIO(IO.raiseError(AnException()))
+
+    val io = Fetch.run[IO](fetch)
+
+    io.attempt
+      .map(_ should matchPattern {
+        case Left(UnhandledException(AnException(), _)) =>
+      }).unsafeToFuture
+  }
+
+  "A IO action can be combined with data fetches" in {
+    def fetch[F[_] : ConcurrentEffect]: Fetch[F, List[Int]] = for {
+      x <- Fetch.liftIO(IO(3))
+      manies <- many(x)
+      (ones, y)   <- (manies.traverse(one[F]), Fetch.liftIO(IO(42))).tupled
+    } yield ones :+ y
+
+    val io = Fetch.run[IO](fetch)
+
+    io.map(_ shouldEqual List(0, 1, 2, 42)).unsafeToFuture
+  }
 }
