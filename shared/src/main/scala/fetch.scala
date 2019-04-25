@@ -311,22 +311,20 @@ object `package` {
       )
 
     def liftIO[F[_] : ConcurrentEffect, A](io: IO[A]): Fetch[F, A] =
-      Unfetch[F, A](for {
-        either <- ConcurrentEffect[F].liftIO(io).attempt
-        result = either match {
+      Unfetch[F, A](
+        ConcurrentEffect[F].liftIO(io).attempt.map {
           case Left(err) => Throw[F, A](log => UnhandledException(err, log))
           case Right(r) => Done[F, A](r)
         }
-      } yield result)
+      )
 
     def liftF[F[_] : Concurrent, A](f: F[A]): Fetch[F, A] =
-      Unfetch[F, A](for {
-        either <- f.attempt
-        result = either match {
+      Unfetch[F, A](
+        f.attempt.map {
           case Left(err) => Throw[F, A](log => UnhandledException(err, log))
           case Right(r) => Done[F, A](r)
         }
-      } yield result)
+      )
 
 
     // Running a Fetch
