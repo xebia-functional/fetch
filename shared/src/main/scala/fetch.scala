@@ -39,7 +39,10 @@ object `package` {
   private[fetch] final case class FetchOne[I, A](id: I, data: Data[I, A]) extends FetchQuery[I, A] {
     override def identities: NonEmptyList[I] = NonEmptyList.one(id)
   }
-  private[fetch] final case class Batch[I, A](ids: NonEmptyList[I], data: Data[I, A]) extends FetchQuery[I, A] { override def identities: NonEmptyList[I] = ids } 
+  private[fetch] final case class Batch[I, A](ids: NonEmptyList[I], data: Data[I, A]) extends FetchQuery[I, A] {
+    override def identities: NonEmptyList[I] = ids
+  }
+
   // Fetch result states
 
   private[fetch] sealed trait FetchStatus extends Product with Serializable
@@ -308,13 +311,21 @@ object `package` {
       )
 
     def liftIO[F[_] : ConcurrentEffect, A](io: IO[A]): Fetch[F, A] =
-      Unfetch[F, A](for {
-        either <- ConcurrentEffect[F].liftIO(io).attempt
-        result = either match {
+      Unfetch[F, A](
+        ConcurrentEffect[F].liftIO(io).attempt.map {
           case Left(err) => Throw[F, A](log => UnhandledException(err, log))
           case Right(r) => Done[F, A](r)
         }
-      } yield result)
+      )
+
+    def liftF[F[_] : Concurrent, A](f: F[A]): Fetch[F, A] =
+      Unfetch[F, A](
+        f.attempt.map {
+          case Left(err) => Throw[F, A](log => UnhandledException(err, log))
+          case Right(r) => Done[F, A](r)
+        }
+      )
+
 
     // Running a Fetch
 

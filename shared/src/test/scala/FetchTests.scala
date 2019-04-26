@@ -884,4 +884,47 @@ class FetchTests extends FetchSpec {
 
     io.map(_ shouldEqual List(0, 1, 2, 42)).unsafeToFuture
   }
+
+  // Concurrent[_] in Fetch
+
+
+  "We can lift Concurrent actions into Fetch" in {
+    def fortyTwo[F[_] : Concurrent]: F[Int] =
+      Concurrent[F].pure(42)  
+
+    def fetch[F[_] : ConcurrentEffect]: Fetch[F, Int] = 
+      Fetch.liftF(fortyTwo)
+
+    Fetch.run[IO](fetch).map(_ shouldEqual 42).unsafeToFuture
+  }
+
+  "A failed Concurrent action lifted into Fetch will cause a Fetch to fail" in {
+    def fail[F[_] : Concurrent]: F[Int] =
+      Concurrent[F].raiseError(AnException())
+
+    def fetch[F[_] : ConcurrentEffect]: Fetch[F, Int] =
+      Fetch.liftF(fail)
+
+    val io = Fetch.run[IO](fetch)
+
+    io.attempt
+      .map(_ should matchPattern {
+        case Left(UnhandledException(AnException(), _)) =>
+      }).unsafeToFuture
+  }
+
+  "A Concurrent action can be combined with data fetches" in {
+    def concurrently[F[_] : Concurrent, A](x: A): F[A] =
+      Concurrent[F].pure(x)
+
+    def fetch[F[_] : ConcurrentEffect]: Fetch[F, List[Int]] = for {
+      x <- Fetch.liftF(concurrently(3))
+      manies <- many(x)
+      (ones, y)   <- (manies.traverse(one[F]), Fetch.liftF(concurrently(42))).tupled
+    } yield ones :+ y
+
+    val io = Fetch.run[IO](fetch)
+
+    io.map(_ shouldEqual List(0, 1, 2, 42)).unsafeToFuture
+  }
 }
