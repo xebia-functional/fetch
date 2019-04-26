@@ -157,98 +157,78 @@ object `package` {
   private[fetch] final case class Throw[F[_], A](e: Log => FetchException) extends FetchResult[F, A]
 
   // Fetch data type
-
-  sealed trait Fetch[F[_], A] {
-    private[fetch] def run: F[FetchResult[F, A]]
-  }
-  private[fetch] final case class Unfetch[F[_], A](
-    private[fetch] run: F[FetchResult[F, A]]
-  ) extends Fetch[F, A]
+  type Fetch[F[_], A] = F[FetchResult[F, A]]
 
   // Fetch Monad
+  implicit def fetchM[F[_]: Monad]: Monad[Fetch[F, ?]] = new FetchMonad[F]
 
-  implicit def fetchM[F[_]: Monad]: Monad[Fetch[F, ?]] = new Monad[Fetch[F, ?]] with StackSafeMonad[Fetch[F, ?]] {
-    def pure[A](a: A): Fetch[F, A] =
-      Unfetch(
-        Monad[F].pure(Done(a))
-      )
+
+  private[this] class FetchMonad[F[_]](implicit F: Monad[F]) extends Monad[Fetch[F, ?]] with StackSafeMonad[Fetch[F, ?]] {
+    override def pure[A](a: A): Fetch[F, A] = F.pure(Done(a))
 
     override def map[A, B](fa: Fetch[F, A])(f: A => B): Fetch[F, B] =
-      Unfetch(for {
-        fetch <- fa.run
-        result = fetch match {
-          case Done(v) => Done[F, B](f(v))
-          case Blocked(br, cont) =>
-            Blocked(br, map(cont)(f))
-          case Throw(e) => Throw[F, B](e)
-        }
-      } yield result)
+      F.map(fa) {
+        case Done(v) =>            Done[F, B](f(v))
+        case Blocked(br, cont) =>  Blocked(br, map(cont)(f))
+        case Throw(e) =>           Throw[F, B](e)
+      }
 
     override def map2[A, B, Z](fa: Fetch[F, A], fb: Fetch[F, B])(f: (A, B) => Z): Fetch[F, Z] =
-      Unfetch(for {
-        fab <- (fa.run, fb.run).tupled
-        result = fab match {
-          case (Throw(e), _) =>
-            Throw[F, Z](e)
-          case (Done(a), Done(b)) =>
-            Done[F, Z](f(a, b))
-          case (Done(a), Blocked(br, c)) =>
-            Blocked[F, Z](br, map2(fa, c)(f))
-          case (Blocked(br, c), Done(b)) =>
-            Blocked[F, Z](br, map2(c, fb)(f))
-          case (Blocked(br, c), Blocked(br2, c2)) =>
-            Blocked[F, Z](combineRequestMaps(br, br2), map2(c, c2)(f))
-          case (_, Throw(e)) =>
-            Throw[F, Z](e)
-        }
-      } yield result)
+      F.map2(fa, fb){
+        case (Done(a), Done(b)) =>
+          Done[F, Z](f(a, b))
+        case (Throw(e), _) =>
+          Throw[F, Z](e)
+        case (_, Throw(e)) =>
+          Throw[F, Z](e)
+        case (Done(a), Blocked(br, c)) =>
+          Blocked[F, Z](br, map2(fa, c)(f))
+        case (Blocked(br, c), Done(b)) =>
+          Blocked[F, Z](br, map2(c, fb)(f))
+        case (Blocked(br, c), Blocked(br2, c2)) =>
+          Blocked[F, Z](combineRequestMaps(br, br2), map2(c, c2)(f))
+      }
 
     override def product[A, B](fa: Fetch[F, A], fb: Fetch[F, B]): Fetch[F, (A, B)] =
-      Unfetch[F, (A, B)](for {
-        fab <- (fa.run, fb.run).tupled
-        result = fab match {
-          case (Throw(e), _) =>
-            Throw[F, (A, B)](e)
-          case (Done(a), Done(b)) =>
-            Done[F, (A, B)]((a, b))
-          case (Done(a), Blocked(br, c)) =>
-            Blocked[F, (A, B)](br, product(fa, c))
-          case (Blocked(br, c), Done(b)) =>
-            Blocked[F, (A, B)](br, product(c, fb))
-          case (Blocked(br, c), Blocked(br2, c2)) =>
-            Blocked[F, (A, B)](combineRequestMaps(br, br2), product(c, c2))
-          case (_, Throw(e)) =>
-            Throw[F, (A, B)](e)
-        }
-      } yield result)
+      F.map2(fa, fb) {
+        case (Throw(e), _) =>
+          Throw[F, (A, B)](e)
+        case (Done(a), Done(b)) =>
+          Done[F, (A, B)]((a, b))
+        case (Done(a), Blocked(br, c)) =>
+          Blocked[F, (A, B)](br, product(fa, c))
+        case (Blocked(br, c), Done(b)) =>
+          Blocked[F, (A, B)](br, product(c, fb))
+        case (Blocked(br, c), Blocked(br2, c2)) =>
+          Blocked[F, (A, B)](combineRequestMaps(br, br2), product(c, c2))
+        case (_, Throw(e)) =>
+          Throw[F, (A, B)](e)
+      }
 
     override def productR[A, B](fa: Fetch[F, A])(fb: Fetch[F, B]): Fetch[F, B] =
-      Unfetch[F, B](for {
-        fab <- (fa.run, fb.run).tupled
-        result = fab match {
-          case (Throw(e), _) =>
-            Throw[F, B](e)
-          case (Done(a), Done(b)) =>
-            Done[F, B](b)
-          case (Done(a), Blocked(br, c)) =>
-            Blocked[F, B](br, productR(fa)(c))
-          case (Blocked(br, c), Done(b)) =>
-            Blocked[F, B](br, productR(c)(fb))
-          case (Blocked(br, c), Blocked(br2, c2)) =>
-            Blocked[F, B](combineRequestMaps(br, br2), productR(c)(c2))
-          case (_, Throw(e)) =>
-            Throw[F, B](e)
-        }
-      } yield result)
+      F.map2(fa, fb) {
+        case (Throw(e), _) =>
+          Throw[F, B](e)
+        case (Done(a), Done(b)) =>
+          Done[F, B](b)
+        case (Done(a), Blocked(br, c)) =>
+          Blocked[F, B](br, productR(fa)(c))
+        case (Blocked(br, c), Done(b)) =>
+          Blocked[F, B](br, productR(c)(fb))
+        case (Blocked(br, c), Blocked(br2, c2)) =>
+          Blocked[F, B](combineRequestMaps(br, br2), productR(c)(c2))
+        case (_, Throw(e)) =>
+          Throw[F, B](e)
+      }
 
-    def flatMap[A, B](fa: Fetch[F, A])(f: A => Fetch[F, B]): Fetch[F, B] =
-      Unfetch(fa.run.flatMap {
-        case Done(v) => f(v).run
+    override def flatMap[A, B](fa: F[FetchResult[F, A]])(f: A => Fetch[F, B]): Fetch[F, B] =
+      fa.flatMap {
+        case Done(v) => f(v)
         case Throw(e) =>
           Applicative[F].pure(Throw[F, B](e))
         case Blocked(br, cont) =>
           Applicative[F].pure(Blocked(br, flatMap(cont)(f)))
-      })
+      }
   }
 
   object Fetch {
@@ -258,74 +238,62 @@ object `package` {
      * Lift a plain value to the Fetch monad.
      */
     def pure[F[_]: Applicative, A](a: A): Fetch[F, A] =
-      Unfetch(Applicative[F].pure(Done(a)))
+      Applicative[F].pure(Done(a))
 
     def exception[F[_]: Applicative, A](e: Log => FetchException): Fetch[F, A] =
-      Unfetch(Applicative[F].pure(Throw[F, A](e)))
+      Applicative[F].pure(Throw[F, A](e))
 
     def error[F[_]: Applicative, A](e: Throwable): Fetch[F, A] =
       exception(log => UnhandledException(e, log))
 
-    def apply[F[_]: Concurrent, I, A](
-      id: I,
-      ds: DataSource[F, I, A]
-    ): Fetch[F, A] =
-      Unfetch[F, A](
-        for {
-          deferred <- Deferred[F, FetchStatus]
-          request = FetchOne(id, ds.data)
-          result = deferred.complete _
-          blocked = BlockedRequest(request, result)
-          anyDs = ds.asInstanceOf[DataSource[F, Any, Any]]
-          blockedRequest = RequestMap(Map(ds.data.identity -> (anyDs, blocked)))
-        } yield Blocked(blockedRequest, Unfetch[F, A](
-          deferred.get.map {
+    def apply[F[_]: Concurrent, I, A](id: I, ds: DataSource[F, I, A]): Fetch[F, A] =
+      for {
+        deferred <- Deferred[F, FetchStatus]
+        request = FetchOne(id, ds.data)
+        result = deferred.complete _
+        blocked = BlockedRequest(request, result)
+        anyDs = ds.asInstanceOf[DataSource[F, Any, Any]]
+        blockedRequest = RequestMap(Map(ds.data.identity -> (anyDs, blocked)))
+      } yield Blocked(blockedRequest, 
+        deferred.get.map {
             case FetchDone(a) =>
               Done(a.asInstanceOf[A])
             case FetchMissing() =>
               Throw(log => MissingIdentity(id, request, log))
           }
-        ))
-      )
+        )
 
     def optional[F[_] : Concurrent, I, A](
       id: I,
       ds: DataSource[F, I, A]
     ): Fetch[F, Option[A]] =
-      Unfetch[F, Option[A]](
-        for {
-          deferred <- Deferred[F, FetchStatus]
-          request = FetchOne(id, ds.data)
-          result = deferred.complete _
-          blocked = BlockedRequest(request, result)
-          anyDs = ds.asInstanceOf[DataSource[F, Any, Any]]
-          blockedRequest = RequestMap(Map(ds.data.identity -> (anyDs, blocked)))
-        } yield Blocked(blockedRequest, Unfetch[F, Option[A]](
-          deferred.get.map {
-            case FetchDone(a) =>
-              Done(Some(a.asInstanceOf[A]))
-            case FetchMissing() =>
-              Done(Option.empty[A])
-          }
-        ))
+      for {
+        deferred <- Deferred[F, FetchStatus]
+        request = FetchOne(id, ds.data)
+        result = deferred.complete _
+        blocked = BlockedRequest(request, result)
+        anyDs = ds.asInstanceOf[DataSource[F, Any, Any]]
+        blockedRequest = RequestMap(Map(ds.data.identity -> (anyDs, blocked)))
+      } yield Blocked(blockedRequest, 
+        deferred.get.map {
+          case FetchDone(a) =>
+            Done(Some(a.asInstanceOf[A]))
+          case FetchMissing() =>
+            Done(Option.empty[A])
+        }
       )
 
     def liftIO[F[_] : ConcurrentEffect, A](io: IO[A]): Fetch[F, A] =
-      Unfetch[F, A](
-        ConcurrentEffect[F].liftIO(io).attempt.map {
-          case Left(err) => Throw[F, A](log => UnhandledException(err, log))
-          case Right(r) => Done[F, A](r)
-        }
-      )
+      ConcurrentEffect[F].liftIO(io).attempt.map {
+        case Left(err) => Throw[F, A](log => UnhandledException(err, log))
+        case Right(r) => Done[F, A](r)
+      }
 
     def liftF[F[_] : Concurrent, A](f: F[A]): Fetch[F, A] =
-      Unfetch[F, A](
-        f.attempt.map {
-          case Left(err) => Throw[F, A](log => UnhandledException(err, log))
-          case Right(r) => Done[F, A](r)
-        }
-      )
-
+      f.attempt.map {
+        case Left(err) => Throw[F, A](log => UnhandledException(err, log))
+        case Right(r) => Done[F, A](r)
+      }
 
     // Running a Fetch
 
@@ -426,15 +394,11 @@ object `package` {
       implicit
         C: Concurrent[F],
         T: Timer[F]
-    ): F[A] = for {
-      result <- fa.run
-
-      value <- result match {
+    ): F[A] = 
+      C.flatMap(fa) {
         case Done(a) => Applicative[F].pure(a)
-        case Blocked(rs, cont) => for {
-          _ <- fetchRound(rs, cache, log)
-          result <- performRun(cont, cache, log)
-        } yield result
+        case Blocked(rs, cont) =>
+          fetchRound(rs, cache, log) >> performRun(cont, cache, log)
         case Throw(logToThrowable) =>
           log.fold(
             Applicative[F].pure(FetchLog() : Log)
@@ -442,7 +406,6 @@ object `package` {
             Sync[F].raiseError[A](logToThrowable(e))
           )
       }
-    } yield value
 
     private def fetchRound[F[_], A](
       rs: RequestMap[F],
