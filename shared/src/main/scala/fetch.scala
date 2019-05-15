@@ -352,7 +352,7 @@ object `package` {
           C: Concurrent[F],
           T: Timer[F]
       ): F[A] = for {
-        cache <- Ref.of[F, DataCache[F]](cache)
+        cache <- ref[F, DataCache[F]](cache)
         result <- performRun(fa, cache, None)
       } yield result
     }
@@ -380,8 +380,7 @@ object `package` {
           C: Concurrent[F],
           T: Timer[F]
       ): F[(Log, A)] = for {
-        log <- Ref.of[F, Log](FetchLog())
-        cache <- Ref.of[F, DataCache[F]](cache)
+        (log, cache) <- (ref[F, Log](FetchLog()), ref[F, DataCache[F]](cache)).tupled
         result <- performRun(fa, cache, Some(log))
         e <- log.get
       } yield (e, result)
@@ -410,7 +409,7 @@ object `package` {
           C: Concurrent[F],
           T: Timer[F]
       ): F[(DataCache[F], A)] = for {
-        cache <- Ref.of[F, DataCache[F]](cache)
+        cache <- ref[F, DataCache[F]](cache)
         result <- performRun(fa, cache, None)
         c <- cache.get
       } yield (c, result)
@@ -439,12 +438,14 @@ object `package` {
           C: Concurrent[F],
           T: Timer[F]
       ): F[(Log, DataCache[F], A)] = for {
-        log <- Ref.of[F, Log](FetchLog())
-        cache <- Ref.of[F, DataCache[F]](cache)
+        (log, cache) <- (ref[F, Log](FetchLog()), ref[F, DataCache[F]](cache)).tupled
         result <- performRun(fa, cache, Some(log))
         (e, c) <- (log.get, cache.get).tupled
       } yield (e, c, result)
     }
+
+    private def ref[F[_] : Sync, A](a: A): F[Ref[F, A]] =
+      Ref.of[F, A](a)
 
     // Data fetching
 
