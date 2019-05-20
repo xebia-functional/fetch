@@ -352,7 +352,7 @@ object `package` {
           C: Concurrent[F],
           T: Timer[F]
       ): F[A] = for {
-        cache <- Ref.of[F, DataCache[F]](cache)
+        cache <- ref[F, DataCache[F]](cache)
         result <- performRun(fa, cache, None)
       } yield result
     }
@@ -380,8 +380,7 @@ object `package` {
           C: Concurrent[F],
           T: Timer[F]
       ): F[(Log, A)] = for {
-        log <- Ref.of[F, Log](FetchLog())
-        cache <- Ref.of[F, DataCache[F]](cache)
+        (log, cache) <- (ref[F, Log](FetchLog()), ref[F, DataCache[F]](cache)).tupled
         result <- performRun(fa, cache, Some(log))
         e <- log.get
       } yield (e, result)
@@ -410,11 +409,43 @@ object `package` {
           C: Concurrent[F],
           T: Timer[F]
       ): F[(DataCache[F], A)] = for {
-        cache <- Ref.of[F, DataCache[F]](cache)
+        cache <- ref[F, DataCache[F]](cache)
         result <- performRun(fa, cache, None)
         c <- cache.get
       } yield (c, result)
     }
+
+    /**
+      * Run a `Fetch` getting the log, cache and result in the `F` monad.
+      */
+    def runAll[F[_]]: FetchRunnerAll[F] = new FetchRunnerAll[F]
+
+    private[fetch] class FetchRunnerAll[F[_]](private val dummy: Boolean = true) extends AnyVal {
+      def apply[A](
+        fa: Fetch[F, A]
+      )(
+        implicit
+          C: Concurrent[F],
+          T: Timer[F]
+      ): F[(Log, DataCache[F], A)] =
+        apply(fa, InMemoryCache.empty[F])
+
+      def apply[A](
+        fa: Fetch[F, A],
+        cache: DataCache[F]
+      )(
+        implicit
+          C: Concurrent[F],
+          T: Timer[F]
+      ): F[(Log, DataCache[F], A)] = for {
+        (log, cache) <- (ref[F, Log](FetchLog()), ref[F, DataCache[F]](cache)).tupled
+        result <- performRun(fa, cache, Some(log))
+        (e, c) <- (log.get, cache.get).tupled
+      } yield (e, c, result)
+    }
+
+    private def ref[F[_] : Sync, A](a: A): F[Ref[F, A]] =
+      Ref.of[F, A](a)
 
     // Data fetching
 
