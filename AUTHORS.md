@@ -26,6 +26,7 @@ These are the people that have contributed to the Fetch project:
 * Peter Neyens <[peterneyens](https://github.com/peterneyens)>
 * Rafa Paradela <[rafaparadela](https://github.com/rafaparadela)>
 * Raúl Raja Martínez <[raulraja](https://github.com/raulraja)>
+* Ross A. Baker <[rossabaker](https://github.com/rossabaker)>
 * Suhas Gaddam <[suhasgaddam](https://github.com/suhasgaddam)>
 * The Gitter Badger <[gitter-badger](https://github.com/gitter-badger)>
 * Tristan Lohman <[gatorcse](https://github.com/gatorcse)>
