@@ -22,10 +22,12 @@ import cats.syntax.all._
 import doobie.{Query => _, _}
 import doobie.h2.H2Transactor
 import doobie.implicits._
+import doobie.util.ExecutionContexts
 
 import org.scalatest.{Matchers, WordSpec}
 
-import scala.concurrent.{ExecutionContext}
+import scala.concurrent.ExecutionContext
+import java.util.concurrent.Executors
 
 import fetch._
 
@@ -35,7 +37,7 @@ object DatabaseExample {
 
   object Queries {
     implicit val authorIdMeta: Meta[AuthorId] =
-      Meta[Int].xmap(AuthorId(_), _.id)
+      Meta[Int].imap(AuthorId(_))(_.id)
 
     def fetchById(id: AuthorId): ConnectionIO[Option[Author]] =
       sql"SELECT * FROM author WHERE id = $id".query[Author].option
@@ -47,6 +49,12 @@ object DatabaseExample {
   }
 
   object Database {
+    def connectionPool[F[_]: Sync](n: Int): Resource[F, ExecutionContext] =
+      ExecutionContexts.fixedThreadPool[F](n)
+
+    def transactionPool[F[_]: Sync]: Resource[F, ExecutionContext] =
+      ExecutionContexts.cachedThreadPool
+
     val createTable = sql"""
        CREATE TABLE author (
          id INTEGER PRIMARY KEY,
@@ -64,20 +72,23 @@ object DatabaseExample {
         case (name, id) => Author(id + 1, name)
       }
 
-    def createTransactor[F[_]: Async] =
-      H2Transactor.newH2Transactor[F]("jdbc:h2:mem:test;DB_CLOSE_DELAY=-1", "sa", "")
-
-    def transactor[F[_]: Async]: F[Transactor[F]] =
+    def createTransactor[F[_]: Async: ContextShift] =
       for {
-        xa <- createTransactor[F]
-        _  <- (dropTable *> createTable *> authors.traverse(addAuthor)).transact(xa)
-      } yield xa
+        (conn, trans) <- (connectionPool[F](1), transactionPool[F]).tupled
+        tx <- H2Transactor
+          .newH2Transactor[F]("jdbc:h2:mem:test;DB_CLOSE_DELAY=-1", "sa", "", conn, trans)
+      } yield tx
+
+    def transactor[F[_]: Async: ContextShift]: Resource[F, Transactor[F]] =
+      createTransactor[F].evalMap({ tx =>
+        (dropTable *> createTable *> authors.traverse(addAuthor)).transact(tx) *> Sync[F].pure(tx)
+      })
   }
 
   object Authors extends Data[AuthorId, Author] {
     def name = "Authors"
 
-    def db[F[_]: Concurrent]: DataSource[F, AuthorId, Author] =
+    def db[F[_]: Concurrent: ContextShift]: DataSource[F, AuthorId, Author] =
       new DataSource[F, AuthorId, Author] {
         def data = Authors
 
@@ -86,18 +97,18 @@ object DatabaseExample {
         override def fetch(id: AuthorId): F[Option[Author]] =
           Database
             .transactor[F]
-            .flatMap(Queries.fetchById(id).transact(_))
+            .use(Queries.fetchById(id).transact(_))
 
         override def batch(ids: NonEmptyList[AuthorId]): F[Map[AuthorId, Author]] =
           Database
             .transactor[F]
-            .flatMap(Queries.fetchByIds(ids).transact(_))
+            .use(Queries.fetchByIds(ids).transact(_))
             .map { authors =>
               authors.map(a => AuthorId(a.id) -> a).toMap
             }
       }
 
-    def fetchAuthor[F[_]: Concurrent](id: Int): Fetch[F, Author] =
+    def fetchAuthor[F[_]: Concurrent: ContextShift](id: Int): Fetch[F, Author] =
       Fetch(AuthorId(id), Authors.db)
   }
 }
@@ -105,7 +116,7 @@ object DatabaseExample {
 class DoobieExample extends WordSpec with Matchers {
   import DatabaseExample._
 
-  val executionContext              = ExecutionContext.Implicits.global
+  val executionContext              = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(2))
   implicit val t: Timer[IO]         = IO.timer(executionContext)
   implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
 
@@ -119,7 +130,7 @@ class DoobieExample extends WordSpec with Matchers {
   }
 
   "We can fetch multiple authors from the DB in parallel" in {
-    def fetch[F[_]: ConcurrentEffect]: Fetch[F, List[Author]] =
+    def fetch[F[_]: ConcurrentEffect: ContextShift]: Fetch[F, List[Author]] =
       List(1, 2).traverse(Authors.fetchAuthor[F])
 
     val io: IO[(Log, List[Author])] = Fetch.runLog[IO](fetch)
@@ -131,7 +142,7 @@ class DoobieExample extends WordSpec with Matchers {
   }
 
   "We can fetch multiple authors from the DB using a for comprehension" in {
-    def fetch[F[_]: ConcurrentEffect]: Fetch[F, List[Author]] =
+    def fetch[F[_]: ConcurrentEffect: ContextShift]: Fetch[F, List[Author]] =
       for {
         a <- Authors.fetchAuthor(1)
         b <- Authors.fetchAuthor(a.id + 1)
