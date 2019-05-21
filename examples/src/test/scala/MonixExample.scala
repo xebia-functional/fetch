@@ -34,7 +34,7 @@ class MonixExample extends AsyncFreeSpec with Matchers {
   import DatabaseExample._
 
   "We can run a Fetch into a Monix Task" in {
-    def fetch[F[_]: ConcurrentEffect]: Fetch[F, Author] =
+    def fetch[F[_]: ConcurrentEffect: ContextShift]: Fetch[F, Author] =
       Authors.fetchAuthor(1)
 
     val task = Fetch.runLog[Task](fetch)
