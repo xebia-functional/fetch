@@ -17,6 +17,7 @@
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
+import cats.Monad
 import cats.data.NonEmptyList
 import cats.effect._
 import cats.instances.list._
@@ -59,6 +60,9 @@ object DataSources {
       _ <- fetchNumber(n)
       u <- HttpExample.fetchUser(n)
     } yield u
+
+  def fetchMulti[F[_]: ConcurrentEffect]: Fetch[F, List[HttpExample.User]] =
+    List(4, 5, 6).traverse(HttpExample.fetchUser[F](_))
 }
 
 object Binary {
@@ -140,10 +144,18 @@ case class RedisCache[F[_]: Sync](host: String) extends DataCache[F] {
       Sync[F].delay(c.set(i, v)).void
     })
 
+  private def bulkSet(ivs: List[(Array[Byte], Array[Byte])]): F[Unit] =
+    connection.use(c =>
+      Sync[F].delay({
+        val pipe = c.pipelined
+        ivs.foreach(i => pipe.set(i._1, i._2))
+        pipe.sync
+      }))
+
   private def identity[I, A](i: I, data: Data[I, A]): Array[Byte] =
     Binary.fromString(s"${data.identity} ${i}")
 
-  def lookup[I, A](i: I, data: Data[I, A]): F[Option[A]] =
+  override def lookup[I, A](i: I, data: Data[I, A]): F[Option[A]] =
     for {
       raw <- get(identity(i, data))
       result <- raw match {
@@ -152,11 +164,25 @@ case class RedisCache[F[_]: Sync](host: String) extends DataCache[F] {
       }
     } yield result
 
-  def insert[I, A](i: I, v: A, data: Data[I, A]): F[DataCache[F]] =
+  override def insert[I, A](i: I, v: A, data: Data[I, A]): F[DataCache[F]] =
     for {
       s <- Binary.serialize(v)
       _ <- set(identity(i, data), s)
     } yield this
+
+  override def bulkInsert[I, A](vs: List[(I, A)], data: Data[I, A])(
+      implicit M: Monad[F]
+  ): F[DataCache[F]] =
+    for {
+      bin <- vs.traverse({
+        case (id, v) =>
+          for {
+            bin <- Binary.serialize(v)
+          } yield (identity(id, data), bin)
+      })
+      _ <- Sync[F].delay(bulkSet(bin))
+    } yield this
+
 }
 
 class JedisExample extends WordSpec with Matchers {
@@ -168,7 +194,8 @@ class JedisExample extends WordSpec with Matchers {
   implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
 
   "We can use a Redis cache" in {
-    val cache                           = RedisCache[IO]("localhost")
+    val cache = RedisCache[IO]("localhost")
+
     val io: IO[(Log, HttpExample.User)] = Fetch.runLog[IO](fetch, cache)
 
     val (log, result) = io.unsafeRunSync
@@ -177,7 +204,26 @@ class JedisExample extends WordSpec with Matchers {
     log.rounds.size shouldEqual 2
 
     val io2: IO[(Log, HttpExample.User)] = Fetch.runLog[IO](fetch, cache)
-    val (log2, result2)                  = io2.unsafeRunSync
+
+    val (log2, result2) = io2.unsafeRunSync
+
+    println(result2)
+    log2.rounds.size shouldEqual 0
+  }
+
+  "We can bulk insert in a Redis cache" in {
+    val cache = RedisCache[IO]("localhost")
+
+    val io: IO[(Log, List[HttpExample.User])] = Fetch.runLog[IO](fetchMulti, cache)
+
+    val (log, result) = io.unsafeRunSync
+
+    println(result)
+    log.rounds.size shouldEqual 1
+
+    val io2: IO[(Log, List[HttpExample.User])] = Fetch.runLog[IO](fetchMulti, cache)
+
+    val (log2, result2) = io2.unsafeRunSync
 
     println(result2)
     log2.rounds.size shouldEqual 0
