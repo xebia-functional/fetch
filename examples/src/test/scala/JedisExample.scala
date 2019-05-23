@@ -30,6 +30,7 @@ import org.scalatest.{Matchers, WordSpec}
 import java.io._
 import java.nio.charset.Charset
 import redis.clients.jedis._
+import scala.util.Try
 
 import fetch._
 
@@ -61,74 +62,95 @@ object DataSources {
 }
 
 object Binary {
+  type ByteArray = Array[Byte]
+
+  def byteOutputStream[F[_]](implicit S: Sync[F]): Resource[F, ByteArrayOutputStream] =
+    Resource.fromAutoCloseable(S.pure(new ByteArrayOutputStream()))
+
+  def byteInputStream[F[_]](bin: ByteArray)(
+      implicit S: Sync[F]): Resource[F, ByteArrayInputStream] =
+    Resource.fromAutoCloseable(S.pure(new ByteArrayInputStream(bin)))
+
+  def outputStream[F[_]](b: ByteArrayOutputStream)(
+      implicit S: Sync[F]): Resource[F, ObjectOutputStream] =
+    Resource.fromAutoCloseable(S.delay(new ObjectOutputStream(b)))
+
+  def inputStream[F[_]](b: ByteArrayInputStream)(
+      implicit S: Sync[F]): Resource[F, ObjectInputStream] =
+    Resource.fromAutoCloseable(S.delay(new ObjectInputStream(b)))
+
   def fromString(s: String): Array[Byte] =
     s.getBytes(Charset.forName("UTF-8"))
 
-  def serialize[F[_]: Sync, A](v: A): F[Array[Byte]] = {
-    val baos = new ByteArrayOutputStream()
-    val oos  = new ObjectOutputStream(baos)
-    Sync[F].bracket(Sync[F].pure(oos))({ in =>
-      Sync[F].pure({
-        in.writeObject(v)
-        in.flush()
-        baos.toByteArray
-      })
-    })({ in =>
-      Sync[F].delay(in.close())
+  def serialize[F[_], A](obj: A)(
+      implicit S: Sync[F]
+  ): F[ByteArray] = {
+    type Resources = (ObjectOutputStream, ByteArrayOutputStream)
+
+    def resources[F[_]](implicit S: Sync[F]): Resource[F, Resources] =
+      for {
+        byte <- byteOutputStream
+        out  <- outputStream(byte)
+      } yield (out, byte)
+
+    resources.use({
+      case (out, byte) =>
+        S.delay {
+          out.writeObject(obj)
+          out.flush()
+          byte.toByteArray
+        }
     })
   }
 
-  def deserialize[F[_]: Sync, I, A](bs: Option[Array[Byte]]): F[Option[A]] =
-    bs match {
-      case None => Sync[F].pure(None)
-      case Some(raw) => {
-        val bais = new ByteArrayInputStream(raw)
-        val oos  = new ObjectInputStream(bais)
-        Sync[F].bracket(
-          Sync[F].pure((bais, oos))
-        )({
-          case (b, o) =>
-            Sync[F].pure({
-              val res = o.readObject()
-              Option(res.asInstanceOf[A])
-            })
-        })({
-          case (b, o) =>
-            Sync[F].delay({
-              b.close()
-              o.close()
-            })
-        })
-      }
-    }
+  def deserialize[F[_], A](bin: ByteArray)(
+      implicit S: Sync[F]
+  ): F[Option[A]] = {
+    type Resources = (ObjectInputStream, ByteArrayInputStream)
 
+    def resources[F[_]](implicit S: Sync[F]): Resource[F, Resources] =
+      for {
+        byte <- byteInputStream(bin)
+        in   <- inputStream(byte)
+      } yield (in, byte)
+
+    resources.use({
+      case (in, byte) =>
+        S.delay {
+          val obj = in.readObject()
+          Try(obj.asInstanceOf[A]).toOption
+        }
+    })
+  }
 }
 
 case class RedisCache[F[_]: Sync](host: String) extends DataCache[F] {
-  private val binaryClient = new BinaryJedis(host)
+  private val pool = new JedisPool(host)
 
-  def client: F[BinaryJedis] =
-    Sync[F].pure(binaryClient)
+  def connection: Resource[F, Jedis] =
+    Resource.fromAutoCloseable(Sync[F].delay(pool.getResource))
 
   private def get(i: Array[Byte]): F[Option[Array[Byte]]] =
-    Sync[F].bracket(client)({ c =>
-      Sync[F].pure(Option(c.get(i)))
-    })({ in =>
-      Sync[F].pure(in.close())
+    connection.use({ c =>
+      Sync[F].delay(Option(c.get(i)))
     })
 
   private def set(i: Array[Byte], v: Array[Byte]): F[Unit] =
-    Sync[F].bracket(client)({ c =>
-      Sync[F].pure(c.set(i, v)).void
-    })({ in =>
-      Sync[F].pure(in.close())
+    connection.use({ c =>
+      Sync[F].delay(c.set(i, v)).void
     })
 
   private def identity[I, A](i: I, data: Data[I, A]): Array[Byte] =
     Binary.fromString(s"${data.identity} ${i}")
 
   def lookup[I, A](i: I, data: Data[I, A]): F[Option[A]] =
-    get(identity(i, data)) >>= { case (raw) => Binary.deserialize(raw) }
+    for {
+      raw <- get(identity(i, data))
+      result <- raw match {
+        case None    => Sync[F].pure(None)
+        case Some(r) => Binary.deserialize[F, A](r)
+      }
+    } yield result
 
   def insert[I, A](i: I, v: A, data: Data[I, A]): F[DataCache[F]] =
     for {
