@@ -69,11 +69,11 @@ object Binary {
   type ByteArray = Array[Byte]
 
   def byteOutputStream[F[_]](implicit S: Sync[F]): Resource[F, ByteArrayOutputStream] =
-    Resource.fromAutoCloseable(S.pure(new ByteArrayOutputStream()))
+    Resource.fromAutoCloseable(S.delay(new ByteArrayOutputStream()))
 
   def byteInputStream[F[_]](bin: ByteArray)(
       implicit S: Sync[F]): Resource[F, ByteArrayInputStream] =
-    Resource.fromAutoCloseable(S.pure(new ByteArrayInputStream(bin)))
+    Resource.fromAutoCloseable(S.delay(new ByteArrayInputStream(bin)))
 
   def outputStream[F[_]](b: ByteArrayOutputStream)(
       implicit S: Sync[F]): Resource[F, ObjectOutputStream] =
