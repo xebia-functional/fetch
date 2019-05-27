@@ -89,42 +89,30 @@ object Binary {
   def serialize[F[_], A](obj: A)(
       implicit S: Sync[F]
   ): F[ByteArray] = {
-    type Resources = (ObjectOutputStream, ByteArrayOutputStream)
-
-    def resources[F[_]](implicit S: Sync[F]): Resource[F, Resources] =
-      for {
-        byte <- byteOutputStream
-        out  <- outputStream(byte)
-      } yield (out, byte)
-
-    resources.use({
-      case (out, byte) =>
-        S.delay {
-          out.writeObject(obj)
-          out.flush()
-          byte.toByteArray
-        }
-    })
+    byteOutputStream
+      .mproduct(outputStream(_))
+      .use({
+        case (byte, out) =>
+          S.delay {
+            out.writeObject(obj)
+            out.flush()
+            byte.toByteArray
+          }
+      })
   }
 
   def deserialize[F[_], A](bin: ByteArray)(
       implicit S: Sync[F]
   ): F[Option[A]] = {
-    type Resources = (ObjectInputStream, ByteArrayInputStream)
-
-    def resources[F[_]](implicit S: Sync[F]): Resource[F, Resources] =
-      for {
-        byte <- byteInputStream(bin)
-        in   <- inputStream(byte)
-      } yield (in, byte)
-
-    resources.use({
-      case (in, byte) =>
-        S.delay {
-          val obj = in.readObject()
-          Try(obj.asInstanceOf[A]).toOption
-        }
-    })
+    byteInputStream(bin)
+      .mproduct(inputStream(_))
+      .use({
+        case (byte, in) =>
+          S.delay {
+            val obj = in.readObject()
+            Try(obj.asInstanceOf[A]).toOption
+          }
+      })
   }
 }
 
@@ -135,14 +123,10 @@ case class RedisCache[F[_]: Sync](host: String) extends DataCache[F] {
     Resource.fromAutoCloseable(Sync[F].delay(pool.getResource))
 
   private def get(i: Array[Byte]): F[Option[Array[Byte]]] =
-    connection.use({ c =>
-      Sync[F].delay(Option(c.get(i)))
-    })
+    connection.use(c => Sync[F].delay(Option(c.get(i))))
 
   private def set(i: Array[Byte], v: Array[Byte]): F[Unit] =
-    connection.use({ c =>
-      Sync[F].delay(c.set(i, v)).void
-    })
+    connection.use(c => Sync[F].delay(c.set(i, v)).void)
 
   private def bulkSet(ivs: List[(Array[Byte], Array[Byte])]): F[Unit] =
     connection.use(c =>
@@ -152,22 +136,19 @@ case class RedisCache[F[_]: Sync](host: String) extends DataCache[F] {
         pipe.sync
       }))
 
-  private def identity[I, A](i: I, data: Data[I, A]): Array[Byte] =
+  private def cacheId[I, A](i: I, data: Data[I, A]): Array[Byte] =
     Binary.fromString(s"${data.identity} ${i}")
 
   override def lookup[I, A](i: I, data: Data[I, A]): F[Option[A]] =
-    for {
-      raw <- get(identity(i, data))
-      result <- raw match {
-        case None    => Sync[F].pure(None)
-        case Some(r) => Binary.deserialize[F, A](r)
-      }
-    } yield result
+    get(cacheId(i, data)).flatMap(_ match {
+      case None    => Sync[F].pure(None)
+      case Some(r) => Binary.deserialize[F, A](r)
+    })
 
   override def insert[I, A](i: I, v: A, data: Data[I, A]): F[DataCache[F]] =
     for {
       s <- Binary.serialize(v)
-      _ <- set(identity(i, data), s)
+      _ <- set(cacheId(i, data), s)
     } yield this
 
   override def bulkInsert[I, A](vs: List[(I, A)], data: Data[I, A])(
@@ -176,9 +157,7 @@ case class RedisCache[F[_]: Sync](host: String) extends DataCache[F] {
     for {
       bin <- vs.traverse({
         case (id, v) =>
-          for {
-            bin <- Binary.serialize(v)
-          } yield (identity(id, data), bin)
+          Binary.serialize(v).tupleRight(cacheId(id, data))
       })
       _ <- Sync[F].delay(bulkSet(bin))
     } yield this
