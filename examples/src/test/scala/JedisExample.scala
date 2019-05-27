@@ -140,10 +140,10 @@ case class RedisCache[F[_]: Sync](host: String) extends DataCache[F] {
     Binary.fromString(s"${data.identity} ${i}")
 
   override def lookup[I, A](i: I, data: Data[I, A]): F[Option[A]] =
-    get(cacheId(i, data)).flatMap(_ match {
+    get(cacheId(i, data)) >>= {
       case None    => Sync[F].pure(None)
       case Some(r) => Binary.deserialize[F, A](r)
-    })
+    }
 
   override def insert[I, A](i: I, v: A, data: Data[I, A]): F[DataCache[F]] =
     for {
