@@ -1,5 +1,21 @@
 # Changelog
 
+## 06/04/2019 - Version 1.1.0
+
+Release changes:
+
+* Run a Fetch into a Monix Task ([#170](https://github.com/47deg/fetch/pull/170))
+* Don't run examples tests every time ([#186](https://github.com/47deg/fetch/pull/186))
+* Loosen implicit constraints ([#187](https://github.com/47deg/fetch/pull/187))
+* Fetch#liftIO ([#182](https://github.com/47deg/fetch/pull/182))
+* Lift Concurrent actions to Fetch ([#189](https://github.com/47deg/fetch/pull/189))
+* Switch to Scala Code of Conduct ([#192](https://github.com/47deg/fetch/pull/192))
+* Add Fetch#runAll ([#194](https://github.com/47deg/fetch/pull/194))
+* Upgrades sbt-org-policies ([#196](https://github.com/47deg/fetch/pull/196))
+* Improve Redis example ([#197](https://github.com/47deg/fetch/pull/197))
+* 1.1.0 release ([#198](https://github.com/47deg/fetch/pull/198))
+
+
 ## 06/05/2019 - Version 1.1.0
 
 - Add `Fetch#runAll` for running a Fetch getting back both log and cache
