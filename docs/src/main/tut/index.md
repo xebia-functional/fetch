@@ -15,13 +15,13 @@ For Scala 2.11.x and 2.12.x:
 [comment]: # (Start Replace)
 
 ```scala
-"com.47deg" %% "fetch" % "1.0.0"
+"com.47deg" %% "fetch" % "1.1.0"
 ```
 
 Or, if using Scala.js (0.6.x):
 
 ```scala
-"com.47deg" %%% "fetch" % "1.0.0"
+"com.47deg" %%% "fetch" % "1.1.0"
 ```
 
 [comment]: # (End Replace)
@@ -54,17 +54,17 @@ Data Sources take two type parameters:
 
 ```scala
 import cats.data.NonEmptyList
-import cats.effect.ConcurrentEffect
+import cats.effect.Concurrent
 
 trait DataSource[F[_], Identity, Result]{
   def data: Data[Identity, Result]
-  def CF: ConcurrentEffect[F]
+  def CF: Concurrent[F]
   def fetch(id: Identity): F[Option[Result]]
   def batch(ids: NonEmptyList[Identity]): F[Map[Identity, Result]]
 }
 ```
 
-Returning `ConcurrentEffect` instances from the fetch methods allows us to specify if the fetch must run synchronously or asynchronously and use all the goodies available in `cats` and `cats-effect`.
+Returning `Concurrent` instances from the fetch methods allows us to specify if the fetch must run synchronously or asynchronously and use all the goodies available in `cats` and `cats-effect`.
 
 We'll implement a dummy data source that can convert integers to strings. For convenience, we define a `fetchString` function that lifts identities (`Int` in our dummy data source) to a `Fetch`.
 
@@ -78,16 +78,16 @@ import cats.syntax.all._
 
 import fetch._
 
-def latency[F[_] : Effect](milis: Long): F[Unit] =
-  Effect[F].delay(Thread.sleep(milis))
+def latency[F[_] : Concurrent](milis: Long): F[Unit] =
+  Concurrent[F].delay(Thread.sleep(milis))
 
 object ToString extends Data[Int, String] {
   def name = "To String"
 
-  def source[F[_] : ConcurrentEffect]: DataSource[F, Int, String] = new DataSource[F, Int, String]{
+  def source[F[_] : Concurrent]: DataSource[F, Int, String] = new DataSource[F, Int, String]{
     override def data = ToString
 
-    override def CF = ConcurrentEffect[F]
+    override def CF = Concurrent[F]
 
     override def fetch(id: Int): F[Option[String]] = for {
       _ <- CF.delay(println(s"--> [${Thread.currentThread.getId}] One ToString $id"))
@@ -103,13 +103,13 @@ object ToString extends Data[Int, String] {
   }
 }
 
-def fetchString[F[_] : ConcurrentEffect](n: Int): Fetch[F, String] =
+def fetchString[F[_] : Concurrent](n: Int): Fetch[F, String] =
   Fetch(n, ToString.source)
 ```
 
 ## Creating a runtime
 
-Since `Fetch` relies on `ConcurrentEffect` from the `cats-effect` library, we'll need a runtime for executing our effects. We'll be using `IO` from `cats-effect` to run fetches, but you can use any type that has a `ConcurrentEffect` instance.
+Since `Fetch` relies on `Concurrent` from the `cats-effect` library, we'll need a runtime for executing our effects. We'll be using `IO` from `cats-effect` to run fetches, but you can use any type that has a `Concurrent` instance.
 
 For executing `IO` we need a `ContextShift[IO]` used for running `IO` instances and a `Timer[IO]` that is used for scheduling, let's go ahead and create them, we'll use a `java.util.concurrent.ScheduledThreadPoolExecutor` with a couple of threads to run our fetches.
 
@@ -129,7 +129,7 @@ implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
 Now that we can convert `Int` values to `Fetch[F, String]`, let's try creating a fetch.
 
 ```tut:silent
-def fetchOne[F[_] : ConcurrentEffect]: Fetch[F, String] =
+def fetchOne[F[_] : Concurrent]: Fetch[F, String] =
   fetchString(1)
 ```
 
@@ -148,7 +148,7 @@ As you can see in the previous example, the `ToStringSource` is queried once to 
 Multiple fetches to the same data source are automatically batched. For illustrating it, we are going to compose three independent fetch results as a tuple.
 
 ```tut:silent
-def fetchThree[F[_] : ConcurrentEffect]: Fetch[F, (String, String, String)] =
+def fetchThree[F[_] : Concurrent]: Fetch[F, (String, String, String)] =
   (fetchString(1), fetchString(2), fetchString(3)).tupled
 ```
 
@@ -164,10 +164,10 @@ Note that the `DataSource#batch` method is not mandatory, it will be implemented
 object UnbatchedToString extends Data[Int, String] {
   def name = "Unbatched to string"
 
-  def source[F[_] : ConcurrentEffect] = new DataSource[F, Int, String] {
+  def source[F[_] : Concurrent] = new DataSource[F, Int, String] {
     override def data = UnbatchedToString
 
-    override def CF = ConcurrentEffect[F]
+    override def CF = Concurrent[F]
 
     override def fetch(id: Int): F[Option[String]] = 
       CF.delay(println(s"--> [${Thread.currentThread.getId}] One UnbatchedToString $id")) >>
@@ -177,14 +177,14 @@ object UnbatchedToString extends Data[Int, String] {
   }
 }
 
-def unbatchedString[F[_] : ConcurrentEffect](n: Int): Fetch[F, String] =
+def unbatchedString[F[_] : Concurrent](n: Int): Fetch[F, String] =
   Fetch(n, UnbatchedToString.source)
 ```
 
 Let's create a tuple of unbatched string requests.
 
 ```tut:silent
-def fetchUnbatchedThree[F[_] : ConcurrentEffect]: Fetch[F, (String, String, String)] =
+def fetchUnbatchedThree[F[_] : Concurrent]: Fetch[F, (String, String, String)] =
   (unbatchedString(1), unbatchedString(2), unbatchedString(3)).tupled
 ```
 
@@ -202,10 +202,10 @@ If we combine two independent fetches from different data sources, the fetches c
 object Length extends Data[String, Int] {
   def name = "Length"
 
-  def source[F[_] : ConcurrentEffect] = new DataSource[F, String, Int] {
+  def source[F[_] : Concurrent] = new DataSource[F, String, Int] {
     override def data = Length
 
-    override def CF = ConcurrentEffect[F]
+    override def CF = Concurrent[F]
 
     override def fetch(id: String): F[Option[Int]] = for {
       _ <- CF.delay(println(s"--> [${Thread.currentThread.getId}] One Length $id"))
@@ -221,14 +221,14 @@ object Length extends Data[String, Int] {
   }
 }
 
-def fetchLength[F[_] : ConcurrentEffect](s: String): Fetch[F, Int] =
+def fetchLength[F[_] : Concurrent](s: String): Fetch[F, Int] =
   Fetch(s, Length.source)
 ```
 
 And now we can easily receive data from the two sources in a single fetch.
 
 ```tut:silent
-def fetchMulti[F[_] : ConcurrentEffect]: Fetch[F, (String, Int)] =
+def fetchMulti[F[_] : Concurrent]: Fetch[F, (String, Int)] =
   (fetchString(1), fetchLength("one")).tupled
 ```
 
@@ -245,7 +245,7 @@ When fetching an identity, subsequent fetches for the same identity are cached. 
 ```tut:silent
 import cats.syntax.all._
 
-def fetchTwice[F[_] : ConcurrentEffect]: Fetch[F, (String, String)] = for {
+def fetchTwice[F[_] : Concurrent]: Fetch[F, (String, String)] = for {
   one <- fetchString(1)
   two <- fetchString(1)
 } yield (one, two)
