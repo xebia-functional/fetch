@@ -15,14 +15,6 @@ Release changes:
 * Improve Redis example ([#197](https://github.com/47deg/fetch/pull/197))
 * 1.1.0 release ([#198](https://github.com/47deg/fetch/pull/198))
 
-
-## 06/05/2019 - Version 1.1.0
-
-- Add `Fetch#runAll` for running a Fetch getting back both log and cache
-- Add `Fetch#liftIO` for lifting `cats.effect.IO` values into a `Fetch`
-- Add `Fetch#liftF` for lifting arbitrary `cats.effect.Concurrent` values into a `Fetch`
-- Loosen `ConcurrentEffect` constraint to `Concurrent` (@kubukoz)
-
 ## 02/26/2019 - Version 1.0.0
 
 The 1.0.0 release of Fetch is a redesign of the library in terms of `cats-effect` abstractions. It's a backwards-incompatible release that introduces numerous breaking changes as well as a couple of new features. It now should be easier to use and require less work from the user of the library, specially when you are already using `cats-effect`.
