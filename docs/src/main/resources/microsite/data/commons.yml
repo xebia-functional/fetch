@@ -1,0 +1,7 @@
+repoUrl: "https://github.com/47deg/fetch"
+organizationUrl: "https://www.47deg.com"
+organization: "47 Degrees"
+description: "Simple & Efficient data for Scala"
+keywords: "functional-programming, kotlin, kotlin-library, scala, scala-js, cats, monads, monix, data, data-fetching, parallelism, concurrency, sequencing, for-comprehension, category-theory"
+owner: "47 Degrees"
+repo: "fetch"

@@ -1,0 +1,26 @@
+@import url('https://fonts.googleapis.com/css?family=Poppins:400,500,600&display=swap');
+
+// Colors
+
+$brand-primary: #DD4949;
+$brand-secondary: #113847;
+$brand-tertiary: #EFF2F3;
+$gray-primary: darken($brand-secondary, 10%);
+$white-color: #FFF;
+
+$text-color: #113847;
+// Sizes
+// -----------------------------------------------
+$base-point: 8px;
+$container-width: 1040px;
+// Typography
+$font-family-poppins: 'Poppins', sans-serif;
+// Breakpoint
+$bp-small: 480px;
+$bp-medium: 768px;
+$bp-large: 992px;
+$bp-xlarge: 1040px;
+// Animation
+// -----------------------------------------------
+$base-duration: 250ms;
+$base-timing: ease-in-out;
