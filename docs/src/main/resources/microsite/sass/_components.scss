@@ -1,0 +1,63 @@
+// COMPONENTS
+// -----------------------------------------------
+// -----------------------------------------------
+
+body {
+  color: $text-color;
+  font-family: $font-family-poppins;
+}
+
+#fetch-home {
+  background: $white-color;
+ }
+
+.jumbotron {
+  .btn-outline-inverse {
+    border: 2px solid $brand-secondary;
+    color: $brand-secondary;
+
+    &:hover {
+      background: $brand-secondary;
+      color: $white-color;
+    }
+  }
+}
+
+.jumbotron-fetch {
+  background: none;
+}
+
+// Buttons
+
+.btn {
+  padding: 12px 40px;
+  border-radius: 0;
+
+  &:hover {
+    background: $brand-secondary;
+  }
+}
+
+.wrapper {
+    padding: 0 ($base-point * 3);
+    margin: 0 auto;
+    box-sizing: border-box;
+    max-width: $container-width;
+}
+
+.button {
+  display: block;
+  background: none;
+  border: none;
+  outline: none;
+  text-decoration: none;
+  position: relative;
+
+  &:hover {
+    cursor: pointer;
+  }
+
+  > img {
+    vertical-align: bottom;
+  }
+}

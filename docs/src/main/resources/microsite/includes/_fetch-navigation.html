@@ -1,0 +1,31 @@
+<nav id="navigation">
+  <div class="wrapper">
+    <div class="nav-flex">
+        <a class="nav-brand" title="Fetch" href="{{site.data.commons.repoUrl}}">
+            <span>{{site.name}}</span>
+        </a>
+        <div class="nav-menu">
+          <button
+            class="button nav-icon-close"
+            title="Close"
+            onClick="toggleClass('.nav-menu', 'open');">
+              <img src="../img/nav-icon-close.svg" alt="Close">
+          </button>
+            <ul>
+              {% for item in site.data.menu.nav%}
+              <li class="nav-menu-item">
+                  <a href="{{ item.url }}" title="{{ item.title }}">{{ item.title }}</a>
+              </li>
+              {% endfor %}
+            </ul>
+        </div>
+
+        <button
+          class="button nav-icon-open"
+          title="Open"
+          onClick="toggleClass('.nav-menu', 'open');">
+            <img src="../img/nav-icon-open.svg" alt="Open">
+        </button>
+    </div>
+  </div>
+</nav>

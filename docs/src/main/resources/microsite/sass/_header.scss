@@ -1,0 +1,32 @@
+#site-header {
+  @include flexbox;
+  @include justify-content(center);
+
+  .head-container {
+    padding-left: 0;
+    padding-right: 0;
+    @include justify-content(space-between);
+    width: $container-width;
+  }
+
+  .masthead-top {
+   @include flexbox;
+  }
+
+  .masthead-text {
+    @include flex(1 1 45%);
+    position: relative;
+
+    margin-right: ($base-point * 3);
+
+    .title {
+      color: $text-color;
+      font-weight: 500;
+    }
+  }
+
+  .masthead-brand {
+    @include flex(1 1 55%);
+  }
+
+}

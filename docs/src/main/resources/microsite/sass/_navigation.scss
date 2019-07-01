@@ -1,0 +1,128 @@
+// Navigation
+#navigation {
+  position: fixed;
+  padding: 50px 0;
+  z-index: 20;
+  width: 100%;
+
+
+  .nav-flex {
+    @include flexbox;
+    @include justify-content(space-between);
+    @include align-items(center);
+
+    font-family: $font-family-poppins;
+    font-size: 17px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+
+      &:visited,
+      &:hover,
+      &:active {
+          color: $brand-secondary;
+          text-decoration: none;
+      }
+    }
+
+    .nav-menu {
+        position: relative;
+
+        ul {
+          @include flexbox;
+
+          list-style: none;
+          display: flex;
+
+          .nav-menu-item {
+              &:not(:last-child) {
+                  margin-right: ($base-point * 5);
+              }
+
+              a {
+                  padding-bottom: 4px;
+                  color: $brand-primary;
+
+                  &:hover {
+                      text-decoration: none;
+                      border-bottom: 2px solid $brand-secondary;
+                  }
+              }
+            }
+        }
+    }
+
+    .nav-icon-open {
+        padding: 16px;
+        margin: -16px;
+        display: none;
+        transition: transform $base-duration $base-timing;
+
+        &:hover {
+          transform: scaleX(1.5);
+        }
+    }
+
+    .nav-icon-close {
+        display: none;
+        padding: 6px;
+        position: absolute;
+        background: rgba($gray-primary, 0.96);
+        right: 100%;
+        top: 32px;
+
+        img {
+            display: block;
+            transition: transform .3s ease;
+
+            &:hover {
+              transform: rotate(180deg);
+            }
+        }
+      }
+  }
+}
+
+// Responsive
+// -----------------------------------------------
+@include bp(medium) {
+    #navigation {
+        .nav-flex {
+            .nav-menu {
+                position: fixed;
+                padding: ($base-point * 4) ($base-point * 6);
+                background: rgba($gray-primary, 0.96);
+                height: 100%;
+                right: -100%;
+                top: 0;
+                width: 50%;
+                z-index: 2;
+                transition: right $base-duration $base-timing;
+
+                &.open {
+                  right: 0;
+                }
+
+                ul {
+                  flex-direction: column;
+
+                  .nav-menu-item {
+                      padding: $base-point 0;
+                      &:not(:last-child) {
+                          margin-right: 0;
+                      }
+                  }
+                }
+
+            }
+
+            .nav-icon-open,
+            .nav-icon-close {
+                display: block;
+            }
+        }
+    }
+}
