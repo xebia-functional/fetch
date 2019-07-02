@@ -1,0 +1,13 @@
+content:
+    - title: Verification
+      description: Eases the creation of Xcode Playgrounds with support for third party libraries.
+      icon: img/main-image-primary.svg
+
+    - title: Compile
+      description: Compiles Xcode Playgrounds with support for third party libraries from the command line.
+      icon: img/main-image-secondary.svg
+
+    - title: Generation
+      description: Generates Markdown project from Xcode Playground.
+      icon: img/main-image-tertiary.svg
+      

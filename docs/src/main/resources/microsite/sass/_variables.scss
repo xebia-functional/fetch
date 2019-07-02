@@ -1,14 +1,21 @@
+// Variables
+// -----------------------------------------------
+// -----------------------------------------------
+
+// Google Fonts
+// -----------------------------------------------
 @import url('https://fonts.googleapis.com/css?family=Poppins:400,500,600&display=swap');
 
 // Colors
-
+// -----------------------------------------------
 $brand-primary: #DD4949;
 $brand-secondary: #113847;
 $brand-tertiary: #EFF2F3;
-$gray-primary: darken($brand-secondary, 10%);
+$gray-primary: darken($brand-tertiary, 30%);
 $white-color: #FFF;
-
 $text-color: #113847;
+$link-color: darken($brand-secondary, 10%);
+$link-hover: darken($brand-secondary, 15%);
 // Sizes
 // -----------------------------------------------
 $base-point: 8px;
@@ -24,3 +31,18 @@ $bp-xlarge: 1040px;
 // -----------------------------------------------
 $base-duration: 250ms;
 $base-timing: ease-in-out;
+// Grid
+// -----------------------------------------------
+$column-1: (1/12*100%);
+$column-2: (2/12*100%);
+$column-3: (3/12*100%);
+$column-4: (4/12*100%);
+$column-5: (5/12*100%);
+$column-6: (6/12*100%);
+$column-7: (7/12*100%);
+$column-8: (8/12*100%);
+$column-9: (9/12*100%);
+$column-10: (10/12*100%);
+$column-11: (11/12*100%);
+$column-12: (12/12*100%);
+$gutter-margin: ($base-point * 4);

@@ -1,45 +1,11 @@
 <!DOCTYPE html>
 <html>
-
-<head>
-    <title>{{site.name}}</title>
-
-    <meta charset="utf-8">
-    <meta content="IE=edge,chrome=1" http-equiv="X-UA-Compatible">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-    <meta name="twitter:title" content="{{site.name}}">
-    <meta name="description" content="{{site.description}}">
-    <meta name="keywords" content="{{site.data.commons.keywords}}">
-
-    <meta property="og:image" content="http://frees.io/img/poster.png" />
-    <meta name="twitter:image" content="http://frees.io/img/poster.png" />
-    <meta property="og:title" content="{{site.name}}" />
-    <meta property="og:site_name" content="{{site.name}}" />
-    <meta property="og:url" content="http://frees.io/" />
-    <meta property="og:type" content="website" />
-    <meta property="og:description" content="{{site.description}}" />
-    <meta property="og:keywords" content="{{site.data.commons.keywords}}" />
-
-    <meta name="twitter:text:description" content="{{site.description}}" />
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:site" content="@47deg">
-    <meta name="twitter:creator" content="@47deg">
-    <meta name="twitter:image" content="" />
-
-    <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.5.2/animate.min.css">
-    <link href="./css/style.css" rel="stylesheet">
-    <link href="./css/palette.css" rel="stylesheet">
-    <link href="./css/custom.css" rel="stylesheet">
-    <link href="./css/theme-code.css" rel="stylesheet">
-
-</head>
-
-<body id="fetch-home">
+    {% include _fetch-head.html %}
+    <body id="fetch-home">
     {% include _fetch-navigation.html %}
     {% include _fetch-header.html %}
+    {% include _fetch-main.html %}
     {% include _fetch-footer.html %}
-</body>
+    </body>
 
 </html>

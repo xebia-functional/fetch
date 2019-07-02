@@ -1,0 +1,13 @@
+<div id="site-main">
+    <div class="wrapper">
+        <div class="main-flex">
+           {% for item in site.data.features.content %}
+            <div class="main-item">
+                <img src="{{ item.icon }}" alt="{{ item.title }}">
+                <h2>{{ item.title }}</h2>
+                <p>{{ item.description }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>

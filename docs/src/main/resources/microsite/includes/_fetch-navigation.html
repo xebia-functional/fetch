@@ -9,7 +9,7 @@
             class="button nav-icon-close"
             title="Close"
             onClick="toggleClass('.nav-menu', 'open');">
-              <img src="../img/nav-icon-close.svg" alt="Close">
+              <img src="{{ site.baseurl }}/img/nav-icon-close.svg" alt="Close">
           </button>
             <ul>
               {% for item in site.data.menu.nav%}
@@ -24,7 +24,7 @@
           class="button nav-icon-open"
           title="Open"
           onClick="toggleClass('.nav-menu', 'open');">
-            <img src="../img/nav-icon-open.svg" alt="Open">
+            <img src="{{ site.baseurl }}/img/nav-icon-open.svg" alt="Open">
         </button>
     </div>
   </div>
