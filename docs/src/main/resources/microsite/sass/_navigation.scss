@@ -4,7 +4,13 @@
   padding: 50px 0;
   z-index: 20;
   width: 100%;
+  transition: background-color $base-duration $base-timing, padding $base-duration $base-timing;
 
+
+  &.nav-scroll {
+      padding: ($base-point * 2) 0;
+      background: $brand-tertiary;
+  }
 
   .nav-flex {
     @include flexbox;
@@ -44,11 +50,12 @@
 
               a {
                   padding-bottom: 4px;
-                  color: $brand-primary;
+                  color: $brand-secondary;
+                  font-size: 14px;
 
                   &:hover {
                       text-decoration: none;
-                      border-bottom: 2px solid $brand-secondary;
+                      border-bottom: 2px solid $brand-primary;
                   }
               }
             }

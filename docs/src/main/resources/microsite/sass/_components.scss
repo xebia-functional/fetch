@@ -11,21 +11,10 @@ body {
   background: $white-color;
  }
 
-.jumbotron {
-  .btn-outline-inverse {
-    border: 2px solid $brand-secondary;
-    color: $brand-secondary;
-
-    &:hover {
-      background: $brand-secondary;
-      color: $white-color;
-    }
-  }
-}
-
-.jumbotron-fetch {
-  background: none;
-}
+ ol,
+ ul {
+    list-style: none;
+ }
 
 // Buttons
 

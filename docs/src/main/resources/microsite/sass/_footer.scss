@@ -1,0 +1,85 @@
+// Footer
+// -----------------------------------------------
+// -----------------------------------------------
+#site-footer {
+    height: 300px;
+    padding: ($base-point * 10) 0;
+    background: $brand-tertiary;
+    color: $brand-secondary;
+
+    a {
+        color: $gray-primary;
+        transition: color $base-duration $base-timing;
+
+        &:visited {
+            color: $gray-primary;
+        }
+
+        &:hover {
+            color: darken($brand-tertiary, 50%);
+            text-decoration: underline;
+        }
+
+        &:active {
+            color: $gray-primary;
+        }
+    }
+
+    p {
+      color: lighten($brand-secondary, 3%)
+    }
+
+    .footer-flex {
+        @include flexbox;
+        @include justify-content(space-between);
+
+        .footer-dev {
+            width: $column-4;
+        }
+
+        .footer-menu {
+            @include flexbox;
+
+            li {
+                &:not(:last-child) {
+                    margin-right: ($base-point * 4)
+                }
+            }
+        }
+    }
+}
+
+// Responsive
+// -----------------------------------------------
+
+@include bp(medium) {
+    #site-footer {
+        .footer-flex {
+            @include justify-content(center);
+            flex-wrap: wrap;
+
+            .footer-dev,
+            .footer-menu {
+                width: $column-8;
+            }
+
+            .footer-dev {
+                padding-bottom: ($base-point * 2);
+                margin-bottom: ($base-point * 2);
+                text-align: center;
+                border-bottom: 1px solid darken($brand-tertiary, 20%);
+            }
+
+
+            .footer-menu {
+                @include justify-content(center);
+
+                li {
+                    &:not(:last-child) {
+                        margin-right: ($base-point * 2);
+                    }
+                }
+            }
+        }
+    }
+}
