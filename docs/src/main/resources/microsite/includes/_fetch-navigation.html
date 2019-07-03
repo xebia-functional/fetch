@@ -14,7 +14,7 @@
             <ul>
               {% for item in site.data.menu.nav%}
               <li class="nav-menu-item">
-                  <a href="{{ item.url }}" title="{{ item.title }}">{{ item.title }}</a>
+                  <a href={% if item.title == "Documentation" %}"{{site.url}}{{site.baseurl}}{{ item.url }}"{% else %}"{{ item.url }}"{% endif %} title="{{ item.title }}">{{ item.title }}</a>
               </li>
               {% endfor %}
             </ul>
