@@ -14,6 +14,7 @@
             font-weight: 500;
             font-size: 60px;
             margin-bottom: $base-point * 4;
+            line-height: $base-point * 10;
           }
 
           .header-button {
@@ -23,6 +24,9 @@
               color: $brand-secondary;
               border: 2px solid $brand-secondary;
               background: none;
+              letter-spacing: 1px;
+              font-size: 14px;
+              line-height: 21px;
               transition: color $base-duration $base-timing, background-color $base-duration $base-timing;
 
               &:visited {

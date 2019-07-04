@@ -17,14 +17,13 @@
                 margin-right: $gutter-margin;
             }
 
-            img {
-                margin-bottom: $base-point * 3;
-            }
-
             h2 {
                 margin-bottom: $base-point * 3;
-                font-size: 1.829rem;
+                font-size: 18px;
                 text-transform: uppercase;
+            }
+            p {
+              font-size: 14px;
             }
         }
     }
