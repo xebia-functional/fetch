@@ -35,6 +35,22 @@
 
         .footer-dev {
             width: $column-5;
+
+            a {
+              color: $gray-primary;
+
+              &:visited {
+                  color: $gray-primary;
+              }
+
+              &:hover {
+                  color: darken($brand-tertiary, 50%);
+              }
+
+              &:active {
+                  color: $gray-primary;
+              }
+            }
         }
 
         .footer-menu {
@@ -67,7 +83,7 @@
                 padding-bottom: ($base-point * 2);
                 margin-bottom: ($base-point * 2);
                 text-align: center;
-                border-bottom: 1px solid darken($brand-tertiary, 20%);
+                border-bottom: 1px solid $line-color;
             }
 
 

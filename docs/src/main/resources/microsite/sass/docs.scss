@@ -1,0 +1,68 @@
+// Docs
+// -----------------------------------------------
+// -----------------------------------------------
+#sidebar-wrapper {
+    background-color: $white-color;
+    border-right: 1px solid #CED8DC;
+}
+
+.sidebar-nav {
+  background-color: $white-color;
+  > li {
+    > a {
+          color: $brand-secondary;
+        &.active {
+                  background: $brand-tertiary;
+                  border-left: 3px solid $brand-primary;
+                  color: $brand-secondary;
+        }
+        &:hover {
+                  background: $brand-tertiary;
+                  color: $brand-secondary;
+        }
+        > span {
+            display: none;
+        }
+    }
+    ul {
+        li {
+            a {
+                background: $brand-tertiary;
+                color: darken($brand-tertiary, 50%);
+                &:hover,
+                &:active {
+                    color: $brand-secondary;
+                }
+            }
+        }
+    }
+  }
+  > .sidebar-brand {
+      a {
+          background-color: $white-color;
+          border-bottom: 1px solid $line-color;
+          color: $brand-secondary;
+          text-transform: uppercase;
+          height: 107px;
+          .brand-wrapper {
+              height: 60px;
+              width: 60px;
+              span {
+                    margin-top: 18px;
+                    letter-spacing: $base-point / 2;
+                    font-size: $base-point * 2;
+                    padding-left: $base-point * 4;
+              }
+          }
+      }
+  }
+}
+
+
+#page-content-wrapper {
+  background: $white-color;
+
+  section pre .hljs {
+    background-color: $brand-tertiary;
+  }
+}

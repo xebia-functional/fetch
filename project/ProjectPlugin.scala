@@ -32,9 +32,9 @@ object ProjectPlugin extends AutoPlugin {
       micrositeGithubRepo := "fetch",
       micrositeHighlightTheme := "tomorrow",
       micrositePalette := Map(
-        "brand-primary"   -> "#FF518C",
-        "brand-secondary" -> "#2F2859",
-        "brand-tertiary"  -> "#28224C",
+        "brand-primary"   -> "#DD4949",
+        "brand-secondary" -> "#113847",
+        "brand-tertiary"  -> "#EFF2F3",
         "gray-dark"       -> "#48474C",
         "gray"            -> "#8D8C92",
         "gray-light"      -> "#E3E2E3",
