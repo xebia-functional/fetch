@@ -25,6 +25,18 @@ function scrollFunction() {
 // Init call
 function loadEvent() {
   document.addEventListener("scroll", scrollFunction);
+
+  const lottieAnimation = bodymovin.loadAnimation({
+          container: document.getElementById('fetch_animation'),
+          renderer: 'svg',
+          loop: true,
+          autoplay:true,
+          path: '/json/fetch_animation.json'
+  })
+
+  document.getElementById('fetch_animation').addEventListener('load', function() {
+    lottieAnimation.play();
+  });
 }
 
 // Attach the functions to each event they are interested in
