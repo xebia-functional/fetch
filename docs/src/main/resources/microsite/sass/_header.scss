@@ -75,12 +75,13 @@
 }
 @include bp(medium) {
     #site-header {
-        padding-top: ($base-point * 20);
+        padding: ($base-point * 20) 0 0 0;
         .header-container {
              flex-direction: column;
             .header-text {
                 text-align: center;
                 width: $column-12;
+                padding-bottom: ($base-point * 10);
 
                 h1 {
                     font-size: 2.5rem;

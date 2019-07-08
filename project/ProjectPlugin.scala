@@ -25,7 +25,7 @@ object ProjectPlugin extends AutoPlugin {
 
     lazy val micrositeSettings: Seq[Def.Setting[_]] = Seq(
       micrositeName := "Fetch",
-      micrositeDescription := "Simple & Efficient data access for Scala and Scala.js",
+      micrositeDescription := "Simple & Efficient data for Scala",
       micrositeBaseUrl := "fetch",
       micrositeDocumentationUrl := "/fetch/docs.html",
       micrositeGithubOwner := "47deg",
@@ -41,7 +41,7 @@ object ProjectPlugin extends AutoPlugin {
         "gray-lighter"    -> "#F4F3F9",
         "white-color"     -> "#FFFFFF"
       ),
-      includeFilter in makeSite := "*.html" | "*.css" | "*.png" | "*.jpg" | "*.gif" | "*.js" | "*.swf" | "*.md",
+      includeFilter in makeSite := "*.html" | "*.css" | "*.png" | "*.jpg" | "*.gif" | "*.js" | "*.json" | "*.swf" | "*.md",
       micrositeGithubToken := getEnvVar("ORG_GITHUB_TOKEN"),
       micrositePushSiteWith := GitHub4s
     )

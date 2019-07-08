@@ -31,7 +31,7 @@ function loadEvent() {
           renderer: 'svg',
           loop: true,
           autoplay:true,
-          path: '/json/fetch_animation.json'
+          path: 'js/fetch_animation.json'
   })
 
   document.getElementById('fetch_animation').addEventListener('load', function() {
