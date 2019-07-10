@@ -64,6 +64,10 @@
               height: 60px;
               width: 60px;
           }
+          &:hover {
+                    background: $brand-tertiary;
+                    color: $brand-secondary;
+          }
       }
   }
 }
