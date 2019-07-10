@@ -1,12 +1,12 @@
 content:
-    - title: Verification
-      description: Eases the creation of Xcode Playgrounds with support for third party libraries.
+    - title: Define
+      description: Tell Fetch how your data is fetched and define your data-fetching functions using functional combinators.
       icon: img/icon-feature-first.svg
 
-    - title: Compile
-      description: Compiles Xcode Playgrounds with support for third party libraries from the command line.
+    - title: Run
+      description: Fetch can run your data-fetching code and apply multiple optimizations such as baching, caching and deduplication.
       icon: img/icon-feature-second.svg
 
-    - title: Generation
-      description: Generates Markdown project from Xcode Playground.
+    - title: Inspect
+      description: The execution log of a Fetch can be inspected and it contains information about fetch scheduling, results and timings.
       icon: img/icon-feature-third.svg
