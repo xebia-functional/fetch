@@ -54,6 +54,10 @@
     }
 }
 
+#fetch-animation {
+  width: 700px;
+}
+
 // Responsive
 // -----------------------------------------------
 
@@ -91,5 +95,8 @@
                 display: none;
             }
         }
+    }
+    #fetch-animation {
+      width: auto;
     }
 }

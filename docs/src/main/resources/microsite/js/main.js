@@ -13,9 +13,11 @@ function toggleClass(elemSelector, activeClass = "active") {
   }
 }
 
+const scrollTop = Math.max(window.pageYOffset, document.documentElement.scrollTop, document.body.scrollTop)
+
 // Navigation element modification through scrolling
 function scrollFunction() {
-  if (document.documentElement.scrollTop > 0) {
+  if (window.pageYOffset || document.documentElement.scrollTop > scrollTop) {
     navElement.classList.add("nav-scroll");
   } else {
     navElement.classList.remove("nav-scroll");
@@ -27,8 +29,8 @@ function loadEvent() {
   document.addEventListener("scroll", scrollFunction);
 
   const lottieAnimation = bodymovin.loadAnimation({
-          container: document.getElementById('fetch_animation'),
-          renderer: 'svg',
+          container: document.getElementById('fetch-animation'),
+          renderer: 'svg' / 'canvas' / 'html',
           loop: true,
           autoplay:true,
           path: 'js/fetch_animation.json'

@@ -7,7 +7,7 @@
   transition: background-color $base-duration $base-timing, padding $base-duration $base-timing;
 
   .wrapper {
-    max-width: 1140px;
+    max-width: $container-width;
   }
 
   &.nav-scroll {
