@@ -9,12 +9,11 @@
       .sidebar-brand {
         .brand {
           .brand-wrapper {
-            margin-left: -10px;
             span {
-              margin-top: 18px;
+                margin-top: 0;
               letter-spacing: $base-point / 2;
               font-size: $base-point * 2;
-              padding-left: $base-point * 4;
+              padding-left: $base-point * 2;
             }
           }
         }
@@ -42,6 +41,7 @@
     }
     ul {
         li {
+            font-size: 14px;
             a {
                 background: $brand-tertiary;
                 color: darken($brand-tertiary, 50%);
@@ -59,11 +59,7 @@
           border-bottom: 1px solid $line-color;
           color: $brand-secondary;
           text-transform: uppercase;
-          height: $docs-brand-height;
-          .brand-wrapper {
-              height: 60px;
-              width: 60px;
-          }
+        
           &:hover {
                     background: $brand-tertiary;
                     color: $brand-secondary;
@@ -72,13 +68,9 @@
   }
 }
 
-.container-fluid {
-  height: $docs-brand-height;
+.container-fluid {;
+    padding-bottom: 1px;
   border-bottom: 1px solid $line-color;
-
-  .row {
-    margin-top: 20px;
-  }
 }
 
 #page-content-wrapper {
@@ -88,7 +80,13 @@
     max-height: $docs-brand-height;
   }
 
-  section pre .hljs {
+    section{
+        margin: 0;
+    }
+    
+    pre .hljs {
     background-color: $brand-tertiary;
   }
+    
+    
 }
