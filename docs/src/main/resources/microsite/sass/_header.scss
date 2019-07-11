@@ -11,7 +11,7 @@
 
           .title {
             color: $brand-secondary;
-            font-weight: 500;
+            font-weight: $font-semibold;
             font-size: 60px;
             margin-bottom: $base-point * 4;
             line-height: $base-point * 10;

@@ -10,12 +10,14 @@
 // -----------------------------------------------
 $brand-primary: #DD4949;
 $brand-secondary: #104051;
-$brand-tertiary: #EFF2F3;
+$brand-tertiary: #F6F8F8;
 $gray-primary: darken($brand-tertiary, 35%);
 $white-color: #FFF;
 $link-color: darken($brand-secondary, 10%);
 $link-hover: darken($brand-secondary, 15%);
 $line-color: #CED8DC;
+$text-color: $brand-secondary;
+
 // Sizes
 // -----------------------------------------------
 $base-point: 8px;
@@ -23,6 +25,12 @@ $container-width: 1140px;
 $docs-brand-height: 107px;
 // Typography
 $font-family-poppins: 'Poppins', sans-serif;
+
+$font-regular: 400;
+$font-medium: 500;
+$font-semibold: 600;
+
+
 // Breakpoint
 $bp-small: 480px;
 $bp-medium: 768px;
