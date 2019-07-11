@@ -16,11 +16,17 @@
             &:not(:last-child) {
                 margin-right: $gutter-margin;
             }
+            
+            h2,
+            p {
+                color: $text-color;
+            }
 
             h2 {
                 margin-bottom: $base-point * 3;
                 font-size: 18px;
                 text-transform: uppercase;
+                font-weight: $font-medium;
             }
             p {
               font-size: 14px;
