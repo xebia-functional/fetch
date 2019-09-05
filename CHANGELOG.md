@@ -17,7 +17,7 @@ Release changes:
 
 ## 02/26/2019 - Version 1.0.0
 
-The 1.0.0 release of Fetch is a redesign of the library in terms of `cats-effect` abstractions. It's a backwards-incompatible release that introduces numerous breaking changes as well as a couple of new features. It now should be easier to use and require less work from the user of the library, specially when you are already using `cats-effect`.
+The 1.0.0 release of Fetch is a redesign of the library in terms of `cats-effect` abstractions. It's a backwards-incompatible release that introduces numerous breaking changes, as well as a couple of new features. It should now be easier to use, and require less work from the user of the library, especially when you are already using `cats-effect`.
 
 ### Breaking changes
 
@@ -34,7 +34,7 @@ The 1.0.0 release of Fetch is a redesign of the library in terms of `cats-effect
 ### New features
 
 - Introduced `Fetch#optional`, an alternative to `Fetch#apply` for optional fetches
-- Different Data Sources now can have the same identity and result types
+- Different Data Sources can now have the same identity and result types
 
 ### API changes
 
@@ -46,7 +46,7 @@ The 1.0.0 release of Fetch is a redesign of the library in terms of `cats-effect
 ### Documentation
 
 - Proof-of-concept Redis cache implementation of `DataCache` ([#161](https://github.com/47deg/fetch/pull/161))
-- Removed Monix, Future and Twitter Future subprojects, most of them should work with `cats-effect` abstractions already
+- Removed Monix, Future, and Twitter Future subprojects. Most of them should work with `cats-effect` abstractions already
 - GrapQL query interpreter example ([#178](https://github.com/47deg/fetch/pull/178))
 - Example using Monix Scheduler and Task to run fetches ([#178](https://github.com/47deg/fetch/pull/178))
 
@@ -87,7 +87,7 @@ Release changes:
 Release changes:
 
 * Update dependencies (Cats 1.0.0-MF) ([#137](https://github.com/47deg/fetch/pull/137))
-* update name of twitter module ([#138](https://github.com/47deg/fetch/pull/138))
+* Update name of Twitter module ([#138](https://github.com/47deg/fetch/pull/138))
 * Release Fetch v0.7.0 ([#139](https://github.com/47deg/fetch/pull/139))
 * Release 0.7.0 ([#140](https://github.com/47deg/fetch/pull/140))
 
@@ -97,8 +97,8 @@ Release changes:
 Release changes:
 
 * Add timeout capability to Future implementation of FetchMonadError ([#127](https://github.com/47deg/fetch/pull/127))
-* adds commercial support statement ([#129](https://github.com/47deg/fetch/pull/129))
-* Add twitter future support ([#128](https://github.com/47deg/fetch/pull/128))
+* Adds commercial support statement ([#129](https://github.com/47deg/fetch/pull/129))
+* Add Twitter future support ([#128](https://github.com/47deg/fetch/pull/128))
 * Enforce consistent arrow symbols using scalafmt ([#130](https://github.com/47deg/fetch/pull/130))
 * Generalize timeout tests. Fix twitter timeout. ([#131](https://github.com/47deg/fetch/pull/131))
 * Move and reuse TestHelper ([#132](https://github.com/47deg/fetch/pull/132))
@@ -113,7 +113,7 @@ Release changes:
 * Removes dup doc files ([#117](https://github.com/47deg/fetch/pull/117))
 * orgScriptCI task integration ([#118](https://github.com/47deg/fetch/pull/118))
 * Installs Travis to be able to publish the Microsite automatically ([#119](https://github.com/47deg/fetch/pull/119))
-* typo in README ([#120](https://github.com/47deg/fetch/pull/120))
+* Typo in README ([#120](https://github.com/47deg/fetch/pull/120))
 * Refactor interpreters + Change Fetch.traverse ([#123](https://github.com/47deg/fetch/pull/123))
 * Releases 0.6.2 ([#125](https://github.com/47deg/fetch/pull/125))
 
@@ -122,7 +122,7 @@ Release changes:
 
 Release changes:
 
-* add batchingOnly convenience method ([#110](https://github.com/47deg/fetch/pull/110))
+* Add batchingOnly convenience method ([#110](https://github.com/47deg/fetch/pull/110))
 * Update AUTHORS.md ([#111](https://github.com/47deg/fetch/pull/111))
 * Add curried apply to Fetch object ([#109](https://github.com/47deg/fetch/pull/109))
 * Allow sequential and parallel batches ([#113](https://github.com/47deg/fetch/pull/113))
