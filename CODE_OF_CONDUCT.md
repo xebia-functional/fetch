@@ -1,6 +1,6 @@
 # Code of Conduct
 
-We are committed to providing a friendly, safe and welcoming
+We are committed to providing a friendly, safe, and welcoming
 environment for all, regardless of level of experience, gender, gender
 identity and expression, sexual orientation, disability, personal
 appearance, body size, race, ethnicity, age, religion, nationality, or
@@ -13,7 +13,7 @@ support you.
 
 ## Moderation
 
-For any questions, concerns, or moderation requests please contact a
+For any questions, concerns, or moderation requests, please contact a
 [member of the project](AUTHORS.md#maintainers).
 
 [Scala Code of Conduct]: https://typelevel.org/code-of-conduct.html
