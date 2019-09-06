@@ -2,7 +2,7 @@
 
 [comment]: # (Start Badges)
 
-[![Join the chat at https://gitter.im/47deg/fetch](https://badges.gitter.im/47deg/fetch.svg)](https://gitter.im/47deg/fetch?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) [![Build Status](https://travis-ci.org/47deg/fetch.svg?branch=master)](https://travis-ci.org/47deg/fetch) [![codecov.io](http://codecov.io/gh/47deg/fetch/branch/master/graph/badge.svg)](http://codecov.io/gh/47deg/fetch) [![Maven Central](https://img.shields.io/badge/maven%20central-1.1.0-green.svg)](https://oss.sonatype.org/#nexus-search;gav~com.47deg~fetch*) [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](https://raw.githubusercontent.com/47deg/fetch/master/LICENSE) [![Latest version](https://img.shields.io/badge/fetch-1.1.0-green.svg)](https://index.scala-lang.org/47deg/fetch) [![Scala.js](http://scala-js.org/assets/badges/scalajs-0.6.17.svg)](http://scala-js.org) [![GitHub Issues](https://img.shields.io/github/issues/47deg/fetch.svg)](https://github.com/47deg/fetch/issues)
+[![Join the chat at https://gitter.im/47deg/fetch](https://badges.gitter.im/47deg/fetch.svg)](https://gitter.im/47deg/fetch?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) [![Build Status](https://travis-ci.org/47deg/fetch.svg?branch=master)](https://travis-ci.org/47deg/fetch) [![codecov.io](http://codecov.io/github/47deg/fetch/coverage.svg?branch=master)](http://codecov.io/github/47deg/fetch?branch=master) [![Maven Central](https://img.shields.io/badge/maven%20central-0.6.1-green.svg)](https://oss.sonatype.org/#nexus-search;gav~com.47deg~fetch*) [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](https://raw.githubusercontent.com/47deg/fetch/master/LICENSE) [![Latest version](https://img.shields.io/badge/fetch-0.6.1-green.svg)](https://index.scala-lang.org/47deg/fetch) [![Scala.js](http://scala-js.org/assets/badges/scalajs-0.6.15.svg)](http://scala-js.org) [![GitHub Issues](https://img.shields.io/github/issues/47deg/fetch.svg)](https://github.com/47deg/fetch/issues)
 
 [comment]: # (End Badges)
 
@@ -35,7 +35,7 @@ Or, if using Scala.js (0.6.x):
 
 ## Remote data
 
-Fetch is a library for making access to data both simple & efficient. Fetch is especially useful when querying data that
+Fetch is a library for making access to data both simple and efficient. Fetch is especially useful when querying data that
 has a latency cost, such as databases or web services.
 
 ## Define your data sources
@@ -61,7 +61,7 @@ trait DataSource[F[_], Identity, Result]{
 }
 ```
 
-Returning `Concurrent` instances from the fetch methods allows us to specify if the fetch must run synchronously or asynchronously and use all the goodies available in `cats` and `cats-effect`.
+Returning `Concurrent` instances from the fetch methods allows us to specify if the fetch must run synchronously or asynchronously, and use all the goodies available in `cats` and `cats-effect`.
 
 We'll implement a dummy data source that can convert integers to strings. For convenience, we define a `fetchString` function that lifts identities (`Int` in our dummy data source) to a `Fetch`.
 
@@ -108,7 +108,7 @@ def fetchString[F[_] : Concurrent](n: Int): Fetch[F, String] =
 
 Since `Fetch` relies on `Concurrent` from the `cats-effect` library, we'll need a runtime for executing our effects. We'll be using `IO` from `cats-effect` to run fetches, but you can use any type that has a `Concurrent` instance.
 
-For executing `IO` we need a `ContextShift[IO]` used for running `IO` instances and a `Timer[IO]` that is used for scheduling, let's go ahead and create them, we'll use a `java.util.concurrent.ScheduledThreadPoolExecutor` with a couple of threads to run our fetches.
+For executing `IO`, we need a `ContextShift[IO]` used for running `IO` instances and a `Timer[IO]` that is used for scheduling. Let's go ahead and create them. We'll use a `java.util.concurrent.ScheduledThreadPoolExecutor` with a couple of threads to run our fetches.
 
 ```scala
 import java.util.concurrent._
@@ -130,15 +130,15 @@ def fetchOne[F[_] : Concurrent]: Fetch[F, String] =
   fetchString(1)
 ```
 
-Let's run it and wait for the fetch to complete, we'll use `IO#unsafeRunTimed` for testing purposes, which will run an `IO[A]` to `Option[A]` and return `None` if it didn't complete in time:
+Let's run it and wait for the fetch to complete. We'll use `IO#unsafeRunTimed` for testing purposes, which will run an `IO[A]` to `Option[A]` and return `None` if it didn't complete in time:
 
 ```scala
 import scala.concurrent.duration._
 // import scala.concurrent.duration._
 
 Fetch.run[IO](fetchOne).unsafeRunTimed(5.seconds)
-// --> [65] One ToString 1
-// <-- [65] One ToString 1
+// --> [342] One ToString 1
+// <-- [342] One ToString 1
 // res0: Option[String] = Some(1)
 ```
 
@@ -146,23 +146,23 @@ As you can see in the previous example, the `ToStringSource` is queried once to 
 
 ## Batching
 
-Multiple fetches to the same data source are automatically batched. For illustrating it, we are going to compose three independent fetch results as a tuple.
+Multiple fetches to the same data source are automatically batched. For illustrating this, we are going to compose three independent fetch results as a tuple.
 
 ```scala
 def fetchThree[F[_] : Concurrent]: Fetch[F, (String, String, String)] =
   (fetchString(1), fetchString(2), fetchString(3)).tupled
 ```
 
-When executing the above fetch, note how the three identities get batched and the data source is only queried once.
+When executing the above fetch, note how the three identities get batched, and the data source is only queried once.
 
 ```scala
 Fetch.run[IO](fetchThree).unsafeRunTimed(5.seconds)
-// --> [65] Batch ToString NonEmptyList(1, 2, 3)
-// <-- [65] Batch ToString NonEmptyList(1, 2, 3)
+// --> [342] Batch ToString NonEmptyList(1, 2, 3)
+// <-- [342] Batch ToString NonEmptyList(1, 2, 3)
 // res1: Option[(String, String, String)] = Some((1,2,3))
 ```
 
-Note that the `DataSource#batch` method is not mandatory, it will be implemented in terms of `DataSource#fetch` if you don't provide an implementation.
+Note that the `DataSource#batch` method is not mandatory. It will be implemented in terms of `DataSource#fetch` if you don't provide an implementation.
 
 ```scala
 object UnbatchedToString extends Data[Int, String] {
@@ -196,12 +196,12 @@ When executing the above fetch, note how the three identities get requested in p
 
 ```scala
 Fetch.run[IO](fetchUnbatchedThree).unsafeRunTimed(5.seconds)
-// --> [65] One UnbatchedToString 1
-// --> [68] One UnbatchedToString 3
-// --> [67] One UnbatchedToString 2
-// <-- [65] One UnbatchedToString 1
-// <-- [67] One UnbatchedToString 2
-// <-- [68] One UnbatchedToString 3
+// --> [342] One UnbatchedToString 1
+// --> [344] One UnbatchedToString 2
+// --> [343] One UnbatchedToString 3
+// <-- [342] One UnbatchedToString 1
+// <-- [344] One UnbatchedToString 2
+// <-- [343] One UnbatchedToString 3
 // res2: Option[(String, String, String)] = Some((1,2,3))
 ```
 
@@ -247,10 +247,10 @@ Note how the two independent data fetches run in parallel, minimizing the latenc
 
 ```scala
 Fetch.run[IO](fetchMulti).unsafeRunTimed(5.seconds)
-// --> [65] One ToString 1
-// --> [66] One Length one
-// <-- [65] One ToString 1
-// <-- [66] One Length one
+// --> [342] One ToString 1
+// --> [345] One Length one
+// <-- [342] One ToString 1
+// <-- [345] One Length one
 // res3: Option[(String, Int)] = Some((1,3))
 ```
 
@@ -267,12 +267,12 @@ def fetchTwice[F[_] : Concurrent]: Fetch[F, (String, String)] = for {
 } yield (one, two)
 ```
 
-While running it, notice that the data source is only queried once. The next time the identity is requested it's served from the cache.
+While running it, notice that the data source is only queried once. The next time the identity is requested, it's served from the cache.
 
 ```scala
 Fetch.run[IO](fetchTwice).unsafeRunTimed(5.seconds)
-// --> [67] One ToString 1
-// <-- [67] One ToString 1
+// --> [344] One ToString 1
+// <-- [344] One ToString 1
 // res4: Option[(String, String)] = Some((1,1))
 ```
 
@@ -281,13 +281,14 @@ Fetch.run[IO](fetchTwice).unsafeRunTimed(5.seconds)
 
 ---
 
-For more in-depth information take a look at our [documentation](http://47deg.github.io/fetch/docs.html).
+For more in-depth information, take a look at our [documentation](http://47deg.github.io/fetch/docs.html).
 
 ## Fetch in the wild
 
-If you wish to add your library here please consider a PR to include it in the list below.
+If you wish to add your library here, please consider a PR to include it in the list below.
 
 [comment]: # (Start Copyright)
+
 # Copyright
 
 Fetch is designed and developed by 47 Degrees
