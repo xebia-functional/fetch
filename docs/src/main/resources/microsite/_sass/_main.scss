@@ -6,8 +6,8 @@
     padding: ($base-point * 10) 0;
 
     .main-flex {
-        @include flexbox;
-        @include justify-content(space-between);
+        display: flex;
+        justify-content: space-between;
 
         .main-item {
             width: $column-4;
@@ -16,7 +16,7 @@
             &:not(:last-child) {
                 margin-right: $gutter-margin;
             }
-            
+
             h2,
             p {
                 color: $text-color;

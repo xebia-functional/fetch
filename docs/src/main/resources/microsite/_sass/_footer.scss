@@ -30,8 +30,8 @@
     }
 
     .footer-flex {
-        @include flexbox;
-        @include justify-content(space-between);
+        display: flex;
+        justify-content: space-between;
 
         .footer-dev {
             width: $column-5;
@@ -54,7 +54,7 @@
         }
 
         .footer-menu {
-            @include flexbox;
+            display: flex;
 
             li {
                 &:not(:last-child) {
@@ -71,7 +71,7 @@
 @include bp(medium) {
     #site-footer {
         .footer-flex {
-            @include justify-content(center);
+            justify-content: center;
             flex-wrap: wrap;
 
             .footer-dev,
@@ -88,7 +88,7 @@
 
 
             .footer-menu {
-                @include justify-content(center);
+                justify-content: center;
 
                 li {
                     &:not(:last-child) {

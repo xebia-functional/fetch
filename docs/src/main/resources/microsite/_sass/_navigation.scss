@@ -17,9 +17,9 @@
   }
 
   .nav-flex {
-    @include flexbox;
-    @include justify-content(space-between);
-    @include align-items(center);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 
     font-family: $font-family-poppins;
     font-size: 17px;
@@ -47,7 +47,7 @@
         position: relative;
 
         ul {
-          @include flexbox;
+          display: flex;
 
           list-style: none;
           display: flex;
