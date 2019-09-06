@@ -42,7 +42,7 @@ def println(msg: String): Unit = {
 
 ## Remote data
 
-Fetch is a library for making access to data both simple & efficient. Fetch is especially useful when querying data that
+Fetch is a library for making access to data both simple and efficient. Fetch is especially useful when querying data that
 has a latency cost, such as databases or web services.
 
 ## Define your data sources
@@ -68,7 +68,7 @@ trait DataSource[F[_], Identity, Result]{
 }
 ```
 
-Returning `Concurrent` instances from the fetch methods allows us to specify if the fetch must run synchronously or asynchronously and use all the goodies available in `cats` and `cats-effect`.
+Returning `Concurrent` instances from the fetch methods allows us to specify if the fetch must run synchronously or asynchronously, and use all the goodies available in `cats` and `cats-effect`.
 
 We'll implement a dummy data source that can convert integers to strings. For convenience, we define a `fetchString` function that lifts identities (`Int` in our dummy data source) to a `Fetch`.
 
@@ -115,7 +115,7 @@ def fetchString[F[_] : Concurrent](n: Int): Fetch[F, String] =
 
 Since `Fetch` relies on `Concurrent` from the `cats-effect` library, we'll need a runtime for executing our effects. We'll be using `IO` from `cats-effect` to run fetches, but you can use any type that has a `Concurrent` instance.
 
-For executing `IO` we need a `ContextShift[IO]` used for running `IO` instances and a `Timer[IO]` that is used for scheduling, let's go ahead and create them, we'll use a `java.util.concurrent.ScheduledThreadPoolExecutor` with a couple of threads to run our fetches.
+For executing `IO`, we need a `ContextShift[IO]` used for running `IO` instances and a `Timer[IO]` that is used for scheduling. Let's go ahead and create them. We'll use a `java.util.concurrent.ScheduledThreadPoolExecutor` with a couple of threads to run our fetches.
 
 ```tut:silent
 import java.util.concurrent._
@@ -137,7 +137,7 @@ def fetchOne[F[_] : Concurrent]: Fetch[F, String] =
   fetchString(1)
 ```
 
-Let's run it and wait for the fetch to complete, we'll use `IO#unsafeRunTimed` for testing purposes, which will run an `IO[A]` to `Option[A]` and return `None` if it didn't complete in time:
+Let's run it and wait for the fetch to complete. We'll use `IO#unsafeRunTimed` for testing purposes, which will run an `IO[A]` to `Option[A]` and return `None` if it didn't complete in time:
 
 ```tut:book
 import scala.concurrent.duration._
@@ -149,20 +149,20 @@ As you can see in the previous example, the `ToStringSource` is queried once to 
 
 ## Batching
 
-Multiple fetches to the same data source are automatically batched. For illustrating it, we are going to compose three independent fetch results as a tuple.
+Multiple fetches to the same data source are automatically batched. For illustrating this, we are going to compose three independent fetch results as a tuple.
 
 ```tut:silent
 def fetchThree[F[_] : Concurrent]: Fetch[F, (String, String, String)] =
   (fetchString(1), fetchString(2), fetchString(3)).tupled
 ```
 
-When executing the above fetch, note how the three identities get batched and the data source is only queried once.
+When executing the above fetch, note how the three identities get batched, and the data source is only queried once.
 
 ```tut:book
 Fetch.run[IO](fetchThree).unsafeRunTimed(5.seconds)
 ```
 
-Note that the `DataSource#batch` method is not mandatory, it will be implemented in terms of `DataSource#fetch` if you don't provide an implementation.
+Note that the `DataSource#batch` method is not mandatory. It will be implemented in terms of `DataSource#fetch` if you don't provide an implementation.
 
 ```tut:silent
 object UnbatchedToString extends Data[Int, String] {
@@ -255,7 +255,7 @@ def fetchTwice[F[_] : Concurrent]: Fetch[F, (String, String)] = for {
 } yield (one, two)
 ```
 
-While running it, notice that the data source is only queried once. The next time the identity is requested it's served from the cache.
+While running it, notice that the data source is only queried once. The next time the identity is requested, it's served from the cache.
 
 ```tut:book
 Fetch.run[IO](fetchTwice).unsafeRunTimed(5.seconds)
@@ -267,11 +267,11 @@ executor.shutdownNow()
 ```
 ---
 
-For more in-depth information take a look at our [documentation](http://47deg.github.io/fetch/docs.html).
+For more in-depth information, take a look at our [documentation](http://47deg.github.io/fetch/docs.html).
 
 ## Fetch in the wild
 
-If you wish to add your library here please consider a PR to include it in the list below.
+If you wish to add your library here, please consider a PR to include it in the list below.
 
 [comment]: # (Start Copyright)
 
@@ -279,6 +279,6 @@ If you wish to add your library here please consider a PR to include it in the l
 
 Fetch is designed and developed by 47 Degrees
 
-Copyright (C) 2016-2018 47 Degrees. <http://47deg.com>
+Copyright (C) 2016-2019 47 Degrees. <http://47deg.com>
 
 [comment]: # (End Copyright)
