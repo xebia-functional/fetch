@@ -2,8 +2,8 @@
   padding: ($base-point * 18) 0 ($base-point * 9) 0;
 
     .header-container {
-        @include flexbox;
-        @include align-items(center);
+        display: flex;
+        align-items: center;
 
 
         .header-text {
