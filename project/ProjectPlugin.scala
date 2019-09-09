@@ -31,6 +31,8 @@ object ProjectPlugin extends AutoPlugin {
       micrositeGithubOwner := "47deg",
       micrositeGithubRepo := "fetch",
       micrositeHighlightTheme := "tomorrow",
+      micrositeExternalLayoutsDirectory := (resourceDirectory in Compile).value / "microsite" / "_layouts",
+      micrositeExternalIncludesDirectory := (resourceDirectory in Compile).value / "microsite" / "_includes",
       micrositePalette := Map(
         "brand-primary"   -> "#DD4949",
         "brand-secondary" -> "#104051",
