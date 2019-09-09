@@ -36,7 +36,7 @@ function loadEvent() {
           path: 'js/fetch_animation.json'
   })
 
-  document.getElementById('fetch_animation').addEventListener('load', function() {
+  document.getElementById('fetch-animation').addEventListener('load', function() {
     lottieAnimation.play();
   });
 }
