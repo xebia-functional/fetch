@@ -16,10 +16,12 @@ These are the people that have contributed to the Fetch project:
 * Alessandro Lacava <[lambdista](https://github.com/lambdista)>
 * Diego E. Alonso Blas <[diesalbla](https://github.com/diesalbla)>
 * Fede Fernández <[fedefernandez](https://github.com/fedefernandez)>
+* Israel Pérez <[israelperezglez](https://github.com/israelperezglez)>
 * Jakub Kozłowski <[kubukoz](https://github.com/kubukoz)>
 * Jason McClellan <[jkmcclellan](https://github.com/jkmcclellan)>
 * Jisoo Park <[guersam](https://github.com/guersam)>
 * Juan Pedro Moreno <[juanpedromoreno](https://github.com/juanpedromoreno)>
+* Juan Valencia <[calvellido](https://github.com/calvellido)>
 * Justin Heyes-Jones <[justinhj](https://github.com/justinhj)>
 * Maureen Elsberry  <[MaureenElsberry](https://github.com/MaureenElsberry)>
 * Pepe García <[pepegar](https://github.com/pepegar)>
