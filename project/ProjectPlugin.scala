@@ -25,23 +25,26 @@ object ProjectPlugin extends AutoPlugin {
 
     lazy val micrositeSettings: Seq[Def.Setting[_]] = Seq(
       micrositeName := "Fetch",
-      micrositeDescription := "Simple & Efficient data access for Scala and Scala.js",
+      micrositeDescription := "Simple & Efficient data fetching",
       micrositeBaseUrl := "fetch",
-      micrositeDocumentationUrl := "/fetch/docs.html",
+      micrositeDocumentationUrl := "/fetch/docs",
       micrositeGithubOwner := "47deg",
       micrositeGithubRepo := "fetch",
       micrositeHighlightTheme := "tomorrow",
+      micrositeExternalLayoutsDirectory := (resourceDirectory in Compile).value / "microsite" / "_layouts",
+      micrositeExternalIncludesDirectory := (resourceDirectory in Compile).value / "microsite" / "_includes",
+      micrositeDataDirectory := (resourceDirectory in Compile).value / "microsite" / "_data",
       micrositePalette := Map(
-        "brand-primary"   -> "#FF518C",
-        "brand-secondary" -> "#2F2859",
-        "brand-tertiary"  -> "#28224C",
+        "brand-primary"   -> "#DD4949",
+        "brand-secondary" -> "#104051",
+        "brand-tertiary"  -> "#EFF2F3",
         "gray-dark"       -> "#48474C",
         "gray"            -> "#8D8C92",
         "gray-light"      -> "#E3E2E3",
         "gray-lighter"    -> "#F4F3F9",
         "white-color"     -> "#FFFFFF"
       ),
-      includeFilter in makeSite := "*.html" | "*.css" | "*.png" | "*.jpg" | "*.gif" | "*.js" | "*.swf" | "*.md",
+      includeFilter in makeSite := "*.html" | "*.css" | "*.png" | "*.svg" | "*.jpg" | "*.gif" | "*.js" | "*.json" | "*.swf" | "*.md",
       micrositeGithubToken := getEnvVar("ORG_GITHUB_TOKEN"),
       micrositePushSiteWith := GitHub4s
     )

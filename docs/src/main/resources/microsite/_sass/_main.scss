@@ -1,0 +1,54 @@
+// Features
+// -----------------------------------------------
+// -----------------------------------------------
+
+#site-main {
+    padding: ($base-point * 10) 0;
+
+    .main-flex {
+        display: flex;
+        justify-content: space-between;
+
+        .main-item {
+            width: $column-4;
+            text-align: center;
+
+            &:not(:last-child) {
+                margin-right: $gutter-margin;
+            }
+
+            h2,
+            p {
+                color: $text-color;
+            }
+
+            h2 {
+                margin-bottom: $base-point * 3;
+                font-size: 18px;
+                text-transform: uppercase;
+                font-weight: $font-medium;
+            }
+            p {
+              font-size: 14px;
+            }
+        }
+    }
+}
+
+// Responsive
+// -----------------------------------------------
+@include bp(medium) {
+    #site-main {
+        .main-flex {
+            flex-direction: column;
+            .main-item {
+                width: $column-12;
+
+                &:not(:last-child) {
+                    margin-right: 0;
+                    margin-bottom: ($base-point * 8);
+                }
+            }
+        }
+    }
+}

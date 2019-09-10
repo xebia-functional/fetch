@@ -1,0 +1,95 @@
+// Docs
+// -----------------------------------------------
+// -----------------------------------------------
+#sidebar-wrapper {
+    background-color: $white-color;
+    border-right: 1px solid #CED8DC;
+
+    #sidebar {
+      .sidebar-brand {
+        .brand {
+          .brand-wrapper {
+            span {
+                margin-top: 0;
+              letter-spacing: $base-point / 2;
+              font-size: $base-point * 2;
+              padding-left: $base-point * 2;
+            }
+          }
+        }
+      }
+    }
+}
+
+.sidebar-nav {
+  background-color: $white-color;
+  > li {
+    > a {
+          color: $brand-secondary;
+        &.active {
+                  background: $brand-tertiary;
+                  border-left: 3px solid $brand-primary;
+                  color: $brand-secondary;
+        }
+        &:hover {
+                  background: $brand-tertiary;
+                  color: $brand-secondary;
+        }
+        > span {
+            display: none;
+        }
+    }
+    ul {
+        li {
+            font-size: 14px;
+            a {
+                background: $brand-tertiary;
+                color: darken($brand-tertiary, 50%);
+                line-height: normal;
+                padding-bottom: $base-point * 2;
+                padding-top: $base-point * 2;
+                &:hover,
+                &:active {
+                    color: $brand-secondary;
+                }
+            }
+        }
+    }
+  }
+  > .sidebar-brand {
+      a {
+          background-color: $white-color;
+          border-bottom: 1px solid $line-color;
+          color: $brand-secondary;
+          text-transform: uppercase;
+
+          &:hover {
+                    background: $brand-tertiary;
+                    color: $brand-secondary;
+          }
+      }
+  }
+}
+
+.container-fluid {;
+    padding-bottom: 1px;
+  border-bottom: 1px solid $line-color;
+}
+
+#page-content-wrapper {
+  background: $white-color;
+
+  .nav {
+    max-height: $docs-brand-height;
+  }
+
+    section{
+        margin: 0;
+    }
+
+    pre .hljs {
+    background-color: $brand-tertiary;
+  }
+
+
+}

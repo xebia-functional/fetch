@@ -1,0 +1,57 @@
+// Variables
+// -----------------------------------------------
+// -----------------------------------------------
+
+// Google Fonts
+// -----------------------------------------------
+@import url('https://fonts.googleapis.com/css?family=Poppins:400,500,600&display=swap');
+
+// Colors
+// -----------------------------------------------
+$brand-primary: #DD4949;
+$brand-secondary: #104051;
+$brand-tertiary: #F6F8F8;
+$gray-primary: darken($brand-tertiary, 35%);
+$white-color: #FFF;
+$link-color: darken($brand-secondary, 10%);
+$link-hover: darken($brand-secondary, 15%);
+$line-color: #CED8DC;
+$text-color: $brand-secondary;
+
+// Sizes
+// -----------------------------------------------
+$base-point: 8px;
+$container-width: 1140px;
+$docs-brand-height: 107px;
+// Typography
+$font-family-poppins: 'Poppins', sans-serif;
+
+$font-regular: 400;
+$font-medium: 500;
+$font-semibold: 600;
+
+
+// Breakpoint
+$bp-small: 480px;
+$bp-medium: 768px;
+$bp-large: 992px;
+$bp-xlarge: 1140px;
+// Animation
+// -----------------------------------------------
+$base-duration: 250ms;
+$base-timing: ease-in-out;
+// Grid
+// -----------------------------------------------
+$column-1: (1/12*100%);
+$column-2: (2/12*100%);
+$column-3: (3/12*100%);
+$column-4: (4/12*100%);
+$column-5: (5/12*100%);
+$column-6: (6/12*100%);
+$column-7: (7/12*100%);
+$column-8: (8/12*100%);
+$column-9: (9/12*100%);
+$column-10: (10/12*100%);
+$column-11: (11/12*100%);
+$column-12: (12/12*100%);
+$gutter-margin: ($base-point * 4);
