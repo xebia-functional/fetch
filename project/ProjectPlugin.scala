@@ -27,7 +27,7 @@ object ProjectPlugin extends AutoPlugin {
       micrositeName := "Fetch",
       micrositeDescription := "Simple & Efficient data fetching",
       micrositeBaseUrl := "fetch",
-      micrositeDocumentationUrl := "/fetch/docs.html",
+      micrositeDocumentationUrl := "/fetch/docs",
       micrositeGithubOwner := "47deg",
       micrositeGithubRepo := "fetch",
       micrositeHighlightTheme := "tomorrow",
