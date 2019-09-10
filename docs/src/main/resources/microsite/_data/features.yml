@@ -4,7 +4,7 @@ content:
       icon: img/icon-feature-first.svg
 
     - title: Run
-      description: Fetch can run your data-fetching code and apply multiple optimizations such as baching, caching and deduplication.
+      description: Fetch will run your data-fetching code and apply multiple optimizations such as batching, caching and deduplication.
       icon: img/icon-feature-second.svg
 
     - title: Inspect
