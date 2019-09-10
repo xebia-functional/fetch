@@ -1,0 +1,102 @@
+#site-header {
+  padding: ($base-point * 18) 0 ($base-point * 9) 0;
+
+    .header-container {
+        display: flex;
+        align-items: center;
+
+
+        .header-text {
+          width: $column-5;
+
+          .title {
+            color: $brand-secondary;
+            font-weight: $font-semibold;
+            font-size: 60px;
+            margin-bottom: $base-point * 4;
+            line-height: $base-point * 10;
+          }
+
+          .header-button {
+              padding: ($base-point * 1.5) ($base-point * 6);
+              display: inline-block;
+              text-transform: uppercase;
+              color: $brand-secondary;
+              border: 2px solid $brand-secondary;
+              background: none;
+              letter-spacing: 1px;
+              font-size: 14px;
+              line-height: 21px;
+              transition: color $base-duration $base-timing, background-color $base-duration $base-timing;
+
+              &:visited {
+                  color: $brand-secondary;
+              }
+
+              &:hover {
+                  text-decoration: none;
+                  color: $white-color;
+                  background: $brand-secondary;
+              }
+
+              &:active {
+                  color: $white-color;
+                  background: rgba($brand-secondary, 0.8);
+
+              }
+          }
+        }
+
+        .header-image {
+            width: $column-7;
+            text-align: center;
+        }
+    }
+}
+
+#fetch-animation {
+  width: 700px;
+}
+
+// Responsive
+// -----------------------------------------------
+
+@include bp(large) {
+    #site-header {
+        .header-container {
+            .header-text {
+                h1 {
+                    font-size: 2.9rem;
+                }
+            }
+            .header-image {
+                img {
+                    width: 100%;
+                }
+            }
+        }
+    }
+}
+@include bp(medium) {
+    #site-header {
+        padding: ($base-point * 20) 0 0 0;
+        .header-container {
+             flex-direction: column;
+            .header-text {
+                text-align: center;
+                width: $column-12;
+                padding-bottom: ($base-point * 10);
+
+                h1 {
+                    font-size: 2.5rem;
+                }
+            }
+            .header-image {
+                display: none;
+            }
+        }
+    }
+    #fetch-animation {
+      display: none;
+    }
+}

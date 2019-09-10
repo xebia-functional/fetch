@@ -1,0 +1,9 @@
+nav:
+    - title: Documentation
+      url: /docs
+
+    - title: Github
+      url: https://github.com/47deg/fetch
+
+    - title: License
+      url: https://github.com/47deg/fetch/blob/master/LICENSE
