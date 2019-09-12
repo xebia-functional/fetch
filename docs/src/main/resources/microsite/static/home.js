@@ -33,7 +33,7 @@ function loadEvent() {
           renderer: 'svg' / 'canvas' / 'html',
           loop: true,
           autoplay:true,
-          path: 'js/fetch_animation.json'
+          path: 'static/fetch_animation.json'
   })
 
   document.getElementById('fetch-animation').addEventListener('load', function() {

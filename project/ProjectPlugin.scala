@@ -8,6 +8,7 @@ import sbtorgpolicies.runnable.syntax._
 import sbtorgpolicies.templates.badges._
 import scoverage.ScoverageKeys
 import tut.TutPlugin.autoImport._
+import microsites._
 
 object ProjectPlugin extends AutoPlugin {
 
@@ -46,7 +47,15 @@ object ProjectPlugin extends AutoPlugin {
       ),
       includeFilter in makeSite := "*.html" | "*.css" | "*.png" | "*.svg" | "*.jpg" | "*.gif" | "*.js" | "*.json" | "*.swf" | "*.md",
       micrositeGithubToken := getEnvVar("ORG_GITHUB_TOKEN"),
-      micrositePushSiteWith := GitHub4s
+      micrositePushSiteWith := GitHub4s,
+      micrositeConfigYaml := ConfigYml(
+        yamlPath = Some((resourceDirectory in Compile).value / "microsite" / "custom-config.yml")
+      ),
+      micrositeCDNDirectives := CdnDirectives(
+        cssList = List(
+          "css/custom.css",
+        )
+      )
     )
 
     lazy val commonTutSettings: Seq[Def.Setting[_]] = Seq(

@@ -4,6 +4,7 @@
 #sidebar-wrapper {
     background-color: $white-color;
     border-right: 1px solid #CED8DC;
+    overflow-x: hidden;
 
     #sidebar {
       .sidebar-brand {
@@ -62,6 +63,7 @@
           border-bottom: 1px solid $line-color;
           color: $brand-secondary;
           text-transform: uppercase;
+          height: $docs-brand-height;
 
           &:hover {
                     background: $brand-tertiary;
@@ -71,16 +73,14 @@
   }
 }
 
-.container-fluid {;
-    padding-bottom: 1px;
-  border-bottom: 1px solid $line-color;
-}
 
 #page-content-wrapper {
   background: $white-color;
 
   .nav {
+    height: $docs-brand-height;
     max-height: $docs-brand-height;
+    border-bottom: 1px solid $line-color;
   }
 
     section{

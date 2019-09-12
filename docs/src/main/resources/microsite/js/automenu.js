@@ -1,6 +1,5 @@
 jQuery(document).ready(function() {
     activeLinks();
-    activeToggle();
     organizeContent();
 });
 
@@ -85,13 +84,6 @@ function slugify(text) {
         .replace(/\-\-+/g, '-') // Replace multiple - with single -
         .replace(/^-+/, '') // Trim - from start of text
         .replace(/-+$/, ''); // Trim - from end of text
-}
-
-function activeToggle() {
-    $("#menu-toggle").click(function(e) {
-        e.preventDefault();
-        $("#wrapper").toggleClass("toggled");
-    });
 }
 
 function activeLinks() {
