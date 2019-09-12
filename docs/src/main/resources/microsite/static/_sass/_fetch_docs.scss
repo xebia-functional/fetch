@@ -63,6 +63,7 @@
           border-bottom: 1px solid $line-color;
           color: $brand-secondary;
           text-transform: uppercase;
+          height: $docs-brand-height;
 
           &:hover {
                     background: $brand-tertiary;
@@ -72,16 +73,14 @@
   }
 }
 
-.container-fluid {
-  // border-bottom: 1px solid $line-color;
-  border-bottom: 1px solid red;
-}
 
 #page-content-wrapper {
   background: $white-color;
 
   .nav {
+    height: $docs-brand-height;
     max-height: $docs-brand-height;
+    border-bottom: 1px solid $line-color;
   }
 
     section{
