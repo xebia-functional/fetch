@@ -4,6 +4,7 @@
 #sidebar-wrapper {
     background-color: $white-color;
     border-right: 1px solid #CED8DC;
+    overflow-x: hidden;
 
     #sidebar {
       .sidebar-brand {
