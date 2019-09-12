@@ -71,9 +71,9 @@
   }
 }
 
-.container-fluid {;
-    padding-bottom: 1px;
-  border-bottom: 1px solid $line-color;
+.container-fluid {
+  // border-bottom: 1px solid $line-color;
+  border-bottom: 1px solid red;
 }
 
 #page-content-wrapper {

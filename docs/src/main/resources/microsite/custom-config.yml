@@ -1,0 +1,10 @@
+# -------------------------
+# These settings will be merged with the properties coming from
+# sbt-microsites in order to generate the final and single _config.yml file
+# -------------------------
+sass:
+  load_paths:
+    - _sass
+    - static/_sass
+  style: compressed
+# -------------------------
