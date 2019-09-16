@@ -1,5 +1,12 @@
 # Changelog
 
+## 09/16/2019 - Version 1.2.0
+
+Release changes:
+
+* Update cats-effect dependency to 2.0.0 (thanks to @paulpdaniels)
+* Renew docs site https://47deg.github.io/fetch/
+
 ## 06/04/2019 - Version 1.1.0
 
 Release changes:
