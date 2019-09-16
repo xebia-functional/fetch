@@ -24,6 +24,7 @@ These are the people that have contributed to the Fetch project:
 * Juan Valencia <[calvellido](https://github.com/calvellido)>
 * Justin Heyes-Jones <[justinhj](https://github.com/justinhj)>
 * Maureen Elsberry  <[MaureenElsberry](https://github.com/MaureenElsberry)>
+* Paul Daniels <[paulpdaniels](https://github.com/paulpdaniels)>
 * Pepe García <[pepegar](https://github.com/pepegar)>
 * Peter Neyens <[peterneyens](https://github.com/peterneyens)>
 * Rafa Paradela <[rafaparadela](https://github.com/rafaparadela)>
