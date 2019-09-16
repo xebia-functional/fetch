@@ -4,6 +4,21 @@
 
 Release changes:
 
+* Update CODE_OF_CONDUCT.md ([#205](https://github.com/47deg/fetch/pull/205))
+* Update README.md ([#208](https://github.com/47deg/fetch/pull/208))
+* Only run Travis builds agains OpenJDK8 ([#207](https://github.com/47deg/fetch/pull/207))
+* Redesign Implementation ([#203](https://github.com/47deg/fetch/pull/203))
+* Fix typo on home page ([#209](https://github.com/47deg/fetch/pull/209))
+* [website] Various bugfixes/improvements ([#210](https://github.com/47deg/fetch/pull/210))
+* refactor(fetch): Loosen effect constraint for liftIO. ([#215](https://github.com/47deg/fetch/pull/215))
+* Release 1.2.0 ([#214](https://github.com/47deg/fetch/pull/214))
+* chore(dependencies): Update cats and monix dependencies. ([#212](https://github.com/47deg/fetch/pull/212))
+
+
+## 09/16/2019 - Version 1.2.0
+
+Release changes:
+
 * Update cats-effect dependency to 2.0.0 (thanks to @paulpdaniels)
 * Renew docs site https://47deg.github.io/fetch/
 
