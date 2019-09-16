@@ -1,0 +1,16 @@
+name: Fetch
+baseurl: /fetch
+description: Simple & Efficient data fetching
+highlighter: rouge
+docs: true
+collections:
+  tut:
+    output: true
+sass:
+  load_paths:
+  - _sass
+  - static/_sass
+  style: compressed
+version: 1.2.0
+org: 47 Degrees
+markdown: kramdown
