@@ -21,7 +21,7 @@ object ProjectPlugin extends AutoPlugin {
     lazy val commonCrossDependencies =
       Seq(
 		libraryDependencies ++=
-		Seq("org.typelevel" %% "cats-effect" % "1.2.0",
+		Seq("org.typelevel" %% "cats-effect" % "2.0.0",
             %%("scalatest") % "test"))
 
     lazy val micrositeSettings: Seq[Def.Setting[_]] = Seq(
@@ -79,11 +79,11 @@ object ProjectPlugin extends AutoPlugin {
       %%("circe-generic"),
       %%("doobie-core"),
       %%("doobie-h2"),
-      "org.tpolecat" %% "atto-core"    % "0.6.5",
-      "org.http4s" %% "http4s-blaze-client" % "0.19.0-M2",
-      "org.http4s" %% "http4s-circe" % "0.19.0-M2",
+      "org.tpolecat" %% "atto-core"    % "0.7.0",
+      "org.http4s" %% "http4s-blaze-client" % "0.21.0-M4",
+      "org.http4s" %% "http4s-circe" % "0.21.0-M4",
       "redis.clients" % "jedis" % "2.9.0",
-      "io.monix" %% "monix" % "3.0.0-RC2"
+      "io.monix" %% "monix" % "3.0.0"
     )) ++ commonCrossDependencies
   }
 
