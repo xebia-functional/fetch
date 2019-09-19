@@ -21,7 +21,7 @@ lazy val fetch = crossProject(JSPlatform, JVMPlatform)
 lazy val fetchJVM = fetch.jvm
 lazy val fetchJS  = fetch.js
 
-lazy val debug =  crossProject(JSPlatform, JVMPlatform)
+lazy val debug = crossProject(JSPlatform, JVMPlatform)
   .in(file("debug"))
   .settings(name := "fetch-debug")
   .dependsOn(fetch)

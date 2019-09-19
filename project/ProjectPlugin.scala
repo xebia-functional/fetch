@@ -20,9 +20,12 @@ object ProjectPlugin extends AutoPlugin {
 
     lazy val commonCrossDependencies =
       Seq(
-		libraryDependencies ++=
-		Seq("org.typelevel" %% "cats-effect" % "2.0.0",
-            %%("scalatest") % "test"))
+        libraryDependencies ++=
+          Seq(
+            "org.typelevel" %% "cats-effect" % "2.0.0",
+            "org.scalatest" %% "scalatest"   % "3.0.8" % "test"
+          )
+      )
 
     lazy val micrositeSettings: Seq[Def.Setting[_]] = Seq(
       micrositeName := "Fetch",
@@ -75,16 +78,17 @@ object ProjectPlugin extends AutoPlugin {
       tutNameFilter := """README.md""".r
     )
 
-    lazy val examplesSettings = Seq(libraryDependencies ++= Seq(
-      %%("circe-generic"),
-      %%("doobie-core"),
-      %%("doobie-h2"),
-      "org.tpolecat" %% "atto-core"    % "0.7.0",
-      "org.http4s" %% "http4s-blaze-client" % "0.21.0-M4",
-      "org.http4s" %% "http4s-circe" % "0.21.0-M4",
-      "redis.clients" % "jedis" % "2.9.0",
-      "io.monix" %% "monix" % "3.0.0"
-    )) ++ commonCrossDependencies
+    lazy val examplesSettings = Seq(
+      libraryDependencies ++= Seq(
+        "io.circe" %% "circe-generic" % "0.12.0-RC2",
+        "org.tpolecat" %% s"doobie-core" % "0.8.0-RC1",
+        "org.tpolecat" %% s"doobie-h2" % "0.8.0-RC1",
+        "org.tpolecat"  %% "atto-core"           % "0.7.0",
+        "org.http4s"    %% "http4s-blaze-client" % "0.21.0-M4",
+        "org.http4s"    %% "http4s-circe"        % "0.21.0-M4",
+        "redis.clients" % "jedis"                % "2.9.0",
+        "io.monix"      %% "monix"               % "3.0.0"
+      )) ++ commonCrossDependencies
   }
 
   lazy val commandAliases: Seq[Def.Setting[_]] =
@@ -93,13 +97,8 @@ object ProjectPlugin extends AutoPlugin {
       addCommandAlias("validateCoverage", ";coverage;validate;coverageReport;coverageOff") ++
       addCommandAlias(
         "validateJVM",
-        List(
-          "fetchJVM/compile",
-          "fetchJVM/test",
-          "project root").asCmd) ++
-      addCommandAlias(
-        "validateJS",
-        List("fetchJS/compile", "fetchJS/test", "project root").asCmd)
+        List("fetchJVM/compile", "fetchJVM/test", "project root").asCmd) ++
+      addCommandAlias("validateJS", List("fetchJS/compile", "fetchJS/test", "project root").asCmd)
 
   override def projectSettings: Seq[Def.Setting[_]] =
     commandAliases ++
@@ -125,12 +124,12 @@ object ProjectPlugin extends AutoPlugin {
         ),
         orgUpdateDocFilesSetting += baseDirectory.value / "tut",
         scalaOrganization := "org.scala-lang",
-        scalaVersion := "2.12.8",
-        crossScalaVersions := List("2.11.12", "2.12.8"),
+        scalaVersion := "2.13.0",
+        crossScalaVersions := List("2.11.12", "2.12.9", "2.13.0"),
         resolvers += Resolver.sonatypeRepo("snapshots"),
         resolvers += Resolver.sonatypeRepo("releases"),
-        addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.7"),
-        addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.2.4"),
+        addCompilerPlugin("org.typelevel" %% "kind-projector"     % "0.10.3"),
+        addCompilerPlugin("com.olegpy"    %% "better-monadic-for" % "0.3.1"),
         scalacOptions := Seq(
           "-unchecked",
           "-deprecation",
@@ -138,9 +137,11 @@ object ProjectPlugin extends AutoPlugin {
           "-Ywarn-dead-code",
           "-language:higherKinds",
           "-language:existentials",
-          "-language:postfixOps",
-          "-Ypartial-unification"
-        ),
+          "-language:postfixOps"
+        ) ++ (CrossVersion.partialVersion(scalaVersion.value) match {
+          case Some((2, 13)) => Seq()
+          case _             => Seq("-Ypartial-unification")
+        }),
         ScoverageKeys.coverageFailOnMinimum := false
       ) ++ shellPromptSettings
 

@@ -76,7 +76,12 @@ object DatabaseExample {
       for {
         (conn, trans) <- (connectionPool[F](1), transactionPool[F]).tupled
         tx <- H2Transactor
-          .newH2Transactor[F]("jdbc:h2:mem:test;DB_CLOSE_DELAY=-1", "sa", "", conn, trans)
+          .newH2Transactor[F](
+            "jdbc:h2:mem:test;DB_CLOSE_DELAY=-1",
+            "sa",
+            "",
+            conn,
+            Blocker.liftExecutionContext(trans))
       } yield tx
 
     def transactor[F[_]: Async: ContextShift]: Resource[F, Transactor[F]] =
