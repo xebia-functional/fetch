@@ -76,49 +76,64 @@ object `package` {
   private[fetch] case class CombinationSuspend[F[_]](resume: FetchStatus => CombinationTailRec[F]) extends CombinationTailRec[F]
   private[fetch] case class CombinationFlatMap[F[_]](sub: CombinationTailRec[F], f: () => CombinationTailRec[F]) extends CombinationTailRec[F]
 
+  /* Run combineRequests in the stack safe way */
   def runCombinationResult[F[_]: Monad](
     comb: CombinationTailRec[F],
     status: FetchStatus
   ): F[Unit] =
     comb match {
       case CombinationDone(r) =>
+        // Combination is finished, just return the result
         r
 
       case CombinationLeaf(f) =>
-        runCombinationResult(CombinationDone(f(status)), status)
+        // Last step before completing a combination, apply the method and box the result
+        runCombinationResult(
+          CombinationDone(f(status)),
+          status
+        )
 
       case CombinationBarrier(sub, newStatus) =>
+        // A barrier is boxing a CombinationTailRec to which a specific status must be applied
+        // Just make a recursive call with the status
         runCombinationResult(sub(), newStatus)
 
       case CombinationSuspend(resume) =>
+        // Base CombinationTailRec, derives a CombinationTailRec from the current status
         runCombinationResult(resume(status), status)
 
-      case CombinationFlatMap(firstComb, secondComb) =>
-        firstComb match {
+      case CombinationFlatMap(current, next) =>
+        current match {
           case CombinationDone(r) =>
-            r.flatMap(_ => runCombinationResult(secondComb(), status))
+            // Current combination is done, just flatMap the result with the next combination
+            r.flatMap(_ => runCombinationResult(next(), status))
 
           case CombinationLeaf(f) =>
-            runCombinationResult(CombinationFlatMap(CombinationDone(f(status)), secondComb), status)
-
-          case CombinationSuspend(r) =>
-            runCombinationResult(CombinationFlatMap(r(status), secondComb), status)
+            // Current combination is a lead. Compute and box the result, and still flatMap on the next combination
+            runCombinationResult(
+              CombinationDone(f(status)).flatMap(next),
+              status
+            )
 
           case CombinationBarrier(sub, newStatus) =>
+            // Barrier, the current combination needs to be ran with the specific status, and the next one needs to work on the current status
             runCombinationResult(
-              CombinationFlatMap(sub(), () => CombinationBarrier(secondComb, status)),
+              sub().flatMap(() => CombinationBarrier(next, status)),
               newStatus
             )
 
           case CombinationSuspend(sub) =>
+            // Derive the combination from the current status and still flatMap on the next combination
             runCombinationResult(
-              CombinationFlatMap(sub(status), secondComb),
+              sub(status).flatMap(next),
               status
             )
 
-          case CombinationFlatMap(sub, f) =>
+          case CombinationFlatMap(sub, fNext) =>
+            // FlatMap of a FlatMap
+            // Treat the current combination, then the fNext, and finally the next combination of the top level flatMap
             runCombinationResult(
-              sub.flatMap(() => f() flatMap secondComb),
+              sub.flatMap(() => fNext().flatMap(next)),
               status
             )
         }
