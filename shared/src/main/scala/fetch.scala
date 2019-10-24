@@ -59,7 +59,7 @@ object `package` {
 
   // In-progress request
 
-  private[fetch] final case class BlockedRequest[F[_]](request: FetchRequest, result: FetchStatus => F[Unit])
+  private[fetch] final case class BlockedRequest[F[_]](request: FetchRequest, result: CombinationTailRec[F])
 
   /* Combines the identities of two `FetchQuery` to the same data source. */
   private def combineIdentities[I, A](x: FetchQuery[I, A], y: FetchQuery[I, A]): NonEmptyList[I] = {
@@ -68,62 +68,129 @@ object `package` {
     }
   }
 
+  private[fetch] sealed trait CombinationTailRec[F[_]] extends Product with Serializable {
+    def flatMap(f: () => CombinationTailRec[F]): CombinationTailRec[F] = CombinationFlatMap(this, f)
+  }
+
+  private[fetch] case class CombinationDone[F[_]](result: F[Unit]) extends CombinationTailRec[F]
+  private[fetch] case class CombinationLeaf[F[_]](f: FetchStatus => F[Unit]) extends CombinationTailRec[F]
+  private[fetch] case class CombinationBarrier[F[_]](sub: () => CombinationTailRec[F], status: FetchStatus) extends CombinationTailRec[F]
+  private[fetch] case class CombinationSuspend[F[_]](resume: FetchStatus => CombinationTailRec[F]) extends CombinationTailRec[F]
+  private[fetch] case class CombinationFlatMap[F[_]](sub: CombinationTailRec[F], f: () => CombinationTailRec[F]) extends CombinationTailRec[F]
+
+  def runCombinationResult[F[_]: Monad](
+    comb: CombinationTailRec[F],
+    status: FetchStatus
+  ): F[Unit] =
+    comb match {
+      case CombinationDone(r) =>
+        r
+
+      case CombinationLeaf(f) =>
+        runCombinationResult(CombinationDone(f(status)), status)
+
+      case CombinationBarrier(sub, newStatus) =>
+        runCombinationResult(sub(), newStatus)
+
+      case CombinationSuspend(resume) =>
+        runCombinationResult(resume(status), status)
+
+      case CombinationFlatMap(firstComb, secondComb) =>
+        firstComb match {
+          case CombinationDone(r) =>
+            r.flatMap(_ => runCombinationResult(secondComb(), status))
+
+          case CombinationLeaf(f) =>
+            runCombinationResult(CombinationFlatMap(CombinationDone(f(status)), secondComb), status)
+
+          case CombinationSuspend(r) =>
+            runCombinationResult(CombinationFlatMap(r(status), secondComb), status)
+
+          case CombinationBarrier(sub, newStatus) =>
+            runCombinationResult(
+              CombinationFlatMap(sub(), () => CombinationBarrier(secondComb, status)),
+              newStatus
+            )
+
+          case CombinationSuspend(sub) =>
+            runCombinationResult(
+              CombinationFlatMap(sub(status), secondComb),
+              status
+            )
+
+          case CombinationFlatMap(sub, f) =>
+            runCombinationResult(
+              sub.flatMap(() => f() flatMap secondComb),
+              status
+            )
+        }
+    }
+
   /* Combines two requests to the same data source. */
   private def combineRequests[F[_] : Monad](x: BlockedRequest[F], y: BlockedRequest[F]): BlockedRequest[F] = (x.request, y.request) match {
     case (a@FetchOne(aId, ds), b@FetchOne(anotherId, _)) =>
       if (aId == anotherId)  {
         val newRequest = FetchOne(aId, ds)
-        val newResult = (r: FetchStatus) => (x.result(r), y.result(r)).tupled.void
+        val newResult = x.result.flatMap(() => y.result)
         BlockedRequest(newRequest, newResult)
       } else {
         val combined = combineIdentities(a, b)
         val newRequest = Batch(combined, ds)
-        val newResult = (r: FetchStatus) => r match {
-          case FetchDone(m : Map[Any, Any]) => {
-            val xResult = m.get(aId).map(FetchDone(_)).getOrElse(FetchMissing())
-            val yResult = m.get(anotherId).map(FetchDone(_)).getOrElse(FetchMissing())
-              (x.result(xResult), y.result(yResult)).tupled.void
-          }
+        val newResult = CombinationSuspend(
+          (r: FetchStatus) => r match {
+            case FetchDone(m : Map[Any, Any]) => {
+              val xResult = m.get(aId).map(FetchDone(_)).getOrElse(FetchMissing())
+              val yResult = m.get(anotherId).map(FetchDone(_)).getOrElse(FetchMissing())
+              CombinationBarrier(() => x.result, xResult)
+                .flatMap(() => CombinationBarrier(() => y.result, yResult))
+            }
 
-          case FetchMissing() =>
-            (x.result(r), y.result(r)).tupled.void
-        }
+            case FetchMissing() =>
+              x.result.flatMap(() => y.result)
+          }
+        )
         BlockedRequest(newRequest, newResult)
       }
 
     case (a@FetchOne(oneId, ds), b@Batch(anotherIds, _)) =>
       val combined = combineIdentities(a, b)
       val newRequest = Batch(combined, ds)
-      val newResult = (r: FetchStatus) => r match {
-        case FetchDone(m : Map[Any, Any]) => {
-          val oneResult = m.get(oneId).map(FetchDone(_)).getOrElse(FetchMissing())
+      val newResult = CombinationSuspend(
+        (r: FetchStatus) => r match {
+          case FetchDone(m: Map[Any, Any]) => {
+            val oneResult = m.get(oneId).map(FetchDone(_)).getOrElse(FetchMissing())
+            CombinationBarrier(() => x.result, oneResult)
+              .flatMap(() => y.result)
+          }
 
-          (x.result(oneResult), y.result(r)).tupled.void
+          case FetchMissing() =>
+            x.result.flatMap(() => y.result)
         }
+      )
 
-        case FetchMissing() =>
-          (x.result(r), y.result(r)).tupled.void
-      }
       BlockedRequest(newRequest, newResult)
 
     case (a@Batch(manyId, ds), b@FetchOne(oneId, _)) =>
       val combined = combineIdentities(a, b)
       val newRequest = Batch(combined, ds)
-      val newResult = (r: FetchStatus) => r match {
-        case FetchDone(m : Map[Any, Any]) => {
-          val oneResult = m.get(oneId).map(FetchDone(_)).getOrElse(FetchMissing())
-            (x.result(r), y.result(oneResult)).tupled.void
-        }
+      val newResult = CombinationSuspend(
+        (r: FetchStatus) => r match {
+          case FetchDone(m: Map[Any, Any]) => {
+            val oneResult = m.get(oneId).map(FetchDone(_)).getOrElse(FetchMissing())
+            CombinationBarrier(() => y.result, oneResult)
+              .flatMap(() => x.result)
+          }
 
-        case FetchMissing() =>
-          (x.result(r), y.result(r)).tupled.void
-      }
+          case FetchMissing() =>
+            x.result.flatMap(() => y.result)
+        }
+      )
       BlockedRequest(newRequest, newResult)
 
     case (a@Batch(manyId, ds), b@Batch(otherId, _)) =>
       val combined = combineIdentities(a, b)
       val newRequest = Batch(combined, ds)
-      val newResult = (r: FetchStatus) => (x.result(r), y.result(r)).tupled.void
+      val newResult = x.result.flatMap(() => y.result)
       BlockedRequest(newRequest, newResult)
   }
 
@@ -275,7 +342,7 @@ object `package` {
           deferred <- Deferred[F, FetchStatus]
           request = FetchOne(id, ds.data)
           result = deferred.complete _
-          blocked = BlockedRequest(request, result)
+          blocked = BlockedRequest(request, CombinationLeaf(result))
           anyDs = ds.asInstanceOf[DataSource[F, Any, Any]]
           blockedRequest = RequestMap(Map(ds.data.identity -> (anyDs, blocked)))
         } yield Blocked(blockedRequest, Unfetch[F, A](
@@ -297,7 +364,7 @@ object `package` {
           deferred <- Deferred[F, FetchStatus]
           request = FetchOne(id, ds.data)
           result = deferred.complete _
-          blocked = BlockedRequest(request, result)
+          blocked = BlockedRequest(request, CombinationLeaf(result))
           anyDs = ds.asInstanceOf[DataSource[F, Any, Any]]
           blockedRequest = RequestMap(Map(ds.data.identity -> (anyDs, blocked)))
         } yield Blocked(blockedRequest, Unfetch[F, Option[A]](
@@ -514,7 +581,7 @@ object `package` {
   private def runFetchOne[F[_]](
     q: FetchOne[Any, Any],
     ds: DataSource[F, Any, Any],
-    putResult: FetchStatus => F[Unit],
+    putResult: CombinationTailRec[F],
     cache: Ref[F, DataCache[F]],
     log: Option[Ref[F, Log]]
   )(
@@ -527,7 +594,7 @@ object `package` {
       maybeCached <- c.lookup(q.id, q.data)
       result <- maybeCached match {
         // Cached
-        case Some(v) => putResult(FetchDone(v)).as(Nil)
+        case Some(v) => runCombinationResult(putResult, FetchDone(v)).as(Nil)
 
         // Not cached, must fetch
         case None => for {
@@ -539,12 +606,12 @@ object `package` {
             case Some(a) => for {
               newC <- c.insert(q.id, a, q.data)
               _ <- cache.set(newC)
-              result <- putResult(FetchDone[Any](a))
+              result <- runCombinationResult(putResult, FetchDone[Any](a))
             } yield List(Request(q, startTime, endTime))
 
             // Missing
             case None =>
-              putResult(FetchMissing()).as(List(Request(q, startTime, endTime)))
+              runCombinationResult(putResult, FetchMissing()).as(List(Request(q, startTime, endTime)))
           }
         } yield result
       }
@@ -558,7 +625,7 @@ object `package` {
   private def runBatch[F[_]](
     q: Batch[Any, Any],
     ds: DataSource[F, Any, Any],
-    putResult: FetchStatus => F[Unit],
+    putResult: CombinationTailRec[F],
     cache: Ref[F, DataCache[F]],
     log: Option[Ref[F, Log]]
   )(
@@ -579,7 +646,7 @@ object `package` {
       cachedResults = cached.toMap
       result <- uncachedIds.toNel match {
         // All cached
-        case None => putResult(FetchDone[Map[Any, Any]](cachedResults)).as(Nil)
+        case None => runCombinationResult(putResult, FetchDone[Map[Any, Any]](cachedResults)).as(Nil)
 
         // Some uncached
         case Some(uncached) => for {
@@ -603,7 +670,7 @@ object `package` {
           updatedCache <- c.bulkInsert(batchedRequest.results.toList, q.data)
           _ <- cache.set(updatedCache)
 
-          result <- putResult(FetchDone[Map[Any, Any]](resultMap))
+          result <- runCombinationResult(putResult, FetchDone[Map[Any, Any]](resultMap))
 
         } yield batchedRequest.batches.map(Request(_, startTime, endTime))
       }
