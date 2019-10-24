@@ -66,7 +66,6 @@ class FetchBatchingTests extends FetchSpec {
   }
 
   case class BatchedDataBigId(
-    id: Integer,
     str1: String,
     str2: String,
     str3: String
@@ -203,11 +202,10 @@ class FetchBatchingTests extends FetchSpec {
   }
 
   "Very deep fetches don't overflow stack or heap" in {
-    val depth = 50000
+    val depth = 5000
     val ids = for {
       id <- 0 to depth
     } yield BatchedDataBigId(
-      id = id,
       str1 = "longString" + id,
       str2 = "longString" + (id + 1),
       str3 = "longString" + (id + 2)

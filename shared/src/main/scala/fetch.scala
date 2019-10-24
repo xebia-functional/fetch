@@ -34,13 +34,13 @@ object `package` {
 
   private[fetch] sealed trait FetchQuery[I, A] extends FetchRequest {
     def data: Data[I, A]
-    def identities: NonEmptyList[I]
+    def identities: Set[I]
   }
   private[fetch] final case class FetchOne[I, A](id: I, data: Data[I, A]) extends FetchQuery[I, A] {
-    override def identities: NonEmptyList[I] = NonEmptyList.one(id)
+    override def identities: Set[I] = Set(id)
   }
   private[fetch] final case class Batch[I, A](ids: NonEmptyList[I], data: Data[I, A]) extends FetchQuery[I, A] {
-    override def identities: NonEmptyList[I] = ids
+    override def identities: Set[I] = ids.toList.toSet
   }
 
   // Fetch result states
@@ -63,9 +63,7 @@ object `package` {
 
   /* Combines the identities of two `FetchQuery` to the same data source. */
   private def combineIdentities[I, A](x: FetchQuery[I, A], y: FetchQuery[I, A]): NonEmptyList[I] = {
-    y.identities.foldLeft(x.identities) {
-      case (acc, i) => if (acc.exists(_ == i)) acc else NonEmptyList(acc.head, acc.tail :+ i)
-    }
+    (x.identities ++ y.identities).toList.toNel.get
   }
 
   private[fetch] sealed trait CombinationTailRec[F[_]] extends Product with Serializable {
