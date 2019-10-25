@@ -31,13 +31,13 @@ To begin, add the following dependency to your SBT build file:
 [comment]: # (Start Replace)
 
 ```scala
-"com.47deg" %% "fetch" % "1.2.0"
+"com.47deg" %% "fetch" % "1.2.1"
 ```
 
 Or, if using Scala.js:
 
 ```scala
-"com.47deg" %%% "fetch" % "1.2.0"
+"com.47deg" %%% "fetch" % "1.2.1"
 ```
 
 [comment]: # (End Replace)
@@ -867,7 +867,7 @@ a fetch execution given an execution log.
 Add the following line to your dependencies for including Fetch's debugging facilities:
 
 ```scala
-"com.47deg" %% "fetch-debug" % "1.2.0"
+"com.47deg" %% "fetch-debug" % "1.2.1"
 ```
 
 ## Fetch execution
