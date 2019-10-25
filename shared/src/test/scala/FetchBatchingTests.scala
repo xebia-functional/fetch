@@ -65,11 +65,43 @@ class FetchBatchingTests extends FetchSpec {
     }
   }
 
+  case class BatchedDataBigId(
+    str1: String,
+    str2: String,
+    str3: String
+  )
+
+  object BigIdData extends Data[BatchedDataBigId, String] {
+    def name = "Big id batching"
+
+    implicit def source[F[_] : ConcurrentEffect]: DataSource[F, BatchedDataBigId, String] = new DataSource[F, BatchedDataBigId, String] {
+      override def data = BigIdData
+
+      override def CF = ConcurrentEffect[F]
+
+      override def fetch(request: BatchedDataBigId): F[Option[String]] = {
+        batch(NonEmptyList.one(request)).map(_.get(request))
+      }
+
+      override def batch(ids: NonEmptyList[BatchedDataBigId]): F[Map[BatchedDataBigId, String]] =
+        CF.pure(
+          ids.map { id =>
+            id -> id.toString
+          }.toList.toMap
+        )
+
+      override val batchExecution = InParallel
+    }
+  }
+
   def fetchBatchedDataSeq[F[_] : ConcurrentEffect](id: Int): Fetch[F, Int] =
     Fetch(BatchedDataSeq(id), SeqBatch.source)
 
   def fetchBatchedDataPar[F[_] : ConcurrentEffect](id: Int): Fetch[F, Int] =
     Fetch(BatchedDataPar(id), ParBatch.source)
+
+  def fetchBatchedDataBigId[F[_] : ConcurrentEffect](id: BatchedDataBigId): Fetch[F, String] =
+    Fetch(id, BigIdData.source)
 
   "A large fetch to a datasource with a maximum batch size is split and executed in sequence" in {
     def fetch[F[_] : ConcurrentEffect]: Fetch[F, List[Int]] =
@@ -170,20 +202,22 @@ class FetchBatchingTests extends FetchSpec {
   }
 
   "Very deep fetches don't overflow stack or heap" in {
-    val depth = 200
-    val list  = (1 to depth).toList
-    def fetch[F[_] : ConcurrentEffect]: Fetch[F, List[Int]] =
-      list.map(x => (0 until x).toList.traverse(fetchBatchedDataSeq[F]))
-        .foldLeft(
-          Fetch.pure[F, List[Int]](List.empty[Int])
-        )(_ >> _)
+    val depth = 5000
+    val ids = for {
+      id <- 0 to depth
+    } yield BatchedDataBigId(
+      str1 = "longString" + id,
+      str2 = "longString" + (id + 1),
+      str3 = "longString" + (id + 2)
+    )
 
-    val io = Fetch.runLog[IO](fetch)
+    val io = Fetch.runLog[IO](
+      ids.toList.traverse(fetchBatchedDataBigId[IO])
+    )
 
     io.map({
       case (log, result) => {
-        result shouldEqual (0 until depth).toList
-        log.rounds.size shouldEqual depth
+        result shouldEqual ids.map(_.toString)
       }
     }).unsafeToFuture
   }
