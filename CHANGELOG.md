@@ -1,5 +1,25 @@
 # Changelog
 
+## 10/29/2019 - Version 1.2.1
+
+Release changes:
+
+* Update sbt plugins ([#218](https://github.com/47deg/fetch/pull/218))
+* Update to Scala 2.13, SBT 1.3 and bump some libraries (Issue #216) ([#219](https://github.com/47deg/fetch/pull/219))
+* Update sbt to 1.3.2 ([#223](https://github.com/47deg/fetch/pull/223))
+* Update sbt-org-policies to 0.12.0-M3 ([#220](https://github.com/47deg/fetch/pull/220))
+* Update sbt-scalajs, scalajs-compiler to 0.6.29 ([#222](https://github.com/47deg/fetch/pull/222))
+* Update sbt-scalajs-crossproject to 0.6.1 ([#221](https://github.com/47deg/fetch/pull/221))
+* Update sbt-microsites to 0.9.6 ([#224](https://github.com/47deg/fetch/pull/224))
+* Update sbt-microsites to 0.9.7 ([#225](https://github.com/47deg/fetch/pull/225))
+* Update sbt to 1.3.3 ([#226](https://github.com/47deg/fetch/pull/226))
+* Stack safety of combineRequests ([#227](https://github.com/47deg/fetch/pull/227))
+* Update Scala versions ([#229](https://github.com/47deg/fetch/pull/229))
+* 1.2.1 release ([#228](https://github.com/47deg/fetch/pull/228))
+* Update Travis config ([#230](https://github.com/47deg/fetch/pull/230))
+* Update .travis.yml ([#231](https://github.com/47deg/fetch/pull/231))
+
+
 ## 09/16/2019 - Version 1.2.0
 
 Release changes:
