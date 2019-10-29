@@ -2,7 +2,7 @@
 
 [comment]: # (Start Badges)
 
-[![Join the chat at https://gitter.im/47deg/fetch](https://badges.gitter.im/47deg/fetch.svg)](https://gitter.im/47deg/fetch?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) [![Build Status](https://travis-ci.org/47deg/fetch.svg?branch=master)](https://travis-ci.org/47deg/fetch) [![codecov.io](http://codecov.io/github/47deg/fetch/coverage.svg?branch=master)](http://codecov.io/github/47deg/fetch?branch=master) [![Maven Central](https://img.shields.io/badge/maven%20central-0.6.1-green.svg)](https://oss.sonatype.org/#nexus-search;gav~com.47deg~fetch*) [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](https://raw.githubusercontent.com/47deg/fetch/master/LICENSE) [![Latest version](https://img.shields.io/badge/fetch-0.6.1-green.svg)](https://index.scala-lang.org/47deg/fetch) [![Scala.js](http://scala-js.org/assets/badges/scalajs-0.6.15.svg)](http://scala-js.org) [![GitHub Issues](https://img.shields.io/github/issues/47deg/fetch.svg)](https://github.com/47deg/fetch/issues)
+[![Join the chat at https://gitter.im/47deg/fetch](https://badges.gitter.im/47deg/fetch.svg)](https://gitter.im/47deg/fetch?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) [![Build Status](https://travis-ci.org/47deg/fetch.svg?branch=master)](https://travis-ci.org/47deg/fetch) [![codecov.io](http://codecov.io/github/47deg/fetch/coverage.svg?branch=master)](http://codecov.io/github/47deg/fetch?branch=master) [![Maven Central](https://img.shields.io/badge/maven%20central-1.2.1-green.svg)](https://oss.sonatype.org/#nexus-search;gav~com.47deg~fetch*) [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](https://raw.githubusercontent.com/47deg/fetch/master/LICENSE) [![Latest version](https://img.shields.io/badge/fetch-1.2.1-green.svg)](https://index.scala-lang.org/47deg/fetch) [![Scala.js](http://scala-js.org/assets/badges/scalajs-0.6.15.svg)](http://scala-js.org) [![GitHub Issues](https://img.shields.io/github/issues/47deg/fetch.svg)](https://github.com/47deg/fetch/issues)
 
 [comment]: # (End Badges)
 
@@ -137,8 +137,8 @@ import scala.concurrent.duration._
 // import scala.concurrent.duration._
 
 Fetch.run[IO](fetchOne).unsafeRunTimed(5.seconds)
-// --> [441] One ToString 1
-// <-- [441] One ToString 1
+// --> [134] One ToString 1
+// <-- [134] One ToString 1
 // res0: Option[String] = Some(1)
 ```
 
@@ -157,8 +157,8 @@ When executing the above fetch, note how the three identities get batched, and t
 
 ```scala
 Fetch.run[IO](fetchThree).unsafeRunTimed(5.seconds)
-// --> [441] Batch ToString NonEmptyList(1, 2, 3)
-// <-- [441] Batch ToString NonEmptyList(1, 2, 3)
+// --> [134] Batch ToString NonEmptyList(1, 2, 3)
+// <-- [134] Batch ToString NonEmptyList(1, 2, 3)
 // res1: Option[(String, String, String)] = Some((1,2,3))
 ```
 
@@ -196,12 +196,12 @@ When executing the above fetch, note how the three identities get requested in p
 
 ```scala
 Fetch.run[IO](fetchUnbatchedThree).unsafeRunTimed(5.seconds)
-// --> [441] One UnbatchedToString 1
-// --> [443] One UnbatchedToString 2
-// --> [444] One UnbatchedToString 3
-// <-- [441] One UnbatchedToString 1
-// <-- [444] One UnbatchedToString 3
-// <-- [443] One UnbatchedToString 2
+// --> [134] One UnbatchedToString 1
+// --> [136] One UnbatchedToString 2
+// --> [137] One UnbatchedToString 3
+// <-- [134] One UnbatchedToString 1
+// <-- [136] One UnbatchedToString 2
+// <-- [137] One UnbatchedToString 3
 // res2: Option[(String, String, String)] = Some((1,2,3))
 ```
 
@@ -247,10 +247,10 @@ Note how the two independent data fetches run in parallel, minimizing the latenc
 
 ```scala
 Fetch.run[IO](fetchMulti).unsafeRunTimed(5.seconds)
-// --> [441] One ToString 1
-// --> [442] One Length one
-// <-- [441] One ToString 1
-// <-- [442] One Length one
+// --> [134] One ToString 1
+// --> [135] One Length one
+// <-- [134] One ToString 1
+// <-- [135] One Length one
 // res3: Option[(String, Int)] = Some((1,3))
 ```
 
@@ -271,8 +271,8 @@ While running it, notice that the data source is only queried once. The next tim
 
 ```scala
 Fetch.run[IO](fetchTwice).unsafeRunTimed(5.seconds)
-// --> [444] One ToString 1
-// <-- [444] One ToString 1
+// --> [136] One ToString 1
+// <-- [136] One ToString 1
 // res4: Option[(String, String)] = Some((1,1))
 ```
 
