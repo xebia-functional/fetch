@@ -30,7 +30,7 @@ jobs:
       script:
         - bash <(curl -s https://codecov.io/bash)
         - sbt ++$TRAVIS_SCALA_VERSION orgAfterCISuccess
-      scala: 2.12.10
+      scala: 2.13.0
 
 services:
 - redis-server
