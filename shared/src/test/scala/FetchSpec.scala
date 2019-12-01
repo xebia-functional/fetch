@@ -16,13 +16,15 @@
 
 package fetch
 
-import org.scalatest.{AsyncFreeSpec, Matchers, DoNotDiscover}
+import org.scalatest.DoNotDiscover
 
 import scala.concurrent._
 import java.util.concurrent._
 import scala.concurrent.duration._
 
 import cats.effect._
+import org.scalatest.freespec.AsyncFreeSpec
+import org.scalatest.matchers.should.Matchers
 
 @DoNotDiscover
 class FetchSpec extends AsyncFreeSpec with Matchers {

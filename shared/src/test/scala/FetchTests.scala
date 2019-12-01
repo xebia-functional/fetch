@@ -16,7 +16,6 @@
 
 package fetch
 
-import org.scalatest.{AsyncFreeSpec, Matchers}
 
 import scala.concurrent._
 import java.util.concurrent._
