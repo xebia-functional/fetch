@@ -2,13 +2,13 @@
 
 [comment]: # (Start Badges)
 
-[![Join the chat at https://gitter.im/47deg/fetch](https://badges.gitter.im/47deg/fetch.svg)](https://gitter.im/47deg/fetch?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) [![Build Status](https://travis-ci.org/47deg/fetch.svg?branch=master)](https://travis-ci.org/47deg/fetch) [![codecov.io](http://codecov.io/github/47deg/fetch/coverage.svg?branch=master)](http://codecov.io/github/47deg/fetch?branch=master) [![Maven Central](https://img.shields.io/badge/maven%20central-1.2.1-green.svg)](https://oss.sonatype.org/#nexus-search;gav~com.47deg~fetch*) [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](https://raw.githubusercontent.com/47deg/fetch/master/LICENSE) [![Latest version](https://img.shields.io/badge/fetch-1.2.1-green.svg)](https://index.scala-lang.org/47deg/fetch) [![Scala.js](http://scala-js.org/assets/badges/scalajs-0.6.15.svg)](http://scala-js.org) [![GitHub Issues](https://img.shields.io/github/issues/47deg/fetch.svg)](https://github.com/47deg/fetch/issues)
+[![Join the chat at https://gitter.im/47deg/fetch](https://badges.gitter.im/47deg/fetch.svg)](https://gitter.im/47deg/fetch?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) [![Build Status](https://travis-ci.org/47degrees/fetch.svg?branch=master)](https://travis-ci.org/47degrees/fetch) [![codecov.io](http://codecov.io/github/47degrees/fetch/coverage.svg?branch=master)](http://codecov.io/github/47degrees/fetch?branch=master) [![Maven Central](https://img.shields.io/badge/maven%20central-1.2.1-green.svg)](https://oss.sonatype.org/#nexus-search;gav~com.47deg~fetch*) [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](https://raw.githubusercontent.com/47deg/fetch/master/LICENSE) [![Latest version](https://img.shields.io/badge/fetch-1.2.1-green.svg)](https://index.scala-lang.org/47deg/fetch) [![Scala.js](http://scala-js.org/assets/badges/scalajs-0.6.15.svg)](http://scala-js.org) [![GitHub Issues](https://img.shields.io/github/issues/47degrees/fetch.svg)](https://github.com/47degrees/fetch/issues)
 
 [comment]: # (End Badges)
 
 A library for Simple & Efficient data access in Scala and Scala.js
 
-- [Documentation](http://47deg.github.io/fetch/docs)
+- [Documentation](https://47degrees.github.io/fetch/docs)
 
 ## Installation
 
@@ -281,7 +281,7 @@ Fetch.run[IO](fetchTwice).unsafeRunTimed(5.seconds)
 
 ---
 
-For more in-depth information, take a look at our [documentation](http://47deg.github.io/fetch/docs.html).
+For more in-depth information, take a look at our [documentation](https://47degrees.github.io/fetch/docs.html).
 
 ## Fetch in the wild
 

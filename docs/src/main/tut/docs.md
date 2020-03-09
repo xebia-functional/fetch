@@ -60,7 +60,7 @@ There are other libraries in Scala that implement the same optimizations as Fetc
 
 - [Clump](https://github.com/getclump/clump) it's been around for a long time and is used in production systems at SoundCloud and LinkedIn. You can use it with Scala's or Twitter's Futures.
 
-If something is missing in Fetch that stops you from using it we'd appreciate if you [open an issue in our repository](https://github.com/47deg/fetch/issues).
+If something is missing in Fetch that stops you from using it we'd appreciate if you [open an issue in our repository](https://github.com/47degrees/fetch/issues).
 
 # Usage
 
@@ -918,8 +918,8 @@ executor.shutdownNow()
 
 # Resources
 
-- [Code](https://github.com/47deg/fetch) on GitHub.
-- [Documentation site](http://47deg.github.io/fetch/)
+- [Code](https://github.com/47degrees/fetch) on GitHub.
+- [Documentation site](https://47degrees.github.io/fetch/)
 - [Fetch: Simple & Efficient data access](https://www.youtube.com/watch?v=45fcKYFb0EU) talk at [Typelevel Summit in Oslo](http://typelevel.org/event/2016-05-summit-oslo/)
 
 # Acknowledgements

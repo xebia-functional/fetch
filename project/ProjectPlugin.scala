@@ -32,7 +32,7 @@ object ProjectPlugin extends AutoPlugin {
       micrositeDescription := "Simple & Efficient data fetching",
       micrositeBaseUrl := "fetch",
       micrositeDocumentationUrl := "/fetch/docs",
-      micrositeGithubOwner := "47deg",
+      micrositeGithubOwner := "47degrees",
       micrositeGithubRepo := "fetch",
       micrositeHighlightTheme := "tomorrow",
       micrositeExternalLayoutsDirectory := (resourceDirectory in Compile).value / "microsite" / "_layouts",
@@ -106,7 +106,7 @@ object ProjectPlugin extends AutoPlugin {
         description := "Simple & Efficient data access for Scala and Scala.js",
         orgProjectName := "Fetch",
         startYear := Option(2016),
-        homepage := Option(url("http://47deg.github.io/fetch/")),
+        homepage := Option(url("https://47degrees.github.io/fetch/")),
         orgBadgeListSetting := List(
           GitterBadge.apply(_),
           TravisBadge.apply(_),

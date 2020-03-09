@@ -1,4 +1,5 @@
-import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
+import sbtcrossproject.CrossPlugin.autoImport.{CrossType, crossProject}
+import sbtorgpolicies.model.GitHubSettings
 
 pgpPassphrase := Some(getEnvVar("PGP_PASSPHRASE").getOrElse("").toCharArray)
 pgpPublicRing := file(s"$gpgFolder/pubring.gpg")
@@ -10,6 +11,14 @@ lazy val root = project
   .in(file("."))
   .settings(name := "fetch")
   .settings(moduleName := "root")
+  .settings(orgGithubSetting := GitHubSettings(
+    organization = "47degrees",
+    project = (name in LocalRootProject).value,
+    organizationName = "47 Degrees",
+    groupId = "com.47deg",
+    organizationHomePage = url("http://47deg.com"),
+    organizationEmail = "hello@47deg.com"
+  ))
   .aggregate(fetchJS, fetchJVM, debugJVM, debugJS)
 
 lazy val fetch = crossProject(JSPlatform, JVMPlatform)
