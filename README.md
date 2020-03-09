@@ -8,7 +8,7 @@
 
 A library for Simple & Efficient data access in Scala and Scala.js
 
-- [Documentation](http://47deg.github.io/fetch/docs)
+- [Documentation](https://47degrees.github.io/fetch/docs)
 
 ## Installation
 
@@ -281,7 +281,7 @@ Fetch.run[IO](fetchTwice).unsafeRunTimed(5.seconds)
 
 ---
 
-For more in-depth information, take a look at our [documentation](http://47deg.github.io/fetch/docs.html).
+For more in-depth information, take a look at our [documentation](https://47degrees.github.io/fetch/docs.html).
 
 ## Fetch in the wild
 

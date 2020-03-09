@@ -4,32 +4,32 @@
 
 Release changes:
 
-* Update sbt plugins ([#218](https://github.com/47deg/fetch/pull/218))
-* Update to Scala 2.13, SBT 1.3 and bump some libraries (Issue #216) ([#219](https://github.com/47deg/fetch/pull/219))
-* Update sbt to 1.3.2 ([#223](https://github.com/47deg/fetch/pull/223))
-* Update sbt-org-policies to 0.12.0-M3 ([#220](https://github.com/47deg/fetch/pull/220))
-* Update sbt-scalajs, scalajs-compiler to 0.6.29 ([#222](https://github.com/47deg/fetch/pull/222))
-* Update sbt-scalajs-crossproject to 0.6.1 ([#221](https://github.com/47deg/fetch/pull/221))
-* Update sbt-microsites to 0.9.6 ([#224](https://github.com/47deg/fetch/pull/224))
-* Update sbt-microsites to 0.9.7 ([#225](https://github.com/47deg/fetch/pull/225))
-* Update sbt to 1.3.3 ([#226](https://github.com/47deg/fetch/pull/226))
-* Stack safety of combineRequests ([#227](https://github.com/47deg/fetch/pull/227))
-* Update Scala versions ([#229](https://github.com/47deg/fetch/pull/229))
-* 1.2.1 release ([#228](https://github.com/47deg/fetch/pull/228))
-* Update Travis config ([#230](https://github.com/47deg/fetch/pull/230))
-* Update .travis.yml ([#231](https://github.com/47deg/fetch/pull/231))
+* Update sbt plugins ([#218](https://github.com/47degrees/fetch/pull/218))
+* Update to Scala 2.13, SBT 1.3 and bump some libraries (Issue #216) ([#219](https://github.com/47degrees/fetch/pull/219))
+* Update sbt to 1.3.2 ([#223](https://github.com/47degrees/fetch/pull/223))
+* Update sbt-org-policies to 0.12.0-M3 ([#220](https://github.com/47degrees/fetch/pull/220))
+* Update sbt-scalajs, scalajs-compiler to 0.6.29 ([#222](https://github.com/47degrees/fetch/pull/222))
+* Update sbt-scalajs-crossproject to 0.6.1 ([#221](https://github.com/47degrees/fetch/pull/221))
+* Update sbt-microsites to 0.9.6 ([#224](https://github.com/47degrees/fetch/pull/224))
+* Update sbt-microsites to 0.9.7 ([#225](https://github.com/47degrees/fetch/pull/225))
+* Update sbt to 1.3.3 ([#226](https://github.com/47degrees/fetch/pull/226))
+* Stack safety of combineRequests ([#227](https://github.com/47degrees/fetch/pull/227))
+* Update Scala versions ([#229](https://github.com/47degrees/fetch/pull/229))
+* 1.2.1 release ([#228](https://github.com/47degrees/fetch/pull/228))
+* Update Travis config ([#230](https://github.com/47degrees/fetch/pull/230))
+* Update .travis.yml ([#231](https://github.com/47degrees/fetch/pull/231))
 
 
 ## 09/16/2019 - Version 1.2.0
 
 Release changes:
 
-* Update CODE_OF_CONDUCT.md ([#205](https://github.com/47deg/fetch/pull/205))
-* Update README.md ([#208](https://github.com/47deg/fetch/pull/208))
-* Only run Travis builds agains OpenJDK8 ([#207](https://github.com/47deg/fetch/pull/207))
-* Redesign Implementation ([#203](https://github.com/47deg/fetch/pull/203))
-* Fix typo on home page ([#209](https://github.com/47deg/fetch/pull/209))
-* [website] Various bugfixes/improvements ([#210](https://github.com/47deg/fetch/pull/210))
+* Update CODE_OF_CONDUCT.md ([#205](https://github.com/47degrees/fetch/pull/205))
+* Update README.md ([#208](https://github.com/47degrees/fetch/pull/208))
+* Only run Travis builds agains OpenJDK8 ([#207](https://github.com/47degrees/fetch/pull/207))
+* Redesign Implementation ([#203](https://github.com/47degrees/fetch/pull/203))
+* Fix typo on home page ([#209](https://github.com/47degrees/fetch/pull/209))
+* [website] Various bugfixes/improvements ([#210](https://github.com/47degrees/fetch/pull/210))
 * refactor(fetch): Loosen effect constraint for liftIO. ([#215](https://github.com/47deg/fetch/pull/215))
 * Release 1.2.0 ([#214](https://github.com/47deg/fetch/pull/214))
 * chore(dependencies): Update cats and monix dependencies. ([#212](https://github.com/47deg/fetch/pull/212))
