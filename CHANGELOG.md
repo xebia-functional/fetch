@@ -30,9 +30,9 @@ Release changes:
 * Redesign Implementation ([#203](https://github.com/47degrees/fetch/pull/203))
 * Fix typo on home page ([#209](https://github.com/47degrees/fetch/pull/209))
 * [website] Various bugfixes/improvements ([#210](https://github.com/47degrees/fetch/pull/210))
-* refactor(fetch): Loosen effect constraint for liftIO. ([#215](https://github.com/47deg/fetch/pull/215))
-* Release 1.2.0 ([#214](https://github.com/47deg/fetch/pull/214))
-* chore(dependencies): Update cats and monix dependencies. ([#212](https://github.com/47deg/fetch/pull/212))
+* refactor(fetch): Loosen effect constraint for liftIO. ([#215](https://github.com/47degrees/fetch/pull/215))
+* Release 1.2.0 ([#214](https://github.com/47degrees/fetch/pull/214))
+* chore(dependencies): Update cats and monix dependencies. ([#212](https://github.com/47degrees/fetch/pull/212))
 
 
 ## 09/16/2019 - Version 1.2.0
@@ -46,16 +46,16 @@ Release changes:
 
 Release changes:
 
-* Run a Fetch into a Monix Task ([#170](https://github.com/47deg/fetch/pull/170))
-* Don't run examples tests every time ([#186](https://github.com/47deg/fetch/pull/186))
-* Loosen implicit constraints ([#187](https://github.com/47deg/fetch/pull/187))
-* Fetch#liftIO ([#182](https://github.com/47deg/fetch/pull/182))
-* Lift Concurrent actions to Fetch ([#189](https://github.com/47deg/fetch/pull/189))
-* Switch to Scala Code of Conduct ([#192](https://github.com/47deg/fetch/pull/192))
-* Add Fetch#runAll ([#194](https://github.com/47deg/fetch/pull/194))
-* Upgrades sbt-org-policies ([#196](https://github.com/47deg/fetch/pull/196))
-* Improve Redis example ([#197](https://github.com/47deg/fetch/pull/197))
-* 1.1.0 release ([#198](https://github.com/47deg/fetch/pull/198))
+* Run a Fetch into a Monix Task ([#170](https://github.com/47degrees/fetch/pull/170))
+* Don't run examples tests every time ([#186](https://github.com/47degrees/fetch/pull/186))
+* Loosen implicit constraints ([#187](https://github.com/47degrees/fetch/pull/187))
+* Fetch#liftIO ([#182](https://github.com/47degrees/fetch/pull/182))
+* Lift Concurrent actions to Fetch ([#189](https://github.com/47degrees/fetch/pull/189))
+* Switch to Scala Code of Conduct ([#192](https://github.com/47degrees/fetch/pull/192))
+* Add Fetch#runAll ([#194](https://github.com/47degrees/fetch/pull/194))
+* Upgrades sbt-org-policies ([#196](https://github.com/47degrees/fetch/pull/196))
+* Improve Redis example ([#197](https://github.com/47degrees/fetch/pull/197))
+* 1.1.0 release ([#198](https://github.com/47degrees/fetch/pull/198))
 
 ## 02/26/2019 - Version 1.0.0
 
@@ -87,91 +87,91 @@ The 1.0.0 release of Fetch is a redesign of the library in terms of `cats-effect
 
 ### Documentation
 
-- Proof-of-concept Redis cache implementation of `DataCache` ([#161](https://github.com/47deg/fetch/pull/161))
+- Proof-of-concept Redis cache implementation of `DataCache` ([#161](https://github.com/47degrees/fetch/pull/161))
 - Removed Monix, Future, and Twitter Future subprojects. Most of them should work with `cats-effect` abstractions already
-- GrapQL query interpreter example ([#178](https://github.com/47deg/fetch/pull/178))
-- Example using Monix Scheduler and Task to run fetches ([#178](https://github.com/47deg/fetch/pull/178))
+- GrapQL query interpreter example ([#178](https://github.com/47degrees/fetch/pull/178))
+- Example using Monix Scheduler and Task to run fetches ([#178](https://github.com/47degrees/fetch/pull/178))
 
 ## 08/21/2018 - Version 0.7.3
 
 Release changes:
 
-* Updated sbt-org-policies version to 0.9.1 ([#150](https://github.com/47deg/fetch/pull/150))
-* Release Fetch v0.7.3  ([#151](https://github.com/47deg/fetch/pull/151))
+* Updated sbt-org-policies version to 0.9.1 ([#150](https://github.com/47degrees/fetch/pull/150))
+* Release Fetch v0.7.3  ([#151](https://github.com/47degrees/fetch/pull/151))
 
 
 ## 06/13/2018 - Version 0.7.3
 
 Release changes:
 
-* Updated sbt-org-policies version to 0.9.1 ([#150](https://github.com/47deg/fetch/pull/150))
-* Release Fetch v0.7.3  ([#151](https://github.com/47deg/fetch/pull/151))
+* Updated sbt-org-policies version to 0.9.1 ([#150](https://github.com/47degrees/fetch/pull/150))
+* Release Fetch v0.7.3  ([#151](https://github.com/47degrees/fetch/pull/151))
 
 
 ## 01/23/2018 - Version 0.7.2
 
 Release changes:
 
-* Update dependencies, especially to cats 1.0.1 ([#146](https://github.com/47deg/fetch/pull/146))
-* Releases 0.7.2 for cats 1.0.1 with #146 ([#147](https://github.com/47deg/fetch/pull/147))
+* Update dependencies, especially to cats 1.0.1 ([#146](https://github.com/47degrees/fetch/pull/146))
+* Releases 0.7.2 for cats 1.0.1 with #146 ([#147](https://github.com/47degrees/fetch/pull/147))
 
 
 ## 11/21/2017 - Version 0.7.1
 
 Release changes:
 
-* Cleanup CHANGELOG after failed release ([#141](https://github.com/47deg/fetch/pull/141))
-* Upgrades to cats 1.0.0-RC1 ([#143](https://github.com/47deg/fetch/pull/143))
+* Cleanup CHANGELOG after failed release ([#141](https://github.com/47degrees/fetch/pull/141))
+* Upgrades to cats 1.0.0-RC1 ([#143](https://github.com/47degrees/fetch/pull/143))
 
 
 ## 10/06/2017 - Version 0.7.0
 
 Release changes:
 
-* Update dependencies (Cats 1.0.0-MF) ([#137](https://github.com/47deg/fetch/pull/137))
-* Update name of Twitter module ([#138](https://github.com/47deg/fetch/pull/138))
-* Release Fetch v0.7.0 ([#139](https://github.com/47deg/fetch/pull/139))
-* Release 0.7.0 ([#140](https://github.com/47deg/fetch/pull/140))
+* Update dependencies (Cats 1.0.0-MF) ([#137](https://github.com/47degrees/fetch/pull/137))
+* Update name of Twitter module ([#138](https://github.com/47degrees/fetch/pull/138))
+* Release Fetch v0.7.0 ([#139](https://github.com/47degrees/fetch/pull/139))
+* Release 0.7.0 ([#140](https://github.com/47degrees/fetch/pull/140))
 
 
 ## 08/22/2017 - Version 0.6.3
 
 Release changes:
 
-* Add timeout capability to Future implementation of FetchMonadError ([#127](https://github.com/47deg/fetch/pull/127))
-* Adds commercial support statement ([#129](https://github.com/47deg/fetch/pull/129))
-* Add Twitter future support ([#128](https://github.com/47deg/fetch/pull/128))
-* Enforce consistent arrow symbols using scalafmt ([#130](https://github.com/47deg/fetch/pull/130))
-* Generalize timeout tests. Fix twitter timeout. ([#131](https://github.com/47deg/fetch/pull/131))
-* Move and reuse TestHelper ([#132](https://github.com/47deg/fetch/pull/132))
-* Release v0.6.3 ([#133](https://github.com/47deg/fetch/pull/133))
-* Change delay in flaky timeout test ([#134](https://github.com/47deg/fetch/pull/134))
+* Add timeout capability to Future implementation of FetchMonadError ([#127](https://github.com/47degrees/fetch/pull/127))
+* Adds commercial support statement ([#129](https://github.com/47degrees/fetch/pull/129))
+* Add Twitter future support ([#128](https://github.com/47degrees/fetch/pull/128))
+* Enforce consistent arrow symbols using scalafmt ([#130](https://github.com/47degrees/fetch/pull/130))
+* Generalize timeout tests. Fix twitter timeout. ([#131](https://github.com/47degrees/fetch/pull/131))
+* Move and reuse TestHelper ([#132](https://github.com/47degrees/fetch/pull/132))
+* Release v0.6.3 ([#133](https://github.com/47degrees/fetch/pull/133))
+* Change delay in flaky timeout test ([#134](https://github.com/47degrees/fetch/pull/134))
 
 
 ## 06/01/2017 - Version 0.6.2
 
 Release changes:
 
-* Removes dup doc files ([#117](https://github.com/47deg/fetch/pull/117))
-* orgScriptCI task integration ([#118](https://github.com/47deg/fetch/pull/118))
-* Installs Travis to be able to publish the Microsite automatically ([#119](https://github.com/47deg/fetch/pull/119))
-* Typo in README ([#120](https://github.com/47deg/fetch/pull/120))
-* Refactor interpreters + Change Fetch.traverse ([#123](https://github.com/47deg/fetch/pull/123))
-* Releases 0.6.2 ([#125](https://github.com/47deg/fetch/pull/125))
+* Removes dup doc files ([#117](https://github.com/47degrees/fetch/pull/117))
+* orgScriptCI task integration ([#118](https://github.com/47degrees/fetch/pull/118))
+* Installs Travis to be able to publish the Microsite automatically ([#119](https://github.com/47degrees/fetch/pull/119))
+* Typo in README ([#120](https://github.com/47degrees/fetch/pull/120))
+* Refactor interpreters + Change Fetch.traverse ([#123](https://github.com/47degrees/fetch/pull/123))
+* Releases 0.6.2 ([#125](https://github.com/47degrees/fetch/pull/125))
 
 
 ## 04/19/2017 - Version 0.6.1
 
 Release changes:
 
-* Add batchingOnly convenience method ([#110](https://github.com/47deg/fetch/pull/110))
-* Update AUTHORS.md ([#111](https://github.com/47deg/fetch/pull/111))
-* Add curried apply to Fetch object ([#109](https://github.com/47deg/fetch/pull/109))
-* Allow sequential and parallel batches ([#113](https://github.com/47deg/fetch/pull/113))
-* 0.6.0 release ([#114](https://github.com/47deg/fetch/pull/114))
-* Reduce stack consumption ([#95](https://github.com/47deg/fetch/pull/95))
-* Integrates sbt-org-policies plugin ([#115](https://github.com/47deg/fetch/pull/115))
-* Auto-updating fetch version in docs ([#116](https://github.com/47deg/fetch/pull/116))
+* Add batchingOnly convenience method ([#110](https://github.com/47degrees/fetch/pull/110))
+* Update AUTHORS.md ([#111](https://github.com/47degrees/fetch/pull/111))
+* Add curried apply to Fetch object ([#109](https://github.com/47degrees/fetch/pull/109))
+* Allow sequential and parallel batches ([#113](https://github.com/47degrees/fetch/pull/113))
+* 0.6.0 release ([#114](https://github.com/47degrees/fetch/pull/114))
+* Reduce stack consumption ([#95](https://github.com/47degrees/fetch/pull/95))
+* Integrates sbt-org-policies plugin ([#115](https://github.com/47degrees/fetch/pull/115))
+* Auto-updating fetch version in docs ([#116](https://github.com/47degrees/fetch/pull/116))
 
 
 ## 2017-03-17 - Version 0.6.0
@@ -194,7 +194,7 @@ Date: 2016-11-14
 
 - Added support for Scala 2.12.0
 - Updated cats to 0.8.1 (and monix to the compatible 2.1.0).
-- Support a maximum batch size per `DataSource` (https://github.com/47deg/fetch/pull/76).
+- Support a maximum batch size per `DataSource` (https://github.com/47degrees/fetch/pull/76).
 - Provided a new implementation for Parallel joins. This new impl changes the way fetches are inspected to parallelize independent fetches. It does this by adding a new Join construct to the Fetch structure. This Join is parallelized in a new intermediate interpreter which inspects the actual Free constructs and replaces cached fetches by Free.Pure.
 - Updated the scalafmt version which triggered some code reformatting. There is apparently an issue with sbt and scalafmt (sbt/sbt#2786) which keeps us from using sbt 0.13.13.
 
