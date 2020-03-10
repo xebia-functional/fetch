@@ -10,27 +10,48 @@ jdk:
 - openjdk8
 
 before_install:
-- if [ "$TRAVIS_BRANCH" = "master" -a "$TRAVIS_PULL_REQUEST" = "false" ]; then openssl aes-256-cbc
-   -K $encrypted_37b99bd39158_key -iv $encrypted_37b99bd39158_iv
-   -in secring.gpg.enc -out secring.gpg -d; fi
+- if [ "$TRAVIS_BRANCH" = "master" -a "$TRAVIS_PULL_REQUEST" = "false" ]; then
+    openssl aes-256-cbc -K $encrypted_37b99bd39158_key -iv $encrypted_37b99bd39158_iv -in secret_key.asc.enc -out secret_key.asc -d;
+    gpg --import --batch --passphrase "$PGP_PASSPHRASE" secret_key.asc;
+  fi
 - export PATH=${PATH}:./vendor/bundle
 
 install:
-- rvm use 2.3.0 --install --fuzzy
+- rvm use 2.6.5 --install --fuzzy
 - gem install sass
-- gem install jekyll -v 3.2.1
+- gem install jekyll -v 4
 
-script:
-- sbt ++$TRAVIS_SCALA_VERSION orgScriptCI
-- sbt 'examples/test:compile'
+stages:
+  - validation
+  - deploy
+  - microsite
 
 jobs:
   include:
+    - stage: validation
+      script:
+        - sbt ++$TRAVIS_SCALA_VERSION clean validateDocs validateCoverage
     - stage: deploy
+      if: branch = master AND type != pull_request
+      name: "Publish artifacts"
       script:
         - bash <(curl -s https://codecov.io/bash)
-        - sbt ++$TRAVIS_SCALA_VERSION orgAfterCISuccess
-      scala: 2.13.0
-
-services:
-- redis-server
+        - if grep -q "SNAPSHOT" version.sbt; then
+            sbt ++$TRAVIS_SCALA_VERSION publish;
+            else
+            sbt orgUpdateDocFiles;
+            git reset --hard HEAD;
+            git clean -f;
+            git checkout master;
+            git pull origin master;
+            sbt release;
+          fi
+    - stage: microsite
+      if: branch = master AND type != pull_request
+      name: "Publish microsite"
+      script:
+        - if grep -q "SNAPSHOT" version.sbt; then
+          echo "Skipping microsite publication, snapshot version";
+          else
+          sbt docs/publishMicrosite;
+          fi
