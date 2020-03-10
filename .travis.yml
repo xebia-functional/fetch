@@ -38,20 +38,13 @@ jobs:
         - bash <(curl -s https://codecov.io/bash)
         - if grep -q "SNAPSHOT" version.sbt; then
             sbt ++$TRAVIS_SCALA_VERSION publish;
-            else
+          else
             sbt orgUpdateDocFiles;
             git reset --hard HEAD;
             git clean -f;
             git checkout master;
             git pull origin master;
             sbt release;
+            sbt docs/publishMicrosite;
           fi
-    - stage: microsite
-      if: branch = master AND type != pull_request
-      name: "Publish microsite"
-      script:
-        - if grep -q "SNAPSHOT" version.sbt; then
-          echo "Skipping microsite publication, snapshot version";
-          else
-          sbt docs/publishMicrosite;
-          fi
+      scala: 2.13.0
