@@ -247,8 +247,8 @@ dependencies.</p>
 <p>We can now run the <code class="highlighter-rouge">IO</code> and see its result:</p>
 
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">Fetch</span><span class="o">.</span><span class="py">run</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="n">fetchUser</span><span class="o">).</span><span class="py">unsafeRunTimed</span><span class="o">(</span><span class="mf">5.</span><span class="n">seconds</span><span class="o">)</span>
-<span class="c1">// --&gt; [130] One User 1</span>
-<span class="c1">// &lt;-- [130] One User 1</span>
+<span class="c1">// --&gt; [224] One User 1</span>
+<span class="c1">// &lt;-- [224] One User 1</span>
 <span class="c1">// res1: Option[User] = Some(User(1,@one))</span>
 </code></pre></div></div>
 
@@ -265,10 +265,10 @@ dependencies.</p>
 <p>When composing fetches with <code class="highlighter-rouge">flatMap</code> we are telling Fetch that the second one depends on the previous one, so it isn’t able to make any optimizations. When running the above fetch, we will query the user data source in two rounds: one for the user with id 1 and another for the user with id 2.</p>
 
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">Fetch</span><span class="o">.</span><span class="py">run</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="n">fetchTwoUsers</span><span class="o">).</span><span class="py">unsafeRunTimed</span><span class="o">(</span><span class="mf">5.</span><span class="n">seconds</span><span class="o">)</span>
-<span class="c1">// --&gt; [130] One User 1</span>
-<span class="c1">// &lt;-- [130] One User 1</span>
-<span class="c1">// --&gt; [131] One User 2</span>
-<span class="c1">// &lt;-- [131] One User 2</span>
+<span class="c1">// --&gt; [224] One User 1</span>
+<span class="c1">// &lt;-- [224] One User 1</span>
+<span class="c1">// --&gt; [225] One User 2</span>
+<span class="c1">// &lt;-- [225] One User 2</span>
 <span class="c1">// res2: Option[(User, User)] = Some((User(1,@one),User(2,@two)))</span>
 </code></pre></div></div>
 
@@ -285,8 +285,8 @@ help us tell the library that those fetches are independent, and thus can be bat
 <p>Note how both ids (1 and 2) are requested in a single query to the data source when executing the fetch.</p>
 
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">Fetch</span><span class="o">.</span><span class="py">run</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="n">fetchProduct</span><span class="o">).</span><span class="py">unsafeRunTimed</span><span class="o">(</span><span class="mf">5.</span><span class="n">seconds</span><span class="o">)</span>
-<span class="c1">// --&gt; [130] Batch Users NonEmptyList(1, 2)</span>
-<span class="c1">// &lt;-- [130] Batch Users NonEmptyList(1, 2)</span>
+<span class="c1">// --&gt; [224] Batch Users NonEmptyList(1, 2)</span>
+<span class="c1">// &lt;-- [224] Batch Users NonEmptyList(1, 2)</span>
 <span class="c1">// res3: Option[(User, User)] = Some((User(1,@one),User(2,@two)))</span>
 </code></pre></div></div>
 
@@ -301,8 +301,8 @@ help us tell the library that those fetches are independent, and thus can be bat
 <p>Note that when running the fetch, the identity 1 is only requested once even when it is needed by both fetches.</p>
 
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">Fetch</span><span class="o">.</span><span class="py">run</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="n">fetchDuped</span><span class="o">).</span><span class="py">unsafeRunTimed</span><span class="o">(</span><span class="mf">5.</span><span class="n">seconds</span><span class="o">)</span>
-<span class="c1">// --&gt; [132] One User 1</span>
-<span class="c1">// &lt;-- [132] One User 1</span>
+<span class="c1">// --&gt; [226] One User 1</span>
+<span class="c1">// &lt;-- [226] One User 1</span>
 <span class="c1">// res4: Option[(User, User)] = Some((User(1,@one),User(1,@one)))</span>
 </code></pre></div></div>
 
@@ -322,8 +322,8 @@ during the course of a fetch execution, which can lead to inconsistencies in the
 <p>The above fetch asks for the same identity multiple times. Let’s see what happens when executing it.</p>
 
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">Fetch</span><span class="o">.</span><span class="py">run</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="n">fetchCached</span><span class="o">).</span><span class="py">unsafeRunTimed</span><span class="o">(</span><span class="mf">5.</span><span class="n">seconds</span><span class="o">)</span>
-<span class="c1">// --&gt; [131] One User 1</span>
-<span class="c1">// &lt;-- [131] One User 1</span>
+<span class="c1">// --&gt; [225] One User 1</span>
+<span class="c1">// &lt;-- [225] One User 1</span>
 <span class="c1">// res5: Option[(User, User)] = Some((User(1,@one),User(1,@one)))</span>
 </code></pre></div></div>
 
@@ -412,10 +412,10 @@ let’s look at how we can combine more than one data source.</p>
 <p>We can now run the previous fetch, querying the posts data source first and the user data source afterwards.</p>
 
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">Fetch</span><span class="o">.</span><span class="py">run</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="n">fetchMulti</span><span class="o">).</span><span class="py">unsafeRunTimed</span><span class="o">(</span><span class="mf">5.</span><span class="n">seconds</span><span class="o">)</span>
-<span class="c1">// --&gt; [130] One Post 1</span>
-<span class="c1">// &lt;-- [130] One Post 1</span>
-<span class="c1">// --&gt; [132] One Post Topic Post(1,2,An article)</span>
-<span class="c1">// &lt;-- [132] One Post Topic Post(1,2,An article)</span>
+<span class="c1">// --&gt; [224] One Post 1</span>
+<span class="c1">// &lt;-- [224] One Post 1</span>
+<span class="c1">// --&gt; [226] One Post Topic Post(1,2,An article)</span>
+<span class="c1">// &lt;-- [226] One Post Topic Post(1,2,An article)</span>
 <span class="c1">// res6: Option[(Post, PostTopic)] = Some((Post(1,2,An article),applicative))</span>
 </code></pre></div></div>
 
@@ -442,10 +442,10 @@ evaluated together.</p>
 <p>The above example combines data from two different sources, and the library knows they are independent.</p>
 
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">Fetch</span><span class="o">.</span><span class="py">run</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="n">fetchConcurrent</span><span class="o">).</span><span class="py">unsafeRunTimed</span><span class="o">(</span><span class="mf">5.</span><span class="n">seconds</span><span class="o">)</span>
-<span class="c1">// --&gt; [131] One User 2</span>
-<span class="c1">// --&gt; [133] One Post 1</span>
-<span class="c1">// &lt;-- [131] One User 2</span>
-<span class="c1">// &lt;-- [133] One Post 1</span>
+<span class="c1">// --&gt; [227] One Post 1</span>
+<span class="c1">// --&gt; [225] One User 2</span>
+<span class="c1">// &lt;-- [227] One Post 1</span>
+<span class="c1">// &lt;-- [225] One User 2</span>
 <span class="c1">// res7: Option[(Post, User)] = Some((Post(1,2,An article),User(2,@two)))</span>
 </code></pre></div></div>
 
@@ -470,8 +470,8 @@ data source and running fetches to different sources in parallel. Note that the 
 <p>Since <code class="highlighter-rouge">sequence</code> uses applicative operations internally, the library is able to perform optimizations across all the sequenced fetches.</p>
 
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">Fetch</span><span class="o">.</span><span class="py">run</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="n">fetchSequence</span><span class="o">).</span><span class="py">unsafeRunTimed</span><span class="o">(</span><span class="mf">5.</span><span class="n">seconds</span><span class="o">)</span>
-<span class="c1">// --&gt; [130] Batch Users NonEmptyList(1, 2, 3)</span>
-<span class="c1">// &lt;-- [130] Batch Users NonEmptyList(1, 2, 3)</span>
+<span class="c1">// --&gt; [224] Batch Users NonEmptyList(1, 2, 3)</span>
+<span class="c1">// &lt;-- [224] Batch Users NonEmptyList(1, 2, 3)</span>
 <span class="c1">// res8: Option[List[User]] = Some(List(User(1,@one), User(2,@two), User(3,@three)))</span>
 </code></pre></div></div>
 
@@ -488,8 +488,8 @@ data source and running fetches to different sources in parallel. Note that the 
 <p>As you may have guessed, all the optimizations made by <code class="highlighter-rouge">sequence</code> still apply when using <code class="highlighter-rouge">traverse</code>.</p>
 
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">Fetch</span><span class="o">.</span><span class="py">run</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="n">fetchTraverse</span><span class="o">).</span><span class="py">unsafeRunTimed</span><span class="o">(</span><span class="mf">5.</span><span class="n">seconds</span><span class="o">)</span>
-<span class="c1">// --&gt; [132] Batch Users NonEmptyList(1, 2, 3)</span>
-<span class="c1">// &lt;-- [132] Batch Users NonEmptyList(1, 2, 3)</span>
+<span class="c1">// --&gt; [226] Batch Users NonEmptyList(1, 2, 3)</span>
+<span class="c1">// &lt;-- [226] Batch Users NonEmptyList(1, 2, 3)</span>
 <span class="c1">// res9: Option[List[User]] = Some(List(User(1,@one), User(2,@two), User(3,@three)))</span>
 </code></pre></div></div>
 
@@ -525,8 +525,8 @@ in the cache.</p>
 <p>If only part of the data is cached, the cached data won’t be asked for:</p>
 
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">Fetch</span><span class="o">.</span><span class="py">run</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="n">fetchManyUsers</span><span class="o">,</span> <span class="n">cache</span><span class="o">).</span><span class="py">unsafeRunTimed</span><span class="o">(</span><span class="mf">5.</span><span class="n">seconds</span><span class="o">)</span>
-<span class="c1">// --&gt; [133] Batch Users NonEmptyList(2, 3)</span>
-<span class="c1">// &lt;-- [133] Batch Users NonEmptyList(2, 3)</span>
+<span class="c1">// --&gt; [225] Batch Users NonEmptyList(2, 3)</span>
+<span class="c1">// &lt;-- [225] Batch Users NonEmptyList(2, 3)</span>
 <span class="c1">// res11: Option[List[User]] = Some(List(User(1,purrgrammer), User(2,@two), User(3,@three)))</span>
 </code></pre></div></div>
 
@@ -538,9 +538,9 @@ in the cache.</p>
 data sources.</p>
 
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nf">val</span> <span class="o">(</span><span class="n">populatedCache</span><span class="o">,</span> <span class="n">result</span><span class="o">)</span> <span class="k">=</span> <span class="nv">Fetch</span><span class="o">.</span><span class="py">runCache</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="n">fetchManyUsers</span><span class="o">).</span><span class="py">unsafeRunSync</span>
-<span class="c1">// --&gt; [130] Batch Users NonEmptyList(1, 2, 3)</span>
-<span class="c1">// &lt;-- [130] Batch Users NonEmptyList(1, 2, 3)</span>
-<span class="c1">// populatedCache: fetch.DataCache[cats.effect.IO] = InMemoryCache(Map((Users$@27c2a0e6,fetch.DataSourceId@1) -&gt; fetch.DataSourceResult@d3eb82b3, (Users$@27c2a0e6,fetch.DataSourceId@2) -&gt; fetch.DataSourceResult@d43da1de, (Users$@27c2a0e6,fetch.DataSourceId@3) -&gt; fetch.DataSourceResult@30b9ef3f))</span>
+<span class="c1">// --&gt; [224] Batch Users NonEmptyList(1, 2, 3)</span>
+<span class="c1">// &lt;-- [224] Batch Users NonEmptyList(1, 2, 3)</span>
+<span class="c1">// populatedCache: fetch.DataCache[cats.effect.IO] = InMemoryCache(Map((Users$@1e6f9f2d,fetch.DataSourceId@1) -&gt; fetch.DataSourceResult@d3eb82b3, (Users$@1e6f9f2d,fetch.DataSourceId@2) -&gt; fetch.DataSourceResult@d43da1de, (Users$@1e6f9f2d,fetch.DataSourceId@3) -&gt; fetch.DataSourceResult@30b9ef3f))</span>
 <span class="c1">// result: List[User] = List(User(1,@one), User(2,@two), User(3,@three))</span>
 
 <span class="nv">Fetch</span><span class="o">.</span><span class="py">run</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="n">fetchManyUsers</span><span class="o">,</span> <span class="n">populatedCache</span><span class="o">).</span><span class="py">unsafeRunTimed</span><span class="o">(</span><span class="mf">5.</span><span class="n">seconds</span><span class="o">)</span>
@@ -583,10 +583,10 @@ data sources.</p>
 <span class="c1">// fetchSameTwice: [F[_]](implicit evidence$1: cats.effect.Concurrent[F])fetch.Fetch[F,(User, User)]</span>
 
 <span class="nv">Fetch</span><span class="o">.</span><span class="py">run</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="n">fetchSameTwice</span><span class="o">,</span> <span class="n">forgetfulCache</span><span class="o">).</span><span class="py">unsafeRunTimed</span><span class="o">(</span><span class="mf">5.</span><span class="n">seconds</span><span class="o">)</span>
-<span class="c1">// --&gt; [131] One User 1</span>
-<span class="c1">// &lt;-- [131] One User 1</span>
-<span class="c1">// --&gt; [133] One User 1</span>
-<span class="c1">// &lt;-- [133] One User 1</span>
+<span class="c1">// --&gt; [227] One User 1</span>
+<span class="c1">// &lt;-- [227] One User 1</span>
+<span class="c1">// --&gt; [225] One User 1</span>
+<span class="c1">// &lt;-- [225] One User 1</span>
 <span class="c1">// res13: Option[(User, User)] = Some((User(1,@one),User(1,@one)))</span>
 </code></pre></div></div>
 
@@ -630,10 +630,10 @@ than two users:</p>
 <span class="c1">// fetchManyBatchedUsers: [F[_]](implicit evidence$1: cats.effect.Concurrent[F])fetch.Fetch[F,List[User]]</span>
 
 <span class="nv">Fetch</span><span class="o">.</span><span class="py">run</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="n">fetchManyBatchedUsers</span><span class="o">).</span><span class="py">unsafeRunTimed</span><span class="o">(</span><span class="mf">5.</span><span class="n">seconds</span><span class="o">)</span>
-<span class="c1">// --&gt; [132] Batch Users NonEmptyList(1, 2)</span>
-<span class="c1">// --&gt; [131] Batch Users NonEmptyList(3, 4)</span>
-<span class="c1">// &lt;-- [132] Batch Users NonEmptyList(1, 2)</span>
-<span class="c1">// &lt;-- [131] Batch Users NonEmptyList(3, 4)</span>
+<span class="c1">// --&gt; [226] Batch Users NonEmptyList(1, 2)</span>
+<span class="c1">// --&gt; [227] Batch Users NonEmptyList(3, 4)</span>
+<span class="c1">// &lt;-- [226] Batch Users NonEmptyList(1, 2)</span>
+<span class="c1">// &lt;-- [227] Batch Users NonEmptyList(3, 4)</span>
 <span class="c1">// res14: Option[List[User]] = Some(List(User(1,@one), User(2,@two), User(3,@three), User(4,@four)))</span>
 </code></pre></div></div>
 
@@ -671,10 +671,10 @@ than two users:</p>
 <span class="c1">// fetchManySeqBatchedUsers: [F[_]](implicit evidence$1: cats.effect.Concurrent[F])fetch.Fetch[F,List[User]]</span>
 
 <span class="nv">Fetch</span><span class="o">.</span><span class="py">run</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="n">fetchManySeqBatchedUsers</span><span class="o">).</span><span class="py">unsafeRunTimed</span><span class="o">(</span><span class="mf">5.</span><span class="n">seconds</span><span class="o">)</span>
-<span class="c1">// --&gt; [133] Batch Users NonEmptyList(1, 2)</span>
-<span class="c1">// &lt;-- [133] Batch Users NonEmptyList(1, 2)</span>
-<span class="c1">// --&gt; [133] Batch Users NonEmptyList(3, 4)</span>
-<span class="c1">// &lt;-- [133] Batch Users NonEmptyList(3, 4)</span>
+<span class="c1">// --&gt; [225] Batch Users NonEmptyList(1, 2)</span>
+<span class="c1">// &lt;-- [225] Batch Users NonEmptyList(1, 2)</span>
+<span class="c1">// --&gt; [225] Batch Users NonEmptyList(3, 4)</span>
+<span class="c1">// &lt;-- [225] Batch Users NonEmptyList(3, 4)</span>
 <span class="c1">// res15: Option[List[User]] = Some(List(User(1,@one), User(2,@two), User(3,@three), User(4,@four)))</span>
 </code></pre></div></div>
 
@@ -735,10 +735,10 @@ a fetch that fails after a couple rounds to see it in action:</p>
 <span class="c1">// import fetch.debug.describe</span>
 
 <span class="k">val</span> <span class="nv">value</span><span class="k">:</span> <span class="kt">Either</span><span class="o">[</span><span class="kt">Throwable</span>, <span class="o">(</span><span class="kt">Log</span>, <span class="kt">String</span><span class="o">)]</span> <span class="k">=</span> <span class="nv">result</span><span class="o">.</span><span class="py">unsafeRunSync</span>
-<span class="c1">// --&gt; [130] One User 1</span>
-<span class="c1">// &lt;-- [130] One User 1</span>
-<span class="c1">// --&gt; [132] One User 2</span>
-<span class="c1">// &lt;-- [132] One User 2</span>
+<span class="c1">// --&gt; [224] One User 1</span>
+<span class="c1">// &lt;-- [224] One User 1</span>
+<span class="c1">// --&gt; [226] One User 2</span>
+<span class="c1">// &lt;-- [226] One User 2</span>
 <span class="c1">// value: Either[Throwable,(fetch.Log, String)] = Left(fetch.package$UnhandledException)</span>
 
 <span class="nf">println</span><span class="o">(</span><span class="nv">value</span><span class="o">.</span><span class="py">fold</span><span class="o">(</span><span class="n">describe</span><span class="o">,</span> <span class="nv">_</span><span class="o">.</span><span class="py">toString</span><span class="o">))</span>
@@ -768,8 +768,8 @@ identity was not found. Whenever an identity cannot be found, the fetch executio
 <p>And now we can execute the fetch and describe its execution:</p>
 
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">val</span> <span class="nv">value</span><span class="k">:</span> <span class="kt">Either</span><span class="o">[</span><span class="kt">Throwable</span>, <span class="o">(</span><span class="kt">Log</span>, <span class="kt">User</span><span class="o">)]</span> <span class="k">=</span> <span class="nv">result</span><span class="o">.</span><span class="py">unsafeRunSync</span>
-<span class="c1">// --&gt; [131] One User 5</span>
-<span class="c1">// &lt;-- [131] One User 5</span>
+<span class="c1">// --&gt; [227] One User 5</span>
+<span class="c1">// &lt;-- [227] One User 5</span>
 <span class="c1">// value: Either[Throwable,(fetch.Log, User)] = Left(fetch.package$MissingIdentity)</span>
 
 <span class="nf">println</span><span class="o">(</span><span class="nv">value</span><span class="o">.</span><span class="py">fold</span><span class="o">(</span><span class="n">describe</span><span class="o">,</span> <span class="nv">_</span><span class="o">.</span><span class="py">toString</span><span class="o">))</span>
@@ -866,10 +866,10 @@ as a more powerful alternative to the <code class="highlighter-rouge">product</c
 <p>Notice how the queries to posts are batched.</p>
 
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">Fetch</span><span class="o">.</span><span class="py">run</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="n">fetchThree</span><span class="o">).</span><span class="py">unsafeRunTimed</span><span class="o">(</span><span class="mf">5.</span><span class="n">seconds</span><span class="o">)</span>
-<span class="c1">// --&gt; [133] Batch Posts NonEmptyList(1, 2)</span>
-<span class="c1">// --&gt; [130] One User 2</span>
-<span class="c1">// &lt;-- [133] Batch Posts NonEmptyList(1, 2)</span>
-<span class="c1">// &lt;-- [130] One User 2</span>
+<span class="c1">// --&gt; [224] One User 2</span>
+<span class="c1">// --&gt; [225] Batch Posts NonEmptyList(1, 2)</span>
+<span class="c1">// &lt;-- [224] One User 2</span>
+<span class="c1">// &lt;-- [225] Batch Posts NonEmptyList(1, 2)</span>
 <span class="c1">// res23: Option[(Post, User, Post)] = Some((Post(1,2,An article),User(2,@two),Post(2,3,Another article)))</span>
 </code></pre></div></div>
 
@@ -882,8 +882,8 @@ fetches.</p>
 <span class="c1">// fetchFriends: [F[_]](implicit evidence$1: cats.effect.Concurrent[F])fetch.Fetch[F,String]</span>
 
 <span class="nv">Fetch</span><span class="o">.</span><span class="py">run</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="n">fetchFriends</span><span class="o">).</span><span class="py">unsafeRunTimed</span><span class="o">(</span><span class="mf">5.</span><span class="n">seconds</span><span class="o">)</span>
-<span class="c1">// --&gt; [132] Batch Users NonEmptyList(1, 2)</span>
-<span class="c1">// &lt;-- [132] Batch Users NonEmptyList(1, 2)</span>
+<span class="c1">// --&gt; [226] Batch Users NonEmptyList(1, 2)</span>
+<span class="c1">// &lt;-- [226] Batch Users NonEmptyList(1, 2)</span>
 <span class="c1">// res24: Option[String] = Some(@one is friends with @two)</span>
 </code></pre></div></div>
 
@@ -921,40 +921,40 @@ visualize fetch executions using the execution log.</p>
 <p>Now that we have the fetch let’s run it, get the log and visualize its execution using the <code class="highlighter-rouge">describe</code> function:</p>
 
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">val</span> <span class="nv">io</span> <span class="k">=</span> <span class="nv">Fetch</span><span class="o">.</span><span class="py">runLog</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="n">interestingFetch</span><span class="o">)</span>
-<span class="c1">// io: cats.effect.IO[(fetch.Log, String)] = IO$477782648</span>
+<span class="c1">// io: cats.effect.IO[(fetch.Log, String)] = IO$2010567297</span>
 
 <span class="nf">val</span> <span class="o">(</span><span class="n">log</span><span class="o">,</span> <span class="n">result</span><span class="o">)</span> <span class="k">=</span> <span class="nv">io</span><span class="o">.</span><span class="py">unsafeRunSync</span>
-<span class="c1">// --&gt; [131] Batch Users NonEmptyList(1, 2)</span>
-<span class="c1">// &lt;-- [131] Batch Users NonEmptyList(1, 2)</span>
-<span class="c1">// --&gt; [133] One User 4</span>
-<span class="c1">// &lt;-- [133] One User 4</span>
-<span class="c1">// --&gt; [132] Batch Posts NonEmptyList(1, 2, 3)</span>
-<span class="c1">// --&gt; [130] Batch Users NonEmptyList(3)</span>
-<span class="c1">// &lt;-- [132] Batch Posts NonEmptyList(1, 2, 3)</span>
-<span class="c1">// &lt;-- [130] Batch Users NonEmptyList(3)</span>
-<span class="c1">// log: fetch.Log = FetchLog(Queue(Round(List(Request(Batch(NonEmptyList(1, 2),Users$@27c2a0e6),524997,525105))), Round(List(Request(FetchOne(4,Users$@27c2a0e6),525106,525209))), Round(List(Request(Batch(NonEmptyList(1, 2, 3),Posts$@186eb8f5),525212,525317), Request(Batch(NonEmptyList(3),Users$@27c2a0e6),525215,525318)))))</span>
+<span class="c1">// --&gt; [227] Batch Users NonEmptyList(1, 2)</span>
+<span class="c1">// &lt;-- [227] Batch Users NonEmptyList(1, 2)</span>
+<span class="c1">// --&gt; [225] One User 4</span>
+<span class="c1">// &lt;-- [225] One User 4</span>
+<span class="c1">// --&gt; [226] Batch Posts NonEmptyList(1, 2, 3)</span>
+<span class="c1">// --&gt; [224] Batch Users NonEmptyList(3)</span>
+<span class="c1">// &lt;-- [226] Batch Posts NonEmptyList(1, 2, 3)</span>
+<span class="c1">// &lt;-- [224] Batch Users NonEmptyList(3)</span>
+<span class="c1">// log: fetch.Log = FetchLog(Queue(Round(List(Request(Batch(NonEmptyList(1, 2),Users$@1e6f9f2d),779769,779874))), Round(List(Request(FetchOne(4,Users$@1e6f9f2d),779875,779978))), Round(List(Request(Batch(NonEmptyList(1, 2, 3),Posts$@2755752f),779981,780085), Request(Batch(NonEmptyList(3),Users$@1e6f9f2d),779984,780087)))))</span>
 <span class="c1">// result: String = done</span>
 
 <span class="nv">io</span><span class="o">.</span><span class="py">unsafeRunTimed</span><span class="o">(</span><span class="mf">5.</span><span class="n">seconds</span><span class="o">)</span> <span class="k">match</span> <span class="o">{</span>
  <span class="k">case</span> <span class="nc">Some</span><span class="o">((</span><span class="n">log</span><span class="o">,</span> <span class="n">result</span><span class="o">))</span> <span class="k">=&gt;</span> <span class="nf">println</span><span class="o">(</span><span class="nf">describe</span><span class="o">(</span><span class="n">log</span><span class="o">))</span>
  <span class="k">case</span> <span class="nc">None</span> <span class="k">=&gt;</span> <span class="nf">println</span><span class="o">(</span><span class="s">"Unable to run fetch"</span><span class="o">)</span>
 <span class="o">}</span>
-<span class="c1">// --&gt; [131] Batch Users NonEmptyList(1, 2)</span>
-<span class="c1">// &lt;-- [131] Batch Users NonEmptyList(1, 2)</span>
-<span class="c1">// --&gt; [132] One User 4</span>
-<span class="c1">// &lt;-- [132] One User 4</span>
-<span class="c1">// --&gt; [133] Batch Users NonEmptyList(3)</span>
-<span class="c1">// --&gt; [130] Batch Posts NonEmptyList(1, 2, 3)</span>
-<span class="c1">// &lt;-- [133] Batch Users NonEmptyList(3)</span>
-<span class="c1">// &lt;-- [130] Batch Posts NonEmptyList(1, 2, 3)</span>
-<span class="c1">// Fetch execution 🕛 0.32 seconds</span>
+<span class="c1">// --&gt; [227] Batch Users NonEmptyList(1, 2)</span>
+<span class="c1">// &lt;-- [227] Batch Users NonEmptyList(1, 2)</span>
+<span class="c1">// --&gt; [226] One User 4</span>
+<span class="c1">// &lt;-- [226] One User 4</span>
+<span class="c1">// --&gt; [224] Batch Posts NonEmptyList(1, 2, 3)</span>
+<span class="c1">// --&gt; [226] Batch Users NonEmptyList(3)</span>
+<span class="c1">// &lt;-- [224] Batch Posts NonEmptyList(1, 2, 3)</span>
+<span class="c1">// &lt;-- [226] Batch Users NonEmptyList(3)</span>
+<span class="c1">// Fetch execution 🕛 0.31 seconds</span>
 <span class="c1">// </span>
 <span class="c1">//   [Round 1] 🕛 0.11 seconds</span>
 <span class="c1">//     [Batch] From `Users` with ids List(1, 2) 🕛 0.11 seconds</span>
 <span class="c1">//   [Round 2] 🕛 0.10 seconds</span>
 <span class="c1">//     [Fetch one] From `Users` with id 4 🕛 0.10 seconds</span>
 <span class="c1">//   [Round 3] 🕛 0.11 seconds</span>
-<span class="c1">//     [Batch] From `Posts` with ids List(1, 2, 3) 🕛 0.11 seconds</span>
+<span class="c1">//     [Batch] From `Posts` with ids List(1, 2, 3) 🕛 0.10 seconds</span>
 <span class="c1">//     [Batch] From `Users` with ids List(3) 🕛 0.11 seconds</span>
 </code></pre></div></div>
 
