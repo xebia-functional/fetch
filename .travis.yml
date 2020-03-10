@@ -21,9 +21,9 @@ install:
 - gem install jekyll -v 4
 
 stages:
+  - test
   - validation
   - deploy
-  - microsite
 
 jobs:
   include:
