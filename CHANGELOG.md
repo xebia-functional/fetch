@@ -1,5 +1,27 @@
 # Changelog
 
+## 03/10/2020 - Version 1.2.2
+
+Release changes:
+
+* Update sbt-scalajs, scalajs-compiler to 0.6.31 ([#232](https://github.com/47degrees/fetch/pull/232))
+* Update sbt to 1.3.4 ([#233](https://github.com/47degrees/fetch/pull/233))
+* Update scalatest to 3.1.0 ([#234](https://github.com/47degrees/fetch/pull/234))
+* Update sbt-microsites to 1.0.1 ([#236](https://github.com/47degrees/fetch/pull/236))
+* Update sbt to 1.3.5 ([#238](https://github.com/47degrees/fetch/pull/238))
+* Update sbt to 1.3.6 ([#239](https://github.com/47degrees/fetch/pull/239))
+* Update sbt to 1.3.7 ([#240](https://github.com/47degrees/fetch/pull/240))
+* Update sbt to 1.3.8 ([#244](https://github.com/47degrees/fetch/pull/244))
+* Update sbt-scalajs-crossproject to 1.0.0 ([#245](https://github.com/47degrees/fetch/pull/245))
+* Update scalatest to 3.1.1 ([#246](https://github.com/47degrees/fetch/pull/246))
+* Migrates from 47deg to 47degrees GH organization ([#247](https://github.com/47degrees/fetch/pull/247))
+* Update sbt-scalajs, scalajs-compiler to 0.6.32 ([#243](https://github.com/47degrees/fetch/pull/243))
+* Setting Tut as compilation tool for documentation ([#249](https://github.com/47degrees/fetch/pull/249))
+* Release 1.2.2 ([#248](https://github.com/47degrees/fetch/pull/248))
+* Updating Travis build ([#250](https://github.com/47degrees/fetch/pull/250))
+* Changing Travis stages order ([#251](https://github.com/47degrees/fetch/pull/251))
+
+
 ## 10/29/2019 - Version 1.2.1
 
 Release changes:
