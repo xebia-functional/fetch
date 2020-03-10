@@ -2,6 +2,8 @@ import sbtcrossproject.CrossPlugin.autoImport.{CrossType, crossProject}
 import sbtorgpolicies.model.GitHubSettings
 
 pgpPassphrase := Some(getEnvVar("PGP_PASSPHRASE").getOrElse("").toCharArray)
+pgpPublicRing := file(s"$gpgFolder/pubring.gpg")
+pgpSecretRing := file(s"$gpgFolder/secring.gpg")
 
 addCommandAlias("makeDocs", ";docs/makeMicrosite")
 
