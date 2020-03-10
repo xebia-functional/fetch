@@ -9,6 +9,7 @@ import sbtorgpolicies.templates.badges._
 import scoverage.ScoverageKeys
 import tut.TutPlugin.autoImport._
 import microsites._
+import sbtorgpolicies.model.GitHubSettings
 
 object ProjectPlugin extends AutoPlugin {
 
@@ -105,18 +106,26 @@ object ProjectPlugin extends AutoPlugin {
     commandAliases ++
       Seq(
         description := "Simple & Efficient data access for Scala and Scala.js",
+        orgGithubSetting := GitHubSettings(
+          organization = "47degrees",
+          project = (name in LocalRootProject).value,
+          organizationName = "47 Degrees",
+          groupId = "com.47deg",
+          organizationHomePage = url("http://47deg.com"),
+          organizationEmail = "hello@47deg.com"
+        ),
         orgProjectName := "Fetch",
         startYear := Option(2016),
         homepage := Option(url("https://47degrees.github.io/fetch/")),
         orgBadgeListSetting := List(
-          GitterBadge.apply(_),
-          TravisBadge.apply(_),
-          CodecovBadge.apply(_),
-          MavenCentralBadge.apply(_),
-          LicenseBadge.apply(_),
-          ScalaLangBadge.apply(_),
-          ScalaJSBadge.apply(_),
-          GitHubIssuesBadge.apply(_)
+          GitterBadge.apply,
+          TravisBadge.apply,
+          CodecovBadge.apply,
+          MavenCentralBadge.apply,
+          LicenseBadge.apply,
+          ScalaLangBadge.apply,
+          ScalaJSBadge.apply,
+          GitHubIssuesBadge.apply
         ),
         orgSupportedScalaJSVersion := Some("0.6.20"),
         orgScriptTaskListSetting := List(

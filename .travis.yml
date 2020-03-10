@@ -16,21 +16,34 @@ before_install:
 - export PATH=${PATH}:./vendor/bundle
 
 install:
-- rvm use 2.3.0 --install --fuzzy
+- rvm use 2.6.5 --install --fuzzy
 - gem install sass
-- gem install jekyll -v 3.2.1
+- gem install jekyll -v 4
 
-script:
-- sbt ++$TRAVIS_SCALA_VERSION orgScriptCI
-- sbt 'examples/test:compile'
+stages:
+  - validation
+  - deploy
+  - microsite
 
 jobs:
   include:
+    - stage: validation
+      script:
+        - sbt ++$TRAVIS_SCALA_VERSION clean validateDocs validateCoverage
     - stage: deploy
+      if: branch = master AND type != pull_request
+      name: "Publish artifacts"
       script:
         - bash <(curl -s https://codecov.io/bash)
-        - sbt ++$TRAVIS_SCALA_VERSION orgAfterCISuccess
+        - if grep -q "SNAPSHOT" version.sbt; then
+            sbt ++$TRAVIS_SCALA_VERSION publish;
+          else
+            sbt orgUpdateDocFiles;
+            git reset --hard HEAD;
+            git clean -f;
+            git checkout master;
+            git pull origin master;
+            sbt release;
+            sbt docs/publishMicrosite;
+          fi
       scala: 2.13.0
-
-services:
-- redis-server
