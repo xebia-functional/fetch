@@ -40,6 +40,7 @@ object ProjectPlugin extends AutoPlugin {
       micrositeExternalLayoutsDirectory := (resourceDirectory in Compile).value / "microsite" / "_layouts",
       micrositeExternalIncludesDirectory := (resourceDirectory in Compile).value / "microsite" / "_includes",
       micrositeDataDirectory := (resourceDirectory in Compile).value / "microsite" / "_data",
+      micrositeTheme := "pattern",
       micrositePalette := Map(
         "brand-primary"   -> "#DD4949",
         "brand-secondary" -> "#104051",

@@ -28,6 +28,7 @@
               font-size: 14px;
               line-height: 21px;
               transition: color $base-duration $base-timing, background-color $base-duration $base-timing;
+              text-decoration: none;
 
               &:visited {
                   color: $brand-secondary;
