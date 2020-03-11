@@ -29,6 +29,7 @@
     .nav-brand {
       display: flex;
       align-items: center;
+      text-decoration: none;
 
       &:visited,
       &:hover,
@@ -61,6 +62,7 @@
                   padding-bottom: 4px;
                   color: $brand-secondary;
                   font-size: 14px;
+                  text-decoration: none;
 
                   &:hover {
                       text-decoration: none;

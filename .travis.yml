@@ -17,7 +17,6 @@ before_install:
 
 install:
 - rvm use 2.6.5 --install --fuzzy
-- gem install sass
 - gem install jekyll -v 4
 
 stages:
