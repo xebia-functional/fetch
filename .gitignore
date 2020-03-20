@@ -4,7 +4,7 @@ target/
 _site/*
 docs/src/jekyll/_site/
 docs/src/jekyll/*.md
-/secring.gpg
+secret_key.asc
 .sass-cache
 .DS_Store
 

@@ -10,9 +10,10 @@ jdk:
 - openjdk8
 
 before_install:
-- if [ "$TRAVIS_BRANCH" = "master" -a "$TRAVIS_PULL_REQUEST" = "false" ]; then openssl aes-256-cbc
-   -K $encrypted_37b99bd39158_key -iv $encrypted_37b99bd39158_iv
-   -in secring.gpg.enc -out secring.gpg -d; fi
+- if [ "$TRAVIS_BRANCH" = "master" -a "$TRAVIS_PULL_REQUEST" = "false" ]; then
+    openssl aes-256-cbc -K $encrypted_37b99bd39158_key -iv $encrypted_37b99bd39158_iv -in secret_key.asc.enc -out secret_key.asc -d;
+    gpg --import --batch --passphrase "$PGP_PASSPHRASE" secret_key.asc;
+  fi
 - export PATH=${PATH}:./vendor/bundle
 
 install:
