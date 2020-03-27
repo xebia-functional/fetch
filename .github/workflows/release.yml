@@ -1,0 +1,34 @@
+# Don't edit this file!
+# It is automatically updated after every release of https://github.com/47degrees/.github
+# If you want to suggest a change, please open a PR or issue in that repository
+
+name: Release
+
+on:
+  push:
+    branches: master
+    tags: v**
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Fetch tags
+        run: git fetch --tags
+      - name: Setup Scala
+        uses: olafurpg/setup-scala@v7
+      - name: Setup GPG
+        uses: olafurpg/setup-gpg@v2
+      - name: Release new version
+        run: sbt ci-release
+        env:
+          DOWNLOAD_INFO_FROM_GITHUB: true
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
+          PGP_SECRET: ${{ secrets.PGP_SECRET }}
+          SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
+          SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
