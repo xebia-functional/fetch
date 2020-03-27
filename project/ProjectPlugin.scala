@@ -59,7 +59,7 @@ object ProjectPlugin extends AutoPlugin {
       ),
       micrositeCDNDirectives := CdnDirectives(
         cssList = List(
-          "css/custom.css",
+          "css/custom.css"
         )
       )
     )
@@ -72,8 +72,8 @@ object ProjectPlugin extends AutoPlugin {
       })
     )
 
-    lazy val docsSettings: Seq[Def.Setting[_]] = micrositeSettings ++ commonTutSettings ++ Seq(
-      aggregate in doc := true)
+    lazy val docsSettings: Seq[Def.Setting[_]] =
+      micrositeSettings ++ commonTutSettings ++ Seq(aggregate in doc := true)
 
     lazy val readmeSettings: Seq[Def.Setting[_]] = commonTutSettings ++ Seq(
       tutSourceDirectory := (baseDirectory in LocalRootProject).value / "tut",
@@ -83,15 +83,16 @@ object ProjectPlugin extends AutoPlugin {
 
     lazy val examplesSettings = Seq(
       libraryDependencies ++= Seq(
-        "io.circe" %% "circe-generic" % "0.12.0-RC2",
-        "org.tpolecat" %% s"doobie-core" % "0.8.0-RC1",
-        "org.tpolecat" %% s"doobie-h2" % "0.8.0-RC1",
+        "io.circe"      %% "circe-generic"       % "0.12.0-RC2",
+        "org.tpolecat"  %% s"doobie-core"        % "0.8.0-RC1",
+        "org.tpolecat"  %% s"doobie-h2"          % "0.8.0-RC1",
         "org.tpolecat"  %% "atto-core"           % "0.7.0",
         "org.http4s"    %% "http4s-blaze-client" % "0.21.0-M4",
         "org.http4s"    %% "http4s-circe"        % "0.21.0-M4",
         "redis.clients" % "jedis"                % "2.9.0",
         "io.monix"      %% "monix"               % "3.0.0"
-      )) ++ commonCrossDependencies
+      )
+    ) ++ commonCrossDependencies
   }
 
   lazy val commandAliases: Seq[Def.Setting[_]] =
@@ -100,7 +101,8 @@ object ProjectPlugin extends AutoPlugin {
       addCommandAlias("validateCoverage", ";coverage;validate;coverageReport;coverageOff") ++
       addCommandAlias(
         "validateJVM",
-        List("fetchJVM/compile", "fetchJVM/test", "project root").asCmd) ++
+        List("fetchJVM/compile", "fetchJVM/test", "project root").asCmd
+      ) ++
       addCommandAlias("validateJS", List("fetchJS/compile", "fetchJS/test", "project root").asCmd)
 
   override def projectSettings: Seq[Def.Setting[_]] =
