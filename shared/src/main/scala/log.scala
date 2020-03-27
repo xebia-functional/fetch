@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2019 47 Degrees, LLC. <http://www.47deg.com>
+ * Copyright 2016-2020 47 Degrees, LLC. <http://www.47deg.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,12 +28,12 @@ trait Log {
 }
 
 /**
-  * A data structure that holds information about a request inside a fetch round.
-  */
+ * A data structure that holds information about a request inside a fetch round.
+ */
 case class Request(
-  request: FetchRequest,
-  start: Long,
-  end: Long
+    request: FetchRequest,
+    start: Long,
+    end: Long
 ) {
   def duration: Long = end - start
 }
@@ -42,14 +42,14 @@ case class Request(
  * A data structure that holds information about a fetch round.
  */
 case class Round(
-  queries: List[Request]
+    queries: List[Request]
 )
 
 /**
  * A concrete implementation of `Log` used in Fetch.
  */
 case class FetchLog(
-  q: Queue[Round] = Queue.empty
+    q: Queue[Round] = Queue.empty
 ) extends Log {
   def rounds = q.toList
   def append(round: Round): Log =

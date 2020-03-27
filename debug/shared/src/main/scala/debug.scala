@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2019 47 Degrees, LLC. <http://www.47deg.com>
+ * Copyright 2016-2020 47 Degrees, LLC. <http://www.47deg.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,32 +36,35 @@ object debug {
     Document.text(f" 🕛 $secs%1.2f seconds")
   }
 
-  def firstRequest(r: Round): Option[Long] = for {
-    aQuery <- r.queries.headOption
-    firstR = r.queries.foldLeft(aQuery.start)({
-      case (acc, q) => acc min q.start
-    })
-  } yield firstR
+  def firstRequest(r: Round): Option[Long] =
+    for {
+      aQuery <- r.queries.headOption
+      firstR = r.queries.foldLeft(aQuery.start)({
+        case (acc, q) => acc min q.start
+      })
+    } yield firstR
 
-  def lastRequest(r: Round): Option[Long] = for {
-    aQuery <- r.queries.headOption
-    lastR = r.queries.foldLeft(aQuery.end)({
-      case (acc, q) => acc max q.end
-    })
-  } yield lastR
+  def lastRequest(r: Round): Option[Long] =
+    for {
+      aQuery <- r.queries.headOption
+      lastR = r.queries.foldLeft(aQuery.end)({
+        case (acc, q) => acc max q.end
+      })
+    } yield lastR
 
   def showLog(log: Log): Document = log.rounds match {
     case Nil => Document.empty
     case _ => {
       val duration: Option[Long] = for {
-        firstRound <- log.rounds.headOption
+        firstRound        <- log.rounds.headOption
         firstRequestStart <- firstRequest(firstRound)
-        lastRound  <- log.rounds.lastOption
-        lastRequestEnd <- lastRequest(lastRound)
+        lastRound         <- log.rounds.lastOption
+        lastRequestEnd    <- lastRequest(lastRound)
       } yield lastRequestEnd - firstRequestStart
       val durationDoc =
         duration.fold(Document.empty: Document)((d: Long) =>
-          Document.text("Fetch execution") :: showDuration(d))
+          Document.text("Fetch execution") :: showDuration(d)
+        )
 
       durationDoc :/: Document.nest(2, pile(log.rounds.mapWithIndex((r, i) => showRound(r, i + 1))))
     }
@@ -73,10 +76,12 @@ object debug {
       l <- lastRequest(r)
     } yield l - f
 
-    val round = Document.text(s"[Round ${n}]") :: roundDuration.fold(Document.text(""))(showDuration(_))
+    val round =
+      Document.text(s"[Round ${n}]") :: roundDuration.fold(Document.text(""))(showDuration(_))
 
     round :: Document.nest(
-      2, pile(r.queries.map(showRequest))
+      2,
+      pile(r.queries.map(showRequest))
     )
   }
 
@@ -95,10 +100,15 @@ object debug {
 
   def showException(err: FetchException): Document = err match {
     case MissingIdentity(id, q, log) =>
-      Document.text(s"[ERROR] Identity with id `${id}` for data source `${q.data.name}` not found") :: showRoundCount(err)
+      Document
+        .text(s"[ERROR] Identity with id `${id}` for data source `${q.data.name}` not found") :: showRoundCount(
+        err
+      )
     case UnhandledException(exc, log) =>
       Document
-        .text(s"[ERROR] Unhandled `${exc.getClass.getName}`: '${exc.getMessage}'") :: showRoundCount(err)
+        .text(s"[ERROR] Unhandled `${exc.getClass.getName}`: '${exc.getMessage}'") :: showRoundCount(
+        err
+      )
   }
 
   /* Given a [[fetch.env.Log]], describe it with a human-readable string. */
@@ -107,10 +117,11 @@ object debug {
 
   /* Given a [[Throwable]], describe it with a human-readable string. */
   def describe(err: Throwable): String = err match {
-    case fe: FetchException => string(
-      showException(fe) :/:
-        Document.nest(2, showLog(fe.log))
-    )
+    case fe: FetchException =>
+      string(
+        showException(fe) :/:
+          Document.nest(2, showLog(fe.log))
+      )
     case _ => string(Document.text("Unexpected exception"))
   }
 }

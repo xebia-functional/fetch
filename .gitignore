@@ -1,10 +1,69 @@
-target/
-.ensime*
-.idea/
-_site/*
-docs/src/jekyll/_site/
-docs/src/jekyll/*.md
-secret_key.asc
-.sass-cache
+### Intellij ###
+
+.idea
+out/
+
+### Java ###
+
+*.class
+*.log
+
+### macOS ###
+
 .DS_Store
 
+### SBT ###
+
+dist/*
+target/
+lib_managed/
+src_managed/
+project/boot/
+project/plugins/project/
+.history
+.cache
+.lib/
+
+### Scala ###
+
+*.metals
+
+### Vim ###
+
+# Swap
+[._]*.s[a-v][a-z]
+[._]*.sw[a-p]
+[._]s[a-rt-v][a-z]
+[._]ss[a-gi-z]
+[._]sw[a-p]
+
+# Session
+Session.vim
+Sessionx.vim
+
+# Temporary
+.netrwhist
+
+# Auto-generated tag files
+tags
+
+# Persistent undo
+[._]*.un~
+
+# Coc configuration directory
+.vim
+
+### VisualStudioCode ###
+
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+### sbt-fix ###
+# Scalafix & Scalafmt configuration files are automatically downloaded by `sbt-fix`
+# https://github.com/47degrees/sbt-fix
+
+.scalafix.conf
+.scalafmt.conf

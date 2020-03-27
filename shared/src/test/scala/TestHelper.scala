@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2019 47 Degrees, LLC. <http://www.47deg.com>
+ * Copyright 2016-2020 47 Degrees, LLC. <http://www.47deg.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,14 +22,13 @@ import cats.data.NonEmptyList
 
 import scala.collection.immutable.Map
 
-
 object TestHelper {
   case class AnException() extends Throwable
 
   object One extends Data[Int, Int] {
     def name = "One"
 
-    def source[F[_] : ConcurrentEffect]: DataSource[F, Int, Int] = new DataSource[F, Int, Int] {
+    def source[F[_]: ConcurrentEffect]: DataSource[F, Int, Int] = new DataSource[F, Int, Int] {
       override def data = One
 
       override def CF = ConcurrentEffect[F]
@@ -44,29 +43,30 @@ object TestHelper {
     }
   }
 
-  def one[F[_] : ConcurrentEffect](id: Int): Fetch[F, Int] =
+  def one[F[_]: ConcurrentEffect](id: Int): Fetch[F, Int] =
     Fetch(id, One.source)
 
   object Many extends Data[Int, List[Int]] {
     def name = "Many"
 
-    def source[F[_] : ConcurrentEffect]: DataSource[F, Int, List[Int]] = new DataSource[F, Int, List[Int]] {
-      override def data = Many
+    def source[F[_]: ConcurrentEffect]: DataSource[F, Int, List[Int]] =
+      new DataSource[F, Int, List[Int]] {
+        override def data = Many
 
-      override def CF = ConcurrentEffect[F]
+        override def CF = ConcurrentEffect[F]
 
-      override def fetch(id: Int): F[Option[List[Int]]] =
-        CF.pure(Option(0 until id toList))
-    }
+        override def fetch(id: Int): F[Option[List[Int]]] =
+          CF.pure(Option(0 until id toList))
+      }
   }
 
-  def many[F[_] : ConcurrentEffect](id: Int): Fetch[F, List[Int]] =
+  def many[F[_]: ConcurrentEffect](id: Int): Fetch[F, List[Int]] =
     Fetch(id, Many.source)
 
   object AnotherOne extends Data[Int, Int] {
     def name = "Another one"
 
-    def source[F[_] : ConcurrentEffect]: DataSource[F, Int, Int] = new DataSource[F, Int, Int] {
+    def source[F[_]: ConcurrentEffect]: DataSource[F, Int, Int] = new DataSource[F, Int, Int] {
       override def data = AnotherOne
 
       override def CF = ConcurrentEffect[F]
@@ -81,7 +81,7 @@ object TestHelper {
     }
   }
 
-  def anotherOne[F[_] : ConcurrentEffect](id: Int): Fetch[F, Int] =
+  def anotherOne[F[_]: ConcurrentEffect](id: Int): Fetch[F, Int] =
     Fetch(id, AnotherOne.source)
 
   case class Never()
@@ -89,17 +89,17 @@ object TestHelper {
   object Never extends Data[Never, Int] {
     def name = "Never"
 
-    def source[F[_] : ConcurrentEffect]: DataSource[F, Never, Int] = new DataSource[F, Never, Int] {
+    def source[F[_]: ConcurrentEffect]: DataSource[F, Never, Int] = new DataSource[F, Never, Int] {
       override def data = Never
 
       override def CF = ConcurrentEffect[F]
 
       override def fetch(id: Never): F[Option[Int]] =
-        CF.pure(None : Option[Int])
+        CF.pure(None: Option[Int])
     }
   }
 
-  def never[F[_] : ConcurrentEffect]: Fetch[F, Int] =
+  def never[F[_]: ConcurrentEffect]: Fetch[F, Int] =
     Fetch(Never(), Never.source)
 
 }

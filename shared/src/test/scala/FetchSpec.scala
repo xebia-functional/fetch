@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2019 47 Degrees, LLC. <http://www.47deg.com>
+ * Copyright 2016-2020 47 Degrees, LLC. <http://www.47deg.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,13 +29,13 @@ import org.scalatest.matchers.should.Matchers
 @DoNotDiscover
 class FetchSpec extends AsyncFreeSpec with Matchers {
   override val executionContext: ExecutionContext = ExecutionContext.Implicits.global
-  implicit val timer: Timer[IO] = IO.timer(executionContext)
-  implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
+  implicit val timer: Timer[IO]                   = IO.timer(executionContext)
+  implicit val cs: ContextShift[IO]               = IO.contextShift(executionContext)
 
   def countFetches(r: Request): Int =
     r.request match {
-      case FetchOne(_, _)       => 1
-      case Batch(ids, _)    => ids.toList.size
+      case FetchOne(_, _) => 1
+      case Batch(ids, _)  => ids.toList.size
     }
 
   def totalFetched(rs: Seq[Round]): Int =
@@ -43,8 +43,8 @@ class FetchSpec extends AsyncFreeSpec with Matchers {
 
   def countBatches(r: Request): Int =
     r.request match {
-      case FetchOne(_, _)    => 0
-      case Batch(_, _) => 1
+      case FetchOne(_, _) => 0
+      case Batch(_, _)    => 1
     }
 
   def totalBatches(rs: Seq[Round]): Int =
