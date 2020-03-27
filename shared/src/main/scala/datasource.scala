@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2019 47 Degrees, LLC. <http://www.47deg.com>
+ * Copyright 2016-2020 47 Degrees, LLC. <http://www.47deg.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -55,9 +55,11 @@ trait DataSource[F[_], I, A] {
    * identity wasn't found, it won't appear in the keys.
    */
   def batch(ids: NonEmptyList[I]): F[Map[I, A]] =
-    FetchExecution.parallel(
-      ids.map(id => fetch(id).tupleLeft(id))
-    ).map(_.collect { case (id, Some(x)) => id -> x }.toMap)
+    FetchExecution
+      .parallel(
+        ids.map(id => fetch(id).tupleLeft(id))
+      )
+      .map(_.collect { case (id, Some(x)) => id -> x }.toMap)
 
   def maxBatchSize: Option[Int] = None
 
@@ -65,5 +67,5 @@ trait DataSource[F[_], I, A] {
 }
 
 sealed trait BatchExecution extends Product with Serializable
-case object Sequentially extends BatchExecution
-case object InParallel   extends BatchExecution
+case object Sequentially    extends BatchExecution
+case object InParallel      extends BatchExecution

@@ -1,0 +1,10 @@
+pull_request_rules:
+  - name: automatically merge & label scala-steward's PRs
+    conditions:
+      - author=scala-steward
+      - status-success=test
+    actions:
+      merge:
+        method: squash
+      label:
+        add: [auto-update]

@@ -1,24 +1,22 @@
-import sbtcrossproject.CrossPlugin.autoImport.{CrossType, crossProject}
+import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
 import sbtorgpolicies.model.GitHubSettings
 
 pgpPassphrase := Some(getEnvVar("PGP_PASSPHRASE").getOrElse("").toCharArray)
-pgpPublicRing := file(s"$gpgFolder/pubring.gpg")
-pgpSecretRing := file(s"$gpgFolder/secring.gpg")
-
-addCommandAlias("makeDocs", ";docs/makeMicrosite")
 
 lazy val root = project
   .in(file("."))
   .settings(name := "fetch")
   .settings(moduleName := "root")
-  .settings(orgGithubSetting := GitHubSettings(
-    organization = "47degrees",
-    project = (name in LocalRootProject).value,
-    organizationName = "47 Degrees",
-    groupId = "com.47deg",
-    organizationHomePage = url("http://47deg.com"),
-    organizationEmail = "hello@47deg.com"
-  ))
+  .settings(
+    orgGithubSetting := GitHubSettings(
+      organization = "47degrees",
+      project = (name in LocalRootProject).value,
+      organizationName = "47 Degrees",
+      groupId = "com.47deg",
+      organizationHomePage = url("http://47deg.com"),
+      organizationEmail = "hello@47deg.com"
+    )
+  )
   .aggregate(fetchJS, fetchJVM, debugJVM, debugJS)
 
 lazy val fetch = crossProject(JSPlatform, JVMPlatform)
@@ -45,9 +43,11 @@ lazy val examples = (project in file("examples"))
   .dependsOn(fetchJVM, debugJVM)
   .settings(noPublishSettings: _*)
   .settings(examplesSettings: _*)
-  .settings(Seq(
-    resolvers += Resolver.sonatypeRepo("snapshots")
-  ))
+  .settings(
+    Seq(
+      resolvers += Resolver.sonatypeRepo("snapshots")
+    )
+  )
 
 lazy val docs = (project in file("docs"))
   .dependsOn(fetchJVM, debugJVM)
@@ -62,3 +62,6 @@ lazy val readme = (project in file("tut"))
   .settings(readmeSettings: _*)
   .settings(noPublishSettings)
   .enablePlugins(TutPlugin)
+
+addCommandAlias("ci-test", "scalafmtCheck; scalafmtSbtCheck; docs/tut; +test")
+addCommandAlias("ci-docs", "docs/tut")

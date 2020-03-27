@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2019 47 Degrees, LLC. <http://www.47deg.com>
+ * Copyright 2016-2020 47 Degrees, LLC. <http://www.47deg.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ import cats.data.NonEmptyList
 import cats.instances.list._
 import cats.syntax.all._
 
-final class DataSourceId(val id: Any) extends AnyVal
+final class DataSourceId(val id: Any)         extends AnyVal
 final class DataSourceResult(val result: Any) extends AnyVal
 
 /**
@@ -34,9 +34,9 @@ trait DataCache[F[_]] {
   def insert[I, A](i: I, v: A, data: Data[I, A]): F[DataCache[F]]
 
   def bulkInsert[I, A](vs: List[(I, A)], data: Data[I, A])(
-    implicit M: Monad[F]
+      implicit M: Monad[F]
   ): F[DataCache[F]] = {
-    vs.foldLeftM(this){
+    vs.foldLeftM(this) {
       case (acc, (i, v)) =>
         acc.insert(i, v, data)
     }
@@ -46,22 +46,36 @@ trait DataCache[F[_]] {
 /**
  * A cache that stores its elements in memory.
  */
-case class InMemoryCache[F[_] : Monad](state: Map[(Data[Any, Any], DataSourceId), DataSourceResult]) extends DataCache[F] {
+case class InMemoryCache[F[_]: Monad](state: Map[(Data[Any, Any], DataSourceId), DataSourceResult])
+    extends DataCache[F] {
   def lookup[I, A](i: I, data: Data[I, A]): F[Option[A]] =
     Applicative[F].pure(
-      state.get(
-        (data.asInstanceOf[Data[Any, Any]], new DataSourceId(i))).map(_.result.asInstanceOf[A]))
+      state
+        .get((data.asInstanceOf[Data[Any, Any]], new DataSourceId(i)))
+        .map(_.result.asInstanceOf[A])
+    )
 
   def insert[I, A](i: I, v: A, data: Data[I, A]): F[DataCache[F]] =
     Applicative[F].pure(
-      copy(state = state.updated((data.asInstanceOf[Data[Any, Any]], new DataSourceId(i)), new DataSourceResult(v))))
+      copy(state =
+        state.updated(
+          (data.asInstanceOf[Data[Any, Any]], new DataSourceId(i)),
+          new DataSourceResult(v)
+        )
+      )
+    )
 }
 
 object InMemoryCache {
-  def empty[F[_] : Monad]: InMemoryCache[F] = InMemoryCache[F](Map.empty[(Data[Any, Any], DataSourceId), DataSourceResult])
+  def empty[F[_]: Monad]: InMemoryCache[F] =
+    InMemoryCache[F](Map.empty[(Data[Any, Any], DataSourceId), DataSourceResult])
 
   def from[F[_]: Monad, I, A](results: ((Data[I, A], I), A)*): InMemoryCache[F] =
     InMemoryCache[F](results.foldLeft(Map.empty[(Data[Any, Any], DataSourceId), DataSourceResult])({
-      case (acc, ((data, i), v)) => acc.updated((data.asInstanceOf[Data[Any, Any]], new DataSourceId(i)), new DataSourceResult(v))
+      case (acc, ((data, i), v)) =>
+        acc.updated(
+          (data.asInstanceOf[Data[Any, Any]], new DataSourceId(i)),
+          new DataSourceResult(v)
+        )
     }))
 }

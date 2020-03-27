@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2019 47 Degrees, LLC. <http://www.47deg.com>
+ * Copyright 2016-2020 47 Degrees, LLC. <http://www.47deg.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,10 +31,10 @@ class FetchSyntaxTests extends FetchSpec {
   "`fetch` syntax allows lifting of any `Throwable` as a failure on a fetch" in {
     case object Ex extends RuntimeException
 
-    def f1[F[_] : ConcurrentEffect : ContextShift] =
+    def f1[F[_]: ConcurrentEffect: ContextShift] =
       Fetch.error[F, Int](Ex)
 
-    def f2[F[_] : ConcurrentEffect : ContextShift] =
+    def f2[F[_]: ConcurrentEffect: ContextShift] =
       Ex.fetch[F]
 
     val io1 = Fetch.run[IO](f1)
