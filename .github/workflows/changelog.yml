@@ -77,4 +77,4 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           number: ${{ env.PULL_REQUEST_NUMBER }}
-          method: merge
+          method: squash
