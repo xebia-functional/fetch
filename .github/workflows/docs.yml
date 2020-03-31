@@ -31,16 +31,21 @@ jobs:
       - name: Create Documentation Pull Request
         uses: peter-evans/create-pull-request@v2
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.ADMIN_GITHUB_TOKEN }}
           commit-message: Update documentation and other files
           title: 'Update documentation and other files'
           labels: auto-documentation
           branch: auto-update-docs
           body: Update documentation and other files with latest changes.
+      - name: Approve Pull Request
+        uses: juliangruber/approve-pull-request-action@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          number: ${{ env.PULL_REQUEST_NUMBER }}
       - name: Merge Documentation Pull Request
         if: env.PULL_REQUEST_NUMBER != null
         uses: juliangruber/merge-pull-request-action@v1
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.ADMIN_GITHUB_TOKEN }}
           number: ${{ env.PULL_REQUEST_NUMBER }}
-          method: merge
+          method: squash

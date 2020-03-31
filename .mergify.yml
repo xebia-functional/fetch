@@ -8,3 +8,8 @@ pull_request_rules:
         method: squash
       label:
         add: [auto-update]
+  - name: delete head branch after merge
+    conditions:
+      - merged
+    actions:
+      delete_head_branch: {}
