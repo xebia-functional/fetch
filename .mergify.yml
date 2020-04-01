@@ -8,6 +8,15 @@ pull_request_rules:
         method: squash
       label:
         add: [auto-update]
+  - name: automatically merge & label developer47deg's PRs
+    conditions:
+      - author=developer47deg
+      - status-success=test
+    actions:
+      merge:
+        method: squash
+      label:
+        add: [auto-update]
   - name: delete head branch after merge
     conditions:
       - merged
