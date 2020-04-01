@@ -174,7 +174,6 @@
 - Hide implementation [\#157](https://github.com/47degrees/fetch/pull/157) ([peterneyens](https://github.com/peterneyens))
 - Redesign [\#155](https://github.com/47degrees/fetch/pull/155) ([purrgrammer](https://github.com/purrgrammer))
 - Restore AUTHORS [\#154](https://github.com/47degrees/fetch/pull/154) ([fedefernandez](https://github.com/fedefernandez))
-- Updated sbt-org-policies version to 0.9.1 [\#150](https://github.com/47degrees/fetch/pull/150) ([AntonioMateoGomez](https://github.com/AntonioMateoGomez))
 
 ## [v0.7.3](https://github.com/47degrees/fetch/tree/v0.7.3) (2018-06-13)
 
@@ -188,6 +187,7 @@
 **Merged pull requests:**
 
 - Release Fetch v0.7.3  [\#151](https://github.com/47degrees/fetch/pull/151) ([AntonioMateoGomez](https://github.com/AntonioMateoGomez))
+- Updated sbt-org-policies version to 0.9.1 [\#150](https://github.com/47degrees/fetch/pull/150) ([AntonioMateoGomez](https://github.com/AntonioMateoGomez))
 
 ## [v0.7.2](https://github.com/47degrees/fetch/tree/v0.7.2) (2018-01-23)
 
