@@ -71,9 +71,3 @@ jobs:
           labels: auto-changelog
           branch: auto-update-changelog
           body: Update CHANGELOG.md with information from latest release
-      - name: Approve Pull Request
-        if: env.PULL_REQUEST_NUMBER != null
-        uses: juliangruber/approve-pull-request-action@v1
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          number: ${{ env.PULL_REQUEST_NUMBER }}

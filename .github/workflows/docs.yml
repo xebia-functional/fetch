@@ -22,6 +22,13 @@ jobs:
           fetch-depth: 0
       - name: Fetch tags
         run: git fetch --tags
+      - name: Set up Ruby 2.6
+        uses: actions/setup-ruby@v1
+        with:
+          ruby-version: 2.6
+      - name: Set up jekyll
+        run: |
+          gem install jekyll -v 4
       - name: Setup Scala
         uses: olafurpg/setup-scala@v7
       - name: Generate documentation
@@ -37,9 +44,3 @@ jobs:
           labels: auto-documentation
           branch: auto-update-docs
           body: Update documentation and other files with latest changes.
-      - name: Approve Pull Request
-        if: env.PULL_REQUEST_NUMBER != null
-        uses: juliangruber/approve-pull-request-action@v1
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          number: ${{ env.PULL_REQUEST_NUMBER }}
