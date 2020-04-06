@@ -14,6 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GITHUB_TOKEN: ${{ secrets.ADMIN_GITHUB_TOKEN }}
+      REQUIRES_JEKYLL_CI: ${{secrets.REQUIRES_JEKYLL_CI}}
     steps:
       - name: Checkout project
         uses: actions/checkout@v2
@@ -26,6 +27,7 @@ jobs:
         with:
           ruby-version: 2.6
       - name: Set up jekyll
+        if: env.REQUIRES_JEKYLL_CI != null
         run: |
           gem install jekyll -v 4
       - name: Setup Scala

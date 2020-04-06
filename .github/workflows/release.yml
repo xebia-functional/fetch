@@ -12,6 +12,14 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
+    env:
+      DOWNLOAD_INFO_FROM_GITHUB: true
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
+      PGP_SECRET: ${{ secrets.PGP_SECRET }}
+      SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
+      SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
+      REQUIRES_PUBLISH_MICROSITE: ${{secrets.REQUIRES_PUBLISH_MICROSITE}}
     steps:
       - name: Checkout project
         uses: actions/checkout@v2
@@ -24,11 +32,8 @@ jobs:
       - name: Setup GPG
         uses: olafurpg/setup-gpg@v2
       - name: Release new version
+        if: env.SONATYPE_USERNAME != null
         run: sbt ci-release
-        env:
-          DOWNLOAD_INFO_FROM_GITHUB: true
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
-          PGP_SECRET: ${{ secrets.PGP_SECRET }}
-          SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
-          SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
+      - name: Publish Microsite
+        if: env.REQUIRES_PUBLISH_MICROSITE != null
+        run: sbt ci-microsite
