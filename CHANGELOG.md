@@ -159,6 +159,8 @@
 - DataSourceCache parameterised to F\[\_\] [\#160](https://github.com/47degrees/fetch/pull/160) ([purrgrammer](https://github.com/purrgrammer))
 - Introduce Fetch\#optional for performing optional fetches [\#159](https://github.com/47degrees/fetch/pull/159) ([purrgrammer](https://github.com/purrgrammer))
 - Fixes micrositePushWith Setting [\#158](https://github.com/47degrees/fetch/pull/158) ([juanpedromoreno](https://github.com/juanpedromoreno))
+- Restore AUTHORS [\#154](https://github.com/47degrees/fetch/pull/154) ([fedefernandez](https://github.com/fedefernandez))
+- Releases 0.7.2 for cats 1.0.1 with \#146 [\#147](https://github.com/47degrees/fetch/pull/147) ([juanpedromoreno](https://github.com/juanpedromoreno))
 
 ## [v1.0.0-RC1](https://github.com/47degrees/fetch/tree/v1.0.0-RC1) (2018-09-18)
 
@@ -173,7 +175,6 @@
 
 - Hide implementation [\#157](https://github.com/47degrees/fetch/pull/157) ([peterneyens](https://github.com/peterneyens))
 - Redesign [\#155](https://github.com/47degrees/fetch/pull/155) ([purrgrammer](https://github.com/purrgrammer))
-- Restore AUTHORS [\#154](https://github.com/47degrees/fetch/pull/154) ([fedefernandez](https://github.com/fedefernandez))
 
 ## [v0.7.3](https://github.com/47degrees/fetch/tree/v0.7.3) (2018-06-13)
 
@@ -195,7 +196,6 @@
 
 **Merged pull requests:**
 
-- Releases 0.7.2 for cats 1.0.1 with \#146 [\#147](https://github.com/47degrees/fetch/pull/147) ([juanpedromoreno](https://github.com/juanpedromoreno))
 - Update dependencies, especially to cats 1.0.1 [\#146](https://github.com/47degrees/fetch/pull/146) ([guersam](https://github.com/guersam))
 
 ## [v0.7.1](https://github.com/47degrees/fetch/tree/v0.7.1) (2017-11-21)
