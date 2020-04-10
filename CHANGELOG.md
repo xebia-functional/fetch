@@ -92,6 +92,7 @@
 - Only run Travis builds agains OpenJDK8 [\#207](https://github.com/47degrees/fetch/pull/207) ([purrgrammer](https://github.com/purrgrammer))
 - Update CODE\_OF\_CONDUCT.md [\#205](https://github.com/47degrees/fetch/pull/205) ([jkmcclellan](https://github.com/jkmcclellan))
 - Redesign Implementation [\#203](https://github.com/47degrees/fetch/pull/203) ([AntonioMateoGomez](https://github.com/AntonioMateoGomez))
+- Improve Redis example [\#197](https://github.com/47degrees/fetch/pull/197) ([purrgrammer](https://github.com/purrgrammer))
 
 ## [v1.1.0](https://github.com/47degrees/fetch/tree/v1.1.0) (2019-06-04)
 
@@ -109,7 +110,6 @@
 **Merged pull requests:**
 
 - 1.1.0 release [\#198](https://github.com/47degrees/fetch/pull/198) ([purrgrammer](https://github.com/purrgrammer))
-- Improve Redis example [\#197](https://github.com/47degrees/fetch/pull/197) ([purrgrammer](https://github.com/purrgrammer))
 - Upgrades sbt-org-policies [\#196](https://github.com/47degrees/fetch/pull/196) ([juanpedromoreno](https://github.com/juanpedromoreno))
 - Add Fetch\#runAll [\#194](https://github.com/47degrees/fetch/pull/194) ([purrgrammer](https://github.com/purrgrammer))
 - Switch to Scala Code of Conduct [\#192](https://github.com/47degrees/fetch/pull/192) ([rossabaker](https://github.com/rossabaker))
