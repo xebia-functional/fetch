@@ -159,7 +159,6 @@
 - DataSourceCache parameterised to F\[\_\] [\#160](https://github.com/47degrees/fetch/pull/160) ([purrgrammer](https://github.com/purrgrammer))
 - Introduce Fetch\#optional for performing optional fetches [\#159](https://github.com/47degrees/fetch/pull/159) ([purrgrammer](https://github.com/purrgrammer))
 - Fixes micrositePushWith Setting [\#158](https://github.com/47degrees/fetch/pull/158) ([juanpedromoreno](https://github.com/juanpedromoreno))
-- Updated sbt-org-policies version to 0.9.1 [\#150](https://github.com/47degrees/fetch/pull/150) ([AntonioMateoGomez](https://github.com/AntonioMateoGomez))
 
 ## [v1.0.0-RC1](https://github.com/47degrees/fetch/tree/v1.0.0-RC1) (2018-09-18)
 
@@ -188,6 +187,7 @@
 **Merged pull requests:**
 
 - Release Fetch v0.7.3  [\#151](https://github.com/47degrees/fetch/pull/151) ([AntonioMateoGomez](https://github.com/AntonioMateoGomez))
+- Updated sbt-org-policies version to 0.9.1 [\#150](https://github.com/47degrees/fetch/pull/150) ([AntonioMateoGomez](https://github.com/AntonioMateoGomez))
 
 ## [v0.7.2](https://github.com/47degrees/fetch/tree/v0.7.2) (2018-01-23)
 
