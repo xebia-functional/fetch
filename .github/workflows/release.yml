@@ -31,9 +31,18 @@ jobs:
         uses: olafurpg/setup-scala@v7
       - name: Setup GPG
         uses: olafurpg/setup-gpg@v2
+      - name: Cache dependencies
+        uses: actions/cache@v1
+        with:
+          path: ~/.cache/coursier/v1
+          key: ${{ runner.os }}-coursier-${{ hashFiles('build.sbt') }}-${{ hashFiles('project/*.scala') }}
+          restore-keys: ${{ runner.os }}-coursier-
+      - name: Cache .sbt
+        uses: actions/cache@v1
+        with:
+          path: ~/.sbt
+          key: ${{ runner.os }}-sbt-${{ hashFiles('build.sbt') }}-${{ hashFiles('project/*.scala') }}
+          restore-keys: ${{ runner.os }}-sbt-
       - name: Release new version
         if: env.SONATYPE_USERNAME != null
         run: sbt ci-release
-      - name: Publish Microsite
-        if: env.REQUIRES_PUBLISH_MICROSITE != null
-        run: sbt ci-microsite

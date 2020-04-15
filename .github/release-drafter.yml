@@ -18,7 +18,9 @@ categories:
   - title: '🐛 Bug Fixes'
     label: 'bug'
   - title: '📈 Dependency updates'
-    label: 'dependency-update'
+    labels:
+      - 'dependency-update'
+      - 'scala-steward'
 template: |
   ## What's changed
 

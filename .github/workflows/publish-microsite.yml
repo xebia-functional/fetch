@@ -2,36 +2,33 @@
 # It is automatically updated after every release of https://github.com/47degrees/.github
 # If you want to suggest a change, please open a PR or issue in that repository
 
-name: Formatters & Tests
+name: Publish Microsite
 
 on:
   push:
-    branches: master
-  pull_request:
+    tags: v**
 
 jobs:
-  test:
+  microsite:
     runs-on: ubuntu-latest
     env:
-      GITHUB_TOKEN: ${{ secrets.ADMIN_GITHUB_TOKEN }}
-      REQUIRES_JEKYLL_CI: ${{secrets.REQUIRES_JEKYLL_CI}}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      REQUIRES_PUBLISH_MICROSITE: ${{secrets.REQUIRES_PUBLISH_MICROSITE}}
     steps:
       - name: Checkout project
         uses: actions/checkout@v2
         with:
           fetch-depth: 0
-      - name: Fetch tags
-        run: git fetch --tags
+      - name: Setup Scala
+        uses: olafurpg/setup-scala@v7
       - name: Set up Ruby 2.6
         uses: actions/setup-ruby@v1
         with:
           ruby-version: 2.6
       - name: Set up jekyll
-        if: env.REQUIRES_JEKYLL_CI != null
+        if: env.REQUIRES_PUBLISH_MICROSITE != null
         run: |
           gem install jekyll -v 4
-      - name: Setup Scala
-        uses: olafurpg/setup-scala@v7
       - name: Cache dependencies
         uses: actions/cache@v1
         with:
@@ -44,5 +41,6 @@ jobs:
           path: ~/.sbt
           key: ${{ runner.os }}-sbt-${{ hashFiles('build.sbt') }}-${{ hashFiles('project/*.scala') }}
           restore-keys: ${{ runner.os }}-sbt-
-      - name: Run checks
-        run: sbt ci-test
+      - name: Publish Microsite
+        if: env.REQUIRES_PUBLISH_MICROSITE != null
+        run: sbt ci-microsite
