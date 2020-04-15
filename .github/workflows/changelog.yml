@@ -8,8 +8,6 @@ on:
   push:
     tags:
       - v**
-    branches:
-      - master
 
 jobs:
   changelog:
@@ -29,7 +27,7 @@ jobs:
         with:
           ruby-version: '2.6'
       - name: Install github-changelog-generator
-        run: gem install github_changelog_generator
+        run: gem install github_changelog_generator -v 1.15.0
       - name: Generate changelog
         env:
           repo: ${{ github.repository }}
@@ -60,7 +58,7 @@ jobs:
             },
             "dependency": {
               "prefix": "📈 **Dependency updates**",
-              "labels": ["dependency-update"]
+              "labels": ["dependency-update", "scala-steward"]
             }
           }'
       - name: Create Changelog Pull Request

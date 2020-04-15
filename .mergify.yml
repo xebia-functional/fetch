@@ -1,3 +1,7 @@
+# Don't edit this file!
+# It is automatically updated after every release of https://github.com/47degrees/.github
+# If you want to suggest a change, please open a PR or issue in that repository
+
 pull_request_rules:
   - name: automatically merge & label scala-steward's PRs
     conditions:
@@ -7,7 +11,7 @@ pull_request_rules:
       merge:
         method: squash
       label:
-        add: [auto-update]
+        add: [scala-steward]
   - name: automatically merge & label developer47deg's PRs
     conditions:
       - author=developer47deg
@@ -15,8 +19,6 @@ pull_request_rules:
     actions:
       merge:
         method: squash
-      label:
-        add: [auto-update]
   - name: delete head branch after merge
     conditions:
       - merged

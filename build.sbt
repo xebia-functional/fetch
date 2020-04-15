@@ -65,3 +65,4 @@ lazy val readme = (project in file("tut"))
 
 addCommandAlias("ci-test", "scalafmtCheck; scalafmtSbtCheck; docs/tut; +test")
 addCommandAlias("ci-docs", "docs/tut")
+addCommandAlias("ci-microsite", "docs/publishMicrosite")

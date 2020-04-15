@@ -3,6 +3,7 @@
 # If you want to suggest a change, please open a PR or issue in that repository
 
 enhancement: ['enhancement/*', 'feature/*']
-documentation: ['docs/*', 'doc/*']
+documentation: ['docs/*', '.docs/*', 'doc/*']
 bug: ['bug/*', 'fix/*']
+tests: ['test/*', 'tests/*']
 dependency-update: ['dep/*', 'dependency/*', 'dependency-update/*']
