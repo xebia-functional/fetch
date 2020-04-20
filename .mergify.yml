@@ -12,9 +12,9 @@ pull_request_rules:
         method: squash
       label:
         add: [scala-steward]
-  - name: automatically merge & label developer47deg's PRs
+  - name: automatically merge & label 47erbot's PRs
     conditions:
-      - author=developer47deg
+      - author=47erbot
       - status-success=test
     actions:
       merge:
