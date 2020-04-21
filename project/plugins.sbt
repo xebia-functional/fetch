@@ -1,7 +1,7 @@
 resolvers += Resolver.sonatypeRepo("releases")
 addSbtPlugin("com.geirsson"       % "sbt-ci-release"           % "1.5.2")
 addSbtPlugin("com.47deg"          % "sbt-org-policies"         % "0.13.3")
-addSbtPlugin("com.47deg"          % "sbt-microsites"           % "1.1.5")
+addSbtPlugin("com.47deg"          % "sbt-microsites"           % "1.2.0")
 addSbtPlugin("org.portable-scala" % "sbt-scalajs-crossproject" % "1.0.0")
 addSbtPlugin("org.scala-js"       % "sbt-scalajs"              % "0.6.32")
 addSbtPlugin("org.scalameta"      % "sbt-scalafmt"             % "2.3.4")
