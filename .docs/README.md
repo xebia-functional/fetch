@@ -2,7 +2,7 @@
 
 [comment]: # (Start Badges)
 
-[![Join the chat at https://gitter.im/47deg/fetch](https://badges.gitter.im/47deg/fetch.svg)](https://gitter.im/47deg/fetch?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) [![Build Status](https://travis-ci.org/47deg/fetch.svg?branch=master)](https://travis-ci.org/47deg/fetch) [![codecov.io](http://codecov.io/github/47deg/fetch/coverage.svg?branch=master)](http://codecov.io/github/47deg/fetch?branch=master) [![Maven Central](https://img.shields.io/badge/maven%20central-1.2.1-green.svg)](https://oss.sonatype.org/#nexus-search;gav~com.47deg~fetch*) [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](https://raw.githubusercontent.com/47deg/fetch/master/LICENSE) [![Latest version](https://img.shields.io/badge/fetch-1.2.1-green.svg)](https://index.scala-lang.org/47deg/fetch) [![Scala.js](http://scala-js.org/assets/badges/scalajs-0.6.15.svg)](http://scala-js.org) [![GitHub Issues](https://img.shields.io/github/issues/47deg/fetch.svg)](https://github.com/47deg/fetch/issues)
+[![Join the chat at https://gitter.im/47deg/fetch](https://badges.gitter.im/47deg/fetch.svg)](https://gitter.im/47deg/fetch?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) [![codecov.io](http://codecov.io/github/47deg/fetch/coverage.svg?branch=master)](http://codecov.io/github/47deg/fetch?branch=master) [![Maven Central](https://img.shields.io/badge/maven%20central-1.2.1-green.svg)](https://oss.sonatype.org/#nexus-search;gav~com.47deg~fetch*) [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](https://raw.githubusercontent.com/47deg/fetch/master/LICENSE) [![Latest version](https://img.shields.io/badge/fetch-1.2.1-green.svg)](https://index.scala-lang.org/47deg/fetch) [![Scala.js](http://scala-js.org/assets/badges/scalajs-0.6.15.svg)](http://scala-js.org) [![GitHub Issues](https://img.shields.io/github/issues/47deg/fetch.svg)](https://github.com/47deg/fetch/issues)
 
 [comment]: # (End Badges)
 
@@ -19,18 +19,18 @@ For Scala 2.11.x and 2.12.x:
 [comment]: # (Start Replace)
 
 ```scala
-"com.47deg" %% "fetch" % "1.2.2"
+"com.47deg" %% "fetch" % "@VERSION@"
 ```
 
 Or, if using Scala.js (0.6.x):
 
 ```scala
-"com.47deg" %%% "fetch" % "1.2.2"
+"com.47deg" %%% "fetch" % "@VERSION@"
 ```
 
 [comment]: # (End Replace)
 
-```tut:invisible
+```scala mdoc:invisible
 val out = Console.out
 
 def println(msg: String): Unit = {
@@ -72,7 +72,7 @@ Returning `Concurrent` instances from the fetch methods allows us to specify if 
 
 We'll implement a dummy data source that can convert integers to strings. For convenience, we define a `fetchString` function that lifts identities (`Int` in our dummy data source) to a `Fetch`.
 
-```tut:silent
+```scala mdoc:silent
 import cats._
 import cats.data.NonEmptyList
 import cats.effect._
@@ -117,7 +117,7 @@ Since `Fetch` relies on `Concurrent` from the `cats-effect` library, we'll need 
 
 For executing `IO`, we need a `ContextShift[IO]` used for running `IO` instances and a `Timer[IO]` that is used for scheduling. Let's go ahead and create them. We'll use a `java.util.concurrent.ScheduledThreadPoolExecutor` with a couple of threads to run our fetches.
 
-```tut:silent
+```scala mdoc:silent
 import java.util.concurrent._
 import scala.concurrent.ExecutionContext
 
@@ -132,14 +132,14 @@ implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
 
 Now that we can convert `Int` values to `Fetch[F, String]`, let's try creating a fetch.
 
-```tut:silent
+```scala mdoc:silent
 def fetchOne[F[_] : Concurrent]: Fetch[F, String] =
   fetchString(1)
 ```
 
 Let's run it and wait for the fetch to complete. We'll use `IO#unsafeRunTimed` for testing purposes, which will run an `IO[A]` to `Option[A]` and return `None` if it didn't complete in time:
 
-```tut:book
+```scala mdoc
 import scala.concurrent.duration._
 
 Fetch.run[IO](fetchOne).unsafeRunTimed(5.seconds)
@@ -151,20 +151,20 @@ As you can see in the previous example, the `ToStringSource` is queried once to 
 
 Multiple fetches to the same data source are automatically batched. For illustrating this, we are going to compose three independent fetch results as a tuple.
 
-```tut:silent
+```scala mdoc:silent
 def fetchThree[F[_] : Concurrent]: Fetch[F, (String, String, String)] =
   (fetchString(1), fetchString(2), fetchString(3)).tupled
 ```
 
 When executing the above fetch, note how the three identities get batched, and the data source is only queried once.
 
-```tut:book
+```scala mdoc
 Fetch.run[IO](fetchThree).unsafeRunTimed(5.seconds)
 ```
 
 Note that the `DataSource#batch` method is not mandatory. It will be implemented in terms of `DataSource#fetch` if you don't provide an implementation.
 
-```tut:silent
+```scala mdoc:silent
 object UnbatchedToString extends Data[Int, String] {
   def name = "Unbatched to string"
 
@@ -187,14 +187,14 @@ def unbatchedString[F[_] : Concurrent](n: Int): Fetch[F, String] =
 
 Let's create a tuple of unbatched string requests.
 
-```tut:silent
+```scala mdoc:silent
 def fetchUnbatchedThree[F[_] : Concurrent]: Fetch[F, (String, String, String)] =
   (unbatchedString(1), unbatchedString(2), unbatchedString(3)).tupled
 ```
 
 When executing the above fetch, note how the three identities get requested in parallel. You can override `batch` to execute queries sequentially if you need to.
 
-```tut:book
+```scala mdoc
 Fetch.run[IO](fetchUnbatchedThree).unsafeRunTimed(5.seconds)
 ```
 
@@ -202,7 +202,7 @@ Fetch.run[IO](fetchUnbatchedThree).unsafeRunTimed(5.seconds)
 
 If we combine two independent fetches from different data sources, the fetches can be run in parallel. First, let's add a data source that fetches a string's size.
 
-```tut:silent
+```scala mdoc:silent
 object Length extends Data[String, Int] {
   def name = "Length"
 
@@ -231,14 +231,14 @@ def fetchLength[F[_] : Concurrent](s: String): Fetch[F, Int] =
 
 And now we can easily receive data from the two sources in a single fetch.
 
-```tut:silent
+```scala mdoc:silent
 def fetchMulti[F[_] : Concurrent]: Fetch[F, (String, Int)] =
   (fetchString(1), fetchLength("one")).tupled
 ```
 
 Note how the two independent data fetches run in parallel, minimizing the latency cost of querying the two data sources.
 
-```tut:book
+```scala mdoc
 Fetch.run[IO](fetchMulti).unsafeRunTimed(5.seconds)
 ```
 
@@ -246,7 +246,7 @@ Fetch.run[IO](fetchMulti).unsafeRunTimed(5.seconds)
 
 When fetching an identity, subsequent fetches for the same identity are cached. Let's try creating a fetch that asks for the same identity twice.
 
-```tut:silent
+```scala mdoc:silent
 import cats.syntax.all._
 
 def fetchTwice[F[_] : Concurrent]: Fetch[F, (String, String)] = for {
@@ -257,12 +257,12 @@ def fetchTwice[F[_] : Concurrent]: Fetch[F, (String, String)] = for {
 
 While running it, notice that the data source is only queried once. The next time the identity is requested, it's served from the cache.
 
-```tut:book
+```scala mdoc
 Fetch.run[IO](fetchTwice).unsafeRunTimed(5.seconds)
 ```
 
 
-```tut:invisible
+```scala mdoc:invisible
 executor.shutdownNow()
 ```
 ---
