@@ -173,7 +173,7 @@ class JedisExample extends AnyWordSpec with Matchers {
   implicit val t: Timer[IO]         = IO.timer(executionContext)
   implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
 
-  "We can use a Redis cache" in {
+  "We can use a Redis cache" ignore {
     val cache = RedisCache[IO]("localhost")
 
     val io: IO[(Log, HttpExample.User)] = Fetch.runLog[IO](fetch, cache)
@@ -191,7 +191,7 @@ class JedisExample extends AnyWordSpec with Matchers {
     log2.rounds.size shouldEqual 0
   }
 
-  "We can bulk insert in a Redis cache" in {
+  "We can bulk insert in a Redis cache" ignore {
     val cache = RedisCache[IO]("localhost")
 
     val io: IO[(Log, List[HttpExample.User])] = Fetch.runLog[IO](fetchMulti, cache)
