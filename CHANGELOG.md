@@ -2,7 +2,26 @@
 
 ## [Unreleased](https://github.com/47degrees/fetch/tree/HEAD)
 
-[Full Changelog](https://github.com/47degrees/fetch/compare/v1.2.2...HEAD)
+[Full Changelog](https://github.com/47degrees/fetch/compare/v1.3.0...HEAD)
+
+**Closed issues:**
+
+- Update dependency com.olegpy:better-monadic-for:plugin-\>default\(compile\) [\#190](https://github.com/47degrees/fetch/issues/190)
+
+## [v1.3.0](https://github.com/47degrees/fetch/tree/v1.3.0) (2020-04-22)
+
+[Full Changelog](https://github.com/47degrees/fetch/compare/v1.2.2...v1.3.0)
+
+⚠️ **Breaking changes**
+
+- Upgrades Build [\#284](https://github.com/47degrees/fetch/pull/284) ([juanpedromoreno](https://github.com/juanpedromoreno))
+- Removes Scala 2.11 support [\#281](https://github.com/47degrees/fetch/pull/281) ([juanpedromoreno](https://github.com/juanpedromoreno))
+
+📈 **Dependency updates**
+
+- Update sbt-ci-release to 1.5.3 [\#283](https://github.com/47degrees/fetch/pull/283) ([scala-steward](https://github.com/scala-steward))
+- Update sbt-microsites to 1.1.5 [\#258](https://github.com/47degrees/fetch/pull/258) ([scala-steward](https://github.com/scala-steward))
+- Update sbt-microsites to 1.1.4 [\#257](https://github.com/47degrees/fetch/pull/257) ([scala-steward](https://github.com/scala-steward))
 
 **Closed issues:**
 
@@ -10,8 +29,7 @@
 
 **Merged pull requests:**
 
-- Update sbt-microsites to 1.1.5 [\#258](https://github.com/47degrees/fetch/pull/258) ([scala-steward](https://github.com/scala-steward))
-- Update sbt-microsites to 1.1.4 [\#257](https://github.com/47degrees/fetch/pull/257) ([scala-steward](https://github.com/scala-steward))
+- Migrates from tut to mdoc [\#286](https://github.com/47degrees/fetch/pull/286) ([juanpedromoreno](https://github.com/juanpedromoreno))
 - Mergify: configuration update [\#256](https://github.com/47degrees/fetch/pull/256) ([juanpedromoreno](https://github.com/juanpedromoreno))
 - Adding code owners info [\#254](https://github.com/47degrees/fetch/pull/254) ([franciscodr](https://github.com/franciscodr))
 - Adds microsite theme to keep website style [\#253](https://github.com/47degrees/fetch/pull/253) ([AntonioMateoGomez](https://github.com/AntonioMateoGomez))
