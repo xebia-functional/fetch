@@ -2,7 +2,7 @@
 
 [comment]: # (Start Badges)
 
-[![Join the chat at https://gitter.im/47degrees/fetch](https://badges.gitter.im/47degrees/fetch.svg)](https://gitter.im/47degrees/fetch?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) [![codecov.io](http://codecov.io/gh/47degrees/fetch/branch/master/graph/badge.svg)](http://codecov.io/gh/47degrees/fetch) [![Maven Central](https://img.shields.io/badge/maven%20central-1.2.2-green.svg)](https://oss.sonatype.org/#nexus-search;gav~com.47deg~fetch*) [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](https://raw.githubusercontent.com/47degrees/fetch/master/LICENSE) [![Latest version](https://img.shields.io/badge/fetch-1.2.2-green.svg)](https://index.scala-lang.org/47degrees/fetch) [![Scala.js](http://scala-js.org/assets/badges/scalajs-0.6.17.svg)](http://scala-js.org) [![GitHub Issues](https://img.shields.io/github/issues/47degrees/fetch.svg)](https://github.com/47degrees/fetch/issues)
+[![Join the chat at https://gitter.im/47deg/fetch](https://badges.gitter.im/47deg/fetch.svg)](https://gitter.im/47deg/fetch?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) [![codecov.io](http://codecov.io/github/47deg/fetch/coverage.svg?branch=master)](http://codecov.io/github/47deg/fetch?branch=master) [![Maven Central](https://img.shields.io/badge/maven%20central-1.2.1-green.svg)](https://oss.sonatype.org/#nexus-search;gav~com.47deg~fetch*) [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](https://raw.githubusercontent.com/47deg/fetch/master/LICENSE) [![Latest version](https://img.shields.io/badge/fetch-1.2.1-green.svg)](https://index.scala-lang.org/47deg/fetch) [![Scala.js](http://scala-js.org/assets/badges/scalajs-0.6.15.svg)](http://scala-js.org) [![GitHub Issues](https://img.shields.io/github/issues/47deg/fetch.svg)](https://github.com/47deg/fetch/issues)
 
 [comment]: # (End Badges)
 
@@ -29,8 +29,6 @@ Or, if using Scala.js (0.6.x):
 ```
 
 [comment]: # (End Replace)
-
-
 
 
 ## Remote data
@@ -69,9 +67,7 @@ We'll implement a dummy data source that can convert integers to strings. For co
 import cats._
 import cats.data.NonEmptyList
 import cats.effect._
-import cats.instances.list._
 import cats.implicits._
-import cats.syntax.all._
 
 import fetch._
 
@@ -134,12 +130,11 @@ Let's run it and wait for the fetch to complete. We'll use `IO#unsafeRunTimed` f
 
 ```scala
 import scala.concurrent.duration._
-// import scala.concurrent.duration._
 
 Fetch.run[IO](fetchOne).unsafeRunTimed(5.seconds)
-// --> [134] One ToString 1
-// <-- [134] One ToString 1
-// res0: Option[String] = Some(1)
+// --> [241] One ToString 1
+// <-- [241] One ToString 1
+// res0: Option[String] = Some("1")
 ```
 
 As you can see in the previous example, the `ToStringSource` is queried once to get the value of 1.
@@ -157,9 +152,9 @@ When executing the above fetch, note how the three identities get batched, and t
 
 ```scala
 Fetch.run[IO](fetchThree).unsafeRunTimed(5.seconds)
-// --> [134] Batch ToString NonEmptyList(1, 2, 3)
-// <-- [134] Batch ToString NonEmptyList(1, 2, 3)
-// res1: Option[(String, String, String)] = Some((1,2,3))
+// --> [241] Batch ToString NonEmptyList(1, 2, 3)
+// <-- [241] Batch ToString NonEmptyList(1, 2, 3)
+// res1: Option[(String, String, String)] = Some(("1", "2", "3"))
 ```
 
 Note that the `DataSource#batch` method is not mandatory. It will be implemented in terms of `DataSource#fetch` if you don't provide an implementation.
@@ -196,13 +191,13 @@ When executing the above fetch, note how the three identities get requested in p
 
 ```scala
 Fetch.run[IO](fetchUnbatchedThree).unsafeRunTimed(5.seconds)
-// --> [134] One UnbatchedToString 1
-// --> [136] One UnbatchedToString 2
-// --> [137] One UnbatchedToString 3
-// <-- [134] One UnbatchedToString 1
-// <-- [136] One UnbatchedToString 2
-// <-- [137] One UnbatchedToString 3
-// res2: Option[(String, String, String)] = Some((1,2,3))
+// --> [241] One UnbatchedToString 1
+// --> [242] One UnbatchedToString 2
+// --> [243] One UnbatchedToString 3
+// <-- [241] One UnbatchedToString 1
+// <-- [242] One UnbatchedToString 2
+// <-- [243] One UnbatchedToString 3
+// res2: Option[(String, String, String)] = Some(("1", "2", "3"))
 ```
 
 ## Parallelism
@@ -247,11 +242,11 @@ Note how the two independent data fetches run in parallel, minimizing the latenc
 
 ```scala
 Fetch.run[IO](fetchMulti).unsafeRunTimed(5.seconds)
-// --> [134] One ToString 1
-// --> [135] One Length one
-// <-- [134] One ToString 1
-// <-- [135] One Length one
-// res3: Option[(String, Int)] = Some((1,3))
+// --> [243] One Length one
+// --> [244] One ToString 1
+// <-- [244] One ToString 1
+// <-- [243] One Length one
+// res3: Option[(String, Int)] = Some(("1", 3))
 ```
 
 ## Caching
@@ -259,8 +254,6 @@ Fetch.run[IO](fetchMulti).unsafeRunTimed(5.seconds)
 When fetching an identity, subsequent fetches for the same identity are cached. Let's try creating a fetch that asks for the same identity twice.
 
 ```scala
-import cats.syntax.all._
-
 def fetchTwice[F[_] : Concurrent]: Fetch[F, (String, String)] = for {
   one <- fetchString(1)
   two <- fetchString(1)
@@ -271,27 +264,18 @@ While running it, notice that the data source is only queried once. The next tim
 
 ```scala
 Fetch.run[IO](fetchTwice).unsafeRunTimed(5.seconds)
-// --> [136] One ToString 1
-// <-- [136] One ToString 1
-// res4: Option[(String, String)] = Some((1,1))
+// --> [242] One ToString 1
+// <-- [242] One ToString 1
+// res4: Option[(String, String)] = Some(("1", "1"))
 ```
-
-
 
 
 ---
 
 For more in-depth information, take a look at our [documentation](https://47degrees.github.io/fetch/docs.html).
 
-## Fetch in the wild
-
-If you wish to add your library here, please consider a PR to include it in the list below.
-
-[comment]: # (Start Copyright)
 # Copyright
 
 Fetch is designed and developed by 47 Degrees
 
-Copyright (C) 2016-2020 47 Degrees. <http://47deg.com>
-
-[comment]: # (End Copyright)
+Copyright (C) 2016-2019 47 Degrees. <http://47deg.com>
