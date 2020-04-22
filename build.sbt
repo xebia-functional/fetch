@@ -4,7 +4,7 @@ lazy val checkScalafmt = "+scalafmtCheck; +scalafmtSbtCheck;"
 lazy val checkDocs     = "docs/tut;"
 lazy val checkJSTests  = "+fetchJS/test; +debugJS/test;"
 lazy val checkJVMTests =
-  "+coverage; +fetchJVM/test; +debugJVM/test; +examples/test; +coverageReport; +coverageAggregate;"
+  "+coverage; +fetchJVM/test; +debugJVM/test; +examples/clean; +examples/test; +coverageReport; +coverageAggregate;"
 
 addCommandAlias(
   "ci-test",
