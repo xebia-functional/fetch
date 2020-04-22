@@ -1,7 +1,7 @@
 import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
 
 lazy val checkScalafmt = "+scalafmtCheck; +scalafmtSbtCheck;"
-lazy val checkDocs     = "docs/tut;"
+lazy val checkDocs     = "+docs/mdoc;"
 lazy val checkJSTests  = "+fetchJS/test; +debugJS/test;"
 lazy val checkJVMTests =
   "+coverage; +fetchJVM/test; +debugJVM/test; +examples/test; +coverageReport; +coverageAggregate;"
@@ -10,7 +10,7 @@ addCommandAlias(
   "ci-test",
   s"$checkScalafmt $checkDocs $checkJSTests $checkJVMTests"
 )
-addCommandAlias("ci-docs", "project-docs/mdoc; docs/tut; headerCreateAll")
+addCommandAlias("ci-docs", "project-docs/mdoc; headerCreateAll")
 addCommandAlias("ci-microsite", "docs/publishMicrosite")
 
 lazy val root = project
@@ -48,6 +48,7 @@ lazy val docs = (project in file("docs"))
   .settings(docsSettings: _*)
   .settings(skip in publish := true)
   .enablePlugins(MicrositesPlugin)
+  .enablePlugins(MdocPlugin)
 
 lazy val `project-docs` = (project in file(".docs"))
   .aggregate(fetchJVM)

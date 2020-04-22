@@ -76,9 +76,7 @@ We'll implement a dummy data source that can convert integers to strings. For co
 import cats._
 import cats.data.NonEmptyList
 import cats.effect._
-import cats.instances.list._
 import cats.implicits._
-import cats.syntax.all._
 
 import fetch._
 
@@ -247,8 +245,6 @@ Fetch.run[IO](fetchMulti).unsafeRunTimed(5.seconds)
 When fetching an identity, subsequent fetches for the same identity are cached. Let's try creating a fetch that asks for the same identity twice.
 
 ```scala mdoc:silent
-import cats.syntax.all._
-
 def fetchTwice[F[_] : Concurrent]: Fetch[F, (String, String)] = for {
   one <- fetchString(1)
   two <- fetchString(1)
@@ -269,16 +265,8 @@ executor.shutdownNow()
 
 For more in-depth information, take a look at our [documentation](https://47degrees.github.io/fetch/docs.html).
 
-## Fetch in the wild
-
-If you wish to add your library here, please consider a PR to include it in the list below.
-
-[comment]: # (Start Copyright)
-
 # Copyright
 
 Fetch is designed and developed by 47 Degrees
 
 Copyright (C) 2016-2019 47 Degrees. <http://47deg.com>
-
-[comment]: # (End Copyright)
