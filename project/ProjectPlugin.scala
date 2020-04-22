@@ -138,7 +138,7 @@ object ProjectPlugin extends AutoPlugin {
         orgUpdateDocFilesSetting += baseDirectory.value / "tut",
         scalaOrganization := "org.scala-lang",
         scalaVersion := "2.13.0",
-        crossScalaVersions := List("2.11.12", "2.12.10", "2.13.0"),
+        crossScalaVersions := List("2.12.10", "2.13.0"),
         resolvers += Resolver.sonatypeRepo("snapshots"),
         resolvers += Resolver.sonatypeRepo("releases"),
         addCompilerPlugin("org.typelevel" %% "kind-projector"     % "0.10.3"),
