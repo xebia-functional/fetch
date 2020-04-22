@@ -1,68 +1,59 @@
 import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
-import sbtorgpolicies.model.GitHubSettings
 
-pgpPassphrase := Some(getEnvVar("PGP_PASSPHRASE").getOrElse("").toCharArray)
+lazy val checkScalafmt = "+scalafmtCheck; +scalafmtSbtCheck;"
+lazy val checkDocs     = "docs/tut;"
+lazy val checkJSTests  = "+fetchJS/test; +debugJS/test;"
+lazy val checkJVMTests =
+  "+coverage; +fetchJVM/test; +debugJVM/test; +examples/test; +coverageReport; +coverageAggregate;"
+
+addCommandAlias(
+  "ci-test",
+  s"$checkScalafmt $checkDocs $checkJSTests $checkJVMTests"
+)
+addCommandAlias("ci-docs", "project-docs/mdoc; docs/tut; headerCreateAll")
+addCommandAlias("ci-microsite", "docs/publishMicrosite")
 
 lazy val root = project
   .in(file("."))
   .settings(name := "fetch")
   .settings(moduleName := "root")
-  .settings(
-    orgGithubSetting := GitHubSettings(
-      organization = "47degrees",
-      project = (name in LocalRootProject).value,
-      organizationName = "47 Degrees",
-      groupId = "com.47deg",
-      organizationHomePage = url("http://47deg.com"),
-      organizationEmail = "hello@47deg.com"
-    )
-  )
   .aggregate(fetchJS, fetchJVM, debugJVM, debugJS)
 
 lazy val fetch = crossProject(JSPlatform, JVMPlatform)
   .in(file("."))
   .settings(name := "fetch")
-  .jsSettings(sharedJsSettings: _*)
   .settings(commonCrossDependencies)
 
 lazy val fetchJVM = fetch.jvm
-lazy val fetchJS  = fetch.js
+lazy val fetchJS  = fetch.js.disablePlugins(ScoverageSbtPlugin)
 
 lazy val debug = crossProject(JSPlatform, JVMPlatform)
   .in(file("debug"))
   .settings(name := "fetch-debug")
   .dependsOn(fetch)
-  .jsSettings(sharedJsSettings: _*)
   .settings(commonCrossDependencies)
 
 lazy val debugJVM = debug.jvm
-lazy val debugJS  = debug.js
+lazy val debugJS  = debug.js.disablePlugins(ScoverageSbtPlugin)
 
 lazy val examples = (project in file("examples"))
   .settings(name := "fetch-examples")
   .dependsOn(fetchJVM, debugJVM)
-  .settings(noPublishSettings: _*)
+  .settings(skip in publish := true)
   .settings(examplesSettings: _*)
-  .settings(
-    Seq(
-      resolvers += Resolver.sonatypeRepo("snapshots")
-    )
-  )
 
 lazy val docs = (project in file("docs"))
   .dependsOn(fetchJVM, debugJVM)
   .settings(name := "fetch-docs")
   .settings(docsSettings: _*)
-  .settings(noPublishSettings)
+  .settings(skip in publish := true)
   .enablePlugins(MicrositesPlugin)
 
-lazy val readme = (project in file("tut"))
-  .settings(name := "fetch-readme")
+lazy val `project-docs` = (project in file(".docs"))
+  .aggregate(fetchJVM)
   .dependsOn(fetchJVM)
-  .settings(readmeSettings: _*)
-  .settings(noPublishSettings)
-  .enablePlugins(TutPlugin)
-
-addCommandAlias("ci-test", "scalafmtCheck; scalafmtSbtCheck; docs/tut; +test")
-addCommandAlias("ci-docs", "docs/tut")
-addCommandAlias("ci-microsite", "docs/publishMicrosite")
+  .settings(moduleName := "fetch-project-docs")
+  .settings(mdocIn := file(".docs"))
+  .settings(mdocOut := file("."))
+  .settings(skip in publish := true)
+  .enablePlugins(MdocPlugin)

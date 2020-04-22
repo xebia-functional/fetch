@@ -26,7 +26,8 @@ import cats.syntax.all._
 import io.circe._
 import io.circe.generic.semiauto._
 
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
 import java.io._
 import java.nio.charset.Charset
@@ -71,16 +72,19 @@ object Binary {
   def byteOutputStream[F[_]](implicit S: Sync[F]): Resource[F, ByteArrayOutputStream] =
     Resource.fromAutoCloseable(S.delay(new ByteArrayOutputStream()))
 
-  def byteInputStream[F[_]](bin: ByteArray)(
-      implicit S: Sync[F]): Resource[F, ByteArrayInputStream] =
+  def byteInputStream[F[_]](
+      bin: ByteArray
+  )(implicit S: Sync[F]): Resource[F, ByteArrayInputStream] =
     Resource.fromAutoCloseable(S.delay(new ByteArrayInputStream(bin)))
 
-  def outputStream[F[_]](b: ByteArrayOutputStream)(
-      implicit S: Sync[F]): Resource[F, ObjectOutputStream] =
+  def outputStream[F[_]](
+      b: ByteArrayOutputStream
+  )(implicit S: Sync[F]): Resource[F, ObjectOutputStream] =
     Resource.fromAutoCloseable(S.delay(new ObjectOutputStream(b)))
 
-  def inputStream[F[_]](b: ByteArrayInputStream)(
-      implicit S: Sync[F]): Resource[F, ObjectInputStream] =
+  def inputStream[F[_]](
+      b: ByteArrayInputStream
+  )(implicit S: Sync[F]): Resource[F, ObjectInputStream] =
     Resource.fromAutoCloseable(S.delay(new ObjectInputStream(b)))
 
   def fromString(s: String): Array[Byte] =
@@ -134,7 +138,8 @@ case class RedisCache[F[_]: Sync](host: String) extends DataCache[F] {
         val pipe = c.pipelined
         ivs.foreach(i => pipe.set(i._1, i._2))
         pipe.sync
-      }))
+      })
+    )
 
   private def cacheId[I, A](i: I, data: Data[I, A]): Array[Byte] =
     Binary.fromString(s"${data.identity} ${i}")
@@ -164,7 +169,7 @@ case class RedisCache[F[_]: Sync](host: String) extends DataCache[F] {
 
 }
 
-class JedisExample extends WordSpec with Matchers {
+class JedisExample extends AnyWordSpec with Matchers {
   import DataSources._
 
   // runtime
@@ -172,7 +177,7 @@ class JedisExample extends WordSpec with Matchers {
   implicit val t: Timer[IO]         = IO.timer(executionContext)
   implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
 
-  "We can use a Redis cache" in {
+  "We can use a Redis cache" ignore {
     val cache = RedisCache[IO]("localhost")
 
     val io: IO[(Log, HttpExample.User)] = Fetch.runLog[IO](fetch, cache)
@@ -190,7 +195,7 @@ class JedisExample extends WordSpec with Matchers {
     log2.rounds.size shouldEqual 0
   }
 
-  "We can bulk insert in a Redis cache" in {
+  "We can bulk insert in a Redis cache" ignore {
     val cache = RedisCache[IO]("localhost")
 
     val io: IO[(Log, List[HttpExample.User])] = Fetch.runLog[IO](fetchMulti, cache)

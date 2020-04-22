@@ -33,14 +33,15 @@ import org.http4s.circe._
 import org.http4s.client._
 import org.http4s.client.dsl._
 import org.http4s.client.blaze._
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
 import fetch.{Data, DataSource, Fetch}
 
-class GithubExample extends WordSpec with Matchers {
+class GithubExample extends AnyWordSpec with Matchers {
   implicit val executionContext = ExecutionContext.Implicits.global
 
-  val ACCESS_TOKEN: String = sys.env("ORG_GITHUB_TOKEN")
+  val ACCESS_TOKEN: String = sys.env("GITHUB_TOKEN")
 
   implicit val t: Timer[IO]         = IO.timer(executionContext)
   implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
@@ -60,7 +61,8 @@ class GithubExample extends WordSpec with Matchers {
       stargazers_count: Int,
       watchers_count: Int,
       languages_url: String,
-      contributors_url: String)
+      contributors_url: String
+  )
 
   object Repos extends Data[(String, String), Repo] {
     def name = "Repositories"
@@ -78,7 +80,7 @@ class GithubExample extends WordSpec with Matchers {
         def data = Repos
 
         def fetch(id: (String, String)): F[Option[Repo]] = {
-          client[F].use((c) => {
+          client[F].use { (c) =>
             val (owner, repo) = id
             val url           = GITHUB / "repos" / owner / repo +? ("access_token", ACCESS_TOKEN)
             val req           = Request[F](Method.GET, url)
@@ -90,7 +92,7 @@ class GithubExample extends WordSpec with Matchers {
                   CF.raiseError(new Exception(res.body.toString))
               })
             } yield Option(result)
-          })
+          }
         }
       }
     }
@@ -114,11 +116,12 @@ class GithubExample extends WordSpec with Matchers {
         def data = OrgRepos
 
         def fetch(org: Org): F[Option[List[Repo]]] = {
-          client[F].use((c) => {
-            val url = GITHUB / "orgs" / org / "repos" +? ("access_token", ACCESS_TOKEN) +? ("type", "public") +? ("per_page", 100)
+          client[F].use { (c) =>
+            val url =
+              GITHUB / "orgs" / org / "repos" +? ("access_token", ACCESS_TOKEN) +? ("type", "public") +? ("per_page", 100)
             val req = Request[F](Method.GET, url)
             fetchCollectionRecursively[F, Repo](c, req).map(Option(_))
-          })
+          }
         }
       }
   }
@@ -145,11 +148,11 @@ class GithubExample extends WordSpec with Matchers {
         def data = Languages
 
         def fetch(repo: Repo): F[Option[List[Language]]] = {
-          client[F].use((c) => {
+          client[F].use { (c) =>
             val url = Uri.unsafeFromString(repo.languages_url) +? ("access_token", ACCESS_TOKEN)
             val req = Request[F](Method.GET, url)
             fetchCollectionRecursively[F, Language](c, req).map(Option(_))
-          })
+          }
         }
       }
   }
@@ -175,12 +178,12 @@ class GithubExample extends WordSpec with Matchers {
         def data = Contributors
 
         def fetch(repo: Repo): F[Option[List[Contributor]]] = {
-          client[F].use((c) => {
+          client[F].use { (c) =>
             val url = Uri
               .unsafeFromString(repo.contributors_url) +? ("access_token", ACCESS_TOKEN) +? ("type", "public") +? ("per_page", 100)
             val req = Request[F](Method.GET, url)
             fetchCollectionRecursively[F, Contributor](c, req).map(Option(_))
-          })
+          }
         }
       }
   }
@@ -232,25 +235,23 @@ class GithubExample extends WordSpec with Matchers {
     def hasNext(res: Response[F]): Boolean =
       res.headers
         .get(CaseInsensitiveString("Link"))
-        .fold(false)({ h =>
-          REL_NEXT.findFirstIn(h.value).isDefined
-        })
+        .fold(false)({ h => REL_NEXT.findFirstIn(h.value).isDefined })
 
     def getNextLink(raw: String): F[String] = {
       REL_NEXT
         .findFirstMatchIn(raw)
         .fold(
           CF.raiseError[String](new Exception("Couldn't find next link"))
-        )(m => {
+        ) { m =>
           CF.pure(m.before.toString.split(",").last.trim.dropWhile(_ == '<').takeWhile(_ != '>'))
-        })
+        }
     }
 
     def getNext(res: Response[F]): F[Uri] =
       res.headers
         .get(CaseInsensitiveString("Link"))
-        .fold(CF.raiseError[Uri](new Exception("next not found")))(
-          raw => getNextLink(raw.value).map(Uri.unsafeFromString(_))
+        .fold(CF.raiseError[Uri](new Exception("next not found")))(raw =>
+          getNextLink(raw.value).map(Uri.unsafeFromString(_))
         )
 
     for {

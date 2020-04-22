@@ -16,7 +16,8 @@
 
 package fetch
 
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
 import atto._, Atto._
 import cats.implicits._
@@ -30,7 +31,7 @@ case class Organization(org: String, projects: List[Project])
 case class Project(name: Option[String], languages: List[String], collaborators: List[String])
 case class Repo(name: String)
 
-class GraphQLExample extends WordSpec with Matchers {
+class GraphQLExample extends AnyWordSpec with Matchers {
   implicit val executionContext     = ExecutionContext.Implicits.global
   implicit val t: Timer[IO]         = IO.timer(executionContext)
   implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
@@ -124,7 +125,9 @@ class GraphQLExample extends WordSpec with Matchers {
       "47deg",
       List(
         Project(Some("fetch"), List("scala"), List("Peter", "Ale")),
-        Project(Some("arrow"), List("kotlin"), List("Raul", "Paco", "Simon"))))
+        Project(Some("arrow"), List("kotlin"), List("Raul", "Paco", "Simon"))
+      )
+    )
 
     log.rounds.size shouldEqual 2
     totalBatches(log.rounds) shouldEqual 2
@@ -136,7 +139,8 @@ class GraphQLExample extends WordSpec with Matchers {
 
     result shouldEqual Organization(
       "47deg",
-      List(Project(None, List("scala"), List()), Project(None, List("kotlin"), List())))
+      List(Project(None, List("scala"), List()), Project(None, List("kotlin"), List()))
+    )
 
     log.rounds.size shouldEqual 2
     totalBatches(log.rounds) shouldEqual 1
@@ -149,7 +153,9 @@ class GraphQLExample extends WordSpec with Matchers {
       "47deg",
       List(
         Project(None, List(), List("Peter", "Ale")),
-        Project(None, List(), List("Raul", "Paco", "Simon"))))
+        Project(None, List(), List("Raul", "Paco", "Simon"))
+      )
+    )
 
     log.rounds.size shouldEqual 2
     totalBatches(log.rounds) shouldEqual 1
@@ -160,7 +166,8 @@ class GraphQLExample extends WordSpec with Matchers {
     val (log, result) = io.unsafeRunSync
     result shouldEqual Organization(
       "47deg",
-      List(Project(Some("fetch"), List(), List()), Project(Some("arrow"), List(), List())))
+      List(Project(Some("fetch"), List(), List()), Project(Some("arrow"), List(), List()))
+    )
 
     log.rounds.size shouldEqual 1
     totalBatches(log.rounds) shouldEqual 0
@@ -172,7 +179,8 @@ class GraphQLExample extends WordSpec with Matchers {
 
     result shouldEqual Organization(
       "47deg",
-      List(Project(Some("fetch"), List("scala"), List("Peter", "Ale"))))
+      List(Project(Some("fetch"), List("scala"), List("Peter", "Ale")))
+    )
 
     log.rounds.size shouldEqual 2
     totalBatches(log.rounds) shouldEqual 0
@@ -196,7 +204,8 @@ class GraphQLExample extends WordSpec with Matchers {
           .traverse(repo =>
             (Languages.fetch(repo), Collaborators.fetch(repo)).mapN {
               case (ls, cs) => Project(name >> Some(repo.name), ls, cs)
-          })
+            }
+          )
       } yield projects
 
     case RepositoriesQuery(n, name, None, None) =>
@@ -205,17 +214,17 @@ class GraphQLExample extends WordSpec with Matchers {
     case RepositoriesQuery(n, name, Some(_), None) =>
       for {
         repos <- Repos.fetch(org)
-        projects <- repos.traverse(r => {
+        projects <- repos.traverse { r =>
           Languages.fetch(r).map(ls => Project(name >> Some(r.name), ls, List()))
-        })
+        }
       } yield projects
 
     case RepositoriesQuery(n, name, None, Some(_)) =>
       for {
         repos <- Repos.fetch(org)
-        projects <- repos.traverse(r => {
+        projects <- repos.traverse { r =>
           Collaborators.fetch(r).map(cs => Project(name >> Some(r.name), List(), cs))
-        })
+        }
       } yield projects
   }
 }
@@ -232,7 +241,8 @@ object Parsers {
                 i,
                 if (name) Some(()) else None,
                 if (langs) Some(LanguagesQuery()) else None,
-                if (colls) Some(CollaboratorsQuery()) else None)
+                if (colls) Some(CollaboratorsQuery()) else None
+              )
           })
         )
     })
