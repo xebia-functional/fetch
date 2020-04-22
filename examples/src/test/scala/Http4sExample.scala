@@ -28,7 +28,8 @@ import io.circe.generic.semiauto._
 import org.http4s.client.Client
 import org.http4s.circe._
 import org.http4s.client.blaze._
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
 import java.util.concurrent._
 
@@ -119,7 +120,7 @@ object HttpExample {
     fetchPostsForUser(user.id).map(posts => (user, posts))
 }
 
-class Http4sExample extends WordSpec with Matchers {
+class Http4sExample extends AnyWordSpec with Matchers {
   import HttpExample._
 
   // runtime

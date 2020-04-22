@@ -26,7 +26,8 @@ import cats.syntax.all._
 import io.circe._
 import io.circe.generic.semiauto._
 
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
 import java.io._
 import java.nio.charset.Charset
@@ -164,7 +165,7 @@ case class RedisCache[F[_]: Sync](host: String) extends DataCache[F] {
 
 }
 
-class JedisExample extends WordSpec with Matchers {
+class JedisExample extends AnyWordSpec with Matchers {
   import DataSources._
 
   // runtime

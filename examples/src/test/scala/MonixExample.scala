@@ -24,11 +24,12 @@ import monix.eval.instances._
 
 import fetch._
 
-import org.scalatest.{AsyncFreeSpec, Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
-class MonixExample extends AsyncFreeSpec with Matchers {
+class MonixExample extends AnyWordSpec with Matchers {
   implicit val scheduler: Scheduler               = Scheduler.io(name = "test-scheduler")
-  override val executionContext: ExecutionContext = scheduler
+  val executionContext: ExecutionContext = scheduler
 
   import DatabaseExample._
 

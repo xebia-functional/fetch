@@ -33,14 +33,15 @@ import org.http4s.circe._
 import org.http4s.client._
 import org.http4s.client.dsl._
 import org.http4s.client.blaze._
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
 import fetch.{Data, DataSource, Fetch}
 
-class GithubExample extends WordSpec with Matchers {
+class GithubExample extends AnyWordSpec with Matchers {
   implicit val executionContext = ExecutionContext.Implicits.global
 
-  val ACCESS_TOKEN: String = sys.env("ORG_GITHUB_TOKEN")
+  val ACCESS_TOKEN: String = sys.env("GITHUB_TOKEN")
 
   implicit val t: Timer[IO]         = IO.timer(executionContext)
   implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)

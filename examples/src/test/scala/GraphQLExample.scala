@@ -16,7 +16,8 @@
 
 package fetch
 
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
 import atto._, Atto._
 import cats.implicits._
@@ -30,7 +31,7 @@ case class Organization(org: String, projects: List[Project])
 case class Project(name: Option[String], languages: List[String], collaborators: List[String])
 case class Repo(name: String)
 
-class GraphQLExample extends WordSpec with Matchers {
+class GraphQLExample extends AnyWordSpec with Matchers {
   implicit val executionContext     = ExecutionContext.Implicits.global
   implicit val t: Timer[IO]         = IO.timer(executionContext)
   implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)

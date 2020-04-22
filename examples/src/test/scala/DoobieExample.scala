@@ -21,10 +21,10 @@ import cats.syntax.all._
 
 import doobie.{Query => _, _}
 import doobie.h2.H2Transactor
-import doobie.implicits._
 import doobie.util.ExecutionContexts
 
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
 import scala.concurrent.ExecutionContext
 import java.util.concurrent.Executors
@@ -36,6 +36,9 @@ object DatabaseExample {
   case class Author(id: Int, name: String)
 
   object Queries {
+
+    import doobie.implicits._
+
     implicit val authorIdMeta: Meta[AuthorId] =
       Meta[Int].imap(AuthorId(_))(_.id)
 
@@ -54,6 +57,8 @@ object DatabaseExample {
 
     def transactionPool[F[_]: Sync]: Resource[F, ExecutionContext] =
       ExecutionContexts.cachedThreadPool
+
+    import doobie.implicits._
 
     val createTable = sql"""
        CREATE TABLE author (
@@ -91,6 +96,8 @@ object DatabaseExample {
   }
 
   object Authors extends Data[AuthorId, Author] {
+
+    import doobie.implicits._
     def name = "Authors"
 
     def db[F[_]: Concurrent: ContextShift]: DataSource[F, AuthorId, Author] =
@@ -118,7 +125,7 @@ object DatabaseExample {
   }
 }
 
-class DoobieExample extends WordSpec with Matchers {
+class DoobieExample extends AnyWordSpec with Matchers {
   import DatabaseExample._
 
   val executionContext              = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(2))
