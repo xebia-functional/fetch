@@ -4,7 +4,7 @@ lazy val checkScalafmt = "+scalafmtCheck; +scalafmtSbtCheck;"
 lazy val checkDocs     = "docs/tut;"
 lazy val checkJSTests  = "+fetchJS/test; +debugJS/test;"
 lazy val checkJVMTests =
-  "+coverage; +fetchJVM/test; +debugJVM/test; +examples/clean; +examples/test; +coverageReport; +coverageAggregate;"
+  "+coverage; +fetchJVM/test; +debugJVM/test; +examples/test; +coverageReport; +coverageAggregate;"
 
 addCommandAlias(
   "ci-test",
@@ -25,7 +25,7 @@ lazy val fetch = crossProject(JSPlatform, JVMPlatform)
   .settings(commonCrossDependencies)
 
 lazy val fetchJVM = fetch.jvm
-lazy val fetchJS  = fetch.js
+lazy val fetchJS  = fetch.js.disablePlugins(ScoverageSbtPlugin)
 
 lazy val debug = crossProject(JSPlatform, JVMPlatform)
   .in(file("debug"))
@@ -34,7 +34,7 @@ lazy val debug = crossProject(JSPlatform, JVMPlatform)
   .settings(commonCrossDependencies)
 
 lazy val debugJVM = debug.jvm
-lazy val debugJS  = debug.js
+lazy val debugJS  = debug.js.disablePlugins(ScoverageSbtPlugin)
 
 lazy val examples = (project in file("examples"))
   .settings(name := "fetch-examples")
