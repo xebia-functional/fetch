@@ -3,7 +3,6 @@ import com.typesafe.sbt.site.SitePlugin.autoImport._
 import sbt.Keys._
 import sbt._
 import scoverage.ScoverageKeys
-import tut.TutPlugin.autoImport._
 import com.alejandrohdezma.sbt.github.SbtGithubPlugin
 import microsites._
 
@@ -26,7 +25,7 @@ object ProjectPlugin extends AutoPlugin {
 
     lazy val micrositeSettings: Seq[Def.Setting[_]] = Seq(
       micrositeName := "Fetch",
-      micrositeCompilingDocsTool := WithTut,
+      micrositeCompilingDocsTool := WithMdoc,
       micrositeDescription := "Simple & Efficient data fetching",
       micrositeBaseUrl := "fetch",
       micrositeDocumentationUrl := "/fetch/docs",
@@ -60,12 +59,11 @@ object ProjectPlugin extends AutoPlugin {
       )
     )
 
-    lazy val commonTutSettings: Seq[Def.Setting[_]] = Seq(
-      scalacOptions in Tut ~= (_.filterNot(Set("-Ywarn-unused-import", "-Ywarn-dead-code")))
-    )
-
     lazy val docsSettings: Seq[Def.Setting[_]] =
-      micrositeSettings ++ commonTutSettings ++ Seq(aggregate in doc := true)
+      micrositeSettings ++ Seq(
+        scalacOptions ~= (_.filterNot(Set("-Ywarn-unused-import", "-Ywarn-dead-code"))),
+        aggregate in doc := true
+      )
 
     lazy val examplesSettings = Seq(
       libraryDependencies ++= Seq(
