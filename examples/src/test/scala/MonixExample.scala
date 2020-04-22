@@ -28,7 +28,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
 class MonixExample extends AnyWordSpec with Matchers {
-  implicit val scheduler: Scheduler               = Scheduler.io(name = "test-scheduler")
+  implicit val scheduler: Scheduler      = Scheduler.io(name = "test-scheduler")
   val executionContext: ExecutionContext = scheduler
 
   import DatabaseExample._

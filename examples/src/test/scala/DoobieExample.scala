@@ -23,6 +23,7 @@ import doobie.{Query => _, _}
 import doobie.h2.H2Transactor
 import doobie.util.ExecutionContexts
 
+import org.scalatest._
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
@@ -60,17 +61,19 @@ object DatabaseExample {
 
     import doobie.implicits._
 
-    val createTable = sql"""
+    def createTable[F[_]: Sync](tx: Transactor[F]) = sql"""
        CREATE TABLE author (
          id INTEGER PRIMARY KEY,
          name VARCHAR(20) NOT NULL UNIQUE
        )
-      """.update.run
+      """.update.run.transact(tx)
 
-    val dropTable = sql"DROP TABLE IF EXISTS author".update.run
+    def dropTable[F[_]: Sync](tx: Transactor[F]) =
+      sql"DROP TABLE IF EXISTS author".update.run.transact(tx)
 
-    def addAuthor(author: Author) =
+    def addAuthor[F[_]: Sync](author: Author)(tx: Transactor[F]) =
       sql"INSERT INTO author (id, name) VALUES(${author.id}, ${author.name})".update.run
+        .transact(tx)
 
     val authors: List[Author] =
       List("William Shakespeare", "Charles Dickens", "George Orwell").zipWithIndex.map {
@@ -86,13 +89,9 @@ object DatabaseExample {
             "sa",
             "",
             conn,
-            Blocker.liftExecutionContext(trans))
+            Blocker.liftExecutionContext(trans)
+          )
       } yield tx
-
-    def transactor[F[_]: Async: ContextShift]: Resource[F, Transactor[F]] =
-      createTransactor[F].evalMap({ tx =>
-        (dropTable *> createTable *> authors.traverse(addAuthor)).transact(tx) *> Sync[F].pure(tx)
-      })
   }
 
   object Authors extends Data[AuthorId, Author] {
@@ -108,16 +107,14 @@ object DatabaseExample {
 
         override def fetch(id: AuthorId): F[Option[Author]] =
           Database
-            .transactor[F]
+            .createTransactor[F]
             .use(Queries.fetchById(id).transact(_))
 
         override def batch(ids: NonEmptyList[AuthorId]): F[Map[AuthorId, Author]] =
           Database
-            .transactor[F]
+            .createTransactor[F]
             .use(Queries.fetchByIds(ids).transact(_))
-            .map { authors =>
-              authors.map(a => AuthorId(a.id) -> a).toMap
-            }
+            .map(authors => authors.map(a => AuthorId(a.id) -> a).toMap)
       }
 
     def fetchAuthor[F[_]: Concurrent: ContextShift](id: Int): Fetch[F, Author] =
@@ -125,12 +122,19 @@ object DatabaseExample {
   }
 }
 
-class DoobieExample extends AnyWordSpec with Matchers {
+class DoobieExample extends AnyWordSpec with Matchers with BeforeAndAfterAll {
   import DatabaseExample._
+  import Database._
 
-  val executionContext              = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(2))
-  implicit val t: Timer[IO]         = IO.timer(executionContext)
-  implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
+  val executionContext                                  = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(2))
+  implicit val t: Timer[IO]                             = IO.timer(executionContext)
+  implicit val cs: ContextShift[IO]                     = IO.contextShift(executionContext)
+  implicit val transactor: Resource[IO, Transactor[IO]] = createTransactor[IO]
+
+  override def beforeAll(): Unit = (transactor.use { tx =>
+    createTable(tx) *> authors.traverse(addAuthor(_)(tx))
+  }).void.unsafeRunSync
+  override def afterAll(): Unit = transactor.use(dropTable(_)).void.unsafeRunSync
 
   "We can fetch one author from the DB" in {
     val io: IO[(Log, Author)] = Fetch.runLog[IO](Authors.fetchAuthor(1))

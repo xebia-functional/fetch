@@ -61,7 +61,8 @@ class GithubExample extends AnyWordSpec with Matchers {
       stargazers_count: Int,
       watchers_count: Int,
       languages_url: String,
-      contributors_url: String)
+      contributors_url: String
+  )
 
   object Repos extends Data[(String, String), Repo] {
     def name = "Repositories"
@@ -79,7 +80,7 @@ class GithubExample extends AnyWordSpec with Matchers {
         def data = Repos
 
         def fetch(id: (String, String)): F[Option[Repo]] = {
-          client[F].use((c) => {
+          client[F].use { (c) =>
             val (owner, repo) = id
             val url           = GITHUB / "repos" / owner / repo +? ("access_token", ACCESS_TOKEN)
             val req           = Request[F](Method.GET, url)
@@ -91,7 +92,7 @@ class GithubExample extends AnyWordSpec with Matchers {
                   CF.raiseError(new Exception(res.body.toString))
               })
             } yield Option(result)
-          })
+          }
         }
       }
     }
@@ -115,11 +116,12 @@ class GithubExample extends AnyWordSpec with Matchers {
         def data = OrgRepos
 
         def fetch(org: Org): F[Option[List[Repo]]] = {
-          client[F].use((c) => {
-            val url = GITHUB / "orgs" / org / "repos" +? ("access_token", ACCESS_TOKEN) +? ("type", "public") +? ("per_page", 100)
+          client[F].use { (c) =>
+            val url =
+              GITHUB / "orgs" / org / "repos" +? ("access_token", ACCESS_TOKEN) +? ("type", "public") +? ("per_page", 100)
             val req = Request[F](Method.GET, url)
             fetchCollectionRecursively[F, Repo](c, req).map(Option(_))
-          })
+          }
         }
       }
   }
@@ -146,11 +148,11 @@ class GithubExample extends AnyWordSpec with Matchers {
         def data = Languages
 
         def fetch(repo: Repo): F[Option[List[Language]]] = {
-          client[F].use((c) => {
+          client[F].use { (c) =>
             val url = Uri.unsafeFromString(repo.languages_url) +? ("access_token", ACCESS_TOKEN)
             val req = Request[F](Method.GET, url)
             fetchCollectionRecursively[F, Language](c, req).map(Option(_))
-          })
+          }
         }
       }
   }
@@ -176,12 +178,12 @@ class GithubExample extends AnyWordSpec with Matchers {
         def data = Contributors
 
         def fetch(repo: Repo): F[Option[List[Contributor]]] = {
-          client[F].use((c) => {
+          client[F].use { (c) =>
             val url = Uri
               .unsafeFromString(repo.contributors_url) +? ("access_token", ACCESS_TOKEN) +? ("type", "public") +? ("per_page", 100)
             val req = Request[F](Method.GET, url)
             fetchCollectionRecursively[F, Contributor](c, req).map(Option(_))
-          })
+          }
         }
       }
   }
@@ -233,25 +235,23 @@ class GithubExample extends AnyWordSpec with Matchers {
     def hasNext(res: Response[F]): Boolean =
       res.headers
         .get(CaseInsensitiveString("Link"))
-        .fold(false)({ h =>
-          REL_NEXT.findFirstIn(h.value).isDefined
-        })
+        .fold(false)({ h => REL_NEXT.findFirstIn(h.value).isDefined })
 
     def getNextLink(raw: String): F[String] = {
       REL_NEXT
         .findFirstMatchIn(raw)
         .fold(
           CF.raiseError[String](new Exception("Couldn't find next link"))
-        )(m => {
+        ) { m =>
           CF.pure(m.before.toString.split(",").last.trim.dropWhile(_ == '<').takeWhile(_ != '>'))
-        })
+        }
     }
 
     def getNext(res: Response[F]): F[Uri] =
       res.headers
         .get(CaseInsensitiveString("Link"))
-        .fold(CF.raiseError[Uri](new Exception("next not found")))(
-          raw => getNextLink(raw.value).map(Uri.unsafeFromString(_))
+        .fold(CF.raiseError[Uri](new Exception("next not found")))(raw =>
+          getNextLink(raw.value).map(Uri.unsafeFromString(_))
         )
 
     for {

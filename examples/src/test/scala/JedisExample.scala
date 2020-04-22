@@ -72,16 +72,19 @@ object Binary {
   def byteOutputStream[F[_]](implicit S: Sync[F]): Resource[F, ByteArrayOutputStream] =
     Resource.fromAutoCloseable(S.delay(new ByteArrayOutputStream()))
 
-  def byteInputStream[F[_]](bin: ByteArray)(
-      implicit S: Sync[F]): Resource[F, ByteArrayInputStream] =
+  def byteInputStream[F[_]](
+      bin: ByteArray
+  )(implicit S: Sync[F]): Resource[F, ByteArrayInputStream] =
     Resource.fromAutoCloseable(S.delay(new ByteArrayInputStream(bin)))
 
-  def outputStream[F[_]](b: ByteArrayOutputStream)(
-      implicit S: Sync[F]): Resource[F, ObjectOutputStream] =
+  def outputStream[F[_]](
+      b: ByteArrayOutputStream
+  )(implicit S: Sync[F]): Resource[F, ObjectOutputStream] =
     Resource.fromAutoCloseable(S.delay(new ObjectOutputStream(b)))
 
-  def inputStream[F[_]](b: ByteArrayInputStream)(
-      implicit S: Sync[F]): Resource[F, ObjectInputStream] =
+  def inputStream[F[_]](
+      b: ByteArrayInputStream
+  )(implicit S: Sync[F]): Resource[F, ObjectInputStream] =
     Resource.fromAutoCloseable(S.delay(new ObjectInputStream(b)))
 
   def fromString(s: String): Array[Byte] =
@@ -135,7 +138,8 @@ case class RedisCache[F[_]: Sync](host: String) extends DataCache[F] {
         val pipe = c.pipelined
         ivs.foreach(i => pipe.set(i._1, i._2))
         pipe.sync
-      }))
+      })
+    )
 
   private def cacheId[I, A](i: I, data: Data[I, A]): Array[Byte] =
     Binary.fromString(s"${data.identity} ${i}")
