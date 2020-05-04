@@ -154,72 +154,70 @@ object `package` {
   private def combineRequests[F[_]: Monad](
       x: BlockedRequest[F],
       y: BlockedRequest[F]
-  ): BlockedRequest[F] = (x.request, y.request) match {
-    case (a @ FetchOne(aId, ds), b @ FetchOne(anotherId, _)) =>
-      if (aId == anotherId) {
-        val newRequest = FetchOne(aId, ds)
-        val newResult  = x.result.flatMap(() => y.result)
-        BlockedRequest(newRequest, newResult)
-      } else {
+  ): BlockedRequest[F] =
+    (x.request, y.request) match {
+      case (a @ FetchOne(aId, ds), b @ FetchOne(anotherId, _)) =>
+        if (aId == anotherId) {
+          val newRequest = FetchOne(aId, ds)
+          val newResult  = x.result.flatMap(() => y.result)
+          BlockedRequest(newRequest, newResult)
+        } else {
+          val combined   = combineIdentities(a, b)
+          val newRequest = Batch(combined, ds)
+          val newResult = CombinationSuspend((r: FetchStatus) =>
+            r match {
+              case FetchDone(m: Map[Any, Any]) =>
+                val xResult = m.get(aId).map(FetchDone(_)).getOrElse(FetchMissing())
+                val yResult = m.get(anotherId).map(FetchDone(_)).getOrElse(FetchMissing())
+                CombinationBarrier(() => x.result, xResult)
+                  .flatMap(() => CombinationBarrier(() => y.result, yResult))
+
+              case FetchMissing() =>
+                x.result.flatMap(() => y.result)
+            }
+          )
+          BlockedRequest(newRequest, newResult)
+        }
+
+      case (a @ FetchOne(oneId, ds), b @ Batch(anotherIds, _)) =>
         val combined   = combineIdentities(a, b)
         val newRequest = Batch(combined, ds)
         val newResult = CombinationSuspend((r: FetchStatus) =>
           r match {
-            case FetchDone(m: Map[Any, Any]) => {
-              val xResult = m.get(aId).map(FetchDone(_)).getOrElse(FetchMissing())
-              val yResult = m.get(anotherId).map(FetchDone(_)).getOrElse(FetchMissing())
-              CombinationBarrier(() => x.result, xResult)
-                .flatMap(() => CombinationBarrier(() => y.result, yResult))
-            }
+            case FetchDone(m: Map[Any, Any]) =>
+              val oneResult = m.get(oneId).map(FetchDone(_)).getOrElse(FetchMissing())
+              CombinationBarrier(() => x.result, oneResult)
+                .flatMap(() => y.result)
+
+            case FetchMissing() =>
+              x.result.flatMap(() => y.result)
+          }
+        )
+
+        BlockedRequest(newRequest, newResult)
+
+      case (a @ Batch(manyId, ds), b @ FetchOne(oneId, _)) =>
+        val combined   = combineIdentities(a, b)
+        val newRequest = Batch(combined, ds)
+        val newResult = CombinationSuspend((r: FetchStatus) =>
+          r match {
+            case FetchDone(m: Map[Any, Any]) =>
+              val oneResult = m.get(oneId).map(FetchDone(_)).getOrElse(FetchMissing())
+              CombinationBarrier(() => y.result, oneResult)
+                .flatMap(() => x.result)
 
             case FetchMissing() =>
               x.result.flatMap(() => y.result)
           }
         )
         BlockedRequest(newRequest, newResult)
-      }
 
-    case (a @ FetchOne(oneId, ds), b @ Batch(anotherIds, _)) =>
-      val combined   = combineIdentities(a, b)
-      val newRequest = Batch(combined, ds)
-      val newResult = CombinationSuspend((r: FetchStatus) =>
-        r match {
-          case FetchDone(m: Map[Any, Any]) => {
-            val oneResult = m.get(oneId).map(FetchDone(_)).getOrElse(FetchMissing())
-            CombinationBarrier(() => x.result, oneResult)
-              .flatMap(() => y.result)
-          }
-
-          case FetchMissing() =>
-            x.result.flatMap(() => y.result)
-        }
-      )
-
-      BlockedRequest(newRequest, newResult)
-
-    case (a @ Batch(manyId, ds), b @ FetchOne(oneId, _)) =>
-      val combined   = combineIdentities(a, b)
-      val newRequest = Batch(combined, ds)
-      val newResult = CombinationSuspend((r: FetchStatus) =>
-        r match {
-          case FetchDone(m: Map[Any, Any]) => {
-            val oneResult = m.get(oneId).map(FetchDone(_)).getOrElse(FetchMissing())
-            CombinationBarrier(() => y.result, oneResult)
-              .flatMap(() => x.result)
-          }
-
-          case FetchMissing() =>
-            x.result.flatMap(() => y.result)
-        }
-      )
-      BlockedRequest(newRequest, newResult)
-
-    case (a @ Batch(manyId, ds), b @ Batch(otherId, _)) =>
-      val combined   = combineIdentities(a, b)
-      val newRequest = Batch(combined, ds)
-      val newResult  = x.result.flatMap(() => y.result)
-      BlockedRequest(newRequest, newResult)
-  }
+      case (a @ Batch(manyId, ds), b @ Batch(otherId, _)) =>
+        val combined   = combineIdentities(a, b)
+        val newRequest = Batch(combined, ds)
+        val newResult  = x.result.flatMap(() => y.result)
+        BlockedRequest(newRequest, newResult)
+    }
 
   /* A map from datasource identities to (data source, blocked request) pairs used to group requests to the same data source. */
   private[fetch] final case class RequestMap[F[_]](
@@ -230,18 +228,16 @@ object `package` {
   private def combineRequestMaps[F[_]: Monad](x: RequestMap[F], y: RequestMap[F]): RequestMap[F] =
     RequestMap(
       x.m.foldLeft(y.m) {
-        case (acc, (dsId, (ds, blocked))) => {
+        case (acc, (dsId, (ds, blocked))) =>
           val combined = acc
             .get(dsId)
             .fold(
               (ds, blocked)
             )({
-              case (d, req) => {
+              case (d, req) =>
                 (d, combineRequests(blocked, req))
-              }
             })
           acc.updated(dsId, combined)
-        }
       }
     )
 
@@ -435,8 +431,7 @@ object `package` {
     private[fetch] class FetchRunner[F[_]](private val dummy: Boolean = true) extends AnyVal {
       def apply[A](
           fa: Fetch[F, A]
-      )(
-          implicit
+      )(implicit
           C: Concurrent[F],
           T: Timer[F]
       ): F[A] =
@@ -445,8 +440,7 @@ object `package` {
       def apply[A](
           fa: Fetch[F, A],
           cache: DataCache[F]
-      )(
-          implicit
+      )(implicit
           C: Concurrent[F],
           T: Timer[F]
       ): F[A] =
@@ -464,8 +458,7 @@ object `package` {
     private[fetch] class FetchRunnerLog[F[_]](private val dummy: Boolean = true) extends AnyVal {
       def apply[A](
           fa: Fetch[F, A]
-      )(
-          implicit
+      )(implicit
           C: Concurrent[F],
           T: Timer[F]
       ): F[(Log, A)] =
@@ -474,8 +467,7 @@ object `package` {
       def apply[A](
           fa: Fetch[F, A],
           cache: DataCache[F]
-      )(
-          implicit
+      )(implicit
           C: Concurrent[F],
           T: Timer[F]
       ): F[(Log, A)] =
@@ -494,8 +486,7 @@ object `package` {
     private[fetch] class FetchRunnerCache[F[_]](private val dummy: Boolean = true) extends AnyVal {
       def apply[A](
           fa: Fetch[F, A]
-      )(
-          implicit
+      )(implicit
           C: Concurrent[F],
           T: Timer[F]
       ): F[(DataCache[F], A)] =
@@ -504,8 +495,7 @@ object `package` {
       def apply[A](
           fa: Fetch[F, A],
           cache: DataCache[F]
-      )(
-          implicit
+      )(implicit
           C: Concurrent[F],
           T: Timer[F]
       ): F[(DataCache[F], A)] =
@@ -524,8 +514,7 @@ object `package` {
     private[fetch] class FetchRunnerAll[F[_]](private val dummy: Boolean = true) extends AnyVal {
       def apply[A](
           fa: Fetch[F, A]
-      )(
-          implicit
+      )(implicit
           C: Concurrent[F],
           T: Timer[F]
       ): F[(Log, DataCache[F], A)] =
@@ -534,8 +523,7 @@ object `package` {
       def apply[A](
           fa: Fetch[F, A],
           cache: DataCache[F]
-      )(
-          implicit
+      )(implicit
           C: Concurrent[F],
           T: Timer[F]
       ): F[(Log, DataCache[F], A)] =
@@ -555,8 +543,7 @@ object `package` {
         fa: Fetch[F, A],
         cache: Ref[F, DataCache[F]],
         log: Option[Ref[F, Log]]
-    )(
-        implicit
+    )(implicit
         C: Concurrent[F],
         T: Timer[F]
     ): F[A] =
@@ -583,8 +570,7 @@ object `package` {
         rs: RequestMap[F],
         cache: Ref[F, DataCache[F]],
         log: Option[Ref[F, Log]]
-    )(
-        implicit
+    )(implicit
         C: Concurrent[F],
         T: Timer[F]
     ): F[Unit] = {
@@ -600,12 +586,13 @@ object `package` {
               })
           )
           performedRequests = requests.foldLeft(List.empty[Request])(_ ++ _)
-          _ <- if (performedRequests.isEmpty) Applicative[F].unit
-          else
-            log match {
-              case Some(l) => l.modify((oldE) => (oldE.append(Round(performedRequests)), oldE))
-              case None    => Applicative[F].unit
-            }
+          _ <-
+            if (performedRequests.isEmpty) Applicative[F].unit
+            else
+              log match {
+                case Some(l) => l.modify((oldE) => (oldE.append(Round(performedRequests)), oldE))
+                case None    => Applicative[F].unit
+              }
         } yield ()
     }
 
@@ -614,8 +601,7 @@ object `package` {
         ds: DataSource[F, Any, Any],
         cache: Ref[F, DataCache[F]],
         log: Option[Ref[F, Log]]
-    )(
-        implicit
+    )(implicit
         C: Concurrent[F],
         T: Timer[F]
     ): F[List[Request]] =
@@ -631,8 +617,7 @@ object `package` {
       putResult: CombinationTailRec[F],
       cache: Ref[F, DataCache[F]],
       log: Option[Ref[F, Log]]
-  )(
-      implicit
+  )(implicit
       C: Concurrent[F],
       T: Timer[F]
   ): F[List[Request]] =
@@ -678,8 +663,7 @@ object `package` {
       putResult: CombinationTailRec[F],
       cache: Ref[F, DataCache[F]],
       log: Option[Ref[F, Log]]
-  )(
-      implicit
+  )(implicit
       C: Concurrent[F],
       T: Timer[F]
   ): F[List[Request]] =
@@ -731,8 +715,7 @@ object `package` {
       ds: DataSource[F, Any, Any],
       batchSize: Int,
       e: BatchExecution
-  )(
-      implicit
+  )(implicit
       C: Concurrent[F],
       T: Timer[F]
   ): F[BatchedRequest] = {

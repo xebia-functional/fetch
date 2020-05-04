@@ -67,14 +67,14 @@ object ProjectPlugin extends AutoPlugin {
 
     lazy val examplesSettings = Seq(
       libraryDependencies ++= Seq(
-        "io.circe"      %% "circe-generic"       % "0.13.0",
-        "org.tpolecat"  %% "doobie-core"         % "0.9.0",
-        "org.tpolecat"  %% "doobie-h2"           % "0.9.0",
-        "org.tpolecat"  %% "atto-core"           % "0.7.2",
-        "org.http4s"    %% "http4s-blaze-client" % "0.21.3",
-        "org.http4s"    %% "http4s-circe"        % "0.21.3",
-        "redis.clients" % "jedis"                % "2.9.0",
-        "io.monix"      %% "monix"               % "3.0.0"
+        "io.circe"     %% "circe-generic"       % "0.13.0",
+        "org.tpolecat" %% "doobie-core"         % "0.9.0",
+        "org.tpolecat" %% "doobie-h2"           % "0.9.0",
+        "org.tpolecat" %% "atto-core"           % "0.7.2",
+        "org.http4s"   %% "http4s-blaze-client" % "0.21.3",
+        "org.http4s"   %% "http4s-circe"        % "0.21.3",
+        "redis.clients" % "jedis"               % "2.9.0",
+        "io.monix"     %% "monix"               % "3.0.0"
       )
     ) ++ commonCrossDependencies
   }
@@ -91,8 +91,8 @@ object ProjectPlugin extends AutoPlugin {
           case _             => withStripedLinter
         }) :+ "-language:higherKinds"
       },
-      addCompilerPlugin("org.typelevel" % "kind-projector"      % "0.11.0" cross CrossVersion.full),
-      addCompilerPlugin("com.olegpy"    %% "better-monadic-for" % "0.3.1"),
+      addCompilerPlugin("org.typelevel" % "kind-projector"     % "0.11.0" cross CrossVersion.full),
+      addCompilerPlugin("com.olegpy"   %% "better-monadic-for" % "0.3.1"),
       scalacOptions := Seq(
         "-unchecked",
         "-deprecation",

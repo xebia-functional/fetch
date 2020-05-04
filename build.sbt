@@ -1,6 +1,6 @@
 import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
 
-lazy val checkScalafmt = "+scalafmtCheck; +scalafmtSbtCheck;"
+lazy val checkScalafmt = "+scalafmtCheckAll; +scalafmtSbtCheck;"
 lazy val checkDocs     = "+docs/mdoc;"
 lazy val checkJSTests  = "+fetchJS/test; +debugJS/test;"
 lazy val checkJVMTests =

@@ -21,8 +21,8 @@ import cats.effect._
 import cats.syntax.all._
 
 private object FetchExecution {
-  def parallel[F[_], A](effects: NonEmptyList[F[A]])(
-      implicit CF: Concurrent[F]
+  def parallel[F[_], A](effects: NonEmptyList[F[A]])(implicit
+      CF: Concurrent[F]
   ): F[NonEmptyList[A]] =
     effects
       .traverse(CF.start(_))

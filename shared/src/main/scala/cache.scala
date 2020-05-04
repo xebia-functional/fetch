@@ -33,8 +33,8 @@ trait DataCache[F[_]] {
 
   def insert[I, A](i: I, v: A, data: Data[I, A]): F[DataCache[F]]
 
-  def bulkInsert[I, A](vs: List[(I, A)], data: Data[I, A])(
-      implicit M: Monad[F]
+  def bulkInsert[I, A](vs: List[(I, A)], data: Data[I, A])(implicit
+      M: Monad[F]
   ): F[DataCache[F]] = {
     vs.foldLeftM(this) {
       case (acc, (i, v)) =>

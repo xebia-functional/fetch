@@ -149,10 +149,9 @@ class FetchTests extends FetchSpec {
     val io = Fetch.runLog[IO](fetch)
 
     io.map({
-        case (log, result) => {
+        case (log, result) =>
           result shouldEqual (1, 2)
           log.rounds.size shouldEqual 2
-        }
       })
       .unsafeToFuture
   }
@@ -167,10 +166,9 @@ class FetchTests extends FetchSpec {
     val io = Fetch.runLog[IO](fetch)
 
     io.map({
-        case (log, result) => {
+        case (log, result) =>
           result shouldEqual List(0, 1, 2)
           log.rounds.size shouldEqual 2
-        }
       })
       .unsafeToFuture
   }
@@ -182,12 +180,11 @@ class FetchTests extends FetchSpec {
     val io = Fetch.runLog[IO](fetch)
 
     io.map({
-        case (log, result) => {
+        case (log, result) =>
           result shouldEqual List(1, 2, 3)
           log.rounds.size shouldEqual 1
           totalFetched(log.rounds) shouldEqual 3
           totalBatches(log.rounds) shouldEqual 1
-        }
       })
       .unsafeToFuture
   }
@@ -200,14 +197,13 @@ class FetchTests extends FetchSpec {
     val io = Fetch.runLog[IO](fetch)
 
     io.map({
-        case (log, result) => {
+        case (log, result) =>
           result shouldEqual sources
           log.rounds.size shouldEqual 1
           log.rounds.head.queries.size shouldEqual 1
           log.rounds.head.queries.head.request should matchPattern {
             case Batch(NonEmptyList(1, List(2)), _) =>
           }
-        }
       })
       .unsafeToFuture
   }
@@ -219,11 +215,10 @@ class FetchTests extends FetchSpec {
     val io = Fetch.runLog[IO](fetch)
 
     io.map({
-        case (log, result) => {
+        case (log, result) =>
           result shouldEqual (1, List(0, 1, 2))
           log.rounds.size shouldEqual 1
           log.rounds.head.queries.size shouldEqual 2
-        }
       })
       .unsafeToFuture
   }
@@ -235,11 +230,10 @@ class FetchTests extends FetchSpec {
     val io = Fetch.runLog[IO](fetch)
 
     io.map({
-        case (log, result) => {
+        case (log, result) =>
           result shouldEqual (1, List(0, 1, 2))
           log.rounds.size shouldEqual 1
           totalBatches(log.rounds) shouldEqual 0
-        }
       })
       .unsafeToFuture
   }
@@ -251,11 +245,10 @@ class FetchTests extends FetchSpec {
     val io = Fetch.runLog[IO](fetch)
 
     io.map({
-        case (log, result) => {
+        case (log, result) =>
           result shouldEqual ((1, List(0, 1)), 3)
           log.rounds.size shouldEqual 1
           totalBatches(log.rounds) shouldEqual 0
-        }
       })
       .unsafeToFuture
   }
@@ -273,12 +266,11 @@ class FetchTests extends FetchSpec {
     val io = Fetch.runLog[IO](fetch)
 
     io.map({
-        case (log, result) => {
+        case (log, result) =>
           result shouldEqual ((1, (2, 3)), 4)
           log.rounds.size shouldEqual 1
           totalBatches(log.rounds) shouldEqual 1
           totalFetched(log.rounds) shouldEqual 4
-        }
       })
       .unsafeToFuture
   }
@@ -306,12 +298,11 @@ class FetchTests extends FetchSpec {
     val io = Fetch.runLog[IO](fetch)
 
     io.map({
-        case (log, result) => {
+        case (log, result) =>
           result shouldEqual ((1, 2), 3)
           log.rounds.size shouldEqual 2
           totalBatches(log.rounds) shouldEqual 2
           totalFetched(log.rounds) shouldEqual 5
-        }
       })
       .unsafeToFuture
   }
@@ -335,12 +326,11 @@ class FetchTests extends FetchSpec {
     val io = Fetch.runLog[IO](fetch)
 
     io.map({
-        case (log, result) => {
+        case (log, result) =>
           result shouldEqual (1, 2)
           log.rounds.size shouldEqual 2
           totalBatches(log.rounds) shouldEqual 2
           totalFetched(log.rounds) shouldEqual 4
-        }
       })
       .unsafeToFuture
   }
@@ -348,15 +338,15 @@ class FetchTests extends FetchSpec {
   "Every level of sequenced concurrent fetches is batched" in {
     def aFetch[F[_]: ConcurrentEffect] =
       for {
-        a <- List(2, 3, 4).traverse(one[F])   // round 1
-        b <- List(0, 1).traverse(many[F])     // round 2
+        a <- List(2, 3, 4).traverse(one[F]) // round 1
+        b <- List(0, 1).traverse(many[F]) // round 2
         c <- List(9, 10, 11).traverse(one[F]) // round 3
       } yield c
 
     def anotherFetch[F[_]: ConcurrentEffect] =
       for {
-        a <- List(5, 6, 7).traverse(one[F])    // round 1
-        b <- List(2, 3).traverse(many[F])      // round 2
+        a <- List(5, 6, 7).traverse(one[F]) // round 1
+        b <- List(2, 3).traverse(many[F]) // round 2
         c <- List(12, 13, 14).traverse(one[F]) // round 3
       } yield c
 
@@ -369,12 +359,11 @@ class FetchTests extends FetchSpec {
     val io = Fetch.runLog[IO](fetch)
 
     io.map({
-        case (log, result) => {
+        case (log, result) =>
           result shouldEqual ((List(9, 10, 11), List(12, 13, 14)), List(15, 16, 17))
           log.rounds.size shouldEqual 3
           totalBatches(log.rounds) shouldEqual 3
           totalFetched(log.rounds) shouldEqual 9 + 4 + 6
-        }
       })
       .unsafeToFuture
   }
@@ -385,12 +374,11 @@ class FetchTests extends FetchSpec {
     val io = Fetch.runLog[IO](fetch)
 
     io.map({
-        case (log, result) => {
+        case (log, result) =>
           result shouldEqual (1, 3)
           log.rounds.size shouldEqual 1
           totalBatches(log.rounds) shouldEqual 1
           totalFetched(log.rounds) shouldEqual 2
-        }
       })
       .unsafeToFuture
   }
@@ -402,11 +390,10 @@ class FetchTests extends FetchSpec {
     val io = Fetch.runLog[IO](fetch)
 
     io.map({
-        case (log, result) => {
+        case (log, result) =>
           result shouldEqual List(1, 2, 3, 4, 5)
           log.rounds.size shouldEqual 1
           totalBatches(log.rounds) shouldEqual 2
-        }
       })
       .unsafeToFuture
   }
@@ -418,12 +405,11 @@ class FetchTests extends FetchSpec {
     val io = Fetch.runLog[IO](fetch)
 
     io.map({
-        case (log, result) => {
+        case (log, result) =>
           result shouldEqual List(1, 2, 1)
           log.rounds.size shouldEqual 1
           totalBatches(log.rounds) shouldEqual 1
           totalFetched(log.rounds) shouldEqual 2
-        }
       })
       .unsafeToFuture
   }
@@ -435,11 +421,10 @@ class FetchTests extends FetchSpec {
     val io = Fetch.runLog[IO](fetch)
 
     io.map({
-        case (log, result) => {
+        case (log, result) =>
           result shouldEqual List(1, 2, 3)
           log.rounds.size shouldEqual 1
           totalBatches(log.rounds) shouldEqual 1
-        }
       })
       .unsafeToFuture
   }
@@ -451,11 +436,10 @@ class FetchTests extends FetchSpec {
     val io = Fetch.runLog[IO](fetch)
 
     io.map({
-        case (log, result) => {
+        case (log, result) =>
           result shouldEqual List(1, 2, 1)
           log.rounds.size shouldEqual 1
           totalFetched(log.rounds) shouldEqual 2
-        }
       })
       .unsafeToFuture
   }
@@ -470,11 +454,10 @@ class FetchTests extends FetchSpec {
     val io = Fetch.runLog[IO](fetch)
 
     io.map({
-        case (log, result) => {
+        case (log, result) =>
           result shouldEqual List(1, 2, 1)
           log.rounds.size shouldEqual 1
           totalFetched(log.rounds) shouldEqual 2
-        }
       })
       .unsafeToFuture
   }
@@ -492,11 +475,10 @@ class FetchTests extends FetchSpec {
     val io = Fetch.runLog[IO](fetch)
 
     io.map({
-        case (log, result) => {
+        case (log, result) =>
           result shouldEqual (1, 5)
           log.rounds.size shouldEqual 1
           totalFetched(log.rounds) shouldEqual 2
-        }
       })
       .unsafeToFuture
   }
@@ -519,10 +501,9 @@ class FetchTests extends FetchSpec {
     val io = Fetch.runLog[IO](fetch)
 
     io.map({
-        case (log, result) => {
+        case (log, result) =>
           result shouldEqual 2
           totalFetched(log.rounds) shouldEqual 3
-        }
       })
       .unsafeToFuture
   }
@@ -543,11 +524,10 @@ class FetchTests extends FetchSpec {
     val io = Fetch.runLog[IO](fetch)
 
     io.map({
-        case (log, result) => {
+        case (log, result) =>
           result shouldEqual 2
           log.rounds.size shouldEqual 1
           totalFetched(log.rounds) shouldEqual 3
-        }
       })
       .unsafeToFuture
   }
@@ -565,20 +545,20 @@ class FetchTests extends FetchSpec {
         _          <- one(1)
       } yield aOne + anotherOne
 
-    def cache[F[_]: ConcurrentEffect] = InMemoryCache.from[F, Int, Int](
-      (One, 1) -> 1,
-      (One, 2) -> 2,
-      (One, 3) -> 3
-    )
+    def cache[F[_]: ConcurrentEffect] =
+      InMemoryCache.from[F, Int, Int](
+        (One, 1) -> 1,
+        (One, 2) -> 2,
+        (One, 3) -> 3
+      )
 
     val io = Fetch.runLog[IO](fetch, cache)
 
     io.map({
-        case (log, result) => {
+        case (log, result) =>
           result shouldEqual 2
           totalFetched(log.rounds) shouldEqual 0
           log.rounds.size shouldEqual 0
-        }
       })
       .unsafeToFuture
   }
@@ -596,11 +576,12 @@ class FetchTests extends FetchSpec {
         _          <- one(1)
       } yield aOne + anotherOne
 
-    def cache[F[_]: ConcurrentEffect] = InMemoryCache.from[F, Int, Int](
-      (One, 1) -> 1,
-      (One, 2) -> 2,
-      (One, 3) -> 3
-    )
+    def cache[F[_]: ConcurrentEffect] =
+      InMemoryCache.from[F, Int, Int](
+        (One, 1) -> 1,
+        (One, 2) -> 2,
+        (One, 3) -> 3
+      )
 
     val io = Fetch.run[IO](fetch, cache)
 
@@ -620,18 +601,18 @@ class FetchTests extends FetchSpec {
         _          <- one(1)
       } yield aOne + anotherOne
 
-    def cache[F[_]: ConcurrentEffect] = InMemoryCache.from[F, Int, Int](
-      (One, 1) -> 1,
-      (One, 2) -> 2,
-      (One, 3) -> 3
-    )
+    def cache[F[_]: ConcurrentEffect] =
+      InMemoryCache.from[F, Int, Int](
+        (One, 1) -> 1,
+        (One, 2) -> 2,
+        (One, 3) -> 3
+      )
 
     val io = Fetch.runCache[IO](fetch, cache)
 
     io.map({
-        case (c, result) => {
+        case (c, result) =>
           result shouldEqual 2
-        }
       })
       .unsafeToFuture
   }
@@ -652,9 +633,8 @@ class FetchTests extends FetchSpec {
     val io = Fetch.runCache[IO](fetch)
 
     io.map({
-        case (c, result) => {
+        case (c, result) =>
           result shouldEqual 2
-        }
       })
       .unsafeToFuture
   }
@@ -684,11 +664,10 @@ class FetchTests extends FetchSpec {
     val io = Fetch.runLog[IO](fetch, forgetfulCache)
 
     io.map({
-        case (log, result) => {
+        case (log, result) =>
           result shouldEqual 2
           log.rounds.size shouldEqual 7
           totalFetched(log.rounds) shouldEqual 7
-        }
       })
       .unsafeToFuture
   }
@@ -709,11 +688,10 @@ class FetchTests extends FetchSpec {
     val io = Fetch.runLog[IO](fetch, forgetfulCache)
 
     io.map({
-        case (log, result) => {
+        case (log, result) =>
           result shouldEqual 2
           log.rounds.size shouldEqual 8
           totalFetched(log.rounds) shouldEqual 10
-        }
       })
       .unsafeToFuture
   }
@@ -739,9 +717,10 @@ class FetchTests extends FetchSpec {
   }
 
   "Data sources with errors won't fail if they're cached" in {
-    def cache[F[_]: ConcurrentEffect] = InMemoryCache.from[F, Never, Int](
-      (Never, Never()) -> 1
-    )
+    def cache[F[_]: ConcurrentEffect] =
+      InMemoryCache.from[F, Never, Int](
+        (Never, Never()) -> 1
+      )
     val io = Fetch.run[IO](never, cache)
 
     io.map(_ shouldEqual 1).unsafeToFuture
@@ -840,17 +819,18 @@ class FetchTests extends FetchSpec {
   object MaybeMissing extends Data[MaybeMissing, Int] {
     def name = "Maybe Missing"
 
-    implicit def source[F[_]: ConcurrentEffect] = new DataSource[F, MaybeMissing, Int] {
-      override def data = MaybeMissing
+    implicit def source[F[_]: ConcurrentEffect] =
+      new DataSource[F, MaybeMissing, Int] {
+        override def data = MaybeMissing
 
-      override def CF = ConcurrentEffect[F]
+        override def CF = ConcurrentEffect[F]
 
-      override def fetch(id: MaybeMissing): F[Option[Int]] =
-        if (id.id % 2 == 0)
-          CF.pure(None)
-        else
-          CF.pure(Option(id.id))
-    }
+        override def fetch(id: MaybeMissing): F[Option[Int]] =
+          if (id.id % 2 == 0)
+            CF.pure(None)
+          else
+            CF.pure(Option(id.id))
+      }
 
   }
 

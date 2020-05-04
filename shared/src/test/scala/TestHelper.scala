@@ -28,19 +28,20 @@ object TestHelper {
   object One extends Data[Int, Int] {
     def name = "One"
 
-    def source[F[_]: ConcurrentEffect]: DataSource[F, Int, Int] = new DataSource[F, Int, Int] {
-      override def data = One
+    def source[F[_]: ConcurrentEffect]: DataSource[F, Int, Int] =
+      new DataSource[F, Int, Int] {
+        override def data = One
 
-      override def CF = ConcurrentEffect[F]
+        override def CF = ConcurrentEffect[F]
 
-      override def fetch(id: Int): F[Option[Int]] =
-        CF.pure(Option(id))
+        override def fetch(id: Int): F[Option[Int]] =
+          CF.pure(Option(id))
 
-      override def batch(ids: NonEmptyList[Int]): F[Map[Int, Int]] =
-        CF.pure(
-          ids.toList.map((v) => (v, v)).toMap
-        )
-    }
+        override def batch(ids: NonEmptyList[Int]): F[Map[Int, Int]] =
+          CF.pure(
+            ids.toList.map((v) => (v, v)).toMap
+          )
+      }
   }
 
   def one[F[_]: ConcurrentEffect](id: Int): Fetch[F, Int] =
@@ -66,19 +67,20 @@ object TestHelper {
   object AnotherOne extends Data[Int, Int] {
     def name = "Another one"
 
-    def source[F[_]: ConcurrentEffect]: DataSource[F, Int, Int] = new DataSource[F, Int, Int] {
-      override def data = AnotherOne
+    def source[F[_]: ConcurrentEffect]: DataSource[F, Int, Int] =
+      new DataSource[F, Int, Int] {
+        override def data = AnotherOne
 
-      override def CF = ConcurrentEffect[F]
+        override def CF = ConcurrentEffect[F]
 
-      override def fetch(id: Int): F[Option[Int]] =
-        CF.pure(Option(id))
+        override def fetch(id: Int): F[Option[Int]] =
+          CF.pure(Option(id))
 
-      override def batch(ids: NonEmptyList[Int]): F[Map[Int, Int]] =
-        CF.pure(
-          ids.toList.map((v) => (v, v)).toMap
-        )
-    }
+        override def batch(ids: NonEmptyList[Int]): F[Map[Int, Int]] =
+          CF.pure(
+            ids.toList.map((v) => (v, v)).toMap
+          )
+      }
   }
 
   def anotherOne[F[_]: ConcurrentEffect](id: Int): Fetch[F, Int] =
@@ -89,14 +91,15 @@ object TestHelper {
   object Never extends Data[Never, Int] {
     def name = "Never"
 
-    def source[F[_]: ConcurrentEffect]: DataSource[F, Never, Int] = new DataSource[F, Never, Int] {
-      override def data = Never
+    def source[F[_]: ConcurrentEffect]: DataSource[F, Never, Int] =
+      new DataSource[F, Never, Int] {
+        override def data = Never
 
-      override def CF = ConcurrentEffect[F]
+        override def CF = ConcurrentEffect[F]
 
-      override def fetch(id: Never): F[Option[Int]] =
-        CF.pure(None: Option[Int])
-    }
+        override def fetch(id: Never): F[Option[Int]] =
+          CF.pure(None: Option[Int])
+      }
   }
 
   def never[F[_]: ConcurrentEffect]: Fetch[F, Int] =
