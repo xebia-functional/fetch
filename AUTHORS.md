@@ -9,8 +9,8 @@
 The maintainers of the project are:
 
 - [![47erbot](https://avatars1.githubusercontent.com/u/24799081?v=4&s=20) **47erbot**](https://github.com/47erbot)
-- [![AntonioMateoGomez](https://avatars0.githubusercontent.com/u/25897490?v=4&s=20) **AntonioMateoGomez**](https://github.com/AntonioMateoGomez)
 - [![purrgrammer](https://avatars0.githubusercontent.com/u/42009830?v=4&s=20) **Alejandro Gómez (purrgrammer)**](https://github.com/purrgrammer)
+- [![AntonioMateoGomez](https://avatars0.githubusercontent.com/u/25897490?v=4&s=20) **Antonio Mateo (AntonioMateoGomez)**](https://github.com/AntonioMateoGomez)
 - [![BenFradet](https://avatars2.githubusercontent.com/u/1737211?v=4&s=20) **Ben Fradet (BenFradet)**](https://github.com/BenFradet)
 - [![diesalbla](https://avatars1.githubusercontent.com/u/1764610?v=4&s=20) **Diego E. Alonso Blas (diesalbla)**](https://github.com/diesalbla)
 - [![fedefernandez](https://avatars0.githubusercontent.com/u/720923?v=4&s=20) **Fede Fernández (fedefernandez)**](https://github.com/fedefernandez)
@@ -45,11 +45,11 @@ These are the people that have contributed to the _fetch_ project:
 - [![jkmcclellan](https://avatars3.githubusercontent.com/u/52432856?v=4&s=20) **jkmcclellan**](https://github.com/jkmcclellan)
 - [![fedefernandez](https://avatars0.githubusercontent.com/u/720923?v=4&s=20) **fedefernandez**](https://github.com/fedefernandez)
 - [![lambdista](https://avatars3.githubusercontent.com/u/4966276?v=4&s=20) **lambdista**](https://github.com/lambdista)
+- [![BenFradet](https://avatars2.githubusercontent.com/u/1737211?v=4&s=20) **BenFradet**](https://github.com/BenFradet)
 - [![israelperezglez](https://avatars1.githubusercontent.com/u/646886?v=4&s=20) **israelperezglez**](https://github.com/israelperezglez)
 - [![paulpdaniels](https://avatars2.githubusercontent.com/u/2528918?v=4&s=20) **paulpdaniels**](https://github.com/paulpdaniels)
 - [![rafaparadela](https://avatars3.githubusercontent.com/u/315070?v=4&s=20) **rafaparadela**](https://github.com/rafaparadela)
 - [![adelbertc](https://avatars2.githubusercontent.com/u/1332980?v=4&s=20) **adelbertc**](https://github.com/adelbertc)
-- [![BenFradet](https://avatars2.githubusercontent.com/u/1737211?v=4&s=20) **BenFradet**](https://github.com/BenFradet)
 - [![bijancn](https://avatars3.githubusercontent.com/u/2117164?v=4&s=20) **bijancn**](https://github.com/bijancn)
 - [![guersam](https://avatars3.githubusercontent.com/u/969120?v=4&s=20) **guersam**](https://github.com/guersam)
 - [![justinhj](https://avatars0.githubusercontent.com/u/753059?v=4&s=20) **justinhj**](https://github.com/justinhj)
