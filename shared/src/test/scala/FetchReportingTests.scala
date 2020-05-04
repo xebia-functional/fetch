@@ -92,7 +92,7 @@ class FetchReportingTests extends FetchSpec {
   "Single fetches combined with traverse are run in one round" in {
     def fetch[F[_]: ConcurrentEffect] =
       for {
-        manies <- many(3)                 // round 1
+        manies <- many(3) // round 1
         ones   <- manies.traverse(one[F]) // round 2
       } yield ones
 
@@ -126,9 +126,9 @@ class FetchReportingTests extends FetchSpec {
 
     def anotherFetch[F[_]: ConcurrentEffect] =
       for {
-        a <- one(2)  // round 1 (batched)
+        a <- one(2) // round 1 (batched)
         m <- many(4) // round 2
-        c <- one(3)  // round 3 (deduplicated)
+        c <- one(3) // round 3 (deduplicated)
       } yield c
 
     def fetch[F[_]: ConcurrentEffect] =

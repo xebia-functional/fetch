@@ -52,23 +52,26 @@ object debug {
       })
     } yield lastR
 
-  def showLog(log: Log): Document = log.rounds match {
-    case Nil => Document.empty
-    case _ => {
-      val duration: Option[Long] = for {
-        firstRound        <- log.rounds.headOption
-        firstRequestStart <- firstRequest(firstRound)
-        lastRound         <- log.rounds.lastOption
-        lastRequestEnd    <- lastRequest(lastRound)
-      } yield lastRequestEnd - firstRequestStart
-      val durationDoc =
-        duration.fold(Document.empty: Document)((d: Long) =>
-          Document.text("Fetch execution") :: showDuration(d)
-        )
+  def showLog(log: Log): Document =
+    log.rounds match {
+      case Nil => Document.empty
+      case _ =>
+        val duration: Option[Long] = for {
+          firstRound        <- log.rounds.headOption
+          firstRequestStart <- firstRequest(firstRound)
+          lastRound         <- log.rounds.lastOption
+          lastRequestEnd    <- lastRequest(lastRound)
+        } yield lastRequestEnd - firstRequestStart
+        val durationDoc =
+          duration.fold(Document.empty: Document)((d: Long) =>
+            Document.text("Fetch execution") :: showDuration(d)
+          )
 
-      durationDoc :/: Document.nest(2, pile(log.rounds.mapWithIndex((r, i) => showRound(r, i + 1))))
+        durationDoc :/: Document.nest(
+          2,
+          pile(log.rounds.mapWithIndex((r, i) => showRound(r, i + 1)))
+        )
     }
-  }
 
   def showRound(r: Round, n: Int): Document = {
     val roundDuration = for {
@@ -85,12 +88,15 @@ object debug {
     )
   }
 
-  def showRequest(r: Request): Document = r.request match {
-    case FetchOne(id, d) =>
-      Document.text(s"[Fetch one] From `${d.name}` with id ${id}") :: showDuration(r.duration)
-    case Batch(ids, d) =>
-      Document.text(s"[Batch] From `${d.name}` with ids ${ids.toList}") :: showDuration(r.duration)
-  }
+  def showRequest(r: Request): Document =
+    r.request match {
+      case FetchOne(id, d) =>
+        Document.text(s"[Fetch one] From `${d.name}` with id ${id}") :: showDuration(r.duration)
+      case Batch(ids, d) =>
+        Document.text(s"[Batch] From `${d.name}` with ids ${ids.toList}") :: showDuration(
+          r.duration
+        )
+    }
 
   def showMissing(d: Data[_, _], ids: List[_]): Document =
     Document.text(s"`${d.name}` missing identities ${ids}")
@@ -98,30 +104,36 @@ object debug {
   def showRoundCount(err: FetchException): Document =
     Document.text(s", fetch interrupted after ${err.log.rounds.size} rounds")
 
-  def showException(err: FetchException): Document = err match {
-    case MissingIdentity(id, q, log) =>
-      Document
-        .text(s"[ERROR] Identity with id `${id}` for data source `${q.data.name}` not found") :: showRoundCount(
-        err
-      )
-    case UnhandledException(exc, log) =>
-      Document
-        .text(s"[ERROR] Unhandled `${exc.getClass.getName}`: '${exc.getMessage}'") :: showRoundCount(
-        err
-      )
-  }
+  def showException(err: FetchException): Document =
+    err match {
+      case MissingIdentity(id, q, log) =>
+        Document
+          .text(
+            s"[ERROR] Identity with id `${id}` for data source `${q.data.name}` not found"
+          ) :: showRoundCount(
+          err
+        )
+      case UnhandledException(exc, log) =>
+        Document
+          .text(
+            s"[ERROR] Unhandled `${exc.getClass.getName}`: '${exc.getMessage}'"
+          ) :: showRoundCount(
+          err
+        )
+    }
 
   /* Given a [[fetch.env.Log]], describe it with a human-readable string. */
   def describe(log: Log): String =
     string(showLog(log))
 
   /* Given a [[Throwable]], describe it with a human-readable string. */
-  def describe(err: Throwable): String = err match {
-    case fe: FetchException =>
-      string(
-        showException(fe) :/:
-          Document.nest(2, showLog(fe.log))
-      )
-    case _ => string(Document.text("Unexpected exception"))
-  }
+  def describe(err: Throwable): String =
+    err match {
+      case fe: FetchException =>
+        string(
+          showException(fe) :/:
+            Document.nest(2, showLog(fe.log))
+        )
+      case _ => string(Document.text("Unexpected exception"))
+    }
 }
