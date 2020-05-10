@@ -192,11 +192,11 @@ When executing the above fetch, note how the three identities get requested in p
 ```scala
 Fetch.run[IO](fetchUnbatchedThree).unsafeRunTimed(5.seconds)
 // --> [230] One UnbatchedToString 1
+// --> [231] One UnbatchedToString 3
 // --> [232] One UnbatchedToString 2
-// --> [233] One UnbatchedToString 3
-// <-- [233] One UnbatchedToString 3
-// <-- [232] One UnbatchedToString 2
 // <-- [230] One UnbatchedToString 1
+// <-- [231] One UnbatchedToString 3
+// <-- [232] One UnbatchedToString 2
 // res2: Option[(String, String, String)] = Some(("1", "2", "3"))
 ```
 
@@ -242,10 +242,10 @@ Note how the two independent data fetches run in parallel, minimizing the latenc
 
 ```scala
 Fetch.run[IO](fetchMulti).unsafeRunTimed(5.seconds)
-// --> [231] One Length one
-// --> [233] One ToString 1
-// <-- [233] One ToString 1
-// <-- [231] One Length one
+// --> [230] One ToString 1
+// --> [233] One Length one
+// <-- [230] One ToString 1
+// <-- [233] One Length one
 // res3: Option[(String, Int)] = Some(("1", 3))
 ```
 
@@ -264,8 +264,8 @@ While running it, notice that the data source is only queried once. The next tim
 
 ```scala
 Fetch.run[IO](fetchTwice).unsafeRunTimed(5.seconds)
-// --> [232] One ToString 1
-// <-- [232] One ToString 1
+// --> [231] One ToString 1
+// <-- [231] One ToString 1
 // res4: Option[(String, String)] = Some(("1", "1"))
 ```
 
