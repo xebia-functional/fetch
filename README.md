@@ -194,9 +194,9 @@ Fetch.run[IO](fetchUnbatchedThree).unsafeRunTimed(5.seconds)
 // --> [231] One UnbatchedToString 1
 // --> [232] One UnbatchedToString 2
 // --> [233] One UnbatchedToString 3
-// <-- [233] One UnbatchedToString 3
-// <-- [232] One UnbatchedToString 2
 // <-- [231] One UnbatchedToString 1
+// <-- [232] One UnbatchedToString 2
+// <-- [233] One UnbatchedToString 3
 // res2: Option[(String, String, String)] = Some(("1", "2", "3"))
 ```
 
