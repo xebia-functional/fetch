@@ -132,8 +132,8 @@ Let's run it and wait for the fetch to complete. We'll use `IO#unsafeRunTimed` f
 import scala.concurrent.duration._
 
 Fetch.run[IO](fetchOne).unsafeRunTimed(5.seconds)
-// --> [233] One ToString 1
-// <-- [233] One ToString 1
+// --> [232] One ToString 1
+// <-- [232] One ToString 1
 // res0: Option[String] = Some("1")
 ```
 
@@ -152,8 +152,8 @@ When executing the above fetch, note how the three identities get batched, and t
 
 ```scala
 Fetch.run[IO](fetchThree).unsafeRunTimed(5.seconds)
-// --> [233] Batch ToString NonEmptyList(1, 2, 3)
-// <-- [233] Batch ToString NonEmptyList(1, 2, 3)
+// --> [232] Batch ToString NonEmptyList(1, 2, 3)
+// <-- [232] Batch ToString NonEmptyList(1, 2, 3)
 // res1: Option[(String, String, String)] = Some(("1", "2", "3"))
 ```
 
@@ -191,12 +191,12 @@ When executing the above fetch, note how the three identities get requested in p
 
 ```scala
 Fetch.run[IO](fetchUnbatchedThree).unsafeRunTimed(5.seconds)
-// --> [234] One UnbatchedToString 1
-// --> [233] One UnbatchedToString 2
-// --> [235] One UnbatchedToString 3
-// <-- [234] One UnbatchedToString 1
-// <-- [233] One UnbatchedToString 2
-// <-- [235] One UnbatchedToString 3
+// --> [232] One UnbatchedToString 1
+// --> [234] One UnbatchedToString 2
+// --> [233] One UnbatchedToString 3
+// <-- [232] One UnbatchedToString 1
+// <-- [234] One UnbatchedToString 2
+// <-- [233] One UnbatchedToString 3
 // res2: Option[(String, String, String)] = Some(("1", "2", "3"))
 ```
 
@@ -242,10 +242,10 @@ Note how the two independent data fetches run in parallel, minimizing the latenc
 
 ```scala
 Fetch.run[IO](fetchMulti).unsafeRunTimed(5.seconds)
-// --> [234] One ToString 1
-// --> [236] One Length one
-// <-- [234] One ToString 1
-// <-- [236] One Length one
+// --> [232] One ToString 1
+// --> [235] One Length one
+// <-- [232] One ToString 1
+// <-- [235] One Length one
 // res3: Option[(String, Int)] = Some(("1", 3))
 ```
 
@@ -264,8 +264,8 @@ While running it, notice that the data source is only queried once. The next tim
 
 ```scala
 Fetch.run[IO](fetchTwice).unsafeRunTimed(5.seconds)
-// --> [233] One ToString 1
-// <-- [233] One ToString 1
+// --> [234] One ToString 1
+// <-- [234] One ToString 1
 // res4: Option[(String, String)] = Some(("1", "1"))
 ```
 
