@@ -6,6 +6,9 @@ A library for Simple & Efficient data access in Scala and Scala.js
 
 - [Documentation](https://47degrees.github.io/fetch/docs)
 
+```scala mdoc:toc
+```
+
 ## Installation
 
 Add the following dependency to your project's build file.

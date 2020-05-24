@@ -6,6 +6,17 @@ A library for Simple & Efficient data access in Scala and Scala.js
 
 - [Documentation](https://47degrees.github.io/fetch/docs)
 
+---
+
+- [Installation](#installation)
+- [Remote data](#remote-data)
+- [Define your data sources](#define-your-data-sources)
+- [Creating a runtime](#creating-a-runtime)
+- [Creating and running a fetch](#creating-and-running-a-fetch)
+- [Batching](#batching)
+- [Parallelism](#parallelism)
+- [Caching](#caching)
+
 ## Installation
 
 Add the following dependency to your project's build file.
