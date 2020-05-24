@@ -83,7 +83,6 @@ object ProjectPlugin extends AutoPlugin {
     Seq(
       organization := "com.47deg",
       crossScalaVersions := Seq("2.12.11", "2.13.1"),
-      startYear := Option(2016),
       scalacOptions := {
         val withStripedLinter = scalacOptions.value filterNot Set("-Xlint", "-Xfuture").contains
         (CrossVersion.partialVersion(scalaBinaryVersion.value) match {
