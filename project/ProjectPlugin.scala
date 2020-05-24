@@ -2,14 +2,11 @@ import microsites.MicrositesPlugin.autoImport._
 import com.typesafe.sbt.site.SitePlugin.autoImport._
 import sbt.Keys._
 import sbt._
-import com.alejandrohdezma.sbt.github.SbtGithubPlugin
 import microsites._
 
 object ProjectPlugin extends AutoPlugin {
 
   override def trigger: PluginTrigger = allRequirements
-
-  override def requires: Plugins = SbtGithubPlugin
 
   object autoImport {
 
