@@ -1,10 +1,6 @@
 # Fetch
 
-[comment]: # (Start Badges)
-
 [![Join the chat at https://gitter.im/47deg/fetch](https://badges.gitter.im/47deg/fetch.svg)](https://gitter.im/47deg/fetch?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) [![codecov.io](http://codecov.io/github/47deg/fetch/coverage.svg?branch=master)](http://codecov.io/github/47deg/fetch?branch=master) [![Maven Central](https://img.shields.io/badge/maven%20central-1.2.1-green.svg)](https://oss.sonatype.org/#nexus-search;gav~com.47deg~fetch*) [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](https://raw.githubusercontent.com/47deg/fetch/master/LICENSE) [![Latest version](https://img.shields.io/badge/fetch-1.2.1-green.svg)](https://index.scala-lang.org/47deg/fetch) [![Scala.js](http://scala-js.org/assets/badges/scalajs-0.6.15.svg)](http://scala-js.org) [![GitHub Issues](https://img.shields.io/github/issues/47deg/fetch.svg)](https://github.com/47deg/fetch/issues)
-
-[comment]: # (End Badges)
 
 A library for Simple & Efficient data access in Scala and Scala.js
 
@@ -16,8 +12,6 @@ Add the following dependency to your project's build file.
 
 For Scala 2.11.x and 2.12.x:
 
-[comment]: # (Start Replace)
-
 ```scala
 "com.47deg" %% "fetch" % "@VERSION@"
 ```
@@ -27,8 +21,6 @@ Or, if using Scala.js (0.6.x):
 ```scala
 "com.47deg" %%% "fetch" % "@VERSION@"
 ```
-
-[comment]: # (End Replace)
 
 ```scala mdoc:invisible
 val out = Console.out
