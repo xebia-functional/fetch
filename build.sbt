@@ -1,5 +1,3 @@
-import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
-
 addCommandAlias("ci-test", "scalafmtCheckAll; scalafmtSbtCheck; +mdoc; testCovered")
 addCommandAlias("ci-docs", "project-docs/mdoc; headerCreateAll")
 addCommandAlias("ci-microsite", "docs/publishMicrosite")
