@@ -1,9 +1,8 @@
 import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
 
-lazy val checkScalafmt = "+scalafmtCheckAll; +scalafmtSbtCheck;"
 lazy val checkDocs     = "+docs/mdoc;"
 
-addCommandAlias("ci-test", s"$checkScalafmt $checkDocs testCovered")
+addCommandAlias("ci-test", s"scalafmtCheckAll; scalafmtSbtCheck; $checkDocs testCovered")
 addCommandAlias("ci-docs", "project-docs/mdoc; headerCreateAll")
 addCommandAlias("ci-microsite", "docs/publishMicrosite")
 
