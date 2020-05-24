@@ -2,7 +2,6 @@ import microsites.MicrositesPlugin.autoImport._
 import com.typesafe.sbt.site.SitePlugin.autoImport._
 import sbt.Keys._
 import sbt._
-import scoverage.ScoverageKeys
 import com.alejandrohdezma.sbt.github.SbtGithubPlugin
 import microsites._
 
@@ -103,8 +102,7 @@ object ProjectPlugin extends AutoPlugin {
       ) ++ (CrossVersion.partialVersion(scalaVersion.value) match {
         case Some((2, 13)) => Seq()
         case _             => Seq("-Ypartial-unification")
-      }),
-      ScoverageKeys.coverageFailOnMinimum := false
+      })
     )
 
 }
