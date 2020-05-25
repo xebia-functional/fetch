@@ -2,9 +2,9 @@ ThisBuild / scalaVersion := "2.13.2"
 ThisBuild / crossScalaVersions := Seq("2.12.11", "2.13.2")
 ThisBuild / organization := "com.47deg"
 
-addCommandAlias("ci-test", "scalafmtCheckAll; scalafmtSbtCheck; +mdoc; testCovered")
-addCommandAlias("ci-docs", "project-docs/mdoc; headerCreateAll")
-addCommandAlias("ci-microsite", "docs/publishMicrosite")
+addCommandAlias("ci-test", "scalafmtCheckAll; scalafmtSbtCheck; mdoc; testCovered")
+addCommandAlias("ci-docs", "mdoc; headerCreateAll")
+addCommandAlias("ci-microsite", "publishMicrosite")
 
 skip in publish := true
 
@@ -26,19 +26,15 @@ lazy val `fetch-examples` = project
   .settings(skip in publish := true)
   .settings(examplesSettings: _*)
 
-lazy val docs = (project in file("docs"))
+lazy val microsite = project
   .dependsOn(fetchJVM, debugJVM)
-  .settings(name := "fetch-docs")
   .settings(docsSettings: _*)
   .settings(skip in publish := true)
-  .enablePlugins(MicrositesPlugin)
-  .enablePlugins(MdocPlugin)
+  .enablePlugins(MicrositesPlugin, MdocPlugin)
 
-lazy val `project-docs` = (project in file(".docs"))
+lazy val documentation = project
   .aggregate(fetchJVM)
   .dependsOn(fetchJVM)
-  .settings(moduleName := "fetch-project-docs")
-  .settings(mdocIn := file(".docs"))
-  .settings(mdocOut := file("."))
   .settings(skip in publish := true)
+  .settings(mdocOut := file("."))
   .enablePlugins(MdocPlugin)
