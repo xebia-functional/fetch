@@ -2,18 +2,10 @@ addCommandAlias("ci-test", "scalafmtCheckAll; scalafmtSbtCheck; +mdoc; testCover
 addCommandAlias("ci-docs", "project-docs/mdoc; headerCreateAll")
 addCommandAlias("ci-microsite", "docs/publishMicrosite")
 
-lazy val root = project
-  .in(file("."))
-  .settings(name := "fetch")
-  .settings(moduleName := "root")
-  .settings(skip in publish := true)
-  .aggregate(fetchJS, fetchJVM, debugJVM, debugJS)
+skip in publish := true
 
 lazy val fetch = crossProject(JSPlatform, JVMPlatform)
-  .in(file("."))
-  .settings(name := "fetch")
   .settings(commonCrossDependencies)
-
 lazy val fetchJVM = fetch.jvm
 lazy val fetchJS  = fetch.js.disablePlugins(ScoverageSbtPlugin)
 
