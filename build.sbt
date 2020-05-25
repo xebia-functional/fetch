@@ -5,11 +5,13 @@ addCommandAlias("ci-microsite", "docs/publishMicrosite")
 skip in publish := true
 
 lazy val fetch = crossProject(JSPlatform, JVMPlatform)
+  .crossType(CrossType.Pure)
   .settings(commonCrossDependencies)
 lazy val fetchJVM = fetch.jvm
 lazy val fetchJS  = fetch.js.disablePlugins(ScoverageSbtPlugin)
 
 lazy val `fetch-debug` = crossProject(JSPlatform, JVMPlatform)
+  .crossType(CrossType.Pure)
   .dependsOn(fetch)
   .settings(commonCrossDependencies)
 lazy val debugJVM = `fetch-debug`.jvm
