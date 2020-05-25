@@ -33,7 +33,6 @@ lazy val microsite = project
   .enablePlugins(MicrositesPlugin, MdocPlugin)
 
 lazy val documentation = project
-  .aggregate(fetchJVM)
   .dependsOn(fetchJVM)
   .settings(skip in publish := true)
   .settings(mdocOut := file("."))
