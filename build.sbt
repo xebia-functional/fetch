@@ -6,6 +6,7 @@ lazy val root = project
   .in(file("."))
   .settings(name := "fetch")
   .settings(moduleName := "root")
+  .settings(skip in publish := true)
   .aggregate(fetchJS, fetchJVM, debugJVM, debugJS)
 
 lazy val fetch = crossProject(JSPlatform, JVMPlatform)
