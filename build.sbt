@@ -3,8 +3,7 @@ ThisBuild / crossScalaVersions := Seq("2.12.11", "2.13.2")
 ThisBuild / organization := "com.47deg"
 
 addCommandAlias("ci-test", "scalafmtCheckAll; scalafmtSbtCheck; mdoc; testCovered")
-addCommandAlias("ci-docs", "mdoc; headerCreateAll")
-addCommandAlias("ci-microsite", "publishMicrosite")
+addCommandAlias("ci-docs", "mdoc; headerCreateAll; publishMicrosite")
 
 skip in publish := true
 
