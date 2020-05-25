@@ -9,17 +9,13 @@ lazy val fetch = crossProject(JSPlatform, JVMPlatform)
 lazy val fetchJVM = fetch.jvm
 lazy val fetchJS  = fetch.js.disablePlugins(ScoverageSbtPlugin)
 
-lazy val debug = crossProject(JSPlatform, JVMPlatform)
-  .in(file("debug"))
-  .settings(name := "fetch-debug")
+lazy val `fetch-debug` = crossProject(JSPlatform, JVMPlatform)
   .dependsOn(fetch)
   .settings(commonCrossDependencies)
+lazy val debugJVM = `fetch-debug`.jvm
+lazy val debugJS  = `fetch-debug`.js.disablePlugins(ScoverageSbtPlugin)
 
-lazy val debugJVM = debug.jvm
-lazy val debugJS  = debug.js.disablePlugins(ScoverageSbtPlugin)
-
-lazy val examples = (project in file("examples"))
-  .settings(name := "fetch-examples")
+lazy val `fetch-examples` = project
   .dependsOn(fetchJVM, debugJVM)
   .settings(skip in publish := true)
   .settings(examplesSettings: _*)
