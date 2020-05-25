@@ -83,14 +83,15 @@ object DatabaseExample {
     def createTransactor[F[_]: Async: ContextShift] =
       for {
         (conn, trans) <- (connectionPool[F](1), transactionPool[F]).tupled
-        tx <- H2Transactor
-          .newH2Transactor[F](
-            "jdbc:h2:mem:test;DB_CLOSE_DELAY=-1",
-            "sa",
-            "",
-            conn,
-            Blocker.liftExecutionContext(trans)
-          )
+        tx <-
+          H2Transactor
+            .newH2Transactor[F](
+              "jdbc:h2:mem:test;DB_CLOSE_DELAY=-1",
+              "sa",
+              "",
+              conn,
+              Blocker.liftExecutionContext(trans)
+            )
       } yield tx
   }
 
@@ -131,9 +132,13 @@ class DoobieExample extends AnyWordSpec with Matchers with BeforeAndAfterAll {
   implicit val cs: ContextShift[IO]                     = IO.contextShift(executionContext)
   implicit val transactor: Resource[IO, Transactor[IO]] = createTransactor[IO]
 
-  override def beforeAll(): Unit = (transactor.use { tx =>
-    createTable(tx) *> authors.traverse(addAuthor(_)(tx))
-  }).void.unsafeRunSync
+  override def beforeAll(): Unit =
+    (transactor
+      .use { tx =>
+        createTable(tx) *> authors.traverse(addAuthor(_)(tx))
+      })
+      .void
+      .unsafeRunSync
   override def afterAll(): Unit = transactor.use(dropTable(_)).void.unsafeRunSync
 
   "We can fetch one author from the DB" in {

@@ -40,14 +40,15 @@ object DataSources {
   object Numbers extends Data[Int, Int] {
     def name = "Numbers"
 
-    def source[F[_]: ConcurrentEffect]: DataSource[F, Int, Int] = new DataSource[F, Int, Int] {
-      def data = Numbers
+    def source[F[_]: ConcurrentEffect]: DataSource[F, Int, Int] =
+      new DataSource[F, Int, Int] {
+        def data = Numbers
 
-      override def CF = ConcurrentEffect[F]
+        override def CF = ConcurrentEffect[F]
 
-      override def fetch(id: Int): F[Option[Int]] =
-        CF.pure(Option(id))
-    }
+        override def fetch(id: Int): F[Option[Int]] =
+          CF.pure(Option(id))
+      }
   }
 
   def fetchNumber[F[_]: ConcurrentEffect](id: Int): Fetch[F, Int] =
@@ -90,8 +91,8 @@ object Binary {
   def fromString(s: String): Array[Byte] =
     s.getBytes(Charset.forName("UTF-8"))
 
-  def serialize[F[_], A](obj: A)(
-      implicit S: Sync[F]
+  def serialize[F[_], A](obj: A)(implicit
+      S: Sync[F]
   ): F[ByteArray] = {
     byteOutputStream
       .mproduct(outputStream(_))
@@ -105,8 +106,8 @@ object Binary {
       })
   }
 
-  def deserialize[F[_], A](bin: ByteArray)(
-      implicit S: Sync[F]
+  def deserialize[F[_], A](bin: ByteArray)(implicit
+      S: Sync[F]
   ): F[Option[A]] = {
     byteInputStream(bin)
       .mproduct(inputStream(_))
@@ -156,8 +157,8 @@ case class RedisCache[F[_]: Sync](host: String) extends DataCache[F] {
       _ <- set(cacheId(i, data), s)
     } yield this
 
-  override def bulkInsert[I, A](vs: List[(I, A)], data: Data[I, A])(
-      implicit M: Monad[F]
+  override def bulkInsert[I, A](vs: List[(I, A)], data: Data[I, A])(implicit
+      M: Monad[F]
   ): F[DataCache[F]] =
     for {
       bin <- vs.traverse({
