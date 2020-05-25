@@ -75,8 +75,6 @@ object ProjectPlugin extends AutoPlugin {
 
   override def projectSettings: Seq[Def.Setting[_]] =
     Seq(
-      organization := "com.47deg",
-      crossScalaVersions := Seq("2.12.11", "2.13.1"),
       scalacOptions := {
         val withStripedLinter = scalacOptions.value filterNot Set("-Xlint", "-Xfuture").contains
         (CrossVersion.partialVersion(scalaBinaryVersion.value) match {
