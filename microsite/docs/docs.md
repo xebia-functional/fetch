@@ -28,8 +28,6 @@ we read) concerns.
 
 To begin, add the following dependency to your SBT build file:
 
-[comment]: # (Start Replace)
-
 ```scala
 "com.47deg" %% "fetch" % "@VERSION@"
 ```
@@ -39,8 +37,6 @@ Or, if using Scala.js:
 ```scala
 "com.47deg" %%% "fetch" % "@VERSION@"
 ```
-
-[comment]: # (End Replace)
 
 Now you'll have Fetch available in both Scala and Scala.js.
 

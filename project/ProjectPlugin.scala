@@ -2,15 +2,11 @@ import microsites.MicrositesPlugin.autoImport._
 import com.typesafe.sbt.site.SitePlugin.autoImport._
 import sbt.Keys._
 import sbt._
-import scoverage.ScoverageKeys
-import com.alejandrohdezma.sbt.github.SbtGithubPlugin
 import microsites._
 
 object ProjectPlugin extends AutoPlugin {
 
   override def trigger: PluginTrigger = allRequirements
-
-  override def requires: Plugins = SbtGithubPlugin
 
   object autoImport {
 
@@ -29,8 +25,6 @@ object ProjectPlugin extends AutoPlugin {
       micrositeDescription := "Simple & Efficient data fetching",
       micrositeBaseUrl := "fetch",
       micrositeDocumentationUrl := "/fetch/docs",
-      micrositeGithubOwner := "47degrees",
-      micrositeGithubRepo := "fetch",
       micrositeHighlightTheme := "tomorrow",
       micrositeExternalLayoutsDirectory := (resourceDirectory in Compile).value / "microsite" / "_layouts",
       micrositeExternalIncludesDirectory := (resourceDirectory in Compile).value / "microsite" / "_includes",
@@ -81,9 +75,6 @@ object ProjectPlugin extends AutoPlugin {
 
   override def projectSettings: Seq[Def.Setting[_]] =
     Seq(
-      organization := "com.47deg",
-      crossScalaVersions := Seq("2.12.11", "2.13.1"),
-      startYear := Option(2016),
       scalacOptions := {
         val withStripedLinter = scalacOptions.value filterNot Set("-Xlint", "-Xfuture").contains
         (CrossVersion.partialVersion(scalaBinaryVersion.value) match {
@@ -104,8 +95,7 @@ object ProjectPlugin extends AutoPlugin {
       ) ++ (CrossVersion.partialVersion(scalaVersion.value) match {
         case Some((2, 13)) => Seq()
         case _             => Seq("-Ypartial-unification")
-      }),
-      ScoverageKeys.coverageFailOnMinimum := false
+      })
     )
 
 }

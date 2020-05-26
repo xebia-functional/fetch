@@ -1,60 +1,39 @@
-import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
+ThisBuild / scalaVersion := "2.13.2"
+ThisBuild / crossScalaVersions := Seq("2.12.11", "2.13.2")
+ThisBuild / organization := "com.47deg"
 
-lazy val checkScalafmt = "+scalafmtCheckAll; +scalafmtSbtCheck;"
-lazy val checkDocs     = "+docs/mdoc;"
-lazy val checkJSTests  = "+fetchJS/test; +debugJS/test;"
-lazy val checkJVMTests =
-  "+coverage; +fetchJVM/test; +debugJVM/test; +examples/test; +coverageReport; +coverageAggregate;"
+addCommandAlias("ci-test", "scalafmtCheckAll; scalafmtSbtCheck; mdoc; testCovered")
+addCommandAlias("ci-docs", "github; mdoc; headerCreateAll; publishMicrosite")
+addCommandAlias("ci-publish", "github; ci-release")
 
-addCommandAlias(
-  "ci-test",
-  s"$checkScalafmt $checkDocs $checkJSTests $checkJVMTests"
-)
-addCommandAlias("ci-docs", "project-docs/mdoc; headerCreateAll")
-addCommandAlias("ci-microsite", "docs/publishMicrosite")
-
-lazy val root = project
-  .in(file("."))
-  .settings(name := "fetch")
-  .settings(moduleName := "root")
-  .aggregate(fetchJS, fetchJVM, debugJVM, debugJS)
+skip in publish := true
 
 lazy val fetch = crossProject(JSPlatform, JVMPlatform)
-  .in(file("."))
-  .settings(name := "fetch")
+  .crossType(CrossType.Pure)
   .settings(commonCrossDependencies)
-
 lazy val fetchJVM = fetch.jvm
 lazy val fetchJS  = fetch.js.disablePlugins(ScoverageSbtPlugin)
 
-lazy val debug = crossProject(JSPlatform, JVMPlatform)
-  .in(file("debug"))
-  .settings(name := "fetch-debug")
+lazy val `fetch-debug` = crossProject(JSPlatform, JVMPlatform)
+  .crossType(CrossType.Pure)
   .dependsOn(fetch)
   .settings(commonCrossDependencies)
+lazy val debugJVM = `fetch-debug`.jvm
+lazy val debugJS  = `fetch-debug`.js.disablePlugins(ScoverageSbtPlugin)
 
-lazy val debugJVM = debug.jvm
-lazy val debugJS  = debug.js.disablePlugins(ScoverageSbtPlugin)
-
-lazy val examples = (project in file("examples"))
-  .settings(name := "fetch-examples")
+lazy val `fetch-examples` = project
   .dependsOn(fetchJVM, debugJVM)
   .settings(skip in publish := true)
   .settings(examplesSettings: _*)
 
-lazy val docs = (project in file("docs"))
+lazy val microsite = project
   .dependsOn(fetchJVM, debugJVM)
-  .settings(name := "fetch-docs")
   .settings(docsSettings: _*)
   .settings(skip in publish := true)
-  .enablePlugins(MicrositesPlugin)
-  .enablePlugins(MdocPlugin)
+  .enablePlugins(MicrositesPlugin, MdocPlugin)
 
-lazy val `project-docs` = (project in file(".docs"))
-  .aggregate(fetchJVM)
+lazy val documentation = project
   .dependsOn(fetchJVM)
-  .settings(moduleName := "fetch-project-docs")
-  .settings(mdocIn := file(".docs"))
-  .settings(mdocOut := file("."))
   .settings(skip in publish := true)
+  .settings(mdocOut := file("."))
   .enablePlugins(MdocPlugin)

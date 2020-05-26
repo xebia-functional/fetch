@@ -195,38 +195,40 @@ class GraphQLExample extends AnyWordSpec with Matchers {
   private def fetchRepos[F[_]: ConcurrentEffect](
       org: String,
       q: RepositoriesQuery
-  ): Fetch[F, List[Project]] = q match {
-    case RepositoriesQuery(n, name, Some(_), Some(_)) =>
-      for {
-        repos <- Repos.fetch(org)
-        projects <- repos
-          .take(n)
-          .traverse(repo =>
-            (Languages.fetch(repo), Collaborators.fetch(repo)).mapN {
-              case (ls, cs) => Project(name >> Some(repo.name), ls, cs)
-            }
-          )
-      } yield projects
+  ): Fetch[F, List[Project]] =
+    q match {
+      case RepositoriesQuery(n, name, Some(_), Some(_)) =>
+        for {
+          repos <- Repos.fetch(org)
+          projects <-
+            repos
+              .take(n)
+              .traverse(repo =>
+                (Languages.fetch(repo), Collaborators.fetch(repo)).mapN {
+                  case (ls, cs) => Project(name >> Some(repo.name), ls, cs)
+                }
+              )
+        } yield projects
 
-    case RepositoriesQuery(n, name, None, None) =>
-      Repos.fetch(org).map(_.map(r => Project(name >> Some(r.name), List(), List())))
+      case RepositoriesQuery(n, name, None, None) =>
+        Repos.fetch(org).map(_.map(r => Project(name >> Some(r.name), List(), List())))
 
-    case RepositoriesQuery(n, name, Some(_), None) =>
-      for {
-        repos <- Repos.fetch(org)
-        projects <- repos.traverse { r =>
-          Languages.fetch(r).map(ls => Project(name >> Some(r.name), ls, List()))
-        }
-      } yield projects
+      case RepositoriesQuery(n, name, Some(_), None) =>
+        for {
+          repos <- Repos.fetch(org)
+          projects <- repos.traverse { r =>
+            Languages.fetch(r).map(ls => Project(name >> Some(r.name), ls, List()))
+          }
+        } yield projects
 
-    case RepositoriesQuery(n, name, None, Some(_)) =>
-      for {
-        repos <- Repos.fetch(org)
-        projects <- repos.traverse { r =>
-          Collaborators.fetch(r).map(cs => Project(name >> Some(r.name), List(), cs))
-        }
-      } yield projects
-  }
+      case RepositoriesQuery(n, name, None, Some(_)) =>
+        for {
+          repos <- Repos.fetch(org)
+          projects <- repos.traverse { r =>
+            Collaborators.fetch(r).map(cs => Project(name >> Some(r.name), List(), cs))
+          }
+        } yield projects
+    }
 }
 
 object Parsers {

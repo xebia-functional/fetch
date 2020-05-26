@@ -41,10 +41,9 @@ class MonixExample extends AnyWordSpec with Matchers {
 
     task
       .map({
-        case (log, result) => {
+        case (log, result) =>
           result shouldEqual Author(1, "William Shakespeare")
           log.rounds.size shouldEqual 1
-        }
       })
       .runToFuture
   }
