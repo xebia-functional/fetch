@@ -67,7 +67,7 @@ object ProjectPlugin extends AutoPlugin {
         "org.tpolecat" %% "atto-core"           % "0.7.2",
         "org.http4s"   %% "http4s-blaze-client" % "0.21.4",
         "org.http4s"   %% "http4s-circe"        % "0.21.4",
-        "redis.clients" % "jedis"               % "2.9.0",
+        "redis.clients" % "jedis"               % "2.9.3",
         "io.monix"     %% "monix"               % "3.0.0"
       )
     ) ++ commonCrossDependencies
