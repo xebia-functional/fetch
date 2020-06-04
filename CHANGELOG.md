@@ -1,12 +1,32 @@
 # Changelog
 
-## [Unreleased](https://github.com/47degrees/fetch/tree/HEAD)
+## [v1.3.1](https://github.com/47degrees/fetch/tree/v1.3.1) (2020-06-04)
 
-[Full Changelog](https://github.com/47degrees/fetch/compare/v1.3.0...HEAD)
+[Full Changelog](https://github.com/47degrees/fetch/compare/v1.3.0...v1.3.1)
+
+📈 **Dependency updates**
+
+- Update monix to 3.2.2 [\#346](https://github.com/47degrees/fetch/pull/346) ([scala-steward](https://github.com/scala-steward))
+- Update sbt-mdoc to 2.2.1 [\#345](https://github.com/47degrees/fetch/pull/345) ([scala-steward](https://github.com/scala-steward))
+- Update jedis to 2.10.2 [\#344](https://github.com/47degrees/fetch/pull/344) ([scala-steward](https://github.com/scala-steward))
+- Update jedis to 2.9.3 [\#343](https://github.com/47degrees/fetch/pull/343) ([scala-steward](https://github.com/scala-steward))
+- Update atto-core to 0.8.0 [\#342](https://github.com/47degrees/fetch/pull/342) ([scala-steward](https://github.com/scala-steward))
+- Update scalafmt-core to 2.5.3 [\#341](https://github.com/47degrees/fetch/pull/341) ([scala-steward](https://github.com/scala-steward))
+- Update sbt to 1.3.12 [\#340](https://github.com/47degrees/fetch/pull/340) ([scala-steward](https://github.com/scala-steward))
+- Update sbt-scalajs, scalajs-compiler to 1.1.0 [\#339](https://github.com/47degrees/fetch/pull/339) ([scala-steward](https://github.com/scala-steward))
+- Update http4s-blaze-client, http4s-circe to 0.21.4 [\#338](https://github.com/47degrees/fetch/pull/338) ([scala-steward](https://github.com/scala-steward))
+- Update sbt to 1.3.11 [\#336](https://github.com/47degrees/fetch/pull/336) ([scala-steward](https://github.com/scala-steward))
+- Update sbt-scalafmt to 2.4.0 [\#333](https://github.com/47degrees/fetch/pull/333) ([scala-steward](https://github.com/scala-steward))
+- Update scalatest to 3.1.2 [\#307](https://github.com/47degrees/fetch/pull/307) ([scala-steward](https://github.com/scala-steward))
 
 **Closed issues:**
 
 - Update dependency com.olegpy:better-monadic-for:plugin-\>default\(compile\) [\#190](https://github.com/47degrees/fetch/issues/190)
+
+**Merged pull requests:**
+
+- Prepare repository for next `.github` release and SBT build improvements [\#335](https://github.com/47degrees/fetch/pull/335) ([alejandrohdezma](https://github.com/alejandrohdezma))
+- Update scalafmt-core to 2.5.1 [\#295](https://github.com/47degrees/fetch/pull/295) ([BenFradet](https://github.com/BenFradet))
 
 ## [v1.3.0](https://github.com/47degrees/fetch/tree/v1.3.0) (2020-04-22)
 
@@ -232,7 +252,6 @@
 **Merged pull requests:**
 
 - Release 0.7.0 [\#140](https://github.com/47degrees/fetch/pull/140) ([suhasgaddam](https://github.com/suhasgaddam))
-- Release Fetch v0.7.0 [\#139](https://github.com/47degrees/fetch/pull/139) ([peterneyens](https://github.com/peterneyens))
 - update name of twitter module [\#138](https://github.com/47degrees/fetch/pull/138) ([ghost](https://github.com/ghost))
 - Update dependencies \(Cats 1.0.0-MF\) [\#137](https://github.com/47degrees/fetch/pull/137) ([peterneyens](https://github.com/peterneyens))
 
@@ -246,6 +265,7 @@
 
 **Merged pull requests:**
 
+- Release Fetch v0.7.0 [\#139](https://github.com/47degrees/fetch/pull/139) ([peterneyens](https://github.com/peterneyens))
 - Change delay in flaky timeout test [\#134](https://github.com/47degrees/fetch/pull/134) ([peterneyens](https://github.com/peterneyens))
 - Release v0.6.3 [\#133](https://github.com/47degrees/fetch/pull/133) ([peterneyens](https://github.com/peterneyens))
 - Move and reuse TestHelper [\#132](https://github.com/47degrees/fetch/pull/132) ([peterneyens](https://github.com/peterneyens))
