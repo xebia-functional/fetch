@@ -64,11 +64,11 @@ object ProjectPlugin extends AutoPlugin {
         "io.circe"     %% "circe-generic"       % "0.13.0",
         "org.tpolecat" %% "doobie-core"         % "0.9.0",
         "org.tpolecat" %% "doobie-h2"           % "0.9.0",
-        "org.tpolecat" %% "atto-core"           % "0.7.2",
+        "org.tpolecat" %% "atto-core"           % "0.8.0",
         "org.http4s"   %% "http4s-blaze-client" % "0.21.4",
         "org.http4s"   %% "http4s-circe"        % "0.21.4",
-        "redis.clients" % "jedis"               % "2.10.2",
-        "io.monix"     %% "monix"               % "3.0.0"
+        "redis.clients" % "jedis"               % "2.9.3",
+        "io.monix"     %% "monix"               % "3.2.2"
       )
     ) ++ commonCrossDependencies
   }
