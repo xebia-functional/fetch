@@ -108,13 +108,16 @@ abstract class Document {
 
 object Document {
 
-  /** The empty document */
+  /**
+   * The empty document */
   def empty = DocNil
 
-  /** A break, which will either be turned into a space or a line break */
+  /**
+   * A break, which will either be turned into a space or a line break */
   def break = DocBreak
 
-  /** A document consisting of some text literal */
+  /**
+   * A document consisting of some text literal */
   def text(s: String): Document = DocText(s)
 
   /**
@@ -123,6 +126,7 @@ object Document {
    */
   def group(d: Document): Document = DocGroup(d)
 
-  /** A nested document, which will be indented as specified. */
+  /**
+   * A nested document, which will be indented as specified. */
   def nest(i: Int, d: Document): Document = DocNest(i, d)
 }
