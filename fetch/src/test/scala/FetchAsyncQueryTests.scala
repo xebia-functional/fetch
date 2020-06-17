@@ -53,13 +53,12 @@ class FetchAsyncQueryTests extends FetchSpec {
     val io = Fetch.run[IO](fetch)
 
     io.map(
-        _ shouldEqual List(
-          Article(1, "An article with id 1"),
-          Article(1, "An article with id 1"),
-          Article(2, "An article with id 2")
-        )
+      _ shouldEqual List(
+        Article(1, "An article with id 1"),
+        Article(1, "An article with id 1"),
+        Article(2, "An article with id 2")
       )
-      .unsafeToFuture
+    ).unsafeToFuture
   }
 
   "We can use combinators and multiple sources in a for comprehension and interpret a fetch from async sources into an IO" in {
@@ -72,20 +71,19 @@ class FetchAsyncQueryTests extends FetchSpec {
     val io = Fetch.run[IO](fetch)
 
     io.map(
-        _ shouldEqual (
-          List(
-            Article(1, "An article with id 1"),
-            Article(1, "An article with id 1"),
-            Article(2, "An article with id 2")
-          ),
-          List(
-            Author(2, "@egg2"),
-            Author(2, "@egg2"),
-            Author(3, "@egg3")
-          )
+      _ shouldEqual (
+        List(
+          Article(1, "An article with id 1"),
+          Article(1, "An article with id 1"),
+          Article(2, "An article with id 2")
+        ),
+        List(
+          Author(2, "@egg2"),
+          Author(2, "@egg2"),
+          Author(3, "@egg3")
         )
       )
-      .unsafeToFuture
+    ).unsafeToFuture
   }
 }
 

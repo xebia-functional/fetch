@@ -21,14 +21,16 @@ import cats.effect._
 
 object syntax {
 
-  /** Implicit syntax to lift any value to the context of Fetch via pure */
+  /**
+   * Implicit syntax to lift any value to the context of Fetch via pure */
   implicit class FetchIdSyntax[A](val a: A) extends AnyVal {
 
     def fetch[F[_]: Concurrent]: Fetch[F, A] =
       Fetch.pure[F, A](a)
   }
 
-  /** Implicit syntax to lift exception to Fetch errors */
+  /**
+   * Implicit syntax to lift exception to Fetch errors */
   implicit class FetchExceptionSyntax[B](val a: Throwable) extends AnyVal {
 
     def fetch[F[_]: Concurrent]: Fetch[F, B] =

@@ -26,7 +26,7 @@ import cats.kernel.{Hash => H}
 
 /**
  * `Data` is a trait used to identify and optimize access to a `DataSource`.
- **/
+ */
 trait Data[I, A] { self =>
   def name: String
 
@@ -47,11 +47,13 @@ trait DataSource[F[_], I, A] {
 
   implicit def CF: Concurrent[F]
 
-  /** Fetch one identity, returning a None if it wasn't found.
+  /**
+   * Fetch one identity, returning a None if it wasn't found.
    */
   def fetch(id: I): F[Option[A]]
 
-  /** Fetch many identities, returning a mapping from identities to results. If an
+  /**
+   * Fetch many identities, returning a mapping from identities to results. If an
    * identity wasn't found, it won't appear in the keys.
    */
   def batch(ids: NonEmptyList[I]): F[Map[I, A]] =
