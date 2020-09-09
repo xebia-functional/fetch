@@ -40,10 +40,9 @@ class MonixExample extends AnyWordSpec with Matchers {
     val task = Fetch.runLog[Task](fetch)
 
     task
-      .map({
-        case (log, result) =>
-          result shouldEqual Author(1, "William Shakespeare")
-          log.rounds.size shouldEqual 1
+      .map({ case (log, result) =>
+        result shouldEqual Author(1, "William Shakespeare")
+        log.rounds.size shouldEqual 1
       })
       .runToFuture
   }

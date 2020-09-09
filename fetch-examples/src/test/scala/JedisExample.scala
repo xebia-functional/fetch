@@ -96,13 +96,12 @@ object Binary {
   ): F[ByteArray] = {
     byteOutputStream
       .mproduct(outputStream(_))
-      .use({
-        case (byte, out) =>
-          S.delay {
-            out.writeObject(obj)
-            out.flush()
-            byte.toByteArray
-          }
+      .use({ case (byte, out) =>
+        S.delay {
+          out.writeObject(obj)
+          out.flush()
+          byte.toByteArray
+        }
       })
   }
 
@@ -111,12 +110,11 @@ object Binary {
   ): F[Option[A]] = {
     byteInputStream(bin)
       .mproduct(inputStream(_))
-      .use({
-        case (byte, in) =>
-          S.delay {
-            val obj = in.readObject()
-            Try(obj.asInstanceOf[A]).toOption
-          }
+      .use({ case (byte, in) =>
+        S.delay {
+          val obj = in.readObject()
+          Try(obj.asInstanceOf[A]).toOption
+        }
       })
   }
 }
@@ -161,9 +159,8 @@ case class RedisCache[F[_]: Sync](host: String) extends DataCache[F] {
       M: Monad[F]
   ): F[DataCache[F]] =
     for {
-      bin <- vs.traverse({
-        case (id, v) =>
-          Binary.serialize(v).tupleRight(cacheId(id, data))
+      bin <- vs.traverse({ case (id, v) =>
+        Binary.serialize(v).tupleRight(cacheId(id, data))
       })
       _ <- Sync[F].delay(bulkSet(bin))
     } yield this

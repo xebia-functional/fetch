@@ -196,9 +196,8 @@ class GithubExample extends AnyWordSpec with Matchers {
   case class Project(repo: Repo, contributors: List[Contributor], languages: List[Language])
 
   def fetchProject[F[_]: ConcurrentEffect](repo: Repo): Fetch[F, Project] =
-    (repoContributors(repo), repoLanguages(repo)).mapN({
-      case (contribs, langs) =>
-        Project(repo = repo, contributors = contribs, languages = langs)
+    (repoContributors(repo), repoLanguages(repo)).mapN({ case (contribs, langs) =>
+      Project(repo = repo, contributors = contribs, languages = langs)
     })
 
   def fetchOrg[F[_]: ConcurrentEffect](org: String) =

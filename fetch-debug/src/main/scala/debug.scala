@@ -39,16 +39,16 @@ object debug {
   def firstRequest(r: Round): Option[Long] =
     for {
       aQuery <- r.queries.headOption
-      firstR = r.queries.foldLeft(aQuery.start)({
-        case (acc, q) => acc min q.start
+      firstR = r.queries.foldLeft(aQuery.start)({ case (acc, q) =>
+        acc min q.start
       })
     } yield firstR
 
   def lastRequest(r: Round): Option[Long] =
     for {
       aQuery <- r.queries.headOption
-      lastR = r.queries.foldLeft(aQuery.end)({
-        case (acc, q) => acc max q.end
+      lastR = r.queries.foldLeft(aQuery.end)({ case (acc, q) =>
+        acc max q.end
       })
     } yield lastR
 

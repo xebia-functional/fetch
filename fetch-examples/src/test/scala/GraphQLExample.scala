@@ -204,8 +204,8 @@ class GraphQLExample extends AnyWordSpec with Matchers {
             repos
               .take(n)
               .traverse(repo =>
-                (Languages.fetch(repo), Collaborators.fetch(repo)).mapN {
-                  case (ls, cs) => Project(name >> Some(repo.name), ls, cs)
+                (Languages.fetch(repo), Collaborators.fetch(repo)).mapN { case (ls, cs) =>
+                  Project(name >> Some(repo.name), ls, cs)
                 }
               )
         } yield projects
@@ -233,20 +233,18 @@ class GraphQLExample extends AnyWordSpec with Matchers {
 
 object Parsers {
   def queryParser: Parser[OrganizationQuery] =
-    rawParser.map({
-      case (o, n) =>
-        OrganizationQuery(
-          o,
-          n.map({
-            case (i, name, langs, colls) =>
-              RepositoriesQuery(
-                i,
-                if (name) Some(()) else None,
-                if (langs) Some(LanguagesQuery()) else None,
-                if (colls) Some(CollaboratorsQuery()) else None
-              )
-          })
-        )
+    rawParser.map({ case (o, n) =>
+      OrganizationQuery(
+        o,
+        n.map({ case (i, name, langs, colls) =>
+          RepositoriesQuery(
+            i,
+            if (name) Some(()) else None,
+            if (langs) Some(LanguagesQuery()) else None,
+            if (colls) Some(CollaboratorsQuery()) else None
+          )
+        })
+      )
     })
 
   def rawParser: Parser[(String, Option[(Int, Boolean, Boolean, Boolean)])] =
