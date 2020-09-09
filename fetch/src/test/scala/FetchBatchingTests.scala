@@ -109,12 +109,11 @@ class FetchBatchingTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({
-      case (log, result) =>
-        result shouldEqual List(1, 2, 3, 4, 5)
-        log.rounds.size shouldEqual 1
-        totalFetched(log.rounds) shouldEqual 5
-        totalBatches(log.rounds) shouldEqual 3
+    io.map({ case (log, result) =>
+      result shouldEqual List(1, 2, 3, 4, 5)
+      log.rounds.size shouldEqual 1
+      totalFetched(log.rounds) shouldEqual 5
+      totalBatches(log.rounds) shouldEqual 3
     }).unsafeToFuture
   }
 
@@ -124,12 +123,11 @@ class FetchBatchingTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({
-      case (log, result) =>
-        result shouldEqual List(1, 2, 3, 4, 5)
-        log.rounds.size shouldEqual 1
-        totalFetched(log.rounds) shouldEqual 5
-        totalBatches(log.rounds) shouldEqual 3
+    io.map({ case (log, result) =>
+      result shouldEqual List(1, 2, 3, 4, 5)
+      log.rounds.size shouldEqual 1
+      totalFetched(log.rounds) shouldEqual 5
+      totalBatches(log.rounds) shouldEqual 3
     }).unsafeToFuture
   }
 
@@ -140,12 +138,11 @@ class FetchBatchingTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({
-      case (log, result) =>
-        result shouldEqual List(1, 2, 3, 4, 5)
-        log.rounds.size shouldEqual 1
-        totalFetched(log.rounds) shouldEqual 5 + 5
-        totalBatches(log.rounds) shouldEqual 3 + 3
+    io.map({ case (log, result) =>
+      result shouldEqual List(1, 2, 3, 4, 5)
+      log.rounds.size shouldEqual 1
+      totalFetched(log.rounds) shouldEqual 5 + 5
+      totalBatches(log.rounds) shouldEqual 3 + 3
     }).unsafeToFuture
   }
 
@@ -156,12 +153,11 @@ class FetchBatchingTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({
-      case (log, result) =>
-        result shouldEqual List(1, 2, 3, 4, 5)
-        log.rounds.size shouldEqual 1
-        totalFetched(log.rounds) shouldEqual 5 + 5
-        totalBatches(log.rounds) shouldEqual 3 + 3
+    io.map({ case (log, result) =>
+      result shouldEqual List(1, 2, 3, 4, 5)
+      log.rounds.size shouldEqual 1
+      totalFetched(log.rounds) shouldEqual 5 + 5
+      totalBatches(log.rounds) shouldEqual 3 + 3
     }).unsafeToFuture
   }
 
@@ -171,12 +167,11 @@ class FetchBatchingTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({
-      case (log, result) =>
-        result shouldEqual List(1, 2, 3)
-        log.rounds.size shouldEqual 1
-        totalFetched(log.rounds) shouldEqual 3
-        totalBatches(log.rounds) shouldEqual 2
+    io.map({ case (log, result) =>
+      result shouldEqual List(1, 2, 3)
+      log.rounds.size shouldEqual 1
+      totalFetched(log.rounds) shouldEqual 3
+      totalBatches(log.rounds) shouldEqual 2
     }).unsafeToFuture
   }
 
@@ -186,12 +181,11 @@ class FetchBatchingTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({
-      case (log, result) =>
-        result shouldEqual List(1, 2, 3)
-        log.rounds.size shouldEqual 1
-        totalFetched(log.rounds) shouldEqual 3
-        totalBatches(log.rounds) shouldEqual 2
+    io.map({ case (log, result) =>
+      result shouldEqual List(1, 2, 3)
+      log.rounds.size shouldEqual 1
+      totalFetched(log.rounds) shouldEqual 3
+      totalBatches(log.rounds) shouldEqual 2
     }).unsafeToFuture
   }
 
@@ -209,9 +203,8 @@ class FetchBatchingTests extends FetchSpec {
       ids.toList.traverse(fetchBatchedDataBigId[IO])
     )
 
-    io.map({
-      case (log, result) =>
-        result shouldEqual ids.map(_.toString)
+    io.map({ case (log, result) =>
+      result shouldEqual ids.map(_.toString)
     }).unsafeToFuture
   }
 }

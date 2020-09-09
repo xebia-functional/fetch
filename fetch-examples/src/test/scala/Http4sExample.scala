@@ -158,9 +158,8 @@ class Http4sExample extends AnyWordSpec with Matchers {
     val (log, results) = io.unsafeRunSync
 
     results
-      .map {
-        case (user, posts) =>
-          s"${user.username} has ${posts.size} posts"
+      .map { case (user, posts) =>
+        s"${user.username} has ${posts.size} posts"
       }
       .foreach(println)
     log.rounds.size shouldEqual 2

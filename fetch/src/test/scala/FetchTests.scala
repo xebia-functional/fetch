@@ -148,10 +148,9 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({
-      case (log, result) =>
-        result shouldEqual (1, 2)
-        log.rounds.size shouldEqual 2
+    io.map({ case (log, result) =>
+      result shouldEqual (1, 2)
+      log.rounds.size shouldEqual 2
     }).unsafeToFuture
   }
 
@@ -164,10 +163,9 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({
-      case (log, result) =>
-        result shouldEqual List(0, 1, 2)
-        log.rounds.size shouldEqual 2
+    io.map({ case (log, result) =>
+      result shouldEqual List(0, 1, 2)
+      log.rounds.size shouldEqual 2
     }).unsafeToFuture
   }
 
@@ -177,12 +175,11 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({
-      case (log, result) =>
-        result shouldEqual List(1, 2, 3)
-        log.rounds.size shouldEqual 1
-        totalFetched(log.rounds) shouldEqual 3
-        totalBatches(log.rounds) shouldEqual 1
+    io.map({ case (log, result) =>
+      result shouldEqual List(1, 2, 3)
+      log.rounds.size shouldEqual 1
+      totalFetched(log.rounds) shouldEqual 3
+      totalBatches(log.rounds) shouldEqual 1
     }).unsafeToFuture
   }
 
@@ -193,14 +190,13 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({
-      case (log, result) =>
-        result shouldEqual sources
-        log.rounds.size shouldEqual 1
-        log.rounds.head.queries.size shouldEqual 1
-        log.rounds.head.queries.head.request should matchPattern {
-          case Batch(NonEmptyList(1, List(2)), _) =>
-        }
+    io.map({ case (log, result) =>
+      result shouldEqual sources
+      log.rounds.size shouldEqual 1
+      log.rounds.head.queries.size shouldEqual 1
+      log.rounds.head.queries.head.request should matchPattern {
+        case Batch(NonEmptyList(1, List(2)), _) =>
+      }
     }).unsafeToFuture
   }
 
@@ -210,11 +206,10 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({
-      case (log, result) =>
-        result shouldEqual (1, List(0, 1, 2))
-        log.rounds.size shouldEqual 1
-        log.rounds.head.queries.size shouldEqual 2
+    io.map({ case (log, result) =>
+      result shouldEqual (1, List(0, 1, 2))
+      log.rounds.size shouldEqual 1
+      log.rounds.head.queries.size shouldEqual 2
     }).unsafeToFuture
   }
 
@@ -224,11 +219,10 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({
-      case (log, result) =>
-        result shouldEqual (1, List(0, 1, 2))
-        log.rounds.size shouldEqual 1
-        totalBatches(log.rounds) shouldEqual 0
+    io.map({ case (log, result) =>
+      result shouldEqual (1, List(0, 1, 2))
+      log.rounds.size shouldEqual 1
+      totalBatches(log.rounds) shouldEqual 0
     }).unsafeToFuture
   }
 
@@ -238,11 +232,10 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({
-      case (log, result) =>
-        result shouldEqual ((1, List(0, 1)), 3)
-        log.rounds.size shouldEqual 1
-        totalBatches(log.rounds) shouldEqual 0
+    io.map({ case (log, result) =>
+      result shouldEqual ((1, List(0, 1)), 3)
+      log.rounds.size shouldEqual 1
+      totalBatches(log.rounds) shouldEqual 0
     }).unsafeToFuture
   }
 
@@ -258,12 +251,11 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({
-      case (log, result) =>
-        result shouldEqual ((1, (2, 3)), 4)
-        log.rounds.size shouldEqual 1
-        totalBatches(log.rounds) shouldEqual 1
-        totalFetched(log.rounds) shouldEqual 4
+    io.map({ case (log, result) =>
+      result shouldEqual ((1, (2, 3)), 4)
+      log.rounds.size shouldEqual 1
+      totalBatches(log.rounds) shouldEqual 1
+      totalFetched(log.rounds) shouldEqual 4
     }).unsafeToFuture
   }
 
@@ -289,12 +281,11 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({
-      case (log, result) =>
-        result shouldEqual ((1, 2), 3)
-        log.rounds.size shouldEqual 2
-        totalBatches(log.rounds) shouldEqual 2
-        totalFetched(log.rounds) shouldEqual 5
+    io.map({ case (log, result) =>
+      result shouldEqual ((1, 2), 3)
+      log.rounds.size shouldEqual 2
+      totalBatches(log.rounds) shouldEqual 2
+      totalFetched(log.rounds) shouldEqual 5
     }).unsafeToFuture
   }
 
@@ -316,12 +307,11 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({
-      case (log, result) =>
-        result shouldEqual (1, 2)
-        log.rounds.size shouldEqual 2
-        totalBatches(log.rounds) shouldEqual 2
-        totalFetched(log.rounds) shouldEqual 4
+    io.map({ case (log, result) =>
+      result shouldEqual (1, 2)
+      log.rounds.size shouldEqual 2
+      totalBatches(log.rounds) shouldEqual 2
+      totalFetched(log.rounds) shouldEqual 4
     }).unsafeToFuture
   }
 
@@ -348,12 +338,11 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({
-      case (log, result) =>
-        result shouldEqual ((List(9, 10, 11), List(12, 13, 14)), List(15, 16, 17))
-        log.rounds.size shouldEqual 3
-        totalBatches(log.rounds) shouldEqual 3
-        totalFetched(log.rounds) shouldEqual 9 + 4 + 6
+    io.map({ case (log, result) =>
+      result shouldEqual ((List(9, 10, 11), List(12, 13, 14)), List(15, 16, 17))
+      log.rounds.size shouldEqual 3
+      totalBatches(log.rounds) shouldEqual 3
+      totalFetched(log.rounds) shouldEqual 9 + 4 + 6
     }).unsafeToFuture
   }
 
@@ -362,12 +351,11 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({
-      case (log, result) =>
-        result shouldEqual (1, 3)
-        log.rounds.size shouldEqual 1
-        totalBatches(log.rounds) shouldEqual 1
-        totalFetched(log.rounds) shouldEqual 2
+    io.map({ case (log, result) =>
+      result shouldEqual (1, 3)
+      log.rounds.size shouldEqual 1
+      totalBatches(log.rounds) shouldEqual 1
+      totalFetched(log.rounds) shouldEqual 2
     }).unsafeToFuture
   }
 
@@ -377,11 +365,10 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({
-      case (log, result) =>
-        result shouldEqual List(1, 2, 3, 4, 5)
-        log.rounds.size shouldEqual 1
-        totalBatches(log.rounds) shouldEqual 2
+    io.map({ case (log, result) =>
+      result shouldEqual List(1, 2, 3, 4, 5)
+      log.rounds.size shouldEqual 1
+      totalBatches(log.rounds) shouldEqual 2
     }).unsafeToFuture
   }
 
@@ -391,12 +378,11 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({
-      case (log, result) =>
-        result shouldEqual List(1, 2, 1)
-        log.rounds.size shouldEqual 1
-        totalBatches(log.rounds) shouldEqual 1
-        totalFetched(log.rounds) shouldEqual 2
+    io.map({ case (log, result) =>
+      result shouldEqual List(1, 2, 1)
+      log.rounds.size shouldEqual 1
+      totalBatches(log.rounds) shouldEqual 1
+      totalFetched(log.rounds) shouldEqual 2
     }).unsafeToFuture
   }
 
@@ -406,11 +392,10 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({
-      case (log, result) =>
-        result shouldEqual List(1, 2, 3)
-        log.rounds.size shouldEqual 1
-        totalBatches(log.rounds) shouldEqual 1
+    io.map({ case (log, result) =>
+      result shouldEqual List(1, 2, 3)
+      log.rounds.size shouldEqual 1
+      totalBatches(log.rounds) shouldEqual 1
     }).unsafeToFuture
   }
 
@@ -420,11 +405,10 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({
-      case (log, result) =>
-        result shouldEqual List(1, 2, 1)
-        log.rounds.size shouldEqual 1
-        totalFetched(log.rounds) shouldEqual 2
+    io.map({ case (log, result) =>
+      result shouldEqual List(1, 2, 1)
+      log.rounds.size shouldEqual 1
+      totalFetched(log.rounds) shouldEqual 2
     }).unsafeToFuture
   }
 
@@ -437,11 +421,10 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({
-      case (log, result) =>
-        result shouldEqual List(1, 2, 1)
-        log.rounds.size shouldEqual 1
-        totalFetched(log.rounds) shouldEqual 2
+    io.map({ case (log, result) =>
+      result shouldEqual List(1, 2, 1)
+      log.rounds.size shouldEqual 1
+      totalFetched(log.rounds) shouldEqual 2
     }).unsafeToFuture
   }
 
@@ -457,11 +440,10 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({
-      case (log, result) =>
-        result shouldEqual (1, 5)
-        log.rounds.size shouldEqual 1
-        totalFetched(log.rounds) shouldEqual 2
+    io.map({ case (log, result) =>
+      result shouldEqual (1, 5)
+      log.rounds.size shouldEqual 1
+      totalFetched(log.rounds) shouldEqual 2
     }).unsafeToFuture
   }
 
@@ -482,10 +464,9 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({
-      case (log, result) =>
-        result shouldEqual 2
-        totalFetched(log.rounds) shouldEqual 3
+    io.map({ case (log, result) =>
+      result shouldEqual 2
+      totalFetched(log.rounds) shouldEqual 3
     }).unsafeToFuture
   }
 
@@ -504,11 +485,10 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({
-      case (log, result) =>
-        result shouldEqual 2
-        log.rounds.size shouldEqual 1
-        totalFetched(log.rounds) shouldEqual 3
+    io.map({ case (log, result) =>
+      result shouldEqual 2
+      log.rounds.size shouldEqual 1
+      totalFetched(log.rounds) shouldEqual 3
     }).unsafeToFuture
   }
 
@@ -534,11 +514,10 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch, cache)
 
-    io.map({
-      case (log, result) =>
-        result shouldEqual 2
-        totalFetched(log.rounds) shouldEqual 0
-        log.rounds.size shouldEqual 0
+    io.map({ case (log, result) =>
+      result shouldEqual 2
+      totalFetched(log.rounds) shouldEqual 0
+      log.rounds.size shouldEqual 0
     }).unsafeToFuture
   }
 
@@ -589,9 +568,8 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.runCache[IO](fetch, cache)
 
-    io.map({
-      case (c, result) =>
-        result shouldEqual 2
+    io.map({ case (c, result) =>
+      result shouldEqual 2
     }).unsafeToFuture
   }
 
@@ -610,9 +588,8 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.runCache[IO](fetch)
 
-    io.map({
-      case (c, result) =>
-        result shouldEqual 2
+    io.map({ case (c, result) =>
+      result shouldEqual 2
     }).unsafeToFuture
   }
 
@@ -640,11 +617,10 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch, forgetfulCache)
 
-    io.map({
-      case (log, result) =>
-        result shouldEqual 2
-        log.rounds.size shouldEqual 7
-        totalFetched(log.rounds) shouldEqual 7
+    io.map({ case (log, result) =>
+      result shouldEqual 2
+      log.rounds.size shouldEqual 7
+      totalFetched(log.rounds) shouldEqual 7
     }).unsafeToFuture
   }
 
@@ -663,11 +639,10 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch, forgetfulCache)
 
-    io.map({
-      case (log, result) =>
-        result shouldEqual 2
-        log.rounds.size shouldEqual 8
-        totalFetched(log.rounds) shouldEqual 10
+    io.map({ case (log, result) =>
+      result shouldEqual 2
+      log.rounds.size shouldEqual 8
+      totalFetched(log.rounds) shouldEqual 10
     }).unsafeToFuture
   }
 
@@ -677,8 +652,7 @@ class FetchTests extends FetchSpec {
     val io = Fetch.run[IO](never)
 
     io.attempt
-      .map(_ should matchPattern {
-        case Left(MissingIdentity(Never(), _, _)) =>
+      .map(_ should matchPattern { case Left(MissingIdentity(Never(), _, _)) =>
       })
       .unsafeToFuture
   }
@@ -708,8 +682,7 @@ class FetchTests extends FetchSpec {
     val io = Fetch.run[IO](fetchError)
 
     io.attempt
-      .map(_ should matchPattern {
-        case Left(UnhandledException(AnException(), _)) =>
+      .map(_ should matchPattern { case Left(UnhandledException(AnException(), _)) =>
       })
       .unsafeToFuture
   }
@@ -729,8 +702,7 @@ class FetchTests extends FetchSpec {
     val io = Fetch.run[IO](fetch)
 
     io.attempt
-      .map(_ should matchPattern {
-        case Left(UnhandledException(AnException(), _)) =>
+      .map(_ should matchPattern { case Left(UnhandledException(AnException(), _)) =>
       })
       .unsafeToFuture
   }
@@ -742,8 +714,7 @@ class FetchTests extends FetchSpec {
     val io = Fetch.run[IO](fetch)
 
     io.attempt
-      .map(_ should matchPattern {
-        case Left(UnhandledException(AnException(), _)) =>
+      .map(_ should matchPattern { case Left(UnhandledException(AnException(), _)) =>
       })
       .unsafeToFuture
   }
@@ -755,8 +726,7 @@ class FetchTests extends FetchSpec {
     val io = Fetch.run[IO](fetch)
 
     io.attempt
-      .map(_ should matchPattern {
-        case Left(MissingIdentity(Never(), _, _)) =>
+      .map(_ should matchPattern { case Left(MissingIdentity(Never(), _, _)) =>
       })
       .unsafeToFuture
   }
@@ -768,8 +738,7 @@ class FetchTests extends FetchSpec {
     val io = Fetch.run[IO](fetch)
 
     io.attempt
-      .map(_ should matchPattern {
-        case Left(MissingIdentity(Never(), _, _)) =>
+      .map(_ should matchPattern { case Left(MissingIdentity(Never(), _, _)) =>
       })
       .unsafeToFuture
   }
@@ -781,8 +750,7 @@ class FetchTests extends FetchSpec {
     val io = Fetch.run[IO](fetch)
 
     io.attempt
-      .map(_ should matchPattern {
-        case Left(MissingIdentity(Never(), _, _)) =>
+      .map(_ should matchPattern { case Left(MissingIdentity(Never(), _, _)) =>
       })
       .unsafeToFuture
   }
@@ -872,8 +840,7 @@ class FetchTests extends FetchSpec {
     val io = Fetch.run[IO](fetch)
 
     io.attempt
-      .map(_ should matchPattern {
-        case Left(UnhandledException(AnException(), _)) =>
+      .map(_ should matchPattern { case Left(UnhandledException(AnException(), _)) =>
       })
       .unsafeToFuture
   }
@@ -913,8 +880,7 @@ class FetchTests extends FetchSpec {
     val io = Fetch.run[IO](fetch)
 
     io.attempt
-      .map(_ should matchPattern {
-        case Left(UnhandledException(AnException(), _)) =>
+      .map(_ should matchPattern { case Left(UnhandledException(AnException(), _)) =>
       })
       .unsafeToFuture
   }

@@ -227,17 +227,15 @@ object `package` {
   /* Combine two `RequestMap` instances to batch requests to the same data source. */
   private def combineRequestMaps[F[_]: Monad](x: RequestMap[F], y: RequestMap[F]): RequestMap[F] =
     RequestMap(
-      x.m.foldLeft(y.m) {
-        case (acc, (dsId, (ds, blocked))) =>
-          val combined = acc
-            .get(dsId)
-            .fold(
-              (ds, blocked)
-            )({
-              case (d, req) =>
-                (d, combineRequests(blocked, req))
-            })
-          acc.updated(dsId, combined)
+      x.m.foldLeft(y.m) { case (acc, (dsId, (ds, blocked))) =>
+        val combined = acc
+          .get(dsId)
+          .fold(
+            (ds, blocked)
+          )({ case (d, req) =>
+            (d, combineRequests(blocked, req))
+          })
+        acc.updated(dsId, combined)
       }
     )
 
@@ -581,8 +579,8 @@ object `package` {
           requests <- FetchExecution.parallel(
             NonEmptyList
               .fromListUnsafe(blocked)
-              .map({
-                case (ds, req) => runBlockedRequest(req, ds, cache, log)
+              .map({ case (ds, req) =>
+                runBlockedRequest(req, ds, cache, log)
               })
           )
           performedRequests = requests.foldLeft(List.empty[Request])(_ ++ _)
@@ -672,8 +670,8 @@ object `package` {
 
       // Remove cached IDs
       idLookups <- q.ids.traverse[F, (Any, Option[Any])]((i) => c.lookup(i, q.data).tupleLeft(i))
-      (uncachedIds, cached) = idLookups.toList.partitionEither {
-        case (i, result) => result.tupleLeft(i).toRight(i)
+      (uncachedIds, cached) = idLookups.toList.partitionEither { case (i, result) =>
+        result.tupleLeft(i).toRight(i)
       }
       cachedResults = cached.toMap
       result <- uncachedIds.toNel match {

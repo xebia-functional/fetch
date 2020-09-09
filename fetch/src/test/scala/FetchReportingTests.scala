@@ -29,8 +29,8 @@ class FetchReportingTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({
-      case (log, result) => log.rounds.size shouldEqual 0
+    io.map({ case (log, result) =>
+      log.rounds.size shouldEqual 0
     }).unsafeToFuture
   }
 
@@ -40,8 +40,8 @@ class FetchReportingTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({
-      case (log, result) => log.rounds.size shouldEqual 1
+    io.map({ case (log, result) =>
+      log.rounds.size shouldEqual 1
     }).unsafeToFuture
   }
 
@@ -54,8 +54,8 @@ class FetchReportingTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({
-      case (log, result) => log.rounds.size shouldEqual 2
+    io.map({ case (log, result) =>
+      log.rounds.size shouldEqual 2
     }).unsafeToFuture
   }
 
@@ -68,8 +68,8 @@ class FetchReportingTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({
-      case (log, result) => log.rounds.size shouldEqual 2
+    io.map({ case (log, result) =>
+      log.rounds.size shouldEqual 2
     }).unsafeToFuture
   }
 
@@ -79,8 +79,8 @@ class FetchReportingTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({
-      case (log, result) => log.rounds.size shouldEqual 1
+    io.map({ case (log, result) =>
+      log.rounds.size shouldEqual 1
     }).unsafeToFuture
   }
 
@@ -93,8 +93,8 @@ class FetchReportingTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({
-      case (log, result) => log.rounds.size shouldEqual 2
+    io.map({ case (log, result) =>
+      log.rounds.size shouldEqual 2
     }).unsafeToFuture
   }
 
@@ -104,8 +104,8 @@ class FetchReportingTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({
-      case (log, result) => log.rounds.size shouldEqual 1
+    io.map({ case (log, result) =>
+      log.rounds.size shouldEqual 1
     }).unsafeToFuture
   }
 
@@ -129,11 +129,10 @@ class FetchReportingTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({
-      case (log, result) =>
-        log.rounds.size shouldEqual 2
-        totalBatches(log.rounds) shouldEqual 1
-        totalFetched(log.rounds) shouldEqual 3 + 1
+    io.map({ case (log, result) =>
+      log.rounds.size shouldEqual 2
+      totalBatches(log.rounds) shouldEqual 1
+      totalFetched(log.rounds) shouldEqual 3 + 1
     }).unsafeToFuture
   }
 }
