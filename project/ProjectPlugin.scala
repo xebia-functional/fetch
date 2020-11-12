@@ -3,6 +3,7 @@ import com.typesafe.sbt.site.SitePlugin.autoImport._
 import sbt.Keys._
 import sbt._
 import microsites._
+import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
 
 object ProjectPlugin extends AutoPlugin {
 
@@ -14,8 +15,8 @@ object ProjectPlugin extends AutoPlugin {
       Seq(
         libraryDependencies ++=
           Seq(
-            "org.typelevel" %% "cats-effect" % "2.2.0",
-            "org.scalatest" %% "scalatest"   % "3.2.2" % "test"
+            "org.typelevel" %%% "cats-effect" % "2.2.0",
+            "org.scalatest" %%% "scalatest"   % "3.2.2" % "test"
           )
       )
 
