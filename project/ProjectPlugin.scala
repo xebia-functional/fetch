@@ -22,7 +22,6 @@ object ProjectPlugin extends AutoPlugin {
 
     lazy val micrositeSettings: Seq[Def.Setting[_]] = Seq(
       micrositeName := "Fetch",
-      micrositeCompilingDocsTool := WithMdoc,
       micrositeDescription := "Simple & Efficient data fetching",
       micrositeBaseUrl := "fetch",
       micrositeDocumentationUrl := "/fetch/docs",
