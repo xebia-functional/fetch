@@ -85,12 +85,14 @@ class GithubExample extends AnyWordSpec with Matchers {
             val url           = GITHUB / "repos" / owner / repo +? ("access_token", ACCESS_TOKEN)
             val req           = Request[F](Method.GET, url)
             for {
-              result <- c.fetch[Repo](req)({
-                case Status.Ok(res) =>
-                  res.as[Repo]
-                case res =>
-                  CF.raiseError(new Exception(res.body.toString))
-              })
+              result <- c
+                .run(req)
+                .use[F, Repo] {
+                  case Status.Ok(res) =>
+                    res.as[Repo]
+                  case res =>
+                    CF.raiseError(new Exception(res.body.toString))
+                }
             } yield Option(result)
           }
         }
@@ -228,7 +230,7 @@ class GithubExample extends AnyWordSpec with Matchers {
   val GITHUB: Uri = Uri.unsafeFromString("https://api.github.com")
 
   private def fetchCollectionRecursively[F[_], A](c: Client[F], req: Request[F])(implicit
-      CF: MonadError[F, Throwable],
+      CF: BracketThrow[F],
       E: EntityDecoder[F, List[A]]
   ): F[List[A]] = {
     val REL_NEXT = "rel=\"next\"".r
@@ -256,7 +258,7 @@ class GithubExample extends AnyWordSpec with Matchers {
         )
 
     for {
-      result <- c.fetch[List[A]](req) {
+      result <- c.run(req).use[F, List[A]] {
         case Status.Ok(res) =>
           if (hasNext(res)) {
             for {
