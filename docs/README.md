@@ -235,9 +235,13 @@ Note how the two independent data fetches run in parallel, minimizing the latenc
 Fetch.run[IO](fetchMulti).unsafeRunTimed(5.seconds)
 ```
 
-## Caching
+## Deduplication & Caching
 
-When fetching an identity, subsequent fetches for the same identity are cached. Let's try creating a fetch that asks for the same identity twice.
+The Fetch library supports deduplication and optional caching.
+By default, fetches that are chained together will share the same cache backend, providing some deduplication.
+
+When fetching an identity twice within the same `Fetch`, such as a batch of fetches or when you `flatMap` one fetch into another, subsequent fetches for the same identity are cached.
+Let's try creating a fetch that asks for the same identity twice, by using `flatMap` (in a for-comprehension) to chain the requests together:
 
 ```scala mdoc:silent
 def fetchTwice[F[_] : Concurrent]: Fetch[F, (String, String)] = for {
@@ -246,12 +250,39 @@ def fetchTwice[F[_] : Concurrent]: Fetch[F, (String, String)] = for {
 } yield (one, two)
 ```
 
-While running it, notice that the data source is only queried once. The next time the identity is requested, it's served from the cache.
+While running it, notice that the data source is only queried once.
+The next time the identity is requested, it's served from the internal cache.
 
+```scala mdoc:silent
+val runFetchTwice = Fetch.run[IO](fetchTwice)
+```
 ```scala mdoc
-Fetch.run[IO](fetchTwice).unsafeRunTimed(5.seconds)
+runFetchTwice.unsafeRunTimed(5.seconds)
 ```
 
+This will still fetch the data again, however, if we call it once more:
+```scala mdoc
+runFetchTwice.unsafeRunTimed(5.seconds)
+```
+
+If we want to cache between multiple individual fetches, you should use `Fetch.runCache` or `Fetch.runAll` to return the cache for reusing later.
+Here is an example where we fetch four separate times, and explicitly share the cache to keep the deduplication functionality:
+
+```scala mdoc:silent
+//We get the cache from the first run and pass it to all subsequent fetches
+val runFetchFourTimesSharedCache = for {
+  (cache, one) <- Fetch.runCache[IO](fetchString(1))
+  two <- Fetch.run[IO](fetchString(1), cache)
+  three <- Fetch.run[IO](fetchString(1), cache)
+  four <- Fetch.run[IO](fetchString(1), cache)
+} yield (one, two, three, four)
+```
+```scala mdoc
+runFetchFourTimesSharedCache.unsafeRunTimed(5.seconds)
+```
+
+As you can see above, the cache will now work between calls and can be used to deduplicate requests over a period of time.
+Note that this does not support any kind of automatic cache invalidation, so you will need to keep track of which values you want to re-fetch if you plan on sharing the cache.
 
 ```scala mdoc:invisible
 executor.shutdownNow()
@@ -264,4 +295,4 @@ For more in-depth information, take a look at our [documentation](https://47degr
 
 Fetch is designed and developed by 47 Degrees
 
-Copyright (C) 2016-2019 47 Degrees. <http://47deg.com>
+Copyright (C) @YEAR_RANGE@ 47 Degrees. <http://47deg.com>
