@@ -166,7 +166,8 @@ object `package` {
           val newRequest = Batch(combined, ds)
           val newResult = CombinationSuspend((r: FetchStatus) =>
             r match {
-              case FetchDone(m: Map[Any, Any]) =>
+              case FetchDone(preM) =>
+                val m       = preM.asInstanceOf[Map[Any, Any]]
                 val xResult = m.get(aId).map(FetchDone(_)).getOrElse(FetchMissing())
                 val yResult = m.get(anotherId).map(FetchDone(_)).getOrElse(FetchMissing())
                 CombinationBarrier(() => x.result, xResult)
@@ -184,7 +185,8 @@ object `package` {
         val newRequest = Batch(combined, ds)
         val newResult = CombinationSuspend((r: FetchStatus) =>
           r match {
-            case FetchDone(m: Map[Any, Any]) =>
+            case FetchDone(preM) =>
+              val m         = preM.asInstanceOf[Map[Any, Any]]
               val oneResult = m.get(oneId).map(FetchDone(_)).getOrElse(FetchMissing())
               CombinationBarrier(() => x.result, oneResult)
                 .flatMap(() => y.result)
@@ -201,7 +203,8 @@ object `package` {
         val newRequest = Batch(combined, ds)
         val newResult = CombinationSuspend((r: FetchStatus) =>
           r match {
-            case FetchDone(m: Map[Any, Any]) =>
+            case FetchDone(preM) =>
+              val m         = preM.asInstanceOf[Map[Any, Any]]
               val oneResult = m.get(oneId).map(FetchDone(_)).getOrElse(FetchMissing())
               CombinationBarrier(() => y.result, oneResult)
                 .flatMap(() => x.result)
@@ -258,8 +261,8 @@ object `package` {
 
   // Fetch Monad
 
-  implicit def fetchM[F[_]: Monad]: Monad[Fetch[F, ?]] =
-    new Monad[Fetch[F, ?]] with StackSafeMonad[Fetch[F, ?]] {
+  implicit def fetchM[F[_]: Monad]: Monad[Fetch[F, *]] =
+    new Monad[Fetch[F, *]] with StackSafeMonad[Fetch[F, *]] {
       def pure[A](a: A): Fetch[F, A] =
         Unfetch(
           Monad[F].pure(Done(a))
