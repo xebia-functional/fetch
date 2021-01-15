@@ -22,11 +22,11 @@ jobs:
       - name: Fetch tags
         run: git fetch --tags
       - name: Setup Scala
-        uses: olafurpg/setup-scala@v7
+        uses: olafurpg/setup-scala@v10
       - name: Setup Ruby
         uses: actions/setup-ruby@v1
       - name: Setup GPG
-        uses: olafurpg/setup-gpg@v2
+        uses: olafurpg/setup-gpg@v3
       - name: Setup yq
         run: sudo snap install yq
       - name: Run pre-conditions

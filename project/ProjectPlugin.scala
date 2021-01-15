@@ -3,6 +3,7 @@ import com.typesafe.sbt.site.SitePlugin.autoImport._
 import sbt.Keys._
 import sbt._
 import microsites._
+import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
 
 object ProjectPlugin extends AutoPlugin {
 
@@ -14,14 +15,13 @@ object ProjectPlugin extends AutoPlugin {
       Seq(
         libraryDependencies ++=
           Seq(
-            "org.typelevel" %% "cats-effect" % "2.2.0",
-            "org.scalatest" %% "scalatest"   % "3.2.2" % "test"
+            "org.typelevel" %%% "cats-effect" % "2.3.1",
+            "org.scalatest" %%% "scalatest"   % "3.2.3" % "test"
           )
       )
 
     lazy val micrositeSettings: Seq[Def.Setting[_]] = Seq(
       micrositeName := "Fetch",
-      micrositeCompilingDocsTool := WithMdoc,
       micrositeDescription := "Simple & Efficient data fetching",
       micrositeBaseUrl := "fetch",
       micrositeDocumentationUrl := "/fetch/docs",
@@ -62,13 +62,13 @@ object ProjectPlugin extends AutoPlugin {
     lazy val examplesSettings = Seq(
       libraryDependencies ++= Seq(
         "io.circe"     %% "circe-generic"       % "0.13.0",
-        "org.tpolecat" %% "doobie-core"         % "0.9.2",
-        "org.tpolecat" %% "doobie-h2"           % "0.9.2",
-        "org.tpolecat" %% "atto-core"           % "0.8.0",
-        "org.http4s"   %% "http4s-blaze-client" % "0.21.7",
-        "org.http4s"   %% "http4s-circe"        % "0.21.7",
-        "redis.clients" % "jedis"               % "3.3.0",
-        "io.monix"     %% "monix"               % "3.2.2"
+        "org.tpolecat" %% "doobie-core"         % "0.10.0",
+        "org.tpolecat" %% "doobie-h2"           % "0.10.0",
+        "org.tpolecat" %% "atto-core"           % "0.9.0",
+        "org.http4s"   %% "http4s-blaze-client" % "0.21.15",
+        "org.http4s"   %% "http4s-circe"        % "0.21.15",
+        "redis.clients" % "jedis"               % "3.4.1",
+        "io.monix"     %% "monix"               % "3.3.0"
       )
     ) ++ commonCrossDependencies
   }
@@ -82,7 +82,7 @@ object ProjectPlugin extends AutoPlugin {
           case _             => withStripedLinter
         }) :+ "-language:higherKinds"
       },
-      addCompilerPlugin("org.typelevel" % "kind-projector"     % "0.11.0" cross CrossVersion.full),
+      addCompilerPlugin("org.typelevel" % "kind-projector"     % "0.11.2" cross CrossVersion.full),
       addCompilerPlugin("com.olegpy"   %% "better-monadic-for" % "0.3.1"),
       scalacOptions := Seq(
         "-unchecked",
