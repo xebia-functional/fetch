@@ -142,7 +142,7 @@ object Users extends Data[UserId, User] {
       latency[F](s"One User $id") >> CF.pure(userDatabase.get(id))
 
     override def batch(ids: NonEmptyList[UserId]): F[Map[UserId, User]] =
-      latency[F](s"Batch Users $ids") >> CF.pure(userDatabase.filterKeys(ids.toList.toSet).toMap)
+      latency[F](s"Batch Users $ids") >> CF.pure(userDatabase.view.filterKeys(ids.toList.toSet).toMap)
   }
 }
 ```
@@ -379,7 +379,7 @@ object Posts extends Data[PostId, Post] {
       latency[F](s"One Post $id") >> CF.pure(postDatabase.get(id))
 
     override def batch(ids: NonEmptyList[PostId]): F[Map[PostId, Post]] =
-      latency[F](s"Batch Posts $ids") >> CF.pure(postDatabase.filterKeys(ids.toList.toSet).toMap)
+      latency[F](s"Batch Posts $ids") >> CF.pure(postDatabase.view.filterKeys(ids.toList.toSet).toMap)
   }
 }
 
@@ -614,7 +614,7 @@ object BatchedUsers extends Data[UserId, User]{
       latency[F](s"One User $id") >> CF.pure(userDatabase.get(id))
 
     override def batch(ids: NonEmptyList[UserId]): F[Map[UserId, User]] =
-      latency[F](s"Batch Users $ids") >> CF.pure(userDatabase.filterKeys(ids.toList.toSet).toMap)
+      latency[F](s"Batch Users $ids") >> CF.pure(userDatabase.view.filterKeys(ids.toList.toSet).toMap)
   }
 }
 
@@ -652,7 +652,7 @@ object SequentialUsers extends Data[UserId, User]{
       latency[F](s"One User $id") >> CF.pure(userDatabase.get(id))
 
     override def batch(ids: NonEmptyList[UserId]): F[Map[UserId, User]] =
-      latency[F](s"Batch Users $ids") >> CF.pure(userDatabase.filterKeys(ids.toList.toSet).toMap)
+      latency[F](s"Batch Users $ids") >> CF.pure(userDatabase.view.filterKeys(ids.toList.toSet).toMap)
   }
 }
 
