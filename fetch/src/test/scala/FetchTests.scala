@@ -762,7 +762,7 @@ class FetchTests extends FetchSpec {
   object MaybeMissing extends Data[MaybeMissing, Int] {
     def name = "Maybe Missing"
 
-    implicit def source[F[_]: ConcurrentEffect] =
+    implicit def source[F[_]: ConcurrentEffect]: DataSource[F, MaybeMissing, Int] =
       new DataSource[F, MaybeMissing, Int] {
         override def data = MaybeMissing
 
@@ -850,7 +850,8 @@ class FetchTests extends FetchSpec {
       for {
         x         <- Fetch.liftIO(IO(3))
         manies    <- many(x)
-        (ones, y) <- (manies.traverse(one[F]), Fetch.liftIO(IO(42))).tupled
+        onesAndY <- (manies.traverse(one[F]), Fetch.liftIO(IO(42))).tupled
+        (ones, y) = onesAndY
       } yield ones :+ y
 
     val io = Fetch.run[IO](fetch)
@@ -893,7 +894,8 @@ class FetchTests extends FetchSpec {
       for {
         x         <- Fetch.liftF(concurrently(3))
         manies    <- many(x)
-        (ones, y) <- (manies.traverse(one[F]), Fetch.liftF(concurrently(42))).tupled
+        onesAndY <- (manies.traverse(one[F]), Fetch.liftF(concurrently(42))).tupled
+        (ones, y) = onesAndY
       } yield ones :+ y
 
     val io = Fetch.run[IO](fetch)
