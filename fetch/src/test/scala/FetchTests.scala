@@ -36,18 +36,18 @@ class FetchTests extends FetchSpec {
     def fetch[F[_]: ConcurrentEffect]: Fetch[F, Int] =
       Fetch.pure[F, Int](42)
 
-    Fetch.run[IO](fetch).map(_ shouldEqual 42).unsafeToFuture
+    Fetch.run[IO](fetch).map(_ shouldEqual 42).unsafeToFuture()
   }
 
   "We can lift values which have a Data Source to Fetch" in {
-    Fetch.run[IO](one(1)).map(_ shouldEqual 1).unsafeToFuture
+    Fetch.run[IO](one(1)).map(_ shouldEqual 1).unsafeToFuture()
   }
 
   "We can map over Fetch values" in {
     def fetch[F[_]: ConcurrentEffect]: Fetch[F, (Int)] =
       one(1).map(_ + 1)
 
-    Fetch.run[IO](fetch).map(_ shouldEqual 2).unsafeToFuture
+    Fetch.run[IO](fetch).map(_ shouldEqual 2).unsafeToFuture()
   }
 
   "We can use fetch inside a for comprehension" in {
@@ -57,7 +57,7 @@ class FetchTests extends FetchSpec {
         t <- one(2)
       } yield (o, t)
 
-    Fetch.run[IO](fetch).map(_ shouldEqual (1, 2)).unsafeToFuture
+    Fetch.run[IO](fetch).map(_ shouldEqual (1, 2)).unsafeToFuture()
   }
 
   "We can mix data sources" in {
@@ -67,7 +67,7 @@ class FetchTests extends FetchSpec {
         m <- many(3)
       } yield (o, m)
 
-    Fetch.run[IO](fetch).map(_ shouldEqual (1, List(0, 1, 2))).unsafeToFuture
+    Fetch.run[IO](fetch).map(_ shouldEqual (1, List(0, 1, 2))).unsafeToFuture()
   }
 
   "We can use Fetch as a cartesian" in {
@@ -75,7 +75,7 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.run[IO](fetch)
 
-    io.map(_ shouldEqual (1, List(0, 1, 2))).unsafeToFuture
+    io.map(_ shouldEqual (1, List(0, 1, 2))).unsafeToFuture()
   }
 
   "We can use Fetch as an applicative" in {
@@ -83,7 +83,7 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.run[IO](fetch)
 
-    io.map(_ shouldEqual 6).unsafeToFuture
+    io.map(_ shouldEqual 6).unsafeToFuture()
   }
 
   "We can traverse over a list with a Fetch for each element" in {
@@ -95,7 +95,7 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.run[IO](fetch)
 
-    io.map(_ shouldEqual List(0, 1, 2)).unsafeToFuture
+    io.map(_ shouldEqual List(0, 1, 2)).unsafeToFuture()
   }
 
   "We can depend on previous computations of Fetch values" in {
@@ -107,7 +107,7 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.run[IO](fetch)
 
-    io.map(_ shouldEqual 3).unsafeToFuture
+    io.map(_ shouldEqual 3).unsafeToFuture()
   }
 
   "We can collect a list of Fetch into one" in {
@@ -116,7 +116,7 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.run[IO](fetch)
 
-    io.map(_ shouldEqual List(1, 2, 3)).unsafeToFuture
+    io.map(_ shouldEqual List(1, 2, 3)).unsafeToFuture()
   }
 
   "We can collect a list of Fetches with heterogeneous sources" in {
@@ -125,7 +125,7 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.run[IO](fetch)
 
-    io.map(_ shouldEqual List(1, 2, 3, 4, 5)).unsafeToFuture
+    io.map(_ shouldEqual List(1, 2, 3, 4, 5)).unsafeToFuture()
   }
 
   "We can collect the results of a traversal" in {
@@ -134,7 +134,7 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.run[IO](fetch)
 
-    io.map(_ shouldEqual List(1, 2, 3)).unsafeToFuture
+    io.map(_ shouldEqual List(1, 2, 3)).unsafeToFuture()
   }
 
   // Execution model
@@ -151,7 +151,7 @@ class FetchTests extends FetchSpec {
     io.map({ case (log, result) =>
       result shouldEqual (1, 2)
       log.rounds.size shouldEqual 2
-    }).unsafeToFuture
+    }).unsafeToFuture()
   }
 
   "Traversals are implicitly batched" in {
@@ -166,7 +166,7 @@ class FetchTests extends FetchSpec {
     io.map({ case (log, result) =>
       result shouldEqual List(0, 1, 2)
       log.rounds.size shouldEqual 2
-    }).unsafeToFuture
+    }).unsafeToFuture()
   }
 
   "Sequencing is implicitly batched" in {
@@ -180,7 +180,7 @@ class FetchTests extends FetchSpec {
       log.rounds.size shouldEqual 1
       totalFetched(log.rounds) shouldEqual 3
       totalBatches(log.rounds) shouldEqual 1
-    }).unsafeToFuture
+    }).unsafeToFuture()
   }
 
   "Identities are deduped when batched" in {
@@ -197,7 +197,7 @@ class FetchTests extends FetchSpec {
       log.rounds.head.queries.head.request should matchPattern {
         case Batch(NonEmptyList(1, List(2)), _) =>
       }
-    }).unsafeToFuture
+    }).unsafeToFuture()
   }
 
   "The product of two fetches implies parallel fetching" in {
@@ -210,7 +210,7 @@ class FetchTests extends FetchSpec {
       result shouldEqual (1, List(0, 1, 2))
       log.rounds.size shouldEqual 1
       log.rounds.head.queries.size shouldEqual 2
-    }).unsafeToFuture
+    }).unsafeToFuture()
   }
 
   "Concurrent fetching calls batches only when it can" in {
@@ -223,7 +223,7 @@ class FetchTests extends FetchSpec {
       result shouldEqual (1, List(0, 1, 2))
       log.rounds.size shouldEqual 1
       totalBatches(log.rounds) shouldEqual 0
-    }).unsafeToFuture
+    }).unsafeToFuture()
   }
 
   "Concurrent fetching performs requests to multiple data sources in parallel" in {
@@ -236,7 +236,7 @@ class FetchTests extends FetchSpec {
       result shouldEqual ((1, List(0, 1)), 3)
       log.rounds.size shouldEqual 1
       totalBatches(log.rounds) shouldEqual 0
-    }).unsafeToFuture
+    }).unsafeToFuture()
   }
 
   "The product of concurrent fetches implies everything fetched concurrently" in {
@@ -256,7 +256,7 @@ class FetchTests extends FetchSpec {
       log.rounds.size shouldEqual 1
       totalBatches(log.rounds) shouldEqual 1
       totalFetched(log.rounds) shouldEqual 4
-    }).unsafeToFuture
+    }).unsafeToFuture()
   }
 
   "The product of concurrent fetches of the same type implies everything fetched in a single batch" in {
@@ -286,7 +286,7 @@ class FetchTests extends FetchSpec {
       log.rounds.size shouldEqual 2
       totalBatches(log.rounds) shouldEqual 2
       totalFetched(log.rounds) shouldEqual 5
-    }).unsafeToFuture
+    }).unsafeToFuture()
   }
 
   "Every level of joined concurrent fetches is combined and batched" in {
@@ -312,7 +312,7 @@ class FetchTests extends FetchSpec {
       log.rounds.size shouldEqual 2
       totalBatches(log.rounds) shouldEqual 2
       totalFetched(log.rounds) shouldEqual 4
-    }).unsafeToFuture
+    }).unsafeToFuture()
   }
 
   "Every level of sequenced concurrent fetches is batched" in {
@@ -343,7 +343,7 @@ class FetchTests extends FetchSpec {
       log.rounds.size shouldEqual 3
       totalBatches(log.rounds) shouldEqual 3
       totalFetched(log.rounds) shouldEqual 9 + 4 + 6
-    }).unsafeToFuture
+    }).unsafeToFuture()
   }
 
   "The product of two fetches from the same data source implies batching" in {
@@ -356,7 +356,7 @@ class FetchTests extends FetchSpec {
       log.rounds.size shouldEqual 1
       totalBatches(log.rounds) shouldEqual 1
       totalFetched(log.rounds) shouldEqual 2
-    }).unsafeToFuture
+    }).unsafeToFuture()
   }
 
   "Sequenced fetches are run concurrently" in {
@@ -369,7 +369,7 @@ class FetchTests extends FetchSpec {
       result shouldEqual List(1, 2, 3, 4, 5)
       log.rounds.size shouldEqual 1
       totalBatches(log.rounds) shouldEqual 2
-    }).unsafeToFuture
+    }).unsafeToFuture()
   }
 
   "Sequenced fetches are deduped" in {
@@ -383,7 +383,7 @@ class FetchTests extends FetchSpec {
       log.rounds.size shouldEqual 1
       totalBatches(log.rounds) shouldEqual 1
       totalFetched(log.rounds) shouldEqual 2
-    }).unsafeToFuture
+    }).unsafeToFuture()
   }
 
   "Traversals are batched" in {
@@ -396,7 +396,7 @@ class FetchTests extends FetchSpec {
       result shouldEqual List(1, 2, 3)
       log.rounds.size shouldEqual 1
       totalBatches(log.rounds) shouldEqual 1
-    }).unsafeToFuture
+    }).unsafeToFuture()
   }
 
   "Duplicated sources are only fetched once" in {
@@ -409,7 +409,7 @@ class FetchTests extends FetchSpec {
       result shouldEqual List(1, 2, 1)
       log.rounds.size shouldEqual 1
       totalFetched(log.rounds) shouldEqual 2
-    }).unsafeToFuture
+    }).unsafeToFuture()
   }
 
   "Sources that can be fetched concurrently inside a for comprehension will be" in {
@@ -425,7 +425,7 @@ class FetchTests extends FetchSpec {
       result shouldEqual List(1, 2, 1)
       log.rounds.size shouldEqual 1
       totalFetched(log.rounds) shouldEqual 2
-    }).unsafeToFuture
+    }).unsafeToFuture()
   }
 
   "Pure Fetches allow to explore further in the Fetch" in {
@@ -444,7 +444,7 @@ class FetchTests extends FetchSpec {
       result shouldEqual (1, 5)
       log.rounds.size shouldEqual 1
       totalFetched(log.rounds) shouldEqual 2
-    }).unsafeToFuture
+    }).unsafeToFuture()
   }
 
   // Caching
@@ -467,7 +467,7 @@ class FetchTests extends FetchSpec {
     io.map({ case (log, result) =>
       result shouldEqual 2
       totalFetched(log.rounds) shouldEqual 3
-    }).unsafeToFuture
+    }).unsafeToFuture()
   }
 
   "Batched elements are cached and thus not fetched more than once" in {
@@ -489,7 +489,7 @@ class FetchTests extends FetchSpec {
       result shouldEqual 2
       log.rounds.size shouldEqual 1
       totalFetched(log.rounds) shouldEqual 3
-    }).unsafeToFuture
+    }).unsafeToFuture()
   }
 
   "Elements that are cached won't be fetched" in {
@@ -518,7 +518,7 @@ class FetchTests extends FetchSpec {
       result shouldEqual 2
       totalFetched(log.rounds) shouldEqual 0
       log.rounds.size shouldEqual 0
-    }).unsafeToFuture
+    }).unsafeToFuture()
   }
 
   "Fetch#run accepts a cache as the second (optional) parameter" in {
@@ -543,7 +543,7 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.run[IO](fetch, cache)
 
-    io.map(_ shouldEqual 2).unsafeToFuture
+    io.map(_ shouldEqual 2).unsafeToFuture()
   }
 
   "Fetch#runCache accepts a cache as the second (optional) parameter" in {
@@ -570,7 +570,7 @@ class FetchTests extends FetchSpec {
 
     io.map({ case (c, result) =>
       result shouldEqual 2
-    }).unsafeToFuture
+    }).unsafeToFuture()
   }
 
   "Fetch#runCache works without the optional cache parameter" in {
@@ -590,7 +590,7 @@ class FetchTests extends FetchSpec {
 
     io.map({ case (c, result) =>
       result shouldEqual 2
-    }).unsafeToFuture
+    }).unsafeToFuture()
   }
 
   case class ForgetfulCache[F[_]: Monad]() extends DataCache[F] {
@@ -621,7 +621,7 @@ class FetchTests extends FetchSpec {
       result shouldEqual 2
       log.rounds.size shouldEqual 7
       totalFetched(log.rounds) shouldEqual 7
-    }).unsafeToFuture
+    }).unsafeToFuture()
   }
 
   "We can use a custom cache that discards elements together with concurrent fetches" in {
@@ -643,7 +643,7 @@ class FetchTests extends FetchSpec {
       result shouldEqual 2
       log.rounds.size shouldEqual 8
       totalFetched(log.rounds) shouldEqual 10
-    }).unsafeToFuture
+    }).unsafeToFuture()
   }
 
   // Errors
@@ -654,7 +654,7 @@ class FetchTests extends FetchSpec {
     io.attempt
       .map(_ should matchPattern { case Left(MissingIdentity(Never(), _, _)) =>
       })
-      .unsafeToFuture
+      .unsafeToFuture()
   }
 
   "Data sources with errors throw fetch failures that can be handled" in {
@@ -662,7 +662,7 @@ class FetchTests extends FetchSpec {
 
     io.handleErrorWith(err => IO.pure(42))
       .map(_ shouldEqual 42)
-      .unsafeToFuture
+      .unsafeToFuture()
   }
 
   "Data sources with errors won't fail if they're cached" in {
@@ -672,7 +672,7 @@ class FetchTests extends FetchSpec {
       )
     val io = Fetch.run[IO](never, cache)
 
-    io.map(_ shouldEqual 1).unsafeToFuture
+    io.map(_ shouldEqual 1).unsafeToFuture()
   }
 
   def fetchError[F[_]: ConcurrentEffect]: Fetch[F, Int] =
@@ -684,7 +684,7 @@ class FetchTests extends FetchSpec {
     io.attempt
       .map(_ should matchPattern { case Left(UnhandledException(AnException(), _)) =>
       })
-      .unsafeToFuture
+      .unsafeToFuture()
   }
 
   "We can lift handle and recover from errors in Fetch" in {
@@ -692,7 +692,7 @@ class FetchTests extends FetchSpec {
 
     io.handleErrorWith(err => IO.pure(42))
       .map(_ shouldEqual 42)
-      .unsafeToFuture
+      .unsafeToFuture()
   }
 
   "If a fetch fails in the left hand of a product the product will fail" in {
@@ -704,7 +704,7 @@ class FetchTests extends FetchSpec {
     io.attempt
       .map(_ should matchPattern { case Left(UnhandledException(AnException(), _)) =>
       })
-      .unsafeToFuture
+      .unsafeToFuture()
   }
 
   "If a fetch fails in the right hand of a product the product will fail" in {
@@ -716,7 +716,7 @@ class FetchTests extends FetchSpec {
     io.attempt
       .map(_ should matchPattern { case Left(UnhandledException(AnException(), _)) =>
       })
-      .unsafeToFuture
+      .unsafeToFuture()
   }
 
   "If there is a missing identity in the left hand of a product the product will fail" in {
@@ -728,7 +728,7 @@ class FetchTests extends FetchSpec {
     io.attempt
       .map(_ should matchPattern { case Left(MissingIdentity(Never(), _, _)) =>
       })
-      .unsafeToFuture
+      .unsafeToFuture()
   }
 
   "If there is a missing identity in the right hand of a product the product will fail" in {
@@ -740,7 +740,7 @@ class FetchTests extends FetchSpec {
     io.attempt
       .map(_ should matchPattern { case Left(MissingIdentity(Never(), _, _)) =>
       })
-      .unsafeToFuture
+      .unsafeToFuture()
   }
 
   "If there are multiple failing identities the fetch will fail" in {
@@ -752,7 +752,7 @@ class FetchTests extends FetchSpec {
     io.attempt
       .map(_ should matchPattern { case Left(MissingIdentity(Never(), _, _)) =>
       })
-      .unsafeToFuture
+      .unsafeToFuture()
   }
 
   // Optional fetches
@@ -784,14 +784,14 @@ class FetchTests extends FetchSpec {
     def fetch[F[_]: ConcurrentEffect]: Fetch[F, Option[Int]] =
       maybeOpt(1)
 
-    Fetch.run[IO](fetch).map(_ shouldEqual Some(1)).unsafeToFuture
+    Fetch.run[IO](fetch).map(_ shouldEqual Some(1)).unsafeToFuture()
   }
 
   "We can run optional fetches with traverse" in {
     def fetch[F[_]: ConcurrentEffect]: Fetch[F, List[Int]] =
       List(1, 2, 3).traverse(maybeOpt[F]).map(_.flatten)
 
-    Fetch.run[IO](fetch).map(_ shouldEqual List(1, 3)).unsafeToFuture
+    Fetch.run[IO](fetch).map(_ shouldEqual List(1, 3)).unsafeToFuture()
   }
 
   "We can run optional fetches with other data sources" in {
@@ -801,7 +801,7 @@ class FetchTests extends FetchSpec {
       (ones, maybes).mapN { case (os, ms) => os ++ ms.flatten }
     }
 
-    Fetch.run[IO](fetch).map(_ shouldEqual List(1, 2, 3, 1, 3)).unsafeToFuture
+    Fetch.run[IO](fetch).map(_ shouldEqual List(1, 2, 3, 1, 3)).unsafeToFuture()
   }
 
   "We can make fetches that depend on optional fetch results when they aren't defined" in {
@@ -811,7 +811,7 @@ class FetchTests extends FetchSpec {
         result <- maybe.fold(Fetch.pure[F, Int](42))(i => one(i))
       } yield result
 
-    Fetch.run[IO](fetch).map(_ shouldEqual 42).unsafeToFuture
+    Fetch.run[IO](fetch).map(_ shouldEqual 42).unsafeToFuture()
   }
 
   "We can make fetches that depend on optional fetch results when they are defined" in {
@@ -821,7 +821,7 @@ class FetchTests extends FetchSpec {
         result <- maybe.fold(Fetch.pure[F, Int](42))(i => one(i))
       } yield result
 
-    Fetch.run[IO](fetch).map(_ shouldEqual 1).unsafeToFuture
+    Fetch.run[IO](fetch).map(_ shouldEqual 1).unsafeToFuture()
   }
 
   // IO in Fetch
@@ -830,7 +830,7 @@ class FetchTests extends FetchSpec {
     def fetch[F[_]: ConcurrentEffect]: Fetch[F, Int] =
       Fetch.liftIO(IO(42))
 
-    Fetch.run[IO](fetch).map(_ shouldEqual 42).unsafeToFuture
+    Fetch.run[IO](fetch).map(_ shouldEqual 42).unsafeToFuture()
   }
 
   "A failed IO action lifted into Fetch will cause a Fetch to fail" in {
@@ -842,7 +842,7 @@ class FetchTests extends FetchSpec {
     io.attempt
       .map(_ should matchPattern { case Left(UnhandledException(AnException(), _)) =>
       })
-      .unsafeToFuture
+      .unsafeToFuture()
   }
 
   "A IO action can be combined with data fetches" in {
@@ -856,7 +856,7 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.run[IO](fetch)
 
-    io.map(_ shouldEqual List(0, 1, 2, 42)).unsafeToFuture
+    io.map(_ shouldEqual List(0, 1, 2, 42)).unsafeToFuture()
   }
 
   // Concurrent[_] in Fetch
@@ -868,7 +868,7 @@ class FetchTests extends FetchSpec {
     def fetch[F[_]: ConcurrentEffect]: Fetch[F, Int] =
       Fetch.liftF(fortyTwo)
 
-    Fetch.run[IO](fetch).map(_ shouldEqual 42).unsafeToFuture
+    Fetch.run[IO](fetch).map(_ shouldEqual 42).unsafeToFuture()
   }
 
   "A failed Concurrent action lifted into Fetch will cause a Fetch to fail" in {
@@ -883,7 +883,7 @@ class FetchTests extends FetchSpec {
     io.attempt
       .map(_ should matchPattern { case Left(UnhandledException(AnException(), _)) =>
       })
-      .unsafeToFuture
+      .unsafeToFuture()
   }
 
   "A Concurrent action can be combined with data fetches" in {
@@ -900,6 +900,6 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.run[IO](fetch)
 
-    io.map(_ shouldEqual List(0, 1, 2, 42)).unsafeToFuture
+    io.map(_ shouldEqual List(0, 1, 2, 42)).unsafeToFuture()
   }
 }

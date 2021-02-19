@@ -43,6 +43,6 @@ class FetchSyntaxTests extends FetchSpec {
     val e1 = io1.handleError(err => 42)
     val e2 = io2.handleError(err => 42)
 
-    (e1, e2).mapN(_ shouldEqual _).unsafeToFuture
+    (e1, e2).mapN(_ shouldEqual _).unsafeToFuture()
   }
 }
