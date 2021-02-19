@@ -82,19 +82,27 @@ object ProjectPlugin extends AutoPlugin {
           case _             => withStripedLinter
         }) :+ "-language:higherKinds"
       },
-      addCompilerPlugin("org.typelevel" % "kind-projector"     % "0.11.3" cross CrossVersion.full),
-      addCompilerPlugin("com.olegpy"   %% "better-monadic-for" % "0.3.1"),
+      libraryDependencies ++= {
+        CrossVersion.partialVersion(scalaVersion.value) match {
+          case Some((3, 0)) => Seq()
+          case _ =>
+            Seq(
+              compilerPlugin("org.typelevel" % "kind-projector"     % "0.11.3" cross CrossVersion.full),
+              compilerPlugin("com.olegpy"   %% "better-monadic-for" % "0.3.1")
+            )
+        }
+      },
       scalacOptions := Seq(
         "-unchecked",
         "-deprecation",
         "-feature",
-        "-Ywarn-dead-code",
         "-language:higherKinds",
         "-language:existentials",
         "-language:postfixOps"
       ) ++ (CrossVersion.partialVersion(scalaVersion.value) match {
-        case Some((2, 13)) => Seq()
-        case _             => Seq("-Ypartial-unification")
+        case Some((3, 0))  => Seq("-source:3.0-migration", "-Ykind-projector")
+        case Some((2, 13)) => Seq("-Ywarn-dead-code")
+        case _             => Seq("-Ywarn-dead-code", "-Ypartial-unification")
       })
     )
 

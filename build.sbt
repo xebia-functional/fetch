@@ -11,6 +11,10 @@ skip in publish := true
 lazy val fetch = crossProject(JSPlatform, JVMPlatform)
   .crossType(CrossType.Pure)
   .settings(commonCrossDependencies)
+  .settings(
+    scalaVersion := "3.0.0-M3",
+    crossScalaVersions := Seq("2.12.11", "2.13.2", "3.0.0-M3")
+  )
 lazy val fetchJVM = fetch.jvm
 lazy val fetchJS  = fetch.js.disablePlugins(ScoverageSbtPlugin)
 
