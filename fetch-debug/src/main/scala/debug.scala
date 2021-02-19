@@ -64,7 +64,7 @@ object debug {
         } yield lastRequestEnd - firstRequestStart
         val durationDoc =
           duration.fold(Document.empty: Document)((d: Long) =>
-            Document.text("Fetch execution") :: showDuration(d)
+            Document.text("Fetch execution") :-: showDuration(d)
           )
 
         durationDoc :/: Document.nest(
@@ -80,9 +80,9 @@ object debug {
     } yield l - f
 
     val round =
-      Document.text(s"[Round ${n}]") :: roundDuration.fold(Document.text(""))(showDuration(_))
+      Document.text(s"[Round ${n}]") :-: roundDuration.fold(Document.text(""))(showDuration(_))
 
-    round :: Document.nest(
+    round :-: Document.nest(
       2,
       pile(r.queries.map(showRequest))
     )
@@ -91,9 +91,9 @@ object debug {
   def showRequest(r: Request): Document =
     r.request match {
       case FetchOne(id, d) =>
-        Document.text(s"[Fetch one] From `${d.name}` with id ${id}") :: showDuration(r.duration)
+        Document.text(s"[Fetch one] From `${d.name}` with id ${id}") :-: showDuration(r.duration)
       case Batch(ids, d) =>
-        Document.text(s"[Batch] From `${d.name}` with ids ${ids.toList}") :: showDuration(
+        Document.text(s"[Batch] From `${d.name}` with ids ${ids.toList}") :-: showDuration(
           r.duration
         )
     }
@@ -110,14 +110,14 @@ object debug {
         Document
           .text(
             s"[ERROR] Identity with id `${id}` for data source `${q.data.name}` not found"
-          ) :: showRoundCount(
+          ) :-: showRoundCount(
           err
         )
       case UnhandledException(exc, log) =>
         Document
           .text(
             s"[ERROR] Unhandled `${exc.getClass.getName}`: '${exc.getMessage}'"
-          ) :: showRoundCount(
+          ) :-: showRoundCount(
           err
         )
     }
