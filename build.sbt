@@ -22,6 +22,10 @@ lazy val `fetch-debug` = crossProject(JSPlatform, JVMPlatform)
   .crossType(CrossType.Pure)
   .dependsOn(fetch)
   .settings(commonCrossDependencies)
+  .settings(
+    scalaVersion := "3.0.0-M3",
+    crossScalaVersions := Seq("2.12.11", "2.13.2", "3.0.0-M3")
+  )
 lazy val debugJVM = `fetch-debug`.jvm
 lazy val debugJS  = `fetch-debug`.js.disablePlugins(ScoverageSbtPlugin)
 
