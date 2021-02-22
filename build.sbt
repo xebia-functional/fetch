@@ -33,6 +33,10 @@ lazy val `fetch-examples` = project
   .dependsOn(fetchJVM, debugJVM)
   .settings(skip in publish := true)
   .settings(examplesSettings: _*)
+  .settings(
+    scalaVersion := "3.0.0-M3",
+    crossScalaVersions := Seq("2.12.11", "2.13.2", "3.0.0-M3")
+  )
 
 lazy val microsite = project
   .dependsOn(fetchJVM, debugJVM)
