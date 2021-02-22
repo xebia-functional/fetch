@@ -157,8 +157,8 @@ object `package` {
   ): BlockedRequest[F] =
     (x.request, y.request) match {
       case (a: FetchOne[Any, Any], b: FetchOne[Any, Any]) =>
-        val aId = a.id
-        val ds = a.data
+        val aId       = a.id
+        val ds        = a.data
         val anotherId = b.id
         if (aId == anotherId) {
           val newRequest = FetchOne(aId, ds)
@@ -184,8 +184,8 @@ object `package` {
         }
 
       case (a: FetchOne[Any, Any], b: Batch[Any, Any]) =>
-        val oneId = a.id
-        val ds = a.data
+        val oneId      = a.id
+        val ds         = a.data
         val combined   = combineIdentities(a, b)
         val newRequest = Batch(combined, ds)
         val newResult = CombinationSuspend((r: FetchStatus) =>
@@ -204,8 +204,8 @@ object `package` {
         BlockedRequest(newRequest, newResult)
 
       case (a: Batch[Any, Any], b: FetchOne[Any, Any]) =>
-        val ds = a.data
-        val oneId = b.id
+        val ds         = a.data
+        val oneId      = b.id
         val combined   = combineIdentities(a, b)
         val newRequest = Batch(combined, ds)
         val newResult = CombinationSuspend((r: FetchStatus) =>
@@ -223,7 +223,7 @@ object `package` {
         BlockedRequest(newRequest, newResult)
 
       case (a: Batch[Any, Any], b: Batch[Any, Any]) =>
-        val ds = a.data
+        val ds         = a.data
         val combined   = combineIdentities(a, b)
         val newRequest = Batch(combined, ds)
         val newResult  = x.result.flatMap(() => y.result)
@@ -483,8 +483,8 @@ object `package` {
         for {
           logAndCache <- (ref[F, Log](FetchLog()), ref[F, DataCache[F]](cache)).tupled
           (log, cache) = logAndCache
-          result       <- performRun(fa, cache, Some(log))
-          e            <- log.get
+          result <- performRun(fa, cache, Some(log))
+          e      <- log.get
         } yield (e, result)
     }
 
@@ -540,8 +540,8 @@ object `package` {
         for {
           logAndCache <- (ref[F, Log](FetchLog()), ref[F, DataCache[F]](cache)).tupled
           (log, cache) = logAndCache
-          result       <- performRun(fa, cache, Some(log))
-          eAndC       <- (log.get, cache.get).tupled
+          result <- performRun(fa, cache, Some(log))
+          eAndC  <- (log.get, cache.get).tupled
           (e, c) = eAndC
         } yield (e, c, result)
     }
@@ -602,8 +602,9 @@ object `package` {
             if (performedRequests.isEmpty) Applicative[F].unit
             else
               log match {
-                case Some(l) => l.modify((oldE) => (oldE.append(Round(performedRequests)), oldE)).void
-                case None    => Applicative[F].unit
+                case Some(l) =>
+                  l.modify((oldE) => (oldE.append(Round(performedRequests)), oldE)).void
+                case None => Applicative[F].unit
               }
         } yield ()
     }

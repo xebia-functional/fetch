@@ -848,8 +848,8 @@ class FetchTests extends FetchSpec {
   "A IO action can be combined with data fetches" in {
     def fetch[F[_]: ConcurrentEffect]: Fetch[F, List[Int]] =
       for {
-        x         <- Fetch.liftIO(IO(3))
-        manies    <- many(x)
+        x        <- Fetch.liftIO(IO(3))
+        manies   <- many(x)
         onesAndY <- (manies.traverse(one[F]), Fetch.liftIO(IO(42))).tupled
         (ones, y) = onesAndY
       } yield ones :+ y
@@ -892,8 +892,8 @@ class FetchTests extends FetchSpec {
 
     def fetch[F[_]: ConcurrentEffect]: Fetch[F, List[Int]] =
       for {
-        x         <- Fetch.liftF(concurrently(3))
-        manies    <- many(x)
+        x        <- Fetch.liftF(concurrently(3))
+        manies   <- many(x)
         onesAndY <- (manies.traverse(one[F]), Fetch.liftF(concurrently(42))).tupled
         (ones, y) = onesAndY
       } yield ones :+ y
