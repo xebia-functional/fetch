@@ -1,4 +1,4 @@
-ThisBuild / scalaVersion := scala3Version
+ThisBuild / scalaVersion := scala213
 ThisBuild / crossScalaVersions := allScalaVersions
 ThisBuild / organization := "com.47deg"
 
@@ -6,8 +6,10 @@ addCommandAlias("ci-test", "scalafmtCheckAll; scalafmtSbtCheck; mdoc; testCovere
 addCommandAlias("ci-docs", "github; mdoc; headerCreateAll; publishMicrosite")
 addCommandAlias("ci-publish", "github; ci-release")
 
+lazy val scala212         = "2.12.12"
+lazy val scala213         = "2.13.5"
 lazy val scala3Version    = "3.0.0-RC1"
-lazy val scala2Versions   = Seq("2.12.12", "2.13.5")
+lazy val scala2Versions   = Seq(scala212, scala213)
 lazy val allScalaVersions = scala2Versions :+ scala3Version
 
 skip in publish := true
