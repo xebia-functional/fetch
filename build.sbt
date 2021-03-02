@@ -1,7 +1,7 @@
 ThisBuild / scalaVersion := scala213
 ThisBuild / organization := "com.47deg"
 
-addCommandAlias("ci-test", "scalafmtCheckAll; scalafmtSbtCheck; mdoc; testCovered")
+addCommandAlias("ci-test", "scalafmtCheckAll; scalafmtSbtCheck; mdoc; test")
 addCommandAlias("ci-docs", "github; mdoc; headerCreateAll; publishMicrosite")
 addCommandAlias("ci-publish", "github; ci-release")
 
@@ -20,7 +20,6 @@ lazy val fetch = crossProject(JSPlatform, JVMPlatform)
 
 lazy val fetchJVM = fetch.jvm
 lazy val fetchJS = fetch.js
-  .disablePlugins(ScoverageSbtPlugin)
   .settings(crossScalaVersions := scala2Versions)
 
 lazy val `fetch-debug` = crossProject(JSPlatform, JVMPlatform)
@@ -31,7 +30,6 @@ lazy val `fetch-debug` = crossProject(JSPlatform, JVMPlatform)
 
 lazy val debugJVM = `fetch-debug`.jvm
 lazy val debugJS = `fetch-debug`.js
-  .disablePlugins(ScoverageSbtPlugin)
   .settings(crossScalaVersions := scala2Versions)
 
 lazy val `fetch-examples` = project
