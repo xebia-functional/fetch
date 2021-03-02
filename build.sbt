@@ -1,5 +1,4 @@
 ThisBuild / scalaVersion := scala213
-ThisBuild / crossScalaVersions := allScalaVersions
 ThisBuild / organization := "com.47deg"
 
 addCommandAlias("ci-test", "scalafmtCheckAll; scalafmtSbtCheck; mdoc; testCovered")
@@ -17,6 +16,7 @@ skip in publish := true
 lazy val fetch = crossProject(JSPlatform, JVMPlatform)
   .crossType(CrossType.Pure)
   .settings(commonCrossDependencies)
+  .settings(crossScalaVersions := allScalaVersions)
 
 lazy val fetchJVM = fetch.jvm
 lazy val fetchJS = fetch.js
@@ -27,16 +27,18 @@ lazy val `fetch-debug` = crossProject(JSPlatform, JVMPlatform)
   .crossType(CrossType.Pure)
   .dependsOn(fetch)
   .settings(commonCrossDependencies)
+  .settings(crossScalaVersions := allScalaVersions)
 
 lazy val debugJVM = `fetch-debug`.jvm
 lazy val debugJS = `fetch-debug`.js
   .disablePlugins(ScoverageSbtPlugin)
   .settings(crossScalaVersions := scala2Versions)
 
-//lazy val `fetch-examples` = project
-//  .dependsOn(fetchJVM, debugJVM)
-//  .settings(skip in publish := true)
-//  .settings(examplesSettings: _*)
+lazy val `fetch-examples` = project
+  .dependsOn(fetchJVM, debugJVM)
+  .settings(skip in publish := true)
+  .settings(examplesSettings: _*)
+  .settings(crossScalaVersions := scala2Versions)
 
 lazy val microsite = project
   .dependsOn(fetchJVM, debugJVM)
