@@ -65,8 +65,8 @@ object ProjectPlugin extends AutoPlugin {
         "org.tpolecat" %% "doobie-core"         % "0.10.0",
         "org.tpolecat" %% "doobie-h2"           % "0.10.0",
         "org.tpolecat" %% "atto-core"           % "0.9.2",
-        "org.http4s"   %% "http4s-blaze-client" % "0.21.19",
-        "org.http4s"   %% "http4s-circe"        % "0.21.19",
+        "org.http4s"   %% "http4s-blaze-client" % "0.21.20",
+        "org.http4s"   %% "http4s-circe"        % "0.21.20",
         "redis.clients" % "jedis"               % "3.5.1",
         "io.monix"     %% "monix"               % "3.3.0"
       )
