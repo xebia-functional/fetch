@@ -15,7 +15,7 @@ A library for Simple & Efficient data access in Scala and Scala.js
 - [Creating and running a fetch](#creating-and-running-a-fetch)
 - [Batching](#batching)
 - [Parallelism](#parallelism)
-- [Caching](#caching)
+- [Deduplication & Caching](#deduplication--caching)
 
 ## Installation
 
@@ -24,14 +24,15 @@ Add the following dependency to your project's build file.
 For Scala 2.11.x and 2.12.x:
 
 ```scala
-"com.47deg" %% "fetch" % "1.3.0"
+"com.47deg" %% "fetch" % "1.3.2"
 ```
 
 Or, if using Scala.js (0.6.x):
 
 ```scala
-"com.47deg" %%% "fetch" % "1.3.0"
+"com.47deg" %%% "fetch" % "1.3.2"
 ```
+
 
 ## Remote data
 
@@ -134,9 +135,9 @@ Let's run it and wait for the fetch to complete. We'll use `IO#unsafeRunTimed` f
 import scala.concurrent.duration._
 
 Fetch.run[IO](fetchOne).unsafeRunTimed(5.seconds)
-// --> [233] One ToString 1
-// <-- [233] One ToString 1
-// res0: Option[String] = Some("1")
+// --> [236] One ToString 1
+// <-- [236] One ToString 1
+// res0: Option[String] = Some(value = "1")
 ```
 
 As you can see in the previous example, the `ToStringSource` is queried once to get the value of 1.
@@ -154,9 +155,9 @@ When executing the above fetch, note how the three identities get batched, and t
 
 ```scala
 Fetch.run[IO](fetchThree).unsafeRunTimed(5.seconds)
-// --> [233] Batch ToString NonEmptyList(1, 2, 3)
-// <-- [233] Batch ToString NonEmptyList(1, 2, 3)
-// res1: Option[(String, String, String)] = Some(("1", "2", "3"))
+// --> [236] Batch ToString NonEmptyList(1, 2, 3)
+// <-- [236] Batch ToString NonEmptyList(1, 2, 3)
+// res1: Option[(String, String, String)] = Some(value = ("1", "2", "3"))
 ```
 
 Note that the `DataSource#batch` method is not mandatory. It will be implemented in terms of `DataSource#fetch` if you don't provide an implementation.
@@ -193,13 +194,13 @@ When executing the above fetch, note how the three identities get requested in p
 
 ```scala
 Fetch.run[IO](fetchUnbatchedThree).unsafeRunTimed(5.seconds)
-// --> [234] One UnbatchedToString 1
-// --> [233] One UnbatchedToString 2
-// --> [235] One UnbatchedToString 3
-// <-- [234] One UnbatchedToString 1
-// <-- [233] One UnbatchedToString 2
-// <-- [235] One UnbatchedToString 3
-// res2: Option[(String, String, String)] = Some(("1", "2", "3"))
+// --> [236] One UnbatchedToString 1
+// --> [237] One UnbatchedToString 2
+// --> [238] One UnbatchedToString 3
+// <-- [236] One UnbatchedToString 1
+// <-- [237] One UnbatchedToString 2
+// <-- [238] One UnbatchedToString 3
+// res2: Option[(String, String, String)] = Some(value = ("1", "2", "3"))
 ```
 
 ## Parallelism
@@ -244,16 +245,20 @@ Note how the two independent data fetches run in parallel, minimizing the latenc
 
 ```scala
 Fetch.run[IO](fetchMulti).unsafeRunTimed(5.seconds)
-// --> [234] One ToString 1
-// --> [236] One Length one
-// <-- [234] One ToString 1
-// <-- [236] One Length one
-// res3: Option[(String, Int)] = Some(("1", 3))
+// --> [239] One Length one
+// --> [236] One ToString 1
+// <-- [239] One Length one
+// <-- [236] One ToString 1
+// res3: Option[(String, Int)] = Some(value = ("1", 3))
 ```
 
-## Caching
+## Deduplication & Caching
 
-When fetching an identity, subsequent fetches for the same identity are cached. Let's try creating a fetch that asks for the same identity twice.
+The Fetch library supports deduplication and optional caching.
+By default, fetches that are chained together will share the same cache backend, providing some deduplication.
+
+When fetching an identity twice within the same `Fetch`, such as a batch of fetches or when you `flatMap` one fetch into another, subsequent fetches for the same identity are cached.
+Let's try creating a fetch that asks for the same identity twice, by using `flatMap` (in a for-comprehension) to chain the requests together:
 
 ```scala
 def fetchTwice[F[_] : Concurrent]: Fetch[F, (String, String)] = for {
@@ -262,15 +267,50 @@ def fetchTwice[F[_] : Concurrent]: Fetch[F, (String, String)] = for {
 } yield (one, two)
 ```
 
-While running it, notice that the data source is only queried once. The next time the identity is requested, it's served from the cache.
+While running it, notice that the data source is only queried once.
+The next time the identity is requested, it's served from the internal cache.
 
 ```scala
-Fetch.run[IO](fetchTwice).unsafeRunTimed(5.seconds)
-// --> [233] One ToString 1
-// <-- [233] One ToString 1
-// res4: Option[(String, String)] = Some(("1", "1"))
+val runFetchTwice = Fetch.run[IO](fetchTwice)
+```
+```scala
+runFetchTwice.unsafeRunTimed(5.seconds)
+// --> [237] One ToString 1
+// <-- [237] One ToString 1
+// res4: Option[(String, String)] = Some(value = ("1", "1"))
 ```
 
+This will still fetch the data again, however, if we call it once more:
+```scala
+runFetchTwice.unsafeRunTimed(5.seconds)
+// --> [239] One ToString 1
+// <-- [239] One ToString 1
+// res5: Option[(String, String)] = Some(value = ("1", "1"))
+```
+
+If we want to cache between multiple individual fetches, you should use `Fetch.runCache` or `Fetch.runAll` to return the cache for reusing later.
+Here is an example where we fetch four separate times, and explicitly share the cache to keep the deduplication functionality:
+
+```scala
+//We get the cache from the first run and pass it to all subsequent fetches
+val runFetchFourTimesSharedCache = for {
+  (cache, one) <- Fetch.runCache[IO](fetchString(1))
+  two <- Fetch.run[IO](fetchString(1), cache)
+  three <- Fetch.run[IO](fetchString(1), cache)
+  four <- Fetch.run[IO](fetchString(1), cache)
+} yield (one, two, three, four)
+```
+```scala
+runFetchFourTimesSharedCache.unsafeRunTimed(5.seconds)
+// --> [238] One ToString 1
+// <-- [238] One ToString 1
+// res6: Option[(String, String, String, String)] = Some(
+//   value = ("1", "1", "1", "1")
+// )
+```
+
+As you can see above, the cache will now work between calls and can be used to deduplicate requests over a period of time.
+Note that this does not support any kind of automatic cache invalidation, so you will need to keep track of which values you want to re-fetch if you plan on sharing the cache.
 
 ---
 
@@ -280,4 +320,4 @@ For more in-depth information, take a look at our [documentation](https://47degr
 
 Fetch is designed and developed by 47 Degrees
 
-Copyright (C) 2016-2019 47 Degrees. <http://47deg.com>
+Copyright (C) 2016-2021 47 Degrees. <http://47deg.com>
