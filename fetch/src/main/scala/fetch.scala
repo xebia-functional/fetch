@@ -26,7 +26,7 @@ import cats.data._
 import cats.implicits._
 
 import cats.effect._
-import cats.effect.concurrent.{Deferred, Ref}
+import cats.effect.{ Deferred, Ref, Temporal }
 
 object `package` {
   private[fetch] sealed trait FetchRequest extends Product with Serializable
@@ -434,7 +434,7 @@ object `package` {
           fa: Fetch[F, A]
       )(implicit
           C: Concurrent[F],
-          T: Timer[F]
+          T: Temporal[F]
       ): F[A] =
         apply(fa, InMemoryCache.empty[F])
 
@@ -443,7 +443,7 @@ object `package` {
           cache: DataCache[F]
       )(implicit
           C: Concurrent[F],
-          T: Timer[F]
+          T: Temporal[F]
       ): F[A] =
         for {
           cache  <- ref[F, DataCache[F]](cache)
@@ -461,7 +461,7 @@ object `package` {
           fa: Fetch[F, A]
       )(implicit
           C: Concurrent[F],
-          T: Timer[F]
+          T: Temporal[F]
       ): F[(Log, A)] =
         apply(fa, InMemoryCache.empty[F])
 
@@ -470,7 +470,7 @@ object `package` {
           cache: DataCache[F]
       )(implicit
           C: Concurrent[F],
-          T: Timer[F]
+          T: Temporal[F]
       ): F[(Log, A)] =
         for {
           (log, cache) <- (ref[F, Log](FetchLog()), ref[F, DataCache[F]](cache)).tupled
@@ -489,7 +489,7 @@ object `package` {
           fa: Fetch[F, A]
       )(implicit
           C: Concurrent[F],
-          T: Timer[F]
+          T: Temporal[F]
       ): F[(DataCache[F], A)] =
         apply(fa, InMemoryCache.empty[F])
 
@@ -498,7 +498,7 @@ object `package` {
           cache: DataCache[F]
       )(implicit
           C: Concurrent[F],
-          T: Timer[F]
+          T: Temporal[F]
       ): F[(DataCache[F], A)] =
         for {
           cache  <- ref[F, DataCache[F]](cache)
@@ -517,7 +517,7 @@ object `package` {
           fa: Fetch[F, A]
       )(implicit
           C: Concurrent[F],
-          T: Timer[F]
+          T: Temporal[F]
       ): F[(Log, DataCache[F], A)] =
         apply(fa, InMemoryCache.empty[F])
 
@@ -526,7 +526,7 @@ object `package` {
           cache: DataCache[F]
       )(implicit
           C: Concurrent[F],
-          T: Timer[F]
+          T: Temporal[F]
       ): F[(Log, DataCache[F], A)] =
         for {
           (log, cache) <- (ref[F, Log](FetchLog()), ref[F, DataCache[F]](cache)).tupled
@@ -546,7 +546,7 @@ object `package` {
         log: Option[Ref[F, Log]]
     )(implicit
         C: Concurrent[F],
-        T: Timer[F]
+        T: Temporal[F]
     ): F[A] =
       for {
         result <- fa.run
@@ -573,7 +573,7 @@ object `package` {
         log: Option[Ref[F, Log]]
     )(implicit
         C: Concurrent[F],
-        T: Timer[F]
+        T: Temporal[F]
     ): F[Unit] = {
       val blocked = rs.m.toList.map(_._2)
       if (blocked.isEmpty) Applicative[F].unit
@@ -604,7 +604,7 @@ object `package` {
         log: Option[Ref[F, Log]]
     )(implicit
         C: Concurrent[F],
-        T: Timer[F]
+        T: Temporal[F]
     ): F[List[Request]] =
       blocked.request match {
         case q @ FetchOne(_, _) => runFetchOne[F](q, ds, blocked.result, cache, log)
@@ -620,7 +620,7 @@ object `package` {
       log: Option[Ref[F, Log]]
   )(implicit
       C: Concurrent[F],
-      T: Timer[F]
+      T: Temporal[F]
   ): F[List[Request]] =
     for {
       c           <- cache.get
@@ -666,7 +666,7 @@ object `package` {
       log: Option[Ref[F, Log]]
   )(implicit
       C: Concurrent[F],
-      T: Timer[F]
+      T: Temporal[F]
   ): F[List[Request]] =
     for {
       c <- cache.get
@@ -718,7 +718,7 @@ object `package` {
       e: BatchExecution
   )(implicit
       C: Concurrent[F],
-      T: Timer[F]
+      T: Temporal[F]
   ): F[BatchedRequest] = {
     val batches = NonEmptyList.fromListUnsafe(
       q.ids.toList

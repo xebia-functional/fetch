@@ -25,11 +25,12 @@ import scala.concurrent.duration._
 import cats.effect._
 import org.scalatest.freespec.AsyncFreeSpec
 import org.scalatest.matchers.should.Matchers
+import cats.effect.Temporal
 
 @DoNotDiscover
 class FetchSpec extends AsyncFreeSpec with Matchers {
   override val executionContext: ExecutionContext = ExecutionContext.Implicits.global
-  implicit val timer: Timer[IO]                   = IO.timer(executionContext)
+  implicit val timer: Temporal[IO]                   = IO.timer(executionContext)
   implicit val cs: ContextShift[IO]               = IO.contextShift(executionContext)
 
   def countFetches(r: Request): Int =
