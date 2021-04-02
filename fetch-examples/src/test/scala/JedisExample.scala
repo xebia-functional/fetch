@@ -173,7 +173,7 @@ class JedisExample extends AnyWordSpec with Matchers {
 
   // runtime
   val executionContext              = ExecutionContext.Implicits.global
-  implicit val t: Temporal[IO]         = IO.timer(executionContext)
+  implicit val t: Temporal[IO]      = IO.timer(executionContext)
   implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
 
   "We can use a Redis cache" ignore {

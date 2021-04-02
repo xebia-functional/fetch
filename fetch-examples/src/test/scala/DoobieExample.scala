@@ -129,7 +129,7 @@ class DoobieExample extends AnyWordSpec with Matchers with BeforeAndAfterAll {
   import Database._
 
   val executionContext                                  = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(2))
-  implicit val t: Temporal[IO]                             = IO.timer(executionContext)
+  implicit val t: Temporal[IO]                          = IO.timer(executionContext)
   implicit val cs: ContextShift[IO]                     = IO.contextShift(executionContext)
   implicit val transactor: Resource[IO, Transactor[IO]] = createTransactor[IO]
 
