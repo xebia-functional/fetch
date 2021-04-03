@@ -32,9 +32,9 @@ case class Project(name: Option[String], languages: List[String], collaborators:
 case class Repo(name: String)
 
 class GraphQLExample extends AnyWordSpec with Matchers {
-  implicit val executionContext     = ExecutionContext.Implicits.global
-  implicit val t: Timer[IO]         = IO.timer(executionContext)
-  implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
+  implicit val executionContext: ExecutionContext = ExecutionContext.Implicits.global
+  implicit val t: Timer[IO]                       = IO.timer(executionContext)
+  implicit val cs: ContextShift[IO]               = IO.contextShift(executionContext)
 
   def countFetches(r: Request): Int =
     r.request match {
@@ -119,7 +119,7 @@ class GraphQLExample extends AnyWordSpec with Matchers {
 
   "We can interpret queries" in {
     val io            = Fetch.runLog[IO](runQuery(query))
-    val (log, result) = io.unsafeRunSync
+    val (log, result) = io.unsafeRunSync()
 
     result shouldEqual Organization(
       "47deg",
@@ -135,7 +135,7 @@ class GraphQLExample extends AnyWordSpec with Matchers {
 
   "We can interpret queries with only languages" in {
     val io            = Fetch.runLog[IO](runQuery(langsQuery))
-    val (log, result) = io.unsafeRunSync
+    val (log, result) = io.unsafeRunSync()
 
     result shouldEqual Organization(
       "47deg",
@@ -148,7 +148,7 @@ class GraphQLExample extends AnyWordSpec with Matchers {
 
   "We can interpret queries with only collaborators" in {
     val io            = Fetch.runLog[IO](runQuery(collabsQuery))
-    val (log, result) = io.unsafeRunSync
+    val (log, result) = io.unsafeRunSync()
     result shouldEqual Organization(
       "47deg",
       List(
@@ -163,7 +163,7 @@ class GraphQLExample extends AnyWordSpec with Matchers {
 
   "We can interpret queries with no nested joins" in {
     val io            = Fetch.runLog[IO](runQuery(orgQuery))
-    val (log, result) = io.unsafeRunSync
+    val (log, result) = io.unsafeRunSync()
     result shouldEqual Organization(
       "47deg",
       List(Project(Some("fetch"), List(), List()), Project(Some("arrow"), List(), List()))
@@ -175,7 +175,7 @@ class GraphQLExample extends AnyWordSpec with Matchers {
 
   "We can interpret queries with a limited number of repositories" in {
     val io            = Fetch.runLog[IO](runQuery(repoQuery))
-    val (log, result) = io.unsafeRunSync
+    val (log, result) = io.unsafeRunSync()
 
     result shouldEqual Organization(
       "47deg",

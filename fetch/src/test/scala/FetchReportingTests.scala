@@ -31,7 +31,7 @@ class FetchReportingTests extends FetchSpec {
 
     io.map({ case (log, result) =>
       log.rounds.size shouldEqual 0
-    }).unsafeToFuture
+    }).unsafeToFuture()
   }
 
   "Single fetches are executed in one round" in {
@@ -42,7 +42,7 @@ class FetchReportingTests extends FetchSpec {
 
     io.map({ case (log, result) =>
       log.rounds.size shouldEqual 1
-    }).unsafeToFuture
+    }).unsafeToFuture()
   }
 
   "Single fetches are executed in one round per binding in a for comprehension" in {
@@ -56,7 +56,7 @@ class FetchReportingTests extends FetchSpec {
 
     io.map({ case (log, result) =>
       log.rounds.size shouldEqual 2
-    }).unsafeToFuture
+    }).unsafeToFuture()
   }
 
   "Single fetches for different data sources are executed in multiple rounds if they are in a for comprehension" in {
@@ -70,7 +70,7 @@ class FetchReportingTests extends FetchSpec {
 
     io.map({ case (log, result) =>
       log.rounds.size shouldEqual 2
-    }).unsafeToFuture
+    }).unsafeToFuture()
   }
 
   "Single fetches combined with cartesian are run in one round" in {
@@ -81,7 +81,7 @@ class FetchReportingTests extends FetchSpec {
 
     io.map({ case (log, result) =>
       log.rounds.size shouldEqual 1
-    }).unsafeToFuture
+    }).unsafeToFuture()
   }
 
   "Single fetches combined with traverse are run in one round" in {
@@ -95,7 +95,7 @@ class FetchReportingTests extends FetchSpec {
 
     io.map({ case (log, result) =>
       log.rounds.size shouldEqual 2
-    }).unsafeToFuture
+    }).unsafeToFuture()
   }
 
   "The product of two fetches from the same data source implies batching" in {
@@ -106,7 +106,7 @@ class FetchReportingTests extends FetchSpec {
 
     io.map({ case (log, result) =>
       log.rounds.size shouldEqual 1
-    }).unsafeToFuture
+    }).unsafeToFuture()
   }
 
   "The product of concurrent fetches of the same type implies everything fetched in batches" in {
@@ -133,6 +133,6 @@ class FetchReportingTests extends FetchSpec {
       log.rounds.size shouldEqual 2
       totalBatches(log.rounds) shouldEqual 1
       totalFetched(log.rounds) shouldEqual 3 + 1
-    }).unsafeToFuture
+    }).unsafeToFuture()
   }
 }

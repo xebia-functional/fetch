@@ -61,9 +61,9 @@ object ProjectPlugin extends AutoPlugin {
 
     lazy val examplesSettings = Seq(
       libraryDependencies ++= Seq(
-        "io.circe"     %% "circe-generic"       % "0.13.0",
-        "org.tpolecat" %% "doobie-core"         % "0.12.1",
-        "org.tpolecat" %% "doobie-h2"           % "0.12.1",
+        "io.circe"     %% "circe-generic"       % "0.14.0-M3",
+        "org.tpolecat" %% "doobie-core"         % "0.11.0-M2",
+        "org.tpolecat" %% "doobie-h2"           % "0.11.0-M2",
         "org.tpolecat" %% "atto-core"           % "0.9.3",
         "org.http4s"   %% "http4s-blaze-client" % "0.21.21",
         "org.http4s"   %% "http4s-circe"        % "0.21.21",
@@ -82,8 +82,16 @@ object ProjectPlugin extends AutoPlugin {
           case _             => withStripedLinter
         }) :+ "-language:higherKinds"
       },
-      addCompilerPlugin("org.typelevel" % "kind-projector"     % "0.11.3" cross CrossVersion.full),
-      addCompilerPlugin("com.olegpy"   %% "better-monadic-for" % "0.3.1"),
+      libraryDependencies ++= {
+        CrossVersion.partialVersion(scalaVersion.value) match {
+          case Some((3, 0)) => Seq()
+          case _ =>
+            Seq(
+              compilerPlugin("org.typelevel" % "kind-projector"     % "0.11.3" cross CrossVersion.full),
+              compilerPlugin("com.olegpy"   %% "better-monadic-for" % "0.3.1")
+            )
+        }
+      },
       scalacOptions := Seq(
         "-unchecked",
         "-deprecation",
@@ -93,8 +101,9 @@ object ProjectPlugin extends AutoPlugin {
         "-language:existentials",
         "-language:postfixOps"
       ) ++ (CrossVersion.partialVersion(scalaVersion.value) match {
-        case Some((2, 13)) => Seq()
-        case _             => Seq("-Ypartial-unification")
+        case Some((3, 0))  => Seq("-source:3.0-migration", "-Ykind-projector")
+        case Some((2, 13)) => Seq("-Ywarn-dead-code")
+        case _             => Seq("-Ywarn-dead-code", "-Ypartial-unification")
       })
     )
 
