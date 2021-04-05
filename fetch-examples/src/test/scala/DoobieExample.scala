@@ -83,7 +83,8 @@ object DatabaseExample {
 
     def createTransactor[F[_]: Async: ContextShift] =
       for {
-        (conn, trans) <- (connectionPool[F](1), transactionPool[F]).tupled
+        connAndTrans <- (connectionPool[F](1), transactionPool[F]).tupled
+        (conn, trans) = connAndTrans
         tx <-
           H2Transactor
             .newH2Transactor[F](
@@ -139,13 +140,13 @@ class DoobieExample extends AnyWordSpec with Matchers with BeforeAndAfterAll {
         createTable(tx) *> authors.traverse(addAuthor(_)(tx))
       })
       .void
-      .unsafeRunSync
-  override def afterAll(): Unit = transactor.use(dropTable(_)).void.unsafeRunSync
+      .unsafeRunSync()
+  override def afterAll(): Unit = transactor.use(dropTable(_)).void.unsafeRunSync()
 
   "We can fetch one author from the DB" in {
     val io: IO[(Log, Author)] = Fetch.runLog[IO](Authors.fetchAuthor(1))
 
-    val (log, result) = io.unsafeRunSync
+    val (log, result) = io.unsafeRunSync()
 
     result shouldEqual Author(1, "William Shakespeare")
     log.rounds.size shouldEqual 1
@@ -157,7 +158,7 @@ class DoobieExample extends AnyWordSpec with Matchers with BeforeAndAfterAll {
 
     val io: IO[(Log, List[Author])] = Fetch.runLog[IO](fetch)
 
-    val (log, result) = io.unsafeRunSync
+    val (log, result) = io.unsafeRunSync()
 
     result shouldEqual Author(1, "William Shakespeare") :: Author(2, "Charles Dickens") :: Nil
     log.rounds.size shouldEqual 1
@@ -172,7 +173,7 @@ class DoobieExample extends AnyWordSpec with Matchers with BeforeAndAfterAll {
 
     val io: IO[(Log, List[Author])] = Fetch.runLog[IO](fetch)
 
-    val (log, result) = io.unsafeRunSync
+    val (log, result) = io.unsafeRunSync()
 
     result shouldEqual Author(1, "William Shakespeare") :: Author(2, "Charles Dickens") :: Nil
     log.rounds.size shouldEqual 2
