@@ -103,7 +103,7 @@ object DataSources {
         override def data = Article
 
         override def fetch(id: ArticleId): F[Option[Article]] =
-          CF.async[Option[Article]] { (cb) =>
+          CF.async_[Option[Article]] { (cb) =>
             cb(
               Right(
                 Option(Article(id.id, "An article with id " + id.id))
@@ -129,7 +129,7 @@ object DataSources {
         override def data = Author
 
         override def fetch(id: AuthorId): F[Option[Author]] =
-          CF.async((cb => {
+          CF.async_((cb => {
             cb(
               Right(
                 Option(Author(id.id, "@egg" + id.id))

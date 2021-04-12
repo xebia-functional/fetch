@@ -37,13 +37,14 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
 import fetch.{Data, DataSource, Fetch}
+import cats.effect.{ MonadCancelThrow, Temporal }
 
 class GithubExample extends AnyWordSpec with Matchers {
   implicit val executionContext = ExecutionContext.Implicits.global
 
   val ACCESS_TOKEN: String = sys.env("GITHUB_TOKEN")
 
-  implicit val t: Timer[IO]         = IO.timer(executionContext)
+  implicit val t: Temporal[IO]         = IO.timer(executionContext)
   implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
 
   // http4s client which is used by the datasources
@@ -230,7 +231,7 @@ class GithubExample extends AnyWordSpec with Matchers {
   val GITHUB: Uri = Uri.unsafeFromString("https://api.github.com")
 
   private def fetchCollectionRecursively[F[_], A](c: Client[F], req: Request[F])(implicit
-      CF: BracketThrow[F],
+      CF: MonadCancelThrow[F],
       E: EntityDecoder[F, List[A]]
   ): F[List[A]] = {
     val REL_NEXT = "rel=\"next\"".r
