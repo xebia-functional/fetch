@@ -34,7 +34,7 @@ case class Repo(name: String)
 
 class GraphQLExample extends AnyWordSpec with Matchers {
   implicit val executionContext: ExecutionContext = ExecutionContext.Implicits.global
-  implicit val t: Temporal[IO]                       = IO.timer(executionContext)
+  implicit val t: Temporal[IO]                    = IO.timer(executionContext)
   implicit val cs: ContextShift[IO]               = IO.contextShift(executionContext)
 
   def countFetches(r: Request): Int =

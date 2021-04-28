@@ -126,7 +126,7 @@ class Http4sExample extends AnyWordSpec with Matchers {
 
   // runtime
   val executionContext              = ExecutionContext.global
-  implicit val t: Temporal[IO]         = IO.timer(executionContext)
+  implicit val t: Temporal[IO]      = IO.timer(executionContext)
   implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
 
   "We can fetch one user" in {

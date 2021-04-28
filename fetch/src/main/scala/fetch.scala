@@ -26,7 +26,7 @@ import cats.data._
 import cats.implicits._
 
 import cats.effect._
-import cats.effect.{ Deferred, Ref, Temporal }
+import cats.effect.{Deferred, Ref, Temporal}
 
 object `package` {
   private[fetch] sealed trait FetchRequest extends Product with Serializable
