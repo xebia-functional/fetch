@@ -34,6 +34,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import java.util.concurrent._
 
 import fetch._
+import cats.effect.Temporal
 
 object HttpExample {
   case class UserId(id: Int)
@@ -125,7 +126,7 @@ class Http4sExample extends AnyWordSpec with Matchers {
 
   // runtime
   val executionContext              = ExecutionContext.global
-  implicit val t: Timer[IO]         = IO.timer(executionContext)
+  implicit val t: Temporal[IO]         = IO.timer(executionContext)
   implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
 
   "We can fetch one user" in {

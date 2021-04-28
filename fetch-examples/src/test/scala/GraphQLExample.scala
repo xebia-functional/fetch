@@ -25,6 +25,7 @@ import cats.data.NonEmptyList
 import cats.effect._
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
+import cats.effect.Temporal
 
 // Types
 case class Organization(org: String, projects: List[Project])
@@ -33,7 +34,7 @@ case class Repo(name: String)
 
 class GraphQLExample extends AnyWordSpec with Matchers {
   implicit val executionContext: ExecutionContext = ExecutionContext.Implicits.global
-  implicit val t: Timer[IO]                       = IO.timer(executionContext)
+  implicit val t: Temporal[IO]                       = IO.timer(executionContext)
   implicit val cs: ContextShift[IO]               = IO.contextShift(executionContext)
 
   def countFetches(r: Request): Int =
