@@ -68,7 +68,7 @@ object ProjectPlugin extends AutoPlugin {
         "org.http4s"   %% "http4s-blaze-client" % "0.21.22",
         "org.http4s"   %% "http4s-circe"        % "0.21.22",
         "redis.clients" % "jedis"               % "3.6.0",
-        "io.monix"     %% "monix"               % "3.3.0"
+        "io.monix"     %% "monix"               % "3.4.0"
       )
     ) ++ commonCrossDependencies
   }
