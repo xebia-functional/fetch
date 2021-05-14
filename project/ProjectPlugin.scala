@@ -87,7 +87,7 @@ object ProjectPlugin extends AutoPlugin {
           case Some((3, 0)) => Seq()
           case _ =>
             Seq(
-              compilerPlugin("org.typelevel" % "kind-projector"     % "0.11.3" cross CrossVersion.full),
+              compilerPlugin("org.typelevel" % "kind-projector"     % "0.12.0" cross CrossVersion.full),
               compilerPlugin("com.olegpy"   %% "better-monadic-for" % "0.3.1")
             )
         }
