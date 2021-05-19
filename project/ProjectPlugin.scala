@@ -62,8 +62,8 @@ object ProjectPlugin extends AutoPlugin {
     lazy val examplesSettings = Seq(
       libraryDependencies ++= Seq(
         "io.circe"     %% "circe-generic"       % "0.14.0-M7",
-        "org.tpolecat" %% "doobie-core"         % "0.13.2",
-        "org.tpolecat" %% "doobie-h2"           % "0.13.2",
+        "org.tpolecat" %% "doobie-core"         % "0.13.3",
+        "org.tpolecat" %% "doobie-h2"           % "0.13.3",
         "org.tpolecat" %% "atto-core"           % "0.9.5",
         "org.http4s"   %% "http4s-blaze-client" % "0.21.23",
         "org.http4s"   %% "http4s-circe"        % "0.21.23",
