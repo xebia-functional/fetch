@@ -61,7 +61,7 @@ object ProjectPlugin extends AutoPlugin {
 
     lazy val examplesSettings = Seq(
       libraryDependencies ++= Seq(
-        "io.circe"     %% "circe-generic"       % "0.14.0-M7",
+        "io.circe"     %% "circe-generic"       % "0.14.1",
         "org.tpolecat" %% "doobie-core"         % "0.13.4",
         "org.tpolecat" %% "doobie-h2"           % "0.13.4",
         "org.tpolecat" %% "atto-core"           % "0.9.5",
