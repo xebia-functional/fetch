@@ -20,7 +20,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
 import atto._, Atto._
-import cats.implicits._
+import cats.syntax.all._
 import cats.data.NonEmptyList
 import cats.effect._
 import scala.concurrent.ExecutionContext
@@ -33,8 +33,7 @@ case class Repo(name: String)
 
 class GraphQLExample extends AnyWordSpec with Matchers {
   implicit val executionContext: ExecutionContext = ExecutionContext.Implicits.global
-  implicit val t: Timer[IO]                       = IO.timer(executionContext)
-  implicit val cs: ContextShift[IO]               = IO.contextShift(executionContext)
+  implicit val ioRuntime: unsafe.IORuntime        = unsafe.IORuntime.global
 
   def countFetches(r: Request): Int =
     r.request match {
@@ -111,7 +110,7 @@ class GraphQLExample extends AnyWordSpec with Matchers {
     }
   """
 
-  def runQuery[F[_]: ConcurrentEffect](q: String): Fetch[F, Organization] =
+  def runQuery[F[_]: Async](q: String): Fetch[F, Organization] =
     queryParser.parseOnly(q) match {
       case ParseResult.Done(_, query) => fetchOrg[F](query)
       case _                          => Fetch.error(new Exception("Oh noes"))
@@ -186,13 +185,13 @@ class GraphQLExample extends AnyWordSpec with Matchers {
     totalBatches(log.rounds) shouldEqual 0
   }
 
-  def fetchOrg[F[_]: ConcurrentEffect](q: OrganizationQuery): Fetch[F, Organization] =
+  def fetchOrg[F[_]: Async](q: OrganizationQuery): Fetch[F, Organization] =
     q.repos match {
       case None    => Fetch.pure(Organization(q.org, List()))
       case Some(r) => fetchRepos(q.org, r).map(rs => Organization(q.org, rs))
     }
 
-  private def fetchRepos[F[_]: ConcurrentEffect](
+  private def fetchRepos[F[_]: Async](
       org: String,
       q: RepositoriesQuery
   ): Fetch[F, List[Project]] =
@@ -311,16 +310,16 @@ object Sources {
   object Repos extends Data[String, List[Repo]] {
     def name = "Repos"
 
-    def source[F[_]: ConcurrentEffect]: DataSource[F, String, List[Repo]] =
+    def source[F[_]: Async]: DataSource[F, String, List[Repo]] =
       new DataSource[F, String, List[Repo]] {
-        def CF   = ConcurrentEffect[F]
+        def CF   = Async[F]
         def data = Repos
 
         def fetch(id: String): F[Option[List[Repo]]] =
           CF.pure(reposDb.get(id))
       }
 
-    def fetch[F[_]: ConcurrentEffect](org: String): Fetch[F, List[Repo]] =
+    def fetch[F[_]: Async](org: String): Fetch[F, List[Repo]] =
       Fetch(org, source)
   }
 
@@ -332,16 +331,16 @@ object Sources {
   object Languages extends Data[Repo, List[String]] {
     def name = "Languages"
 
-    def source[F[_]: ConcurrentEffect]: DataSource[F, Repo, List[String]] =
+    def source[F[_]: Async]: DataSource[F, Repo, List[String]] =
       new DataSource[F, Repo, List[String]] {
-        def CF   = ConcurrentEffect[F]
+        def CF   = Async[F]
         def data = Languages
 
         def fetch(id: Repo): F[Option[List[String]]] =
           CF.pure(langsDb.get(id))
       }
 
-    def fetch[F[_]: ConcurrentEffect](repo: Repo): Fetch[F, List[String]] =
+    def fetch[F[_]: Async](repo: Repo): Fetch[F, List[String]] =
       Fetch(repo, source)
   }
 
@@ -353,16 +352,16 @@ object Sources {
   object Collaborators extends Data[Repo, List[String]] {
     def name = "Collaborators"
 
-    def source[F[_]: ConcurrentEffect]: DataSource[F, Repo, List[String]] =
+    def source[F[_]: Async]: DataSource[F, Repo, List[String]] =
       new DataSource[F, Repo, List[String]] {
-        def CF   = ConcurrentEffect[F]
+        def CF   = Async[F]
         def data = Collaborators
 
         def fetch(id: Repo): F[Option[List[String]]] =
           CF.pure(collabsDb.get(id))
       }
 
-    def fetch[F[_]: ConcurrentEffect](repo: Repo): Fetch[F, List[String]] =
+    def fetch[F[_]: Async](repo: Repo): Fetch[F, List[String]] =
       Fetch(repo, source)
   }
 }

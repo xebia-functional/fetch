@@ -16,13 +16,11 @@
 
 package fetch
 
-import cats.{Functor, Monad}
+import cats.data.NonEmptyList
 import cats.effect._
-import cats.data.{NonEmptyList, NonEmptyMap}
-import cats.instances.list._
-import cats.instances.option._
-import cats.syntax.all._
+import cats.effect.implicits._
 import cats.kernel.{Hash => H}
+import cats.syntax.all._
 
 /**
  * `Data` is a trait used to identify and optimize access to a `DataSource`.

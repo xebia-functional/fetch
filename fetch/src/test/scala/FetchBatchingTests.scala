@@ -32,11 +32,11 @@ class FetchBatchingTests extends FetchSpec {
   object SeqBatch extends Data[BatchedDataSeq, Int] {
     def name = "Sequential batching"
 
-    implicit def source[F[_]: ConcurrentEffect]: DataSource[F, BatchedDataSeq, Int] =
+    implicit def source[F[_]: Concurrent]: DataSource[F, BatchedDataSeq, Int] =
       new DataSource[F, BatchedDataSeq, Int] {
         override def data = SeqBatch
 
-        override def CF = ConcurrentEffect[F]
+        override def CF = Concurrent[F]
 
         override def fetch(id: BatchedDataSeq): F[Option[Int]] =
           CF.pure(Some(id.id))
@@ -52,11 +52,11 @@ class FetchBatchingTests extends FetchSpec {
   object ParBatch extends Data[BatchedDataPar, Int] {
     def name = "Parallel batching"
 
-    implicit def source[F[_]: ConcurrentEffect]: DataSource[F, BatchedDataPar, Int] =
+    implicit def source[F[_]: Concurrent]: DataSource[F, BatchedDataPar, Int] =
       new DataSource[F, BatchedDataPar, Int] {
         override def data = ParBatch
 
-        override def CF = ConcurrentEffect[F]
+        override def CF = Concurrent[F]
 
         override def fetch(id: BatchedDataPar): F[Option[Int]] =
           CF.pure(Some(id.id))
@@ -76,11 +76,11 @@ class FetchBatchingTests extends FetchSpec {
   object BigIdData extends Data[BatchedDataBigId, String] {
     def name = "Big id batching"
 
-    implicit def source[F[_]: ConcurrentEffect]: DataSource[F, BatchedDataBigId, String] =
+    implicit def source[F[_]: Concurrent]: DataSource[F, BatchedDataBigId, String] =
       new DataSource[F, BatchedDataBigId, String] {
         override def data = BigIdData
 
-        override def CF = ConcurrentEffect[F]
+        override def CF = Concurrent[F]
 
         override def fetch(request: BatchedDataBigId): F[Option[String]] =
           batch(NonEmptyList.one(request)).map(_.get(request))
@@ -94,17 +94,17 @@ class FetchBatchingTests extends FetchSpec {
       }
   }
 
-  def fetchBatchedDataSeq[F[_]: ConcurrentEffect](id: Int): Fetch[F, Int] =
+  def fetchBatchedDataSeq[F[_]: Concurrent](id: Int): Fetch[F, Int] =
     Fetch(BatchedDataSeq(id), SeqBatch.source)
 
-  def fetchBatchedDataPar[F[_]: ConcurrentEffect](id: Int): Fetch[F, Int] =
+  def fetchBatchedDataPar[F[_]: Concurrent](id: Int): Fetch[F, Int] =
     Fetch(BatchedDataPar(id), ParBatch.source)
 
-  def fetchBatchedDataBigId[F[_]: ConcurrentEffect](id: BatchedDataBigId): Fetch[F, String] =
+  def fetchBatchedDataBigId[F[_]: Concurrent](id: BatchedDataBigId): Fetch[F, String] =
     Fetch(id, BigIdData.source)
 
   "A large fetch to a datasource with a maximum batch size is split and executed in sequence" in {
-    def fetch[F[_]: ConcurrentEffect]: Fetch[F, List[Int]] =
+    def fetch[F[_]: Concurrent]: Fetch[F, List[Int]] =
       List.range(1, 6).traverse(fetchBatchedDataSeq[F])
 
     val io = Fetch.runLog[IO](fetch)
@@ -118,7 +118,7 @@ class FetchBatchingTests extends FetchSpec {
   }
 
   "A large fetch to a datasource with a maximum batch size is split and executed in parallel" in {
-    def fetch[F[_]: ConcurrentEffect]: Fetch[F, List[Int]] =
+    def fetch[F[_]: Concurrent]: Fetch[F, List[Int]] =
       List.range(1, 6).traverse(fetchBatchedDataPar[F])
 
     val io = Fetch.runLog[IO](fetch)
@@ -132,7 +132,7 @@ class FetchBatchingTests extends FetchSpec {
   }
 
   "Fetches to datasources with a maximum batch size should be split and executed in parallel and sequentially when using productR" in {
-    def fetch[F[_]: ConcurrentEffect]: Fetch[F, List[Int]] =
+    def fetch[F[_]: Concurrent]: Fetch[F, List[Int]] =
       List.range(1, 6).traverse(fetchBatchedDataPar[F]) *>
         List.range(1, 6).traverse(fetchBatchedDataSeq[F])
 
@@ -147,7 +147,7 @@ class FetchBatchingTests extends FetchSpec {
   }
 
   "Fetches to datasources with a maximum batch size should be split and executed in parallel and sequentially when using productL" in {
-    def fetch[F[_]: ConcurrentEffect]: Fetch[F, List[Int]] =
+    def fetch[F[_]: Concurrent]: Fetch[F, List[Int]] =
       List.range(1, 6).traverse(fetchBatchedDataPar[F]) <*
         List.range(1, 6).traverse(fetchBatchedDataSeq[F])
 
@@ -162,7 +162,7 @@ class FetchBatchingTests extends FetchSpec {
   }
 
   "A large (many) fetch to a datasource with a maximum batch size is split and executed in sequence" in {
-    def fetch[F[_]: ConcurrentEffect]: Fetch[F, List[Int]] =
+    def fetch[F[_]: Concurrent]: Fetch[F, List[Int]] =
       List(fetchBatchedDataSeq[F](1), fetchBatchedDataSeq[F](2), fetchBatchedDataSeq[F](3)).sequence
 
     val io = Fetch.runLog[IO](fetch)
@@ -176,7 +176,7 @@ class FetchBatchingTests extends FetchSpec {
   }
 
   "A large (many) fetch to a datasource with a maximum batch size is split and executed in parallel" in {
-    def fetch[F[_]: ConcurrentEffect]: Fetch[F, List[Int]] =
+    def fetch[F[_]: Concurrent]: Fetch[F, List[Int]] =
       List(fetchBatchedDataPar[F](1), fetchBatchedDataPar[F](2), fetchBatchedDataPar[F](3)).sequence
 
     val io = Fetch.runLog[IO](fetch)

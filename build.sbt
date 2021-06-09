@@ -11,7 +11,7 @@ lazy val scala3Version    = "3.0.0-RC2"
 lazy val scala2Versions   = Seq(scala212, scala213)
 lazy val allScalaVersions = scala2Versions :+ scala3Version
 
-skip in publish := true
+publish / skip := true
 
 lazy val fetch = crossProject(JSPlatform, JVMPlatform)
   .crossType(CrossType.Pure)
@@ -34,20 +34,20 @@ lazy val debugJS = `fetch-debug`.js
 
 lazy val `fetch-examples` = project
   .dependsOn(fetchJVM, debugJVM)
-  .settings(skip in publish := true)
+  .settings(publish / skip := true)
   .settings(examplesSettings: _*)
   .settings(crossScalaVersions := scala2Versions)
 
 lazy val microsite = project
   .dependsOn(fetchJVM, debugJVM)
   .settings(docsSettings: _*)
-  .settings(skip in publish := true)
+  .settings(publish / skip := true)
   .enablePlugins(MicrositesPlugin, MdocPlugin)
   .settings(crossScalaVersions := scala2Versions)
 
 lazy val documentation = project
   .dependsOn(fetchJVM)
-  .settings(skip in publish := true)
+  .settings(publish / skip := true)
   .settings(mdocOut := file("."))
   .enablePlugins(MdocPlugin)
   .settings(crossScalaVersions := scala2Versions)

@@ -16,15 +16,11 @@
 
 package fetch
 
+import cats.Parallel
 import cats.data.NonEmptyList
-import cats.effect._
 import cats.syntax.all._
 
 private object FetchExecution {
-  def parallel[F[_], A](effects: NonEmptyList[F[A]])(implicit
-      CF: Concurrent[F]
-  ): F[NonEmptyList[A]] =
-    effects
-      .traverse(CF.start(_))
-      .flatMap(fibers => fibers.traverse(_.join).onError({ case _ => fibers.traverse_(_.cancel) }))
+  def parallel[F[_]: Parallel, A](effects: NonEmptyList[F[A]]): F[NonEmptyList[A]] =
+    effects.parSequence
 }

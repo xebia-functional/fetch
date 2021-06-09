@@ -15,8 +15,8 @@ object ProjectPlugin extends AutoPlugin {
       Seq(
         libraryDependencies ++=
           Seq(
-            "org.typelevel" %%% "cats-effect" % "2.5.0",
-            "org.scalatest" %%% "scalatest"   % "3.2.7" % "test"
+            "org.typelevel" %%% "cats-effect" % "3.1.1",
+            "org.scalatest" %%% "scalatest"   % "3.2.9" % "test"
           )
       )
 
@@ -26,9 +26,9 @@ object ProjectPlugin extends AutoPlugin {
       micrositeBaseUrl := "fetch",
       micrositeDocumentationUrl := "/fetch/docs",
       micrositeHighlightTheme := "tomorrow",
-      micrositeExternalLayoutsDirectory := (resourceDirectory in Compile).value / "microsite" / "_layouts",
-      micrositeExternalIncludesDirectory := (resourceDirectory in Compile).value / "microsite" / "_includes",
-      micrositeDataDirectory := (resourceDirectory in Compile).value / "microsite" / "_data",
+      micrositeExternalLayoutsDirectory := (Compile / resourceDirectory).value / "microsite" / "_layouts",
+      micrositeExternalIncludesDirectory := (Compile / resourceDirectory).value / "microsite" / "_includes",
+      micrositeDataDirectory := (Compile / resourceDirectory).value / "microsite" / "_data",
       micrositeTheme := "pattern",
       micrositePalette := Map(
         "brand-primary"   -> "#DD4949",
@@ -40,11 +40,11 @@ object ProjectPlugin extends AutoPlugin {
         "gray-lighter"    -> "#F4F3F9",
         "white-color"     -> "#FFFFFF"
       ),
-      includeFilter in makeSite := "*.html" | "*.css" | "*.png" | "*.svg" | "*.jpg" | "*.gif" | "*.js" | "*.json" | "*.swf" | "*.md",
+      makeSite / includeFilter := "*.html" | "*.css" | "*.png" | "*.svg" | "*.jpg" | "*.gif" | "*.js" | "*.json" | "*.swf" | "*.md",
       micrositeGithubToken := Option(System.getenv().get("GITHUB_TOKEN")),
       micrositePushSiteWith := GitHub4s,
       micrositeConfigYaml := ConfigYml(
-        yamlPath = Some((resourceDirectory in Compile).value / "microsite" / "custom-config.yml")
+        yamlPath = Some((Compile / resourceDirectory).value / "microsite" / "custom-config.yml")
       ),
       micrositeCDNDirectives := CdnDirectives(
         cssList = List(
@@ -56,19 +56,18 @@ object ProjectPlugin extends AutoPlugin {
     lazy val docsSettings: Seq[Def.Setting[_]] =
       micrositeSettings ++ Seq(
         scalacOptions ~= (_.filterNot(Set("-Ywarn-unused-import", "-Ywarn-dead-code"))),
-        aggregate in doc := true
+        doc / aggregate := true
       )
 
     lazy val examplesSettings = Seq(
       libraryDependencies ++= Seq(
         "io.circe"     %% "circe-generic"       % "0.14.1",
-        "org.tpolecat" %% "doobie-core"         % "0.13.4",
-        "org.tpolecat" %% "doobie-h2"           % "0.13.4",
+        "org.tpolecat" %% "doobie-core"         % "1.0.0-M5",
+        "org.tpolecat" %% "doobie-h2"           % "1.0.0-M5",
         "org.tpolecat" %% "atto-core"           % "0.9.5",
-        "org.http4s"   %% "http4s-blaze-client" % "0.21.24",
-        "org.http4s"   %% "http4s-circe"        % "0.21.24",
-        "redis.clients" % "jedis"               % "3.6.0",
-        "io.monix"     %% "monix"               % "3.4.0"
+        "org.http4s"   %% "http4s-blaze-client" % "0.23.0-RC1",
+        "org.http4s"   %% "http4s-circe"        % "0.23.0-RC1",
+        "redis.clients" % "jedis"               % "3.6.0"
       )
     ) ++ commonCrossDependencies
   }

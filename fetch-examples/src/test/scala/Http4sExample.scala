@@ -27,7 +27,7 @@ import io.circe.generic.semiauto._
 
 import org.http4s.client.Client
 import org.http4s.circe._
-import org.http4s.client.blaze._
+import org.http4s.blaze.client._
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
@@ -46,7 +46,7 @@ object HttpExample {
     val executionContext =
       ExecutionContext.fromExecutor(new ScheduledThreadPoolExecutor(2))
 
-    def client[F[_]: ConcurrentEffect]: Resource[F, Client[F]] =
+    def client[F[_]: Async]: Resource[F, Client[F]] =
       BlazeClientBuilder[F](executionContext).resource
 
     implicit val userIdDecoder: Decoder[UserId] = Decoder[Int].map(UserId.apply)
@@ -60,11 +60,11 @@ object HttpExample {
 
     def name = "Users"
 
-    def http[F[_]: ConcurrentEffect]: DataSource[F, UserId, User] =
+    def http[F[_]: Async]: DataSource[F, UserId, User] =
       new DataSource[F, UserId, User] {
         def data = Users
 
-        override def CF = ConcurrentEffect[F]
+        override def CF = Async[F]
 
         override def fetch(id: UserId): F[Option[User]] = {
           val url = s"https://jsonplaceholder.typicode.com/users?id=${id.id}"
@@ -85,11 +85,11 @@ object HttpExample {
 
     def name = "Posts"
 
-    def http[F[_]: ConcurrentEffect]: DataSource[F, UserId, List[Post]] =
+    def http[F[_]: Async]: DataSource[F, UserId, List[Post]] =
       new DataSource[F, UserId, List[Post]] {
         def data = Posts
 
-        override def CF = ConcurrentEffect[F]
+        override def CF = Async[F]
 
         override def fetch(id: UserId): F[Option[List[Post]]] = {
           val url = s"https://jsonplaceholder.typicode.com/posts?userId=${id.id}"
@@ -104,19 +104,19 @@ object HttpExample {
       }
   }
 
-  def fetchUserById[F[_]: ConcurrentEffect](id: UserId): Fetch[F, User] =
+  def fetchUserById[F[_]: Async](id: UserId): Fetch[F, User] =
     Fetch(id, Users.http)
 
-  def fetchPostsForUser[F[_]: ConcurrentEffect](id: UserId): Fetch[F, List[Post]] =
+  def fetchPostsForUser[F[_]: Async](id: UserId): Fetch[F, List[Post]] =
     Fetch(id, Posts.http)
 
-  def fetchUser[F[_]: ConcurrentEffect](id: Int): Fetch[F, User] =
+  def fetchUser[F[_]: Async](id: Int): Fetch[F, User] =
     fetchUserById(UserId(id))
 
-  def fetchManyUsers[F[_]: ConcurrentEffect](ids: List[Int]): Fetch[F, List[User]] =
+  def fetchManyUsers[F[_]: Async](ids: List[Int]): Fetch[F, List[User]] =
     ids.traverse(i => fetchUserById(UserId(i)))
 
-  def fetchPosts[F[_]: ConcurrentEffect](user: User): Fetch[F, (User, List[Post])] =
+  def fetchPosts[F[_]: Async](user: User): Fetch[F, (User, List[Post])] =
     fetchPostsForUser(user.id).map(posts => (user, posts))
 }
 
@@ -124,14 +124,13 @@ class Http4sExample extends AnyWordSpec with Matchers {
   import HttpExample._
 
   // runtime
-  val executionContext              = ExecutionContext.global
-  implicit val t: Timer[IO]         = IO.timer(executionContext)
-  implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
+  val executionContext                     = ExecutionContext.global
+  implicit val ioRuntime: unsafe.IORuntime = unsafe.IORuntime.global
 
   "We can fetch one user" in {
     val io: IO[(Log, User)] = Fetch.runLog[IO](fetchUser(1))
 
-    val (log, result) = io.unsafeRunSync
+    val (log, result) = io.unsafeRunSync()
 
     println(result)
     log.rounds.size shouldEqual 1
@@ -140,14 +139,14 @@ class Http4sExample extends AnyWordSpec with Matchers {
   "We can fetch multiple users in parallel" in {
     val io = Fetch.runLog[IO](fetchManyUsers(List(1, 2, 3)))
 
-    val (log, result) = io.unsafeRunSync
+    val (log, result) = io.unsafeRunSync()
 
     result.foreach(println)
     log.rounds.size shouldEqual 1
   }
 
   "We can fetch multiple users with their posts" in {
-    def fetch[F[_]: ConcurrentEffect]: Fetch[F, List[(User, List[Post])]] =
+    def fetch[F[_]: Async]: Fetch[F, List[(User, List[Post])]] =
       for {
         users          <- fetchManyUsers(List(1, 2))
         usersWithPosts <- users.traverse(fetchPosts[F])
@@ -155,7 +154,7 @@ class Http4sExample extends AnyWordSpec with Matchers {
 
     val io = Fetch.runLog[IO](fetch)
 
-    val (log, results) = io.unsafeRunSync
+    val (log, results) = io.unsafeRunSync()
 
     results
       .map { case (user, posts) =>

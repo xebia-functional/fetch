@@ -31,10 +31,10 @@ class FetchSyntaxTests extends FetchSpec {
   "`fetch` syntax allows lifting of any `Throwable` as a failure on a fetch" in {
     case object Ex extends RuntimeException
 
-    def f1[F[_]: ConcurrentEffect: ContextShift] =
+    def f1[F[_]: Concurrent] =
       Fetch.error[F, Int](Ex)
 
-    def f2[F[_]: ConcurrentEffect: ContextShift] =
+    def f2[F[_]: Concurrent] =
       Ex.fetch[F]
 
     val io1 = Fetch.run[IO](f1)
