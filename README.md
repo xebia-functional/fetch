@@ -74,13 +74,13 @@ import cats.implicits._
 
 import fetch._
 
-def latency[F[_] : Concurrent](milis: Long): F[Unit] =
-  Concurrent[F].delay(Thread.sleep(milis))
+def latency[F[_] : Sync](milis: Long): F[Unit] =
+  Sync[F].delay(Thread.sleep(milis))
 
 object ToString extends Data[Int, String] {
   def name = "To String"
 
-  def source[F[_] : Concurrent]: DataSource[F, Int, String] = new DataSource[F, Int, String]{
+  def source[F[_] : Async]: DataSource[F, Int, String] = new DataSource[F, Int, String]{
     override def data = ToString
 
     override def CF = Concurrent[F]
@@ -99,7 +99,7 @@ object ToString extends Data[Int, String] {
   }
 }
 
-def fetchString[F[_] : Concurrent](n: Int): Fetch[F, String] =
+def fetchString[F[_] : Async](n: Int): Fetch[F, String] =
   Fetch(n, ToString.source)
 ```
 
@@ -116,8 +116,7 @@ import scala.concurrent.ExecutionContext
 val executor = new ScheduledThreadPoolExecutor(4)
 val executionContext: ExecutionContext = ExecutionContext.fromExecutor(executor)
 
-implicit val timer: Timer[IO] = IO.timer(executionContext)
-implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
+import cats.effect.unsafe.implicits.global
 ```
 
 ## Creating and running a fetch
@@ -125,7 +124,7 @@ implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
 Now that we can convert `Int` values to `Fetch[F, String]`, let's try creating a fetch.
 
 ```scala
-def fetchOne[F[_] : Concurrent]: Fetch[F, String] =
+def fetchOne[F[_] : Async]: Fetch[F, String] =
   fetchString(1)
 ```
 
@@ -135,8 +134,8 @@ Let's run it and wait for the fetch to complete. We'll use `IO#unsafeRunTimed` f
 import scala.concurrent.duration._
 
 Fetch.run[IO](fetchOne).unsafeRunTimed(5.seconds)
-// --> [236] One ToString 1
-// <-- [236] One ToString 1
+// --> [771] One ToString 1
+// <-- [771] One ToString 1
 // res0: Option[String] = Some(value = "1")
 ```
 
@@ -147,7 +146,7 @@ As you can see in the previous example, the `ToStringSource` is queried once to 
 Multiple fetches to the same data source are automatically batched. For illustrating this, we are going to compose three independent fetch results as a tuple.
 
 ```scala
-def fetchThree[F[_] : Concurrent]: Fetch[F, (String, String, String)] =
+def fetchThree[F[_] : Async]: Fetch[F, (String, String, String)] =
   (fetchString(1), fetchString(2), fetchString(3)).tupled
 ```
 
@@ -155,8 +154,8 @@ When executing the above fetch, note how the three identities get batched, and t
 
 ```scala
 Fetch.run[IO](fetchThree).unsafeRunTimed(5.seconds)
-// --> [236] Batch ToString NonEmptyList(1, 2, 3)
-// <-- [236] Batch ToString NonEmptyList(1, 2, 3)
+// --> [777] Batch ToString NonEmptyList(1, 2, 3)
+// <-- [777] Batch ToString NonEmptyList(1, 2, 3)
 // res1: Option[(String, String, String)] = Some(value = ("1", "2", "3"))
 ```
 
@@ -166,7 +165,7 @@ Note that the `DataSource#batch` method is not mandatory. It will be implemented
 object UnbatchedToString extends Data[Int, String] {
   def name = "Unbatched to string"
 
-  def source[F[_] : Concurrent] = new DataSource[F, Int, String] {
+  def source[F[_]: Async] = new DataSource[F, Int, String] {
     override def data = UnbatchedToString
 
     override def CF = Concurrent[F]
@@ -179,14 +178,14 @@ object UnbatchedToString extends Data[Int, String] {
   }
 }
 
-def unbatchedString[F[_] : Concurrent](n: Int): Fetch[F, String] =
+def unbatchedString[F[_]: Async](n: Int): Fetch[F, String] =
   Fetch(n, UnbatchedToString.source)
 ```
 
 Let's create a tuple of unbatched string requests.
 
 ```scala
-def fetchUnbatchedThree[F[_] : Concurrent]: Fetch[F, (String, String, String)] =
+def fetchUnbatchedThree[F[_] : Async]: Fetch[F, (String, String, String)] =
   (unbatchedString(1), unbatchedString(2), unbatchedString(3)).tupled
 ```
 
@@ -194,12 +193,12 @@ When executing the above fetch, note how the three identities get requested in p
 
 ```scala
 Fetch.run[IO](fetchUnbatchedThree).unsafeRunTimed(5.seconds)
-// --> [236] One UnbatchedToString 1
-// --> [237] One UnbatchedToString 2
-// --> [238] One UnbatchedToString 3
-// <-- [236] One UnbatchedToString 1
-// <-- [237] One UnbatchedToString 2
-// <-- [238] One UnbatchedToString 3
+// --> [778] One UnbatchedToString 1
+// --> [776] One UnbatchedToString 2
+// --> [777] One UnbatchedToString 3
+// <-- [776] One UnbatchedToString 2
+// <-- [777] One UnbatchedToString 3
+// <-- [778] One UnbatchedToString 1
 // res2: Option[(String, String, String)] = Some(value = ("1", "2", "3"))
 ```
 
@@ -211,7 +210,7 @@ If we combine two independent fetches from different data sources, the fetches c
 object Length extends Data[String, Int] {
   def name = "Length"
 
-  def source[F[_] : Concurrent] = new DataSource[F, String, Int] {
+  def source[F[_] : Async] = new DataSource[F, String, Int] {
     override def data = Length
 
     override def CF = Concurrent[F]
@@ -230,14 +229,14 @@ object Length extends Data[String, Int] {
   }
 }
 
-def fetchLength[F[_] : Concurrent](s: String): Fetch[F, Int] =
+def fetchLength[F[_] : Async](s: String): Fetch[F, Int] =
   Fetch(s, Length.source)
 ```
 
 And now we can easily receive data from the two sources in a single fetch.
 
 ```scala
-def fetchMulti[F[_] : Concurrent]: Fetch[F, (String, Int)] =
+def fetchMulti[F[_] : Async]: Fetch[F, (String, Int)] =
   (fetchString(1), fetchLength("one")).tupled
 ```
 
@@ -245,10 +244,10 @@ Note how the two independent data fetches run in parallel, minimizing the latenc
 
 ```scala
 Fetch.run[IO](fetchMulti).unsafeRunTimed(5.seconds)
-// --> [239] One Length one
-// --> [236] One ToString 1
-// <-- [239] One Length one
-// <-- [236] One ToString 1
+// --> [774] One ToString 1
+// --> [777] One Length one
+// <-- [774] One ToString 1
+// <-- [777] One Length one
 // res3: Option[(String, Int)] = Some(value = ("1", 3))
 ```
 
@@ -261,7 +260,7 @@ When fetching an identity twice within the same `Fetch`, such as a batch of fetc
 Let's try creating a fetch that asks for the same identity twice, by using `flatMap` (in a for-comprehension) to chain the requests together:
 
 ```scala
-def fetchTwice[F[_] : Concurrent]: Fetch[F, (String, String)] = for {
+def fetchTwice[F[_] : Async]: Fetch[F, (String, String)] = for {
   one <- fetchString(1)
   two <- fetchString(1)
 } yield (one, two)
@@ -275,16 +274,16 @@ val runFetchTwice = Fetch.run[IO](fetchTwice)
 ```
 ```scala
 runFetchTwice.unsafeRunTimed(5.seconds)
-// --> [237] One ToString 1
-// <-- [237] One ToString 1
+// --> [772] One ToString 1
+// <-- [772] One ToString 1
 // res4: Option[(String, String)] = Some(value = ("1", "1"))
 ```
 
 This will still fetch the data again, however, if we call it once more:
 ```scala
 runFetchTwice.unsafeRunTimed(5.seconds)
-// --> [239] One ToString 1
-// <-- [239] One ToString 1
+// --> [778] One ToString 1
+// <-- [778] One ToString 1
 // res5: Option[(String, String)] = Some(value = ("1", "1"))
 ```
 
@@ -302,8 +301,8 @@ val runFetchFourTimesSharedCache = for {
 ```
 ```scala
 runFetchFourTimesSharedCache.unsafeRunTimed(5.seconds)
-// --> [238] One ToString 1
-// <-- [238] One ToString 1
+// --> [777] One ToString 1
+// <-- [777] One ToString 1
 // res6: Option[(String, String, String, String)] = Some(
 //   value = ("1", "1", "1", "1")
 // )

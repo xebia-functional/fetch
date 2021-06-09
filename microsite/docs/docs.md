@@ -111,7 +111,7 @@ import fetch._
 import cats.implicits._
 import cats.effect._
 
-def latency[F[_] : Concurrent](msg: String): F[Unit] = for {
+def latency[F[_]: Sync](msg: String): F[Unit] = for {
   _ <- Sync[F].delay(println(s"--> [${Thread.currentThread.getId}] $msg"))
   _ <- Sync[F].delay(Thread.sleep(100))
   _ <- Sync[F].delay(println(s"<-- [${Thread.currentThread.getId}] $msg"))
@@ -133,7 +133,7 @@ val userDatabase: Map[UserId, User] = Map(
 object Users extends Data[UserId, User] {
   def name = "Users"
 
-  def source[F[_] : Concurrent]: DataSource[F, UserId, User] = new DataSource[F, UserId, User] {
+  def source[F[_] : Async]: DataSource[F, UserId, User] = new DataSource[F, UserId, User] {
     override def data = Users
 
     override def CF = Concurrent[F]
@@ -151,7 +151,7 @@ Now that we have a data source we can write a function for fetching users
 given a `DataSource`, an id and the data source as arguments to `Fetch`.
 
 ```scala mdoc:silent
-def getUser[F[_] : Concurrent](id: UserId): Fetch[F, User] =
+def getUser[F[_] : Async](id: UserId): Fetch[F, User] =
   Fetch(id, Users.source)
 ```
 
@@ -160,7 +160,7 @@ def getUser[F[_] : Concurrent](id: UserId): Fetch[F, User] =
 If you want to create a Fetch that doesn't fail if the identity is not found, you can use `Fetch#optional` instead of `Fetch#apply`. Note that instead of a `Fetch[F, A]` you will get a `Fetch[F, Option[A]]`.
 
 ```scala mdoc:silent
-def maybeGetUser[F[_] : Concurrent](id: UserId): Fetch[F, Option[User]] =
+def maybeGetUser[F[_] : Async](id: UserId): Fetch[F, Option[User]] =
   Fetch.optional(id, Users.source)
 ```
 
@@ -172,7 +172,7 @@ If your data source doesn't support batching, you can simply leave the `batch` m
 object Unbatched extends Data[Int, Int]{
   def name = "Unbatched"
 
-  def source[F[_] : Concurrent]: DataSource[F, Int, Int] = new DataSource[F, Int, Int]{
+  def source[F[_] : Async]: DataSource[F, Int, Int] = new DataSource[F, Int, Int]{
     override def data = Unbatched
 
     override def CF = Concurrent[F]
@@ -191,7 +191,7 @@ The default `batch` implementation run requests to the data source in parallel, 
 object UnbatchedSeq extends Data[Int, Int]{
   def name = "UnbatchedSeq"
 
-  def source[F[_] : Concurrent]: DataSource[F, Int, Int] = new DataSource[F, Int, Int]{
+  def source[F[_] : Async]: DataSource[F, Int, Int] = new DataSource[F, Int, Int]{
     override def data = UnbatchedSeq
 
     override def CF = Concurrent[F]
@@ -216,7 +216,7 @@ If your data source only supports querying it in batches, you can implement `fet
 object OnlyBatched extends Data[Int, Int]{
   def name = "OnlyBatched"
 
-  def source[F[_] : Concurrent]: DataSource[F, Int, Int] = new DataSource[F, Int, Int]{
+  def source[F[_] : Async]: DataSource[F, Int, Int] = new DataSource[F, Int, Int]{
     override def data = OnlyBatched
 
     override def CF = Concurrent[F]
@@ -243,8 +243,7 @@ import scala.concurrent.duration._
 val executor = new ScheduledThreadPoolExecutor(4)
 val executionContext: ExecutionContext = ExecutionContext.fromExecutor(executor)
 
-implicit val timer: Timer[IO] = IO.timer(executionContext)
-implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
+import cats.effect.unsafe.implicits.global
 ```
 
 ## Creating and running a fetch
@@ -254,7 +253,7 @@ When we are creating and combining `Fetch` values, we are just constructing a re
 dependencies.
 
 ```scala mdoc:silent
-def fetchUser[F[_] : Concurrent]: Fetch[F, User] =
+def fetchUser[F[_] : Async]: Fetch[F, User] =
   getUser(1)
 ```
 
@@ -277,7 +276,7 @@ Fetch.run[IO](fetchUser).unsafeRunTimed(5.seconds)
 When we have two fetches that depend on each other, we can use `flatMap` to combine them. The most straightforward way is to use a for comprehension:
 
 ```scala mdoc:silent
-def fetchTwoUsers[F[_] : Concurrent]: Fetch[F, (User, User)] = for {
+def fetchTwoUsers[F[_] : Async]: Fetch[F, (User, User)] = for {
   aUser <- getUser(1)
   anotherUser <- getUser(aUser.id + 1)
 } yield (aUser, anotherUser)
@@ -296,7 +295,7 @@ automatically batch them together into a single request. Applicative operations 
 help us tell the library that those fetches are independent, and thus can be batched if they use the same data source:
 
 ```scala mdoc:silent
-def fetchProduct[F[_] : Concurrent]: Fetch[F, (User, User)] =
+def fetchProduct[F[_] : Async]: Fetch[F, (User, User)] =
   (getUser(1), getUser(2)).tupled
 ```
 
@@ -311,7 +310,7 @@ Fetch.run[IO](fetchProduct).unsafeRunTimed(5.seconds)
 If two independent requests ask for the same identity, Fetch will detect it and deduplicate the id.
 
 ```scala mdoc:silent
-def fetchDuped[F[_] : Concurrent]: Fetch[F, (User, User)] =
+def fetchDuped[F[_] : Async]: Fetch[F, (User, User)] =
   (getUser(1), getUser(1)).tupled
 ```
 
@@ -329,7 +328,7 @@ was in memory; furthermore, it also avoids re-fetching an identity that may have
 during the course of a fetch execution, which can lead to inconsistencies in the data.
 
 ```scala mdoc:silent
-def fetchCached[F[_] : Concurrent]: Fetch[F, (User, User)] = for {
+def fetchCached[F[_] : Async]: Fetch[F, (User, User)] = for {
   aUser <- getUser(1)
   anotherUser <- getUser(1)
 } yield (aUser, anotherUser)
@@ -370,7 +369,7 @@ val postDatabase: Map[PostId, Post] = Map(
 object Posts extends Data[PostId, Post] {
   def name = "Posts"
 
-  def source[F[_] : Concurrent]: DataSource[F, PostId, Post] = new DataSource[F, PostId, Post] {
+  def source[F[_] : Async]: DataSource[F, PostId, Post] = new DataSource[F, PostId, Post] {
     override def data = Posts 
 
     override def CF = Concurrent[F]
@@ -383,7 +382,7 @@ object Posts extends Data[PostId, Post] {
   }
 }
 
-def getPost[F[_] : Concurrent](id: PostId): Fetch[F, Post] =
+def getPost[F[_] : Async](id: PostId): Fetch[F, Post] =
   Fetch(id, Posts.source)
 ```
 
@@ -399,7 +398,7 @@ We'll implement a data source for retrieving a post topic given a post id.
 object PostTopics extends Data[Post, PostTopic] {
   def name = "Post Topics"
 
-  def source[F[_] : Concurrent]: DataSource[F, Post, PostTopic] = new DataSource[F, Post, PostTopic] {
+  def source[F[_] : Async]: DataSource[F, Post, PostTopic] = new DataSource[F, Post, PostTopic] {
     override def data = PostTopics 
 
     override def CF = Concurrent[F]
@@ -416,14 +415,14 @@ object PostTopics extends Data[Post, PostTopic] {
   }
 }
 
-def getPostTopic[F[_] : Concurrent](post: Post): Fetch[F, PostTopic] =
+def getPostTopic[F[_] : Async](post: Post): Fetch[F, PostTopic] =
   Fetch(post, PostTopics.source)
 ```
 
 Now that we have multiple sources let's mix them in the same fetch.
 
 ```scala mdoc:silent
-def fetchMulti[F[_] : Concurrent]: Fetch[F, (Post, PostTopic)] = for {
+def fetchMulti[F[_] : Async]: Fetch[F, (Post, PostTopic)] = for {
   post <- getPost(1)
   topic <- getPostTopic(post)
 } yield (post, topic)
@@ -450,7 +449,7 @@ In the following example we are fetching from different data sources so both req
 evaluated together.
 
 ```scala mdoc:silent
-def fetchConcurrent[F[_] : Concurrent]: Fetch[F, (Post, User)] =
+def fetchConcurrent[F[_] : Async]: Fetch[F, (Post, User)] =
   (getPost(1), getUser(2)).tupled
 ```
 
@@ -472,7 +471,7 @@ combinator. It takes a `List[Fetch[A]]` and gives you back a `Fetch[List[A]]`, b
 data source and running fetches to different sources in parallel. Note that the `sequence` combinator is more general and works not only on lists but on any type that has a [Traverse](https://typelevel.org/cats/typeclasses/traverse.html) instance.
 
 ```scala mdoc:silent
-def fetchSequence[F[_] : Concurrent]: Fetch[F, List[User]] =
+def fetchSequence[F[_] : Async]: Fetch[F, List[User]] =
   List(getUser(1), getUser(2), getUser(3)).sequence
 ```
 
@@ -489,7 +488,7 @@ As you can see, requests to the user data source were batched, thus fetching all
 Another interesting combinator is `traverse`, which is the composition of `map` and `sequence`.
 
 ```scala mdoc:silent
-def fetchTraverse[F[_] : Concurrent]: Fetch[F, List[User]] =
+def fetchTraverse[F[_] : Async]: Fetch[F, List[User]] =
   List(1, 2, 3).traverse(getUser[F])
 ```
 
@@ -511,7 +510,7 @@ We'll be using the default in-memory cache, prepopulated with some data. The cac
 is calculated with the `DataSource`'s `name` method and the request identity.
 
 ```scala mdoc:silent
-def cache[F[_] : Concurrent] = InMemoryCache.from[F, UserId, User](
+def cache[F[_] : Async] = InMemoryCache.from[F, UserId, User](
  (Users, 1) -> User(1, "purrgrammer")
 )
 ```
@@ -526,7 +525,7 @@ As you can see, when all the data is cached, no query to the data sources is exe
 in the cache.
 
 ```scala mdoc:silent
-def fetchManyUsers[F[_] : Concurrent]: Fetch[F, List[User]] =
+def fetchManyUsers[F[_] : Async]: Fetch[F, List[User]] =
   List(1, 2, 3).traverse(getUser[F])
 ```
 
@@ -544,7 +543,7 @@ Knowing this, we can replay a fetch reusing the cache of a previous one. The rep
 data sources.
 
 ```scala mdoc
-val (populatedCache, result) = Fetch.runCache[IO](fetchManyUsers).unsafeRunSync
+val (populatedCache, result) = Fetch.runCache[IO](fetchManyUsers).unsafeRunSync()
 
 Fetch.run[IO](fetchManyUsers, populatedCache).unsafeRunTimed(5.seconds)
 ```
@@ -575,13 +574,13 @@ case class ForgetfulCache[F[_] : Monad]() extends DataCache[F] {
     Applicative[F].pure(None)
 }
 
-def forgetfulCache[F[_] : Concurrent] = ForgetfulCache[F]()
+def forgetfulCache[F[_] : Async] = ForgetfulCache[F]()
 ```
 
 We can now use our implementation of the cache when running a fetch.
 
 ```scala mdoc
-def fetchSameTwice[F[_] : Concurrent]: Fetch[F, (User, User)] = for {
+def fetchSameTwice[F[_] : Async]: Fetch[F, (User, User)] = for {
   one <- getUser(1)
   another <- getUser(1)
 } yield (one, another)
@@ -603,7 +602,7 @@ we can specify the maximum size of the batched requests to this data source, let
 object BatchedUsers extends Data[UserId, User]{
   def name = "Batched Users"
 
-  def source[F[_] : Concurrent]: DataSource[F, UserId, User] = new DataSource[F, UserId, User] {
+  def source[F[_] : Async]: DataSource[F, UserId, User] = new DataSource[F, UserId, User] {
     override def data = BatchedUsers
 
     override def CF = Concurrent[F]
@@ -618,7 +617,7 @@ object BatchedUsers extends Data[UserId, User]{
   }
 }
 
-def getBatchedUser[F[_] : Concurrent](id: Int): Fetch[F, User] =
+def getBatchedUser[F[_] : Async](id: Int): Fetch[F, User] =
   Fetch(id, BatchedUsers.source)
 ```
 
@@ -626,7 +625,7 @@ We have defined the maximum batch size to be 2, let's see what happens when runn
 than two users:
 
 ```scala mdoc
-def fetchManyBatchedUsers[F[_] : Concurrent]: Fetch[F, List[User]] =
+def fetchManyBatchedUsers[F[_] : Async]: Fetch[F, List[User]] =
   List(1, 2, 3, 4).traverse(getBatchedUser[F])
 
 Fetch.run[IO](fetchManyBatchedUsers).unsafeRunTimed(5.seconds)
@@ -640,7 +639,7 @@ In the presence of multiple concurrent batches, we can choose between a sequenti
 object SequentialUsers extends Data[UserId, User]{
   def name = "Sequential Users"
 
-  def source[F[_] : Concurrent]: DataSource[F, UserId, User] = new DataSource[F, UserId, User] {
+  def source[F[_]: Async]: DataSource[F, UserId, User] = new DataSource[F, UserId, User] {
     override def data = SequentialUsers
 
     override def CF = Concurrent[F]
@@ -656,7 +655,7 @@ object SequentialUsers extends Data[UserId, User]{
   }
 }
 
-def getSequentialUser[F[_] : Concurrent](id: Int): Fetch[F, User] =
+def getSequentialUser[F[_] : Async](id: Int): Fetch[F, User] =
   Fetch(id, SequentialUsers.source)
 ```
 
@@ -664,7 +663,7 @@ We have defined the maximum batch size to be 2 and the batch execution to be seq
 
 
 ```scala mdoc
-def fetchManySeqBatchedUsers[F[_] : Concurrent]: Fetch[F, List[User]] =
+def fetchManySeqBatchedUsers[F[_] : Async]: Fetch[F, List[User]] =
   List(1, 2, 3, 4).traverse(getSequentialUser[F])
 
 Fetch.run[IO](fetchManySeqBatchedUsers).unsafeRunTimed(5.seconds)
@@ -687,7 +686,7 @@ you want.
 What happens if we run a fetch and fails with an exception? We'll create a fetch that always fails to learn about it.
 
 ```scala mdoc:silent
-def fetchException[F[_] : Concurrent]: Fetch[F, User] =
+def fetchException[F[_] : Async]: Fetch[F, User] =
   Fetch.error(new Exception("Oh noes"))
 ```
 
@@ -709,7 +708,7 @@ Using fetch's debugging facilities, we can visualize a failed fetch's execution 
 a fetch that fails after a couple rounds to see it in action:
 
 ```scala mdoc:silent
-def failingFetch[F[_] : Concurrent]: Fetch[F, String] = for {
+def failingFetch[F[_] : Async]: Fetch[F, String] = for {
   a <- getUser(1)
   b <- getUser(2)
   c <- fetchException
@@ -723,7 +722,7 @@ Now let's use the `fetch.debug.describe` function for describing the error if we
 ```scala mdoc
 import fetch.debug.describe
 
-val value: Either[Throwable, (Log, String)] = result2.unsafeRunSync
+val value: Either[Throwable, (Log, String)] = result2.unsafeRunSync()
 
 println(value.fold(describe, _.toString))
 ```
@@ -737,7 +736,7 @@ You've probably noticed that `DataSource.fetch` and `DataSource.batch` return ty
 identity was not found. Whenever an identity cannot be found, the fetch execution will fail with an instance of `MissingIdentity`.
 
 ```scala mdoc:silent
-def missingUser[F[_] : Concurrent] =
+def missingUser[F[_] : Async] =
   getUser(5)
 
 val result3: IO[Either[Throwable, (Log, User)]] = Fetch.runLog[IO](missingUser).attempt
@@ -746,7 +745,7 @@ val result3: IO[Either[Throwable, (Log, User)]] = Fetch.runLog[IO](missingUser).
 And now we can execute the fetch and describe its execution:
 
 ```scala mdoc
-val value2: Either[Throwable, (Log, User)] = result3.unsafeRunSync
+val value2: Either[Throwable, (Log, User)] = result3.unsafeRunSync()
 
 println(value2.fold(describe, _.toString))
 ```
@@ -781,7 +780,7 @@ Note that using cats syntax gives you a plethora of combinators, much richer tha
 Plain values can be lifted to the Fetch monad with `Fetch#pure`:
 
 ```scala mdoc:silent
-def fetchPure[F[_] : Concurrent]: Fetch[F, Int] =
+def fetchPure[F[_] : Async]: Fetch[F, Int] =
   Fetch.pure(42)
 ```
 
@@ -796,7 +795,7 @@ Fetch.run[IO](fetchPure).unsafeRunTimed(5.seconds)
 Errors can also be lifted to the Fetch monad via `Fetch#error`.
 
 ```scala mdoc:silent
-def fetchFail[F[_] : Concurrent]: Fetch[F, Int] =
+def fetchFail[F[_] : Async]: Fetch[F, Int] =
   Fetch.error(new Exception("Something went terribly wrong"))
 ```
 
@@ -826,7 +825,7 @@ are from different types, and apply a pure function to their results. We can use
 as a more powerful alternative to the `product` method:
 
 ```scala mdoc:silent
-def fetchThree[F[_] : Concurrent]: Fetch[F, (Post, User, Post)] =
+def fetchThree[F[_] : Async]: Fetch[F, (Post, User, Post)] =
   (getPost(1), getUser(2), getPost(2)).tupled
 ```
 
@@ -840,7 +839,7 @@ More interestingly, we can use it to apply a pure function to the results of var
 fetches.
 
 ```scala mdoc
-def fetchFriends[F[_] : Concurrent]: Fetch[F, String] = (getUser(1), getUser(2)).mapN { (one, other) =>
+def fetchFriends[F[_] : Async]: Fetch[F, String] = (getUser(1), getUser(2)).mapN { (one, other) =>
   s"${one.username} is friends with ${other.username}"
 }
 
@@ -864,19 +863,19 @@ We are going to create an interesting fetch that applies all the optimizations a
 visualize fetch executions using the execution log.
 
 ```scala mdoc:silent
-def batched[F[_] : Concurrent]: Fetch[F, List[User]] =
+def batched[F[_] : Async]: Fetch[F, List[User]] =
   List(1, 2).traverse(getUser[F])
 
-def cached[F[_] : Concurrent]: Fetch[F, User] =
+def cached[F[_] : Async]: Fetch[F, User] =
   getUser(2)
 
-def notCached[F[_] : Concurrent]: Fetch[F, User] =
+def notCached[F[_] : Async]: Fetch[F, User] =
   getUser(4)
 
-def concurrent[F[_] : Concurrent]: Fetch[F, (List[User], List[Post])] =
+def concurrent[F[_] : Async]: Fetch[F, (List[User], List[Post])] =
   (List(1, 2, 3).traverse(getUser[F]), List(1, 2, 3).traverse(getPost[F])).tupled
 
-def interestingFetch[F[_] : Concurrent]: Fetch[F, String] =
+def interestingFetch[F[_] : Async]: Fetch[F, String] =
   batched >> cached >> notCached >> concurrent >> Fetch.pure("done")
 ```
 
@@ -885,7 +884,7 @@ Now that we have the fetch let's run it, get the log and visualize its execution
 ```scala mdoc
 val io = Fetch.runLog[IO](interestingFetch)
 
-val (log, result4) = io.unsafeRunSync
+val (log, result4) = io.unsafeRunSync()
 
 io.unsafeRunTimed(5.seconds) match {
  case Some((log, _)) => println(describe(log))
