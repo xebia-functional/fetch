@@ -40,21 +40,21 @@ object DataSources {
   object Numbers extends Data[Int, Int] {
     def name = "Numbers"
 
-    def source[F[_]: ConcurrentEffect]: DataSource[F, Int, Int] =
+    def source[F[_]: Async]: DataSource[F, Int, Int] =
       new DataSource[F, Int, Int] {
         def data = Numbers
 
-        override def CF = ConcurrentEffect[F]
+        override def CF = Async[F]
 
         override def fetch(id: Int): F[Option[Int]] =
           CF.pure(Option(id))
       }
   }
 
-  def fetchNumber[F[_]: ConcurrentEffect](id: Int): Fetch[F, Int] =
+  def fetchNumber[F[_]: Async](id: Int): Fetch[F, Int] =
     Fetch(id, Numbers.source)
 
-  def fetch[F[_]: ConcurrentEffect]: Fetch[F, HttpExample.User] =
+  def fetch[F[_]: Async]: Fetch[F, HttpExample.User] =
     for {
       _ <- HttpExample.fetchUser(1)
       n <- fetchNumber(1)
@@ -63,7 +63,7 @@ object DataSources {
       u <- HttpExample.fetchUser(n)
     } yield u
 
-  def fetchMulti[F[_]: ConcurrentEffect]: Fetch[F, List[HttpExample.User]] =
+  def fetchMulti[F[_]: Async]: Fetch[F, List[HttpExample.User]] =
     List(4, 5, 6).traverse(HttpExample.fetchUser[F](_))
 }
 
@@ -171,23 +171,22 @@ class JedisExample extends AnyWordSpec with Matchers {
   import DataSources._
 
   // runtime
-  val executionContext              = ExecutionContext.Implicits.global
-  implicit val t: Timer[IO]         = IO.timer(executionContext)
-  implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
+  val executionContext                     = ExecutionContext.Implicits.global
+  implicit val ioRuntime: unsafe.IORuntime = unsafe.IORuntime.global
 
   "We can use a Redis cache" ignore {
     val cache = RedisCache[IO]("localhost")
 
     val io: IO[(Log, HttpExample.User)] = Fetch.runLog[IO](fetch, cache)
 
-    val (log, result) = io.unsafeRunSync
+    val (log, result) = io.unsafeRunSync()
 
     println(result)
     log.rounds.size shouldEqual 2
 
     val io2: IO[(Log, HttpExample.User)] = Fetch.runLog[IO](fetch, cache)
 
-    val (log2, result2) = io2.unsafeRunSync
+    val (log2, result2) = io2.unsafeRunSync()
 
     println(result2)
     log2.rounds.size shouldEqual 0
@@ -198,14 +197,14 @@ class JedisExample extends AnyWordSpec with Matchers {
 
     val io: IO[(Log, List[HttpExample.User])] = Fetch.runLog[IO](fetchMulti, cache)
 
-    val (log, result) = io.unsafeRunSync
+    val (log, result) = io.unsafeRunSync()
 
     println(result)
     log.rounds.size shouldEqual 1
 
     val io2: IO[(Log, List[HttpExample.User])] = Fetch.runLog[IO](fetchMulti, cache)
 
-    val (log2, result2) = io2.unsafeRunSync
+    val (log2, result2) = io2.unsafeRunSync()
 
     println(result2)
     log2.rounds.size shouldEqual 0

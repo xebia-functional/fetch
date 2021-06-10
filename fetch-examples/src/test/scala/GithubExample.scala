@@ -14,41 +14,31 @@
  * limitations under the License.
  */
 
-import scala.concurrent.ExecutionContext
-import scala.concurrent.duration._
-
-import cats._
-import cats.data.NonEmptyList
 import cats.effect._
-import cats.instances.list._
 import cats.syntax.all._
-
+import fetch.{Data, DataSource, Fetch}
 import io.circe._
 import io.circe.generic.semiauto._
-
 import org.http4s._
-import org.http4s.headers._
-import org.http4s.util.CaseInsensitiveString
+import org.http4s.blaze.client._
 import org.http4s.circe._
 import org.http4s.client._
-import org.http4s.client.dsl._
-import org.http4s.client.blaze._
+import org.http4s.headers.Authorization
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
+import org.typelevel.ci.CIString
 
-import fetch.{Data, DataSource, Fetch}
+import scala.concurrent.ExecutionContext
 
 class GithubExample extends AnyWordSpec with Matchers {
-  implicit val executionContext = ExecutionContext.Implicits.global
+  implicit val executionContext            = ExecutionContext.Implicits.global
+  implicit val ioRuntime: unsafe.IORuntime = unsafe.IORuntime.global
 
   val ACCESS_TOKEN: String = sys.env("GITHUB_TOKEN")
 
-  implicit val t: Timer[IO]         = IO.timer(executionContext)
-  implicit val cs: ContextShift[IO] = IO.contextShift(executionContext)
-
   // http4s client which is used by the datasources
 
-  def client[F[_]: ConcurrentEffect] =
+  def client[F[_]: Async] =
     BlazeClientBuilder[F](executionContext).resource
 
   // -- repos
@@ -69,25 +59,27 @@ class GithubExample extends AnyWordSpec with Matchers {
 
     implicit val repoD: Decoder[Repo] = deriveDecoder
 
-    def source[F[_]: ConcurrentEffect]: DataSource[F, (String, String), Repo] = {
+    def source[F[_]: Async]: DataSource[F, (String, String), Repo] = {
       implicit val repoED: EntityDecoder[F, Repo]        = jsonOf
       implicit val reposED: EntityDecoder[F, List[Repo]] = jsonOf
 
       new DataSource[F, (String, String), Repo] {
 
-        def CF = ConcurrentEffect[F]
+        def CF = Concurrent[F]
 
         def data = Repos
 
         def fetch(id: (String, String)): F[Option[Repo]] = {
           client[F].use { (c) =>
             val (owner, repo) = id
-            val url           = GITHUB / "repos" / owner / repo +? ("access_token", ACCESS_TOKEN)
-            val req           = Request[F](Method.GET, url)
+            val url           = GITHUB / "repos" / owner / repo
+            val req = Request[F](Method.GET, url).withHeaders(
+              Header.Raw(CIString("Authorization"), s"token $ACCESS_TOKEN")
+            )
             for {
               result <- c
                 .run(req)
-                .use[F, Repo] {
+                .use[Repo] {
                   case Status.Ok(res) =>
                     res.as[Repo]
                   case res =>
@@ -100,7 +92,7 @@ class GithubExample extends AnyWordSpec with Matchers {
     }
   }
 
-  def fetchRepo[F[_]: ConcurrentEffect](r: (String, String)): Fetch[F, Repo] =
+  def fetchRepo[F[_]: Async](r: (String, String)): Fetch[F, Repo] =
     Fetch(r, Repos.source)
 
   object OrgRepos extends Data[Org, List[Repo]] {
@@ -108,7 +100,7 @@ class GithubExample extends AnyWordSpec with Matchers {
 
     implicit val repoD: Decoder[Repo] = deriveDecoder
 
-    def source[F[_]: ConcurrentEffect]: DataSource[F, Org, List[Repo]] =
+    def source[F[_]: Async]: DataSource[F, Org, List[Repo]] =
       new DataSource[F, Org, List[Repo]] {
         implicit val repoED: EntityDecoder[F, Repo]        = jsonOf
         implicit val reposED: EntityDecoder[F, List[Repo]] = jsonOf
@@ -120,15 +112,17 @@ class GithubExample extends AnyWordSpec with Matchers {
         def fetch(org: Org): F[Option[List[Repo]]] = {
           client[F].use { (c) =>
             val url =
-              GITHUB / "orgs" / org / "repos" +? ("access_token", ACCESS_TOKEN) +? ("type", "public") +? ("per_page", 100)
-            val req = Request[F](Method.GET, url)
+              GITHUB / "orgs" / org / "repos" +? ("type", "public") +? ("per_page", 100)
+            val req = Request[F](Method.GET, url).withHeaders(
+              Header.Raw(CIString("Authorization"), s"token $ACCESS_TOKEN")
+            )
             fetchCollectionRecursively[F, Repo](c, req).map(Option(_))
           }
         }
       }
   }
 
-  def orgRepos[F[_]: ConcurrentEffect](org: Org): Fetch[F, List[Repo]] =
+  def orgRepos[F[_]: Async](org: Org): Fetch[F, List[Repo]] =
     Fetch(org, OrgRepos.source)
 
   // -- languages
@@ -138,28 +132,30 @@ class GithubExample extends AnyWordSpec with Matchers {
   object Languages extends Data[Repo, List[Language]] {
     def name = "Languages"
 
-    def source[F[_]: ConcurrentEffect]: DataSource[F, Repo, List[Language]] =
+    def source[F[_]: Async]: DataSource[F, Repo, List[Language]] =
       new DataSource[F, Repo, List[Language]] {
         implicit val langD: Decoder[List[Language]] = Decoder[JsonObject].map(
           _.toList.map(_._1)
         )
         implicit val langED: EntityDecoder[F, List[Language]] = jsonOf
 
-        def CF = ConcurrentEffect[F]
+        def CF = Concurrent[F]
 
         def data = Languages
 
         def fetch(repo: Repo): F[Option[List[Language]]] = {
           client[F].use { (c) =>
-            val url = Uri.unsafeFromString(repo.languages_url) +? ("access_token", ACCESS_TOKEN)
-            val req = Request[F](Method.GET, url)
+            val url = Uri.unsafeFromString(repo.languages_url)
+            val req = Request[F](Method.GET, url).withHeaders(
+              Header.Raw(CIString("Authorization"), s"token $ACCESS_TOKEN")
+            )
             fetchCollectionRecursively[F, Language](c, req).map(Option(_))
           }
         }
       }
   }
 
-  def repoLanguages[F[_]: ConcurrentEffect](repo: Repo): Fetch[F, List[Language]] =
+  def repoLanguages[F[_]: Async](repo: Repo): Fetch[F, List[Language]] =
     Fetch(repo, Languages.source)
 
   // -- contributors
@@ -169,13 +165,13 @@ class GithubExample extends AnyWordSpec with Matchers {
   object Contributors extends Data[Repo, List[Contributor]] {
     def name = "Contributors"
 
-    def source[F[_]: ConcurrentEffect]: DataSource[F, Repo, List[Contributor]] =
+    def source[F[_]: Async]: DataSource[F, Repo, List[Contributor]] =
       new DataSource[F, Repo, List[Contributor]] {
         implicit val contribD: Decoder[Contributor]                 = deriveDecoder
         implicit val contribE: EntityDecoder[F, Contributor]        = jsonOf
         implicit val contribED: EntityDecoder[F, List[Contributor]] = jsonOf
 
-        def CF = ConcurrentEffect[F]
+        def CF = Concurrent[F]
 
         def data = Contributors
 
@@ -184,43 +180,46 @@ class GithubExample extends AnyWordSpec with Matchers {
             val url = Uri
               .unsafeFromString(
                 repo.contributors_url
-              ) +? ("access_token", ACCESS_TOKEN) +? ("type", "public") +? ("per_page", 100)
-            val req = Request[F](Method.GET, url)
+              ) +? ("type", "public") +? ("per_page", 100)
+            val req =
+              Request[F](Method.GET, url).withHeaders(
+                Header.Raw(CIString("Authorization"), s"token $ACCESS_TOKEN")
+              )
             fetchCollectionRecursively[F, Contributor](c, req).map(Option(_))
           }
         }
       }
   }
 
-  def repoContributors[F[_]: ConcurrentEffect](repo: Repo): Fetch[F, List[Contributor]] =
+  def repoContributors[F[_]: Async](repo: Repo): Fetch[F, List[Contributor]] =
     Fetch(repo, Contributors.source)
 
   case class Project(repo: Repo, contributors: List[Contributor], languages: List[Language])
 
-  def fetchProject[F[_]: ConcurrentEffect](repo: Repo): Fetch[F, Project] =
+  def fetchProject[F[_]: Async](repo: Repo): Fetch[F, Project] =
     (repoContributors(repo), repoLanguages(repo)).mapN({ case (contribs, langs) =>
       Project(repo = repo, contributors = contribs, languages = langs)
     })
 
-  def fetchOrg[F[_]: ConcurrentEffect](org: String) =
+  def fetchOrg[F[_]: Async](org: String) =
     for {
       repos    <- orgRepos(org)
       projects <- repos.traverse(fetchProject[F])
     } yield projects
 
-  def fetchOrgStars[F[_]: ConcurrentEffect](org: String): Fetch[F, Int] =
+  def fetchOrgStars[F[_]: Async](org: String): Fetch[F, Int] =
     fetchOrg(org).map(projects => projects.map(_.repo.stargazers_count).sum)
 
-  def fetchOrgContributors[F[_]: ConcurrentEffect](org: String): Fetch[F, Int] =
+  def fetchOrgContributors[F[_]: Async](org: String): Fetch[F, Int] =
     fetchOrg(org).map(projects => projects.map(_.contributors.toSet).fold(Set())(_ ++ _).size)
 
-  def fetchOrgLanguages[F[_]: ConcurrentEffect](org: String): Fetch[F, Int] =
+  def fetchOrgLanguages[F[_]: Async](org: String): Fetch[F, Int] =
     fetchOrg(org).map(projects => projects.map(_.languages.toSet).fold(Set())(_ ++ _).size)
 
   "We can fetch org repos" in {
     val io = Fetch.runLog[IO](fetchOrg[IO]("47deg"))
 
-    val (log, result) = io.unsafeRunSync
+    val (log, result) = io.unsafeRunSync()
 
     log.rounds.size shouldEqual 2
   }
@@ -230,35 +229,36 @@ class GithubExample extends AnyWordSpec with Matchers {
   val GITHUB: Uri = Uri.unsafeFromString("https://api.github.com")
 
   private def fetchCollectionRecursively[F[_], A](c: Client[F], req: Request[F])(implicit
-      CF: BracketThrow[F],
+      F: Async[F],
       E: EntityDecoder[F, List[A]]
   ): F[List[A]] = {
     val REL_NEXT = "rel=\"next\"".r
 
     def hasNext(res: Response[F]): Boolean =
       res.headers
-        .get(CaseInsensitiveString("Link"))
-        .fold(false)({ h => REL_NEXT.findFirstIn(h.value).isDefined })
+        .get(CIString("Link"))
+        .fold(false) { hs =>
+          hs.exists(h => REL_NEXT.findFirstIn(h.value).isDefined)
+        }
 
     def getNextLink(raw: String): F[String] = {
       REL_NEXT
         .findFirstMatchIn(raw)
-        .fold(
-          CF.raiseError[String](new Exception("Couldn't find next link"))
-        ) { m =>
-          CF.pure(m.before.toString.split(",").last.trim.dropWhile(_ == '<').takeWhile(_ != '>'))
+        .liftTo[F](new Exception("Couldn't find next link"))
+        .map { m =>
+          m.before.toString.split(",").last.trim.dropWhile(_ == '<').takeWhile(_ != '>')
         }
     }
 
     def getNext(res: Response[F]): F[Uri] =
       res.headers
-        .get(CaseInsensitiveString("Link"))
-        .fold(CF.raiseError[Uri](new Exception("next not found")))(raw =>
-          getNextLink(raw.value).map(Uri.unsafeFromString(_))
-        )
+        .get(CIString("Link"))
+        .fold(F.raiseError[Uri](new Exception("next not found"))) { hs =>
+          getNextLink(hs.head.value).map(Uri.unsafeFromString)
+        }
 
-    for {
-      result <- c.run(req).use[F, List[A]] {
+    F.delay(println(req)) >>
+      c.run(req).use[List[A]] {
         case Status.Ok(res) =>
           if (hasNext(res)) {
             for {
@@ -270,9 +270,14 @@ class GithubExample extends AnyWordSpec with Matchers {
           } else
             res.as[List[A]]
         case res =>
-          CF.raiseError(new Exception(s"Couldn't complete request, returned status: ${res.status}"))
+          res.bodyText.compile.string.flatMap(respBody =>
+            F.raiseError(
+              new Exception(
+                s"Couldn't complete request, returned status: ${res.status}: Body:\n$respBody"
+              )
+            )
+          )
       }
-    } yield result
   }
 
 }

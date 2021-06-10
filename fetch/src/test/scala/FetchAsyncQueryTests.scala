@@ -24,7 +24,7 @@ class FetchAsyncQueryTests extends FetchSpec {
   import DataSources._
 
   "We can interpret an async fetch into an IO" in {
-    def fetch[F[_]: ConcurrentEffect]: Fetch[F, Article] =
+    def fetch[F[_]: Async]: Fetch[F, Article] =
       article(1)
 
     val io = Fetch.run[IO](fetch)
@@ -33,7 +33,7 @@ class FetchAsyncQueryTests extends FetchSpec {
   }
 
   "We can combine several async data sources and interpret a fetch into an IO" in {
-    def fetch[F[_]: ConcurrentEffect]: Fetch[F, (Article, Author)] =
+    def fetch[F[_]: Async]: Fetch[F, (Article, Author)] =
       for {
         art    <- article(1)
         author <- author(art)
@@ -45,7 +45,7 @@ class FetchAsyncQueryTests extends FetchSpec {
   }
 
   "We can use combinators in a for comprehension and interpret a fetch from async sources into an IO" in {
-    def fetch[F[_]: ConcurrentEffect]: Fetch[F, List[Article]] =
+    def fetch[F[_]: Async]: Fetch[F, List[Article]] =
       for {
         articles <- List(1, 1, 2).traverse(article[F])
       } yield articles
@@ -62,7 +62,7 @@ class FetchAsyncQueryTests extends FetchSpec {
   }
 
   "We can use combinators and multiple sources in a for comprehension and interpret a fetch from async sources into an IO" in {
-    def fetch[F[_]: ConcurrentEffect] =
+    def fetch[F[_]: Async] =
       for {
         articles <- List(1, 1, 2).traverse(article[F])
         authors  <- articles.traverse(author[F])
@@ -96,25 +96,23 @@ object DataSources {
   object Article extends Data[ArticleId, Article] {
     def name = "Articles"
 
-    implicit def async[F[_]: ConcurrentEffect]: DataSource[F, ArticleId, Article] =
+    implicit def async[F[_]](implicit
+        AF: Async[F]
+    ): DataSource[F, ArticleId, Article] =
       new DataSource[F, ArticleId, Article] {
-        override def CF = ConcurrentEffect[F]
+        override def CF = Concurrent[F]
 
         override def data = Article
 
         override def fetch(id: ArticleId): F[Option[Article]] =
-          CF.async[Option[Article]] { (cb) =>
-            cb(
-              Right(
-                Option(Article(id.id, "An article with id " + id.id))
-              )
-            )
+          AF.async_[Option[Article]] { (cb) =>
+            cb(Right(Option(Article(id.id, "An article with id " + id.id))))
           }
       }
   }
 
-  def article[F[_]: ConcurrentEffect](id: Int): Fetch[F, Article] =
-    Fetch(ArticleId(id), Article.async)
+  def article[F[_]: Async](id: Int): Fetch[F, Article] =
+    Fetch(ArticleId(id), Article.async[F])
 
   case class AuthorId(id: Int)
   case class Author(id: Int, name: String)
@@ -122,23 +120,21 @@ object DataSources {
   object Author extends Data[AuthorId, Author] {
     def name = "Authors"
 
-    implicit def async[F[_]: ConcurrentEffect]: DataSource[F, AuthorId, Author] =
+    implicit def async[F[_]](implicit
+        AF: Async[F]
+    ): DataSource[F, AuthorId, Author] =
       new DataSource[F, AuthorId, Author] {
-        override def CF = ConcurrentEffect[F]
+        override def CF = Concurrent[F]
 
         override def data = Author
 
         override def fetch(id: AuthorId): F[Option[Author]] =
-          CF.async((cb => {
-            cb(
-              Right(
-                Option(Author(id.id, "@egg" + id.id))
-              )
-            )
-          }))
+          AF.async_ { cb =>
+            cb(Right(Option(Author(id.id, "@egg" + id.id))))
+          }
       }
   }
 
-  def author[F[_]: ConcurrentEffect](a: Article): Fetch[F, Author] =
+  def author[F[_]: Async](a: Article): Fetch[F, Author] =
     Fetch(AuthorId(a.author), Author.async)
 }

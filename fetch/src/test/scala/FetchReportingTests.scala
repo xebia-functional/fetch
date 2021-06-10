@@ -24,7 +24,7 @@ class FetchReportingTests extends FetchSpec {
   import TestHelper._
 
   "Plain values have no rounds of execution" in {
-    def fetch[F[_]: ConcurrentEffect] =
+    def fetch[F[_]: Concurrent] =
       Fetch.pure[F, Int](42)
 
     val io = Fetch.runLog[IO](fetch)
@@ -35,10 +35,10 @@ class FetchReportingTests extends FetchSpec {
   }
 
   "Single fetches are executed in one round" in {
-    def fetch[F[_]: ConcurrentEffect] =
+    def fetch[F[_]: Concurrent] =
       one(1)
 
-    val io = Fetch.runLog[IO](fetch)
+    val io = Fetch.runLog[IO](fetch[IO])
 
     io.map({ case (log, result) =>
       log.rounds.size shouldEqual 1
@@ -46,7 +46,7 @@ class FetchReportingTests extends FetchSpec {
   }
 
   "Single fetches are executed in one round per binding in a for comprehension" in {
-    def fetch[F[_]: ConcurrentEffect] =
+    def fetch[F[_]: Concurrent] =
       for {
         o <- one(1)
         t <- one(2)
@@ -60,7 +60,7 @@ class FetchReportingTests extends FetchSpec {
   }
 
   "Single fetches for different data sources are executed in multiple rounds if they are in a for comprehension" in {
-    def fetch[F[_]: ConcurrentEffect] =
+    def fetch[F[_]: Concurrent] =
       for {
         o <- one(1)
         m <- many(3)
@@ -74,7 +74,7 @@ class FetchReportingTests extends FetchSpec {
   }
 
   "Single fetches combined with cartesian are run in one round" in {
-    def fetch[F[_]: ConcurrentEffect] =
+    def fetch[F[_]: Concurrent] =
       (one(1), many(3)).tupled
 
     val io = Fetch.runLog[IO](fetch)
@@ -85,7 +85,7 @@ class FetchReportingTests extends FetchSpec {
   }
 
   "Single fetches combined with traverse are run in one round" in {
-    def fetch[F[_]: ConcurrentEffect] =
+    def fetch[F[_]: Concurrent] =
       for {
         manies <- many(3) // round 1
         ones   <- manies.traverse(one[F]) // round 2
@@ -99,7 +99,7 @@ class FetchReportingTests extends FetchSpec {
   }
 
   "The product of two fetches from the same data source implies batching" in {
-    def fetch[F[_]: ConcurrentEffect] =
+    def fetch[F[_]: Concurrent] =
       (one(1), one(3)).tupled
 
     val io = Fetch.runLog[IO](fetch)
@@ -110,21 +110,21 @@ class FetchReportingTests extends FetchSpec {
   }
 
   "The product of concurrent fetches of the same type implies everything fetched in batches" in {
-    def aFetch[F[_]: ConcurrentEffect] =
+    def aFetch[F[_]: Concurrent] =
       for {
         a <- one(1) // round 1 (batched)
         b <- one(2) // round 2 (cached)
         c <- one(3) // round 3 (deduplicated)
       } yield c
 
-    def anotherFetch[F[_]: ConcurrentEffect] =
+    def anotherFetch[F[_]: Concurrent] =
       for {
         a <- one(2) // round 1 (batched)
         m <- many(4) // round 2
         c <- one(3) // round 3 (deduplicated)
       } yield c
 
-    def fetch[F[_]: ConcurrentEffect] =
+    def fetch[F[_]: Concurrent] =
       ((aFetch, anotherFetch).tupled, one(3)).tupled
 
     val io = Fetch.runLog[IO](fetch)

@@ -16,21 +16,17 @@
 
 package fetch
 
-import org.scalatest.DoNotDiscover
-
-import scala.concurrent._
-import java.util.concurrent._
-import scala.concurrent.duration._
-
 import cats.effect._
+import org.scalatest.DoNotDiscover
 import org.scalatest.freespec.AsyncFreeSpec
 import org.scalatest.matchers.should.Matchers
+
+import scala.concurrent._
 
 @DoNotDiscover
 class FetchSpec extends AsyncFreeSpec with Matchers {
   override val executionContext: ExecutionContext = ExecutionContext.Implicits.global
-  implicit val timer: Timer[IO]                   = IO.timer(executionContext)
-  implicit val cs: ContextShift[IO]               = IO.contextShift(executionContext)
+  implicit val ioRuntime: unsafe.IORuntime        = unsafe.IORuntime.global
 
   def countFetches(r: Request): Int =
     r.request match {

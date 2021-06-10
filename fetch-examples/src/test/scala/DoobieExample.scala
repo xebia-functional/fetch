@@ -80,18 +80,16 @@ object DatabaseExample {
         case (name, id) => Author(id + 1, name)
       }
 
-    def createTransactor[F[_]: Async: ContextShift] =
+    def createTransactor[F[_]: Async] =
       for {
-        connAndTrans <- (connectionPool[F](1), transactionPool[F]).tupled
-        (conn, trans) = connAndTrans
+        conn <- connectionPool[F](1)
         tx <-
           H2Transactor
             .newH2Transactor[F](
               "jdbc:h2:mem:test;DB_CLOSE_DELAY=-1",
               "sa",
               "",
-              conn,
-              Blocker.liftExecutionContext(trans)
+              conn
             )
       } yield tx
   }
@@ -101,7 +99,7 @@ object DatabaseExample {
     import doobie.implicits._
     def name = "Authors"
 
-    def db[F[_]: Concurrent: ContextShift]: DataSource[F, AuthorId, Author] =
+    def db[F[_]: Async]: DataSource[F, AuthorId, Author] =
       new DataSource[F, AuthorId, Author] {
         def data = Authors
 
@@ -119,7 +117,7 @@ object DatabaseExample {
             .map(authors => authors.map(a => AuthorId(a.id) -> a).toMap)
       }
 
-    def fetchAuthor[F[_]: Concurrent: ContextShift](id: Int): Fetch[F, Author] =
+    def fetchAuthor[F[_]: Async](id: Int): Fetch[F, Author] =
       Fetch(AuthorId(id), Authors.db)
   }
 }
@@ -129,8 +127,7 @@ class DoobieExample extends AnyWordSpec with Matchers with BeforeAndAfterAll {
   import Database._
 
   val executionContext                                  = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(2))
-  implicit val t: Timer[IO]                             = IO.timer(executionContext)
-  implicit val cs: ContextShift[IO]                     = IO.contextShift(executionContext)
+  implicit val ioRuntime: unsafe.IORuntime              = unsafe.IORuntime.global
   implicit val transactor: Resource[IO, Transactor[IO]] = createTransactor[IO]
 
   override def beforeAll(): Unit =
@@ -152,7 +149,7 @@ class DoobieExample extends AnyWordSpec with Matchers with BeforeAndAfterAll {
   }
 
   "We can fetch multiple authors from the DB in parallel" in {
-    def fetch[F[_]: ConcurrentEffect: ContextShift]: Fetch[F, List[Author]] =
+    def fetch[F[_]: Async]: Fetch[F, List[Author]] =
       List(1, 2).traverse(Authors.fetchAuthor[F])
 
     val io: IO[(Log, List[Author])] = Fetch.runLog[IO](fetch)
@@ -164,7 +161,7 @@ class DoobieExample extends AnyWordSpec with Matchers with BeforeAndAfterAll {
   }
 
   "We can fetch multiple authors from the DB using a for comprehension" in {
-    def fetch[F[_]: ConcurrentEffect: ContextShift]: Fetch[F, List[Author]] =
+    def fetch[F[_]: Async]: Fetch[F, List[Author]] =
       for {
         a <- Authors.fetchAuthor(1)
         b <- Authors.fetchAuthor(a.id + 1)
