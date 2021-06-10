@@ -1,6 +1,6 @@
 # Fetch
 
-[![Join the chat at https://gitter.im/47deg/fetch](https://badges.gitter.im/47deg/fetch.svg)](https://gitter.im/47deg/fetch?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) [![codecov.io](http://codecov.io/github/47deg/fetch/coverage.svg?branch=master)](http://codecov.io/github/47deg/fetch?branch=master) [![Maven Central](https://img.shields.io/badge/maven%20central-1.2.1-green.svg)](https://oss.sonatype.org/#nexus-search;gav~com.47deg~fetch*) [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](https://raw.githubusercontent.com/47deg/fetch/master/LICENSE) [![Latest version](https://img.shields.io/badge/fetch-1.2.1-green.svg)](https://index.scala-lang.org/47deg/fetch) [![Scala.js](http://scala-js.org/assets/badges/scalajs-0.6.15.svg)](http://scala-js.org) [![GitHub Issues](https://img.shields.io/github/issues/47deg/fetch.svg)](https://github.com/47deg/fetch/issues)
+[![Join the chat at https://gitter.im/47deg/fetch](https://badges.gitter.im/47deg/fetch.svg)](https://gitter.im/47deg/fetch?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) [![Maven Central](https://img.shields.io/badge/maven%20central-1.2.1-green.svg)](https://oss.sonatype.org/#nexus-search;gav~com.47deg~fetch*) [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](https://raw.githubusercontent.com/47deg/fetch/master/LICENSE) [![Latest version](https://img.shields.io/badge/fetch-1.2.1-green.svg)](https://index.scala-lang.org/47deg/fetch) [![Scala.js](http://scala-js.org/assets/badges/scalajs-0.6.15.svg)](http://scala-js.org) [![GitHub Issues](https://img.shields.io/github/issues/47deg/fetch.svg)](https://github.com/47deg/fetch/issues)
 
 A library for Simple & Efficient data access in Scala and Scala.js
 
@@ -24,13 +24,13 @@ Add the following dependency to your project's build file.
 For Scala 2.11.x and 2.12.x:
 
 ```scala
-"com.47deg" %% "fetch" % "1.3.2"
+"com.47deg" %% "fetch" % "2.0.0"
 ```
 
 Or, if using Scala.js (0.6.x):
 
 ```scala
-"com.47deg" %%% "fetch" % "1.3.2"
+"com.47deg" %%% "fetch" % "2.0.0"
 ```
 
 
@@ -134,8 +134,8 @@ Let's run it and wait for the fetch to complete. We'll use `IO#unsafeRunTimed` f
 import scala.concurrent.duration._
 
 Fetch.run[IO](fetchOne).unsafeRunTimed(5.seconds)
-// --> [771] One ToString 1
-// <-- [771] One ToString 1
+// --> [180] One ToString 1
+// <-- [180] One ToString 1
 // res0: Option[String] = Some(value = "1")
 ```
 
@@ -154,8 +154,8 @@ When executing the above fetch, note how the three identities get batched, and t
 
 ```scala
 Fetch.run[IO](fetchThree).unsafeRunTimed(5.seconds)
-// --> [777] Batch ToString NonEmptyList(1, 2, 3)
-// <-- [777] Batch ToString NonEmptyList(1, 2, 3)
+// --> [180] Batch ToString NonEmptyList(1, 2, 3)
+// <-- [180] Batch ToString NonEmptyList(1, 2, 3)
 // res1: Option[(String, String, String)] = Some(value = ("1", "2", "3"))
 ```
 
@@ -193,12 +193,12 @@ When executing the above fetch, note how the three identities get requested in p
 
 ```scala
 Fetch.run[IO](fetchUnbatchedThree).unsafeRunTimed(5.seconds)
-// --> [778] One UnbatchedToString 1
-// --> [776] One UnbatchedToString 2
-// --> [777] One UnbatchedToString 3
-// <-- [776] One UnbatchedToString 2
-// <-- [777] One UnbatchedToString 3
-// <-- [778] One UnbatchedToString 1
+// --> [180] One UnbatchedToString 2
+// --> [179] One UnbatchedToString 1
+// <-- [180] One UnbatchedToString 2
+// --> [180] One UnbatchedToString 3
+// <-- [179] One UnbatchedToString 1
+// <-- [180] One UnbatchedToString 3
 // res2: Option[(String, String, String)] = Some(value = ("1", "2", "3"))
 ```
 
@@ -244,10 +244,10 @@ Note how the two independent data fetches run in parallel, minimizing the latenc
 
 ```scala
 Fetch.run[IO](fetchMulti).unsafeRunTimed(5.seconds)
-// --> [774] One ToString 1
-// --> [777] One Length one
-// <-- [774] One ToString 1
-// <-- [777] One Length one
+// --> [179] One Length one
+// --> [180] One ToString 1
+// <-- [180] One ToString 1
+// <-- [179] One Length one
 // res3: Option[(String, Int)] = Some(value = ("1", 3))
 ```
 
@@ -274,16 +274,16 @@ val runFetchTwice = Fetch.run[IO](fetchTwice)
 ```
 ```scala
 runFetchTwice.unsafeRunTimed(5.seconds)
-// --> [772] One ToString 1
-// <-- [772] One ToString 1
+// --> [180] One ToString 1
+// <-- [180] One ToString 1
 // res4: Option[(String, String)] = Some(value = ("1", "1"))
 ```
 
 This will still fetch the data again, however, if we call it once more:
 ```scala
 runFetchTwice.unsafeRunTimed(5.seconds)
-// --> [778] One ToString 1
-// <-- [778] One ToString 1
+// --> [179] One ToString 1
+// <-- [179] One ToString 1
 // res5: Option[(String, String)] = Some(value = ("1", "1"))
 ```
 
@@ -301,8 +301,8 @@ val runFetchFourTimesSharedCache = for {
 ```
 ```scala
 runFetchFourTimesSharedCache.unsafeRunTimed(5.seconds)
-// --> [777] One ToString 1
-// <-- [777] One ToString 1
+// --> [179] One ToString 1
+// <-- [179] One ToString 1
 // res6: Option[(String, String, String, String)] = Some(
 //   value = ("1", "1", "1", "1")
 // )

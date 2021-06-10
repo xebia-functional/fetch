@@ -1,5 +1,56 @@
 # Changelog
 
+## [v2.0.0](https://github.com/47degrees/fetch/tree/v2.0.0) (2021-06-10)
+
+[Full Changelog](https://github.com/47degrees/fetch/compare/v1.3.2...v2.0.0)
+
+🚀 **Features**
+
+- Cross-building with Scala 3 [\#443](https://github.com/47degrees/fetch/pull/443) ([benderpremier](https://github.com/benderpremier))
+
+📈 **Dependency updates**
+
+- Update sbt-scalajs, scalajs-compiler, ... to 1.6.0 [\#498](https://github.com/47degrees/fetch/pull/498) ([47erbot](https://github.com/47erbot))
+- Update sbt to 1.5.3 [\#497](https://github.com/47degrees/fetch/pull/497) ([47erbot](https://github.com/47erbot))
+- Update http4s-blaze-client, http4s-circe to 0.21.24 [\#496](https://github.com/47degrees/fetch/pull/496) ([47erbot](https://github.com/47erbot))
+- Update circe-generic to 0.14.1 [\#495](https://github.com/47degrees/fetch/pull/495) ([47erbot](https://github.com/47erbot))
+- Update doobie-core, doobie-h2 to 0.13.4 [\#494](https://github.com/47degrees/fetch/pull/494) ([47erbot](https://github.com/47erbot))
+- Update doobie-core, doobie-h2 to 0.13.3 [\#493](https://github.com/47degrees/fetch/pull/493) ([47erbot](https://github.com/47erbot))
+- Update http4s-blaze-client, http4s-circe to 0.21.23 [\#492](https://github.com/47degrees/fetch/pull/492) ([47erbot](https://github.com/47erbot))
+- Update kind-projector to 0.13.0 [\#491](https://github.com/47degrees/fetch/pull/491) ([47erbot](https://github.com/47erbot))
+- Update atto-core to 0.9.5 [\#490](https://github.com/47degrees/fetch/pull/490) ([47erbot](https://github.com/47erbot))
+- Update mdoc, sbt-mdoc to 2.2.21 [\#489](https://github.com/47degrees/fetch/pull/489) ([47erbot](https://github.com/47erbot))
+- Update circe-generic to 0.14.0-M7 [\#488](https://github.com/47degrees/fetch/pull/488) ([47erbot](https://github.com/47erbot))
+- Update kind-projector to 0.12.0 [\#487](https://github.com/47degrees/fetch/pull/487) ([47erbot](https://github.com/47erbot))
+- Update monix to 3.4.0 [\#486](https://github.com/47degrees/fetch/pull/486) ([47erbot](https://github.com/47erbot))
+- Update sbt to 1.5.2 [\#485](https://github.com/47degrees/fetch/pull/485) ([47erbot](https://github.com/47erbot))
+- Update doobie-core, doobie-h2 to 0.13.2 [\#484](https://github.com/47degrees/fetch/pull/484) ([47erbot](https://github.com/47erbot))
+- Update atto-core to 0.9.4 [\#483](https://github.com/47degrees/fetch/pull/483) ([47erbot](https://github.com/47erbot))
+- Update sbt-microsites to 1.3.4 [\#481](https://github.com/47degrees/fetch/pull/481) ([47erbot](https://github.com/47erbot))
+- Update doobie-core, doobie-h2 to 0.13.1 [\#480](https://github.com/47degrees/fetch/pull/480) ([47erbot](https://github.com/47erbot))
+- Update sbt to 1.5.1 [\#479](https://github.com/47degrees/fetch/pull/479) ([47erbot](https://github.com/47erbot))
+- Update circe-generic to 0.14.0-M6 [\#478](https://github.com/47degrees/fetch/pull/478) ([47erbot](https://github.com/47erbot))
+- Update sbt-dotty to 0.5.5 [\#477](https://github.com/47degrees/fetch/pull/477) ([47erbot](https://github.com/47erbot))
+- Update jedis to 3.6.0 [\#476](https://github.com/47degrees/fetch/pull/476) ([47erbot](https://github.com/47erbot))
+- Update cats-effect to 2.5.0 [\#475](https://github.com/47degrees/fetch/pull/475) ([47erbot](https://github.com/47erbot))
+- Update mdoc, sbt-mdoc to 2.2.20 [\#473](https://github.com/47degrees/fetch/pull/473) ([47erbot](https://github.com/47erbot))
+- Update http4s-blaze-client, http4s-circe to 0.21.22 [\#470](https://github.com/47degrees/fetch/pull/470) ([47erbot](https://github.com/47erbot))
+- Update circe-generic to 0.14.0-M5 [\#469](https://github.com/47degrees/fetch/pull/469) ([47erbot](https://github.com/47erbot))
+- Update sbt to 1.5.0 [\#468](https://github.com/47degrees/fetch/pull/468) ([47erbot](https://github.com/47erbot))
+- Update circe-generic to 0.14.0-M4 [\#467](https://github.com/47degrees/fetch/pull/467) ([47erbot](https://github.com/47erbot))
+- Update sbt-dotty to 0.5.4 [\#466](https://github.com/47degrees/fetch/pull/466) ([47erbot](https://github.com/47erbot))
+- Update atto-core to 0.9.3 [\#464](https://github.com/47degrees/fetch/pull/464) ([47erbot](https://github.com/47erbot))
+- Update scalatest to 3.2.7 [\#463](https://github.com/47degrees/fetch/pull/463) ([47erbot](https://github.com/47erbot))
+- Update sbt-scalajs, scalajs-compiler, ... to 1.5.1 [\#462](https://github.com/47degrees/fetch/pull/462) ([47erbot](https://github.com/47erbot))
+
+**Closed issues:**
+
+- Scala3 migration [\#439](https://github.com/47degrees/fetch/issues/439)
+
+**Merged pull requests:**
+
+- Update to cats-effect 3 [\#500](https://github.com/47degrees/fetch/pull/500) ([Daenyth](https://github.com/Daenyth))
+
 ## [v1.3.2](https://github.com/47degrees/fetch/tree/v1.3.2) (2021-03-31)
 
 [Full Changelog](https://github.com/47degrees/fetch/compare/v1.3.1...v1.3.2)
@@ -253,6 +304,7 @@
 - Fix typo on home page [\#209](https://github.com/47degrees/fetch/pull/209) ([calvellido](https://github.com/calvellido))
 - Update README.md [\#208](https://github.com/47degrees/fetch/pull/208) ([jkmcclellan](https://github.com/jkmcclellan))
 - Only run Travis builds agains OpenJDK8 [\#207](https://github.com/47degrees/fetch/pull/207) ([purrgrammer](https://github.com/purrgrammer))
+- Update CODE\_OF\_CONDUCT.md [\#205](https://github.com/47degrees/fetch/pull/205) ([jkmcclellan](https://github.com/jkmcclellan))
 - Redesign Implementation [\#203](https://github.com/47degrees/fetch/pull/203) ([AntonioMateoGomez](https://github.com/AntonioMateoGomez))
 
 ## [v1.1.0](https://github.com/47degrees/fetch/tree/v1.1.0) (2019-06-04)
@@ -270,7 +322,6 @@
 
 **Merged pull requests:**
 
-- Update CODE\_OF\_CONDUCT.md [\#205](https://github.com/47degrees/fetch/pull/205) ([jkmcclellan](https://github.com/jkmcclellan))
 - 1.1.0 release [\#198](https://github.com/47degrees/fetch/pull/198) ([purrgrammer](https://github.com/purrgrammer))
 - Improve Redis example [\#197](https://github.com/47degrees/fetch/pull/197) ([purrgrammer](https://github.com/purrgrammer))
 - Upgrades sbt-org-policies [\#196](https://github.com/47degrees/fetch/pull/196) ([juanpedromoreno](https://github.com/juanpedromoreno))
@@ -454,6 +505,7 @@
 - Migrate group id to `com.47deg` [\#103](https://github.com/47degrees/fetch/pull/103) ([ghost](https://github.com/ghost))
 - Update docs to 0.5.0 version [\#101](https://github.com/47degrees/fetch/pull/101) ([ghost](https://github.com/ghost))
 - Update changelog [\#100](https://github.com/47degrees/fetch/pull/100) ([ghost](https://github.com/ghost))
+- Env visualization & sbt-microsites plugin [\#93](https://github.com/47degrees/fetch/pull/93) ([ghost](https://github.com/ghost))
 
 ## [v0.5.0](https://github.com/47degrees/fetch/tree/v0.5.0) (2017-01-26)
 
@@ -479,7 +531,6 @@
 - Update Cats and Monix [\#99](https://github.com/47degrees/fetch/pull/99) ([peterneyens](https://github.com/peterneyens))
 - Add example subproject with doobie and http4s examples [\#96](https://github.com/47degrees/fetch/pull/96) ([peterneyens](https://github.com/peterneyens))
 - Doc fixes [\#94](https://github.com/47degrees/fetch/pull/94) ([ghost](https://github.com/ghost))
-- Env visualization & sbt-microsites plugin [\#93](https://github.com/47degrees/fetch/pull/93) ([ghost](https://github.com/ghost))
 - Fixes Compatibility with Scala 2.10 [\#90](https://github.com/47degrees/fetch/pull/90) ([juanpedromoreno](https://github.com/juanpedromoreno))
 - Make `DataSource\#name` mandatory [\#89](https://github.com/47degrees/fetch/pull/89) ([ghost](https://github.com/ghost))
 - Cross-compile to Scala 2.10.x [\#88](https://github.com/47degrees/fetch/pull/88) ([adelbertc](https://github.com/adelbertc))
