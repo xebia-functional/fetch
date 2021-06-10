@@ -14,9 +14,7 @@
  * limitations under the License.
  */
 
-import cats.{ApplicativeThrow, MonadThrow}
 import cats.effect._
-import cats.instances.list._
 import cats.syntax.all._
 import fetch.{Data, DataSource, Fetch}
 import io.circe._
@@ -25,6 +23,7 @@ import org.http4s._
 import org.http4s.blaze.client._
 import org.http4s.circe._
 import org.http4s.client._
+import org.http4s.headers.Authorization
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.typelevel.ci.CIString
@@ -73,8 +72,10 @@ class GithubExample extends AnyWordSpec with Matchers {
         def fetch(id: (String, String)): F[Option[Repo]] = {
           client[F].use { (c) =>
             val (owner, repo) = id
-            val url           = GITHUB / "repos" / owner / repo +? ("access_token", ACCESS_TOKEN)
-            val req           = Request[F](Method.GET, url)
+            val url           = GITHUB / "repos" / owner / repo
+            val req = Request[F](Method.GET, url).withHeaders(
+              Header.Raw(CIString("Authorization"), s"token $ACCESS_TOKEN")
+            )
             for {
               result <- c
                 .run(req)
@@ -111,8 +112,10 @@ class GithubExample extends AnyWordSpec with Matchers {
         def fetch(org: Org): F[Option[List[Repo]]] = {
           client[F].use { (c) =>
             val url =
-              GITHUB / "orgs" / org / "repos" +? ("access_token", ACCESS_TOKEN) +? ("type", "public") +? ("per_page", 100)
-            val req = Request[F](Method.GET, url)
+              GITHUB / "orgs" / org / "repos" +? ("type", "public") +? ("per_page", 100)
+            val req = Request[F](Method.GET, url).withHeaders(
+              Header.Raw(CIString("Authorization"), s"token $ACCESS_TOKEN")
+            )
             fetchCollectionRecursively[F, Repo](c, req).map(Option(_))
           }
         }
@@ -142,8 +145,10 @@ class GithubExample extends AnyWordSpec with Matchers {
 
         def fetch(repo: Repo): F[Option[List[Language]]] = {
           client[F].use { (c) =>
-            val url = Uri.unsafeFromString(repo.languages_url) +? ("access_token", ACCESS_TOKEN)
-            val req = Request[F](Method.GET, url)
+            val url = Uri.unsafeFromString(repo.languages_url)
+            val req = Request[F](Method.GET, url).withHeaders(
+              Header.Raw(CIString("Authorization"), s"token $ACCESS_TOKEN")
+            )
             fetchCollectionRecursively[F, Language](c, req).map(Option(_))
           }
         }
@@ -175,8 +180,11 @@ class GithubExample extends AnyWordSpec with Matchers {
             val url = Uri
               .unsafeFromString(
                 repo.contributors_url
-              ) +? ("access_token", ACCESS_TOKEN) +? ("type", "public") +? ("per_page", 100)
-            val req = Request[F](Method.GET, url)
+              ) +? ("type", "public") +? ("per_page", 100)
+            val req =
+              Request[F](Method.GET, url).withHeaders(
+                Header.Raw(CIString("Authorization"), s"token $ACCESS_TOKEN")
+              )
             fetchCollectionRecursively[F, Contributor](c, req).map(Option(_))
           }
         }
@@ -221,7 +229,7 @@ class GithubExample extends AnyWordSpec with Matchers {
   val GITHUB: Uri = Uri.unsafeFromString("https://api.github.com")
 
   private def fetchCollectionRecursively[F[_], A](c: Client[F], req: Request[F])(implicit
-      F: Concurrent[F],
+      F: Async[F],
       E: EntityDecoder[F, List[A]]
   ): F[List[A]] = {
     val REL_NEXT = "rel=\"next\"".r
@@ -249,26 +257,27 @@ class GithubExample extends AnyWordSpec with Matchers {
           getNextLink(hs.head.value).map(Uri.unsafeFromString)
         }
 
-    c.run(req).use[List[A]] {
-      case Status.Ok(res) =>
-        if (hasNext(res)) {
-          for {
-            repos <- res.as[List[A]]
-            nxt   <- getNext(res)
-            newReq = req.withUri(nxt)
-            moreRepos <- fetchCollectionRecursively(c, newReq)
-          } yield repos ++ moreRepos
-        } else
-          res.as[List[A]]
-      case res =>
-        res.bodyText.compile.string.flatMap(respBody =>
-          F.raiseError(
-            new Exception(
-              s"Couldn't complete request, returned status: ${res.status}: Body:\n$respBody"
+    F.delay(println(req)) >>
+      c.run(req).use[List[A]] {
+        case Status.Ok(res) =>
+          if (hasNext(res)) {
+            for {
+              repos <- res.as[List[A]]
+              nxt   <- getNext(res)
+              newReq = req.withUri(nxt)
+              moreRepos <- fetchCollectionRecursively(c, newReq)
+            } yield repos ++ moreRepos
+          } else
+            res.as[List[A]]
+        case res =>
+          res.bodyText.compile.string.flatMap(respBody =>
+            F.raiseError(
+              new Exception(
+                s"Couldn't complete request, returned status: ${res.status}: Body:\n$respBody"
+              )
             )
           )
-        )
-    }
+      }
   }
 
 }
