@@ -21,8 +21,10 @@ import cats.data.NonEmptyList
 import cats.instances.list._
 import cats.syntax.all._
 import cats.effect._
-
 import fetch._
+
+import java.util.concurrent.atomic.AtomicInteger
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
 
 class FetchBatchingTests extends FetchSpec {
   import TestHelper._
@@ -92,6 +94,51 @@ class FetchBatchingTests extends FetchSpec {
 
         override val batchExecution = InParallel
       }
+  }
+
+  case class BatchAcrossFetchData(id: Int)
+
+  object BatchAcrossFetches extends Data[BatchAcrossFetchData, String] {
+    def name = "Batch across Fetches"
+
+    private val batchesCounter = new AtomicInteger(0)
+    private val fetchesCounter = new AtomicInteger(0)
+
+    def reset(): Unit = {
+      batchesCounter.set(0)
+      fetchesCounter.set(0)
+    }
+
+    def counters: (Int, Int) =
+      (fetchesCounter.get(), batchesCounter.get())
+
+    def unBatchedSource[F[_]: Concurrent]: DataSource[F, BatchAcrossFetchData, String] =
+      new DataSource[F, BatchAcrossFetchData, String] {
+        override def data = BatchAcrossFetches
+
+        override def CF = Concurrent[F]
+
+        override def fetch(request: BatchAcrossFetchData): F[Option[String]] = {
+          fetchesCounter.incrementAndGet()
+          CF.pure(Some(request.toString))
+        }
+
+        override def batch(
+            ids: NonEmptyList[BatchAcrossFetchData]
+        ): F[Map[BatchAcrossFetchData, String]] = {
+          batchesCounter.incrementAndGet()
+          CF.pure(
+            ids.map(id => id -> id.toString).toList.toMap
+          )
+        }
+
+        override val batchExecution = InParallel
+      }
+
+    def batchedSource[F[_]: Async](
+        interval: FiniteDuration
+    ): Resource[F, DataSource[F, BatchAcrossFetchData, String]] =
+      DataSource.batchAcrossFetches(unBatchedSource, interval)
   }
 
   def fetchBatchedDataSeq[F[_]: Concurrent](id: Int): Fetch[F, Int] =
@@ -206,5 +253,39 @@ class FetchBatchingTests extends FetchSpec {
     io.map({ case (log, result) =>
       result shouldEqual ids.map(_.toString)
     }).unsafeToFuture()
+  }
+
+  "Fetches produced across unrelated fetches to a DataSource that is NOT batched across fetch executions should NOT be bundled together" in {
+    BatchAcrossFetches.reset()
+    val dataSource = BatchAcrossFetches.unBatchedSource[IO]
+    val id1        = BatchAcrossFetchData(1)
+    val id2        = BatchAcrossFetchData(2)
+    val execution1 = Fetch.run[IO](Fetch(id1, dataSource))
+    val execution2 = Fetch.run[IO](Fetch(id2, dataSource))
+    val singleExecution = (execution1, execution2).parMapN { (_, _) =>
+      val (fetchRequests, batchRequests) = BatchAcrossFetches.counters
+      fetchRequests shouldEqual 2
+      batchRequests shouldEqual 0
+    }
+    singleExecution.unsafeToFuture()
+  }
+
+  "Fetches produced across unrelated fetches to a DataSource that is batched across fetch executions should be bundled together" in {
+    BatchAcrossFetches.reset()
+    val dataSource = BatchAcrossFetches.batchedSource[IO](500.millis)
+    val id1        = BatchAcrossFetchData(1)
+    val id2        = BatchAcrossFetchData(2)
+    dataSource
+      .use { dataSource =>
+        val execution1 = Fetch.run[IO](Fetch(id1, dataSource))
+        val execution2 = Fetch.run[IO](Fetch(id2, dataSource))
+        val singleExecution = (execution1, execution2).parMapN { (_, _) =>
+          val (fetchRequests, batchRequests) = BatchAcrossFetches.counters
+          fetchRequests shouldEqual 0
+          batchRequests shouldEqual 1
+        }
+        singleExecution
+      }
+      .unsafeToFuture()
   }
 }
