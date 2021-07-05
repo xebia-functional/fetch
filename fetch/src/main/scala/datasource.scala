@@ -85,21 +85,40 @@ object DataSource {
     }
   }
 
-  def batchAcrossFetches[F[_], I, A](current: DataSource[F, I, A], delayPerBatch: FiniteDuration)(
-      implicit F: Async[F]
+  /**
+   * Returns a new DataSource that will batch Fetch requests across executions within a given interval.
+   *
+   * As an example, if we have a Fetch request A, and a fetch request B that are being executed simultaneously
+   * without knowledge of the other within some milliseconds of the other, the datasource will transparently
+   * batch the two requests in a single batch call execution.
+   *
+   * This is useful if you want to treat each fetch individually from the others, for example in an HTTP server
+   * processing requests.
+   *
+   * The original DataSource limits will be respected
+   *
+   * @param dataSource the original datasource to be wrapped
+   * @param delayPerBatch the interval for processing Fetch requests as a single Batch call
+   * @return
+   */
+  def batchAcrossFetches[F[_], I, A](
+      dataSource: DataSource[F, I, A],
+      delayPerBatch: FiniteDuration
+  )(implicit
+      F: Async[F]
   ): Resource[F, DataSource[F, I, A]] = {
     type Callback = Either[Throwable, Option[A]] => Unit
     for {
       queue <- Resource.eval(Queue.unbounded[F, (I, Callback)])
       workerFiber = upToWithin(
         queue,
-        current.maxBatchSize.getOrElse(Int.MaxValue),
+        dataSource.maxBatchSize.getOrElse(Int.MaxValue),
         delayPerBatch
       ).flatMap {
         case Nil => F.start(F.unit)
         case x =>
           val asMap        = x.toMap
-          val batchResults = current.batch(NonEmptyList.fromListUnsafe(x.map(_._1)))
+          val batchResults = dataSource.batch(NonEmptyList.fromListUnsafe(x.map(_._1)))
           val resultsHaveBeenSent = batchResults.map { results =>
             asMap.foreach { case (identity, callback) =>
               callback(Right(results.get(identity)))
@@ -115,9 +134,9 @@ object DataSource {
       _ <- F.background(workerFiber)
     } yield {
       new DataSource[F, I, A] {
-        override def data: Data[I, A] = current.data
+        override def data: Data[I, A] = dataSource.data
 
-        override implicit def CF: Concurrent[F] = current.CF
+        override implicit def CF: Concurrent[F] = dataSource.CF
 
         override def fetch(id: I): F[Option[A]] = {
           F.async { cb =>
