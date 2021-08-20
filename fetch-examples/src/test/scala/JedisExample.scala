@@ -141,7 +141,7 @@ case class RedisCache[F[_]: Sync](host: String) extends DataCache[F] {
     )
 
   private def cacheId[I, A](i: I, data: Data[I, A]): Array[Byte] =
-    Binary.fromString(s"${data.identity} ${i}")
+    Binary.fromString(s"${data.identity} $i")
 
   override def lookup[I, A](i: I, data: Data[I, A]): F[Option[A]] =
     get(cacheId(i, data)) >>= {
