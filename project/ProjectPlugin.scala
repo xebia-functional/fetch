@@ -21,15 +21,15 @@ object ProjectPlugin extends AutoPlugin {
       )
 
     lazy val micrositeSettings: Seq[Def.Setting[_]] = Seq(
-      micrositeName := "Fetch",
-      micrositeDescription := "Simple & Efficient data fetching",
-      micrositeBaseUrl := "fetch",
+      micrositeName             := "Fetch",
+      micrositeDescription      := "Simple & Efficient data fetching",
+      micrositeBaseUrl          := "fetch",
       micrositeDocumentationUrl := "/fetch/docs",
-      micrositeHighlightTheme := "tomorrow",
+      micrositeHighlightTheme   := "tomorrow",
       micrositeExternalLayoutsDirectory := (Compile / resourceDirectory).value / "microsite" / "_layouts",
       micrositeExternalIncludesDirectory := (Compile / resourceDirectory).value / "microsite" / "_includes",
       micrositeDataDirectory := (Compile / resourceDirectory).value / "microsite" / "_data",
-      micrositeTheme := "pattern",
+      micrositeTheme         := "pattern",
       micrositePalette := Map(
         "brand-primary"   -> "#DD4949",
         "brand-secondary" -> "#104051",
@@ -41,7 +41,7 @@ object ProjectPlugin extends AutoPlugin {
         "white-color"     -> "#FFFFFF"
       ),
       makeSite / includeFilter := "*.html" | "*.css" | "*.png" | "*.svg" | "*.jpg" | "*.gif" | "*.js" | "*.json" | "*.swf" | "*.md",
-      micrositeGithubToken := Option(System.getenv().get("GITHUB_TOKEN")),
+      micrositeGithubToken  := Option(System.getenv().get("GITHUB_TOKEN")),
       micrositePushSiteWith := GitHub4s,
       micrositeConfigYaml := ConfigYml(
         yamlPath = Some((Compile / resourceDirectory).value / "microsite" / "custom-config.yml")
@@ -86,8 +86,8 @@ object ProjectPlugin extends AutoPlugin {
           case Some((3, 0)) => Seq()
           case _ =>
             Seq(
-              compilerPlugin("org.typelevel" % "kind-projector"     % "0.13.0" cross CrossVersion.full),
-              compilerPlugin("com.olegpy"   %% "better-monadic-for" % "0.3.1")
+              compilerPlugin("org.typelevel" % "kind-projector" % "0.13.0" cross CrossVersion.full),
+              compilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1")
             )
         }
       },

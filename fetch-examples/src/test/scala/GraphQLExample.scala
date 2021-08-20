@@ -270,8 +270,8 @@ object Parsers {
 
   def repositories: Parser[(Int, Boolean, Boolean, Boolean)] =
     for {
-      i                    <- string("repositories") >> parens(string("first") >> char(':') >> skipWhitespace >> int)
-      _                    <- leftBrace
+      i <- string("repositories") >> parens(string("first") >> char(':') >> skipWhitespace >> int)
+      _ <- leftBrace
       (name, langs, colls) <- organizationQuery
       _                    <- rightBrace
     } yield (i, name, langs, colls)
