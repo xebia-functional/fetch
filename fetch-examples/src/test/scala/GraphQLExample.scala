@@ -232,19 +232,19 @@ class GraphQLExample extends AnyWordSpec with Matchers {
 
 object Parsers {
   def queryParser: Parser[OrganizationQuery] =
-    rawParser.map({ case (o, n) =>
+    rawParser.map { case (o, n) =>
       OrganizationQuery(
         o,
-        n.map({ case (i, name, langs, colls) =>
+        n.map { case (i, name, langs, colls) =>
           RepositoriesQuery(
             i,
             if (name) Some(()) else None,
             if (langs) Some(LanguagesQuery()) else None,
             if (colls) Some(CollaboratorsQuery()) else None
           )
-        })
+        }
       )
-    })
+    }
 
   def rawParser: Parser[(String, Option[(Int, Boolean, Boolean, Boolean)])] =
     for {

@@ -148,10 +148,10 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({ case (log, result) =>
+    io.map { case (log, result) =>
       result shouldEqual (1, 2)
       log.rounds.size shouldEqual 2
-    }).unsafeToFuture()
+    }.unsafeToFuture()
   }
 
   "Traversals are implicitly batched" in {
@@ -163,10 +163,10 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({ case (log, result) =>
+    io.map { case (log, result) =>
       result shouldEqual List(0, 1, 2)
       log.rounds.size shouldEqual 2
-    }).unsafeToFuture()
+    }.unsafeToFuture()
   }
 
   "Sequencing is implicitly batched" in {
@@ -175,12 +175,12 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({ case (log, result) =>
+    io.map { case (log, result) =>
       result shouldEqual List(1, 2, 3)
       log.rounds.size shouldEqual 1
       totalFetched(log.rounds) shouldEqual 3
       totalBatches(log.rounds) shouldEqual 1
-    }).unsafeToFuture()
+    }.unsafeToFuture()
   }
 
   "Identities are deduped when batched" in {
@@ -190,14 +190,14 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({ case (log, result) =>
+    io.map { case (log, result) =>
       result shouldEqual sources
       log.rounds.size shouldEqual 1
       log.rounds.head.queries.size shouldEqual 1
       log.rounds.head.queries.head.request should matchPattern {
         case Batch(NonEmptyList(1, List(2)), _) =>
       }
-    }).unsafeToFuture()
+    }.unsafeToFuture()
   }
 
   "The product of two fetches implies parallel fetching" in {
@@ -206,11 +206,11 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({ case (log, result) =>
+    io.map { case (log, result) =>
       result shouldEqual (1, List(0, 1, 2))
       log.rounds.size shouldEqual 1
       log.rounds.head.queries.size shouldEqual 2
-    }).unsafeToFuture()
+    }.unsafeToFuture()
   }
 
   "Concurrent fetching calls batches only when it can" in {
@@ -219,11 +219,11 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({ case (log, result) =>
+    io.map { case (log, result) =>
       result shouldEqual (1, List(0, 1, 2))
       log.rounds.size shouldEqual 1
       totalBatches(log.rounds) shouldEqual 0
-    }).unsafeToFuture()
+    }.unsafeToFuture()
   }
 
   "Concurrent fetching performs requests to multiple data sources in parallel" in {
@@ -232,11 +232,11 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({ case (log, result) =>
+    io.map { case (log, result) =>
       result shouldEqual ((1, List(0, 1)), 3)
       log.rounds.size shouldEqual 1
       totalBatches(log.rounds) shouldEqual 0
-    }).unsafeToFuture()
+    }.unsafeToFuture()
   }
 
   "The product of concurrent fetches implies everything fetched concurrently" in {
@@ -251,12 +251,12 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({ case (log, result) =>
+    io.map { case (log, result) =>
       result shouldEqual ((1, (2, 3)), 4)
       log.rounds.size shouldEqual 1
       totalBatches(log.rounds) shouldEqual 1
       totalFetched(log.rounds) shouldEqual 4
-    }).unsafeToFuture()
+    }.unsafeToFuture()
   }
 
   "The product of concurrent fetches of the same type implies everything fetched in a single batch" in {
@@ -281,12 +281,12 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({ case (log, result) =>
+    io.map { case (log, result) =>
       result shouldEqual ((1, 2), 3)
       log.rounds.size shouldEqual 2
       totalBatches(log.rounds) shouldEqual 2
       totalFetched(log.rounds) shouldEqual 5
-    }).unsafeToFuture()
+    }.unsafeToFuture()
   }
 
   "Every level of joined concurrent fetches is combined and batched" in {
@@ -307,12 +307,12 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({ case (log, result) =>
+    io.map { case (log, result) =>
       result shouldEqual (1, 2)
       log.rounds.size shouldEqual 2
       totalBatches(log.rounds) shouldEqual 2
       totalFetched(log.rounds) shouldEqual 4
-    }).unsafeToFuture()
+    }.unsafeToFuture()
   }
 
   "Every level of sequenced concurrent fetches is batched" in {
@@ -338,12 +338,12 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({ case (log, result) =>
+    io.map { case (log, result) =>
       result shouldEqual ((List(9, 10, 11), List(12, 13, 14)), List(15, 16, 17))
       log.rounds.size shouldEqual 3
       totalBatches(log.rounds) shouldEqual 3
       totalFetched(log.rounds) shouldEqual 9 + 4 + 6
-    }).unsafeToFuture()
+    }.unsafeToFuture()
   }
 
   "The product of two fetches from the same data source implies batching" in {
@@ -351,12 +351,12 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({ case (log, result) =>
+    io.map { case (log, result) =>
       result shouldEqual (1, 3)
       log.rounds.size shouldEqual 1
       totalBatches(log.rounds) shouldEqual 1
       totalFetched(log.rounds) shouldEqual 2
-    }).unsafeToFuture()
+    }.unsafeToFuture()
   }
 
   "Sequenced fetches are run concurrently" in {
@@ -365,11 +365,11 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({ case (log, result) =>
+    io.map { case (log, result) =>
       result shouldEqual List(1, 2, 3, 4, 5)
       log.rounds.size shouldEqual 1
       totalBatches(log.rounds) shouldEqual 2
-    }).unsafeToFuture()
+    }.unsafeToFuture()
   }
 
   "Sequenced fetches are deduped" in {
@@ -378,12 +378,12 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({ case (log, result) =>
+    io.map { case (log, result) =>
       result shouldEqual List(1, 2, 1)
       log.rounds.size shouldEqual 1
       totalBatches(log.rounds) shouldEqual 1
       totalFetched(log.rounds) shouldEqual 2
-    }).unsafeToFuture()
+    }.unsafeToFuture()
   }
 
   "Traversals are batched" in {
@@ -392,11 +392,11 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({ case (log, result) =>
+    io.map { case (log, result) =>
       result shouldEqual List(1, 2, 3)
       log.rounds.size shouldEqual 1
       totalBatches(log.rounds) shouldEqual 1
-    }).unsafeToFuture()
+    }.unsafeToFuture()
   }
 
   "Duplicated sources are only fetched once" in {
@@ -405,11 +405,11 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({ case (log, result) =>
+    io.map { case (log, result) =>
       result shouldEqual List(1, 2, 1)
       log.rounds.size shouldEqual 1
       totalFetched(log.rounds) shouldEqual 2
-    }).unsafeToFuture()
+    }.unsafeToFuture()
   }
 
   "Sources that can be fetched concurrently inside a for comprehension will be" in {
@@ -421,11 +421,11 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({ case (log, result) =>
+    io.map { case (log, result) =>
       result shouldEqual List(1, 2, 1)
       log.rounds.size shouldEqual 1
       totalFetched(log.rounds) shouldEqual 2
-    }).unsafeToFuture()
+    }.unsafeToFuture()
   }
 
   "Pure Fetches allow to explore further in the Fetch" in {
@@ -440,11 +440,11 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({ case (log, result) =>
+    io.map { case (log, result) =>
       result shouldEqual (1, 5)
       log.rounds.size shouldEqual 1
       totalFetched(log.rounds) shouldEqual 2
-    }).unsafeToFuture()
+    }.unsafeToFuture()
   }
 
   // Caching
@@ -464,10 +464,10 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({ case (log, result) =>
+    io.map { case (log, result) =>
       result shouldEqual 2
       totalFetched(log.rounds) shouldEqual 3
-    }).unsafeToFuture()
+    }.unsafeToFuture()
   }
 
   "Batched elements are cached and thus not fetched more than once" in {
@@ -485,11 +485,11 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({ case (log, result) =>
+    io.map { case (log, result) =>
       result shouldEqual 2
       log.rounds.size shouldEqual 1
       totalFetched(log.rounds) shouldEqual 3
-    }).unsafeToFuture()
+    }.unsafeToFuture()
   }
 
   "Elements that are cached won't be fetched" in {
@@ -514,11 +514,11 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch, cache)
 
-    io.map({ case (log, result) =>
+    io.map { case (log, result) =>
       result shouldEqual 2
       totalFetched(log.rounds) shouldEqual 0
       log.rounds.size shouldEqual 0
-    }).unsafeToFuture()
+    }.unsafeToFuture()
   }
 
   "Fetch#run accepts a cache as the second (optional) parameter" in {
@@ -568,9 +568,9 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.runCache[IO](fetch, cache)
 
-    io.map({ case (c, result) =>
+    io.map { case (c, result) =>
       result shouldEqual 2
-    }).unsafeToFuture()
+    }.unsafeToFuture()
   }
 
   "Fetch#runCache works without the optional cache parameter" in {
@@ -588,9 +588,9 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.runCache[IO](fetch)
 
-    io.map({ case (c, result) =>
+    io.map { case (c, result) =>
       result shouldEqual 2
-    }).unsafeToFuture()
+    }.unsafeToFuture()
   }
 
   case class ForgetfulCache[F[_]: Monad]() extends DataCache[F] {
@@ -617,11 +617,11 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch, forgetfulCache)
 
-    io.map({ case (log, result) =>
+    io.map { case (log, result) =>
       result shouldEqual 2
       log.rounds.size shouldEqual 7
       totalFetched(log.rounds) shouldEqual 7
-    }).unsafeToFuture()
+    }.unsafeToFuture()
   }
 
   "We can use a custom cache that discards elements together with concurrent fetches" in {
@@ -639,11 +639,11 @@ class FetchTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch, forgetfulCache)
 
-    io.map({ case (log, result) =>
+    io.map { case (log, result) =>
       result shouldEqual 2
       log.rounds.size shouldEqual 8
       totalFetched(log.rounds) shouldEqual 10
-    }).unsafeToFuture()
+    }.unsafeToFuture()
   }
 
   // Errors
