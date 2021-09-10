@@ -117,16 +117,16 @@ object DataSource {
       ).flatMap {
         case Nil => F.start(F.unit)
         case x =>
-          val asMap        = x.toMap
-          val batchResults = dataSource.batch(NonEmptyList.fromListUnsafe(x.map(_._1)))
+          val asMap = x.groupMap(_._1)(_._2)
+          val batchResults = dataSource.batch(NonEmptyList.fromListUnsafe(asMap.keys.toList))
           val resultsHaveBeenSent = batchResults.map { results =>
-            asMap.foreach { case (identity, callback) =>
-              callback(Right(results.get(identity)))
+            asMap.foreach { case (identity, callbacks) =>
+              callbacks.foreach(cb => cb(Right(results.get(identity))))
             }
           }
           val fiberWork = F.handleError(resultsHaveBeenSent) { ex =>
-            asMap.foreach { case (_, callback) =>
-              callback(Left(ex))
+            asMap.foreach { case (_, callbacks) =>
+              callbacks.foreach(cb => cb(Left(ex)))
             }
           }
           F.start(fiberWork)
