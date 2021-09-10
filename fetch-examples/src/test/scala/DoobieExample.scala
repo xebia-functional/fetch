@@ -126,7 +126,7 @@ class DoobieExample extends AnyWordSpec with Matchers with BeforeAndAfterAll {
   import DatabaseExample._
   import Database._
 
-  val executionContext                                  = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(2))
+  val executionContext = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(2))
   implicit val ioRuntime: unsafe.IORuntime              = unsafe.IORuntime.global
   implicit val transactor: Resource[IO, Transactor[IO]] = createTransactor[IO]
 

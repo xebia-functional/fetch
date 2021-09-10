@@ -197,9 +197,9 @@ class GithubExample extends AnyWordSpec with Matchers {
   case class Project(repo: Repo, contributors: List[Contributor], languages: List[Language])
 
   def fetchProject[F[_]: Async](repo: Repo): Fetch[F, Project] =
-    (repoContributors(repo), repoLanguages(repo)).mapN({ case (contribs, langs) =>
+    (repoContributors(repo), repoLanguages(repo)).mapN { case (contribs, langs) =>
       Project(repo = repo, contributors = contribs, languages = langs)
-    })
+    }
 
   def fetchOrg[F[_]: Async](org: String) =
     for {

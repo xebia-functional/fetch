@@ -70,11 +70,11 @@ object InMemoryCache {
     InMemoryCache[F](Map.empty[(Data[Any, Any], DataSourceId), DataSourceResult])
 
   def from[F[_]: Monad, I, A](results: ((Data[I, A], I), A)*): InMemoryCache[F] =
-    InMemoryCache[F](results.foldLeft(Map.empty[(Data[Any, Any], DataSourceId), DataSourceResult])({
+    InMemoryCache[F](results.foldLeft(Map.empty[(Data[Any, Any], DataSourceId), DataSourceResult]) {
       case (acc, ((data, i), v)) =>
         acc.updated(
           (data.asInstanceOf[Data[Any, Any]], new DataSourceId(i)),
           new DataSourceResult(v)
         )
-    }))
+    })
 }

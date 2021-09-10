@@ -41,8 +41,8 @@ object Data {
 }
 
 /**
- * A `DataSource` is the recipe for fetching a certain identity `I`, which yields
- * results of type `A` performing an effect of type `F[_]`.
+ * A `DataSource` is the recipe for fetching a certain identity `I`, which yields results of type
+ * `A` performing an effect of type `F[_]`.
  */
 trait DataSource[F[_], I, A] {
   def data: Data[I, A]
@@ -55,8 +55,8 @@ trait DataSource[F[_], I, A] {
   def fetch(id: I): F[Option[A]]
 
   /**
-   * Fetch many identities, returning a mapping from identities to results. If an
-   * identity wasn't found, it won't appear in the keys.
+   * Fetch many identities, returning a mapping from identities to results. If an identity wasn't
+   * found, it won't appear in the keys.
    */
   def batch(ids: NonEmptyList[I]): F[Map[I, A]] =
     FetchExecution

@@ -39,17 +39,17 @@ object debug {
   def firstRequest(r: Round): Option[Long] =
     for {
       aQuery <- r.queries.headOption
-      firstR = r.queries.foldLeft(aQuery.start)({ case (acc, q) =>
+      firstR = r.queries.foldLeft(aQuery.start) { case (acc, q) =>
         acc min q.start
-      })
+      }
     } yield firstR
 
   def lastRequest(r: Round): Option[Long] =
     for {
       aQuery <- r.queries.headOption
-      lastR = r.queries.foldLeft(aQuery.end)({ case (acc, q) =>
+      lastR = r.queries.foldLeft(aQuery.end) { case (acc, q) =>
         acc max q.end
-      })
+      }
     } yield lastR
 
   def showLog(log: Log): Document =
@@ -80,7 +80,7 @@ object debug {
     } yield l - f
 
     val round =
-      Document.text(s"[Round ${n}]") :-: roundDuration.fold(Document.text(""))(showDuration(_))
+      Document.text(s"[Round $n]") :-: roundDuration.fold(Document.text(""))(showDuration(_))
 
     round :-: Document.nest(
       2,
@@ -91,7 +91,7 @@ object debug {
   def showRequest(r: Request): Document =
     r.request match {
       case FetchOne(id, d) =>
-        Document.text(s"[Fetch one] From `${d.name}` with id ${id}") :-: showDuration(r.duration)
+        Document.text(s"[Fetch one] From `${d.name}` with id $id") :-: showDuration(r.duration)
       case Batch(ids, d) =>
         Document.text(s"[Batch] From `${d.name}` with ids ${ids.toList}") :-: showDuration(
           r.duration
@@ -99,7 +99,7 @@ object debug {
     }
 
   def showMissing(d: Data[_, _], ids: List[_]): Document =
-    Document.text(s"`${d.name}` missing identities ${ids}")
+    Document.text(s"`${d.name}` missing identities $ids")
 
   def showRoundCount(err: FetchException): Document =
     Document.text(s", fetch interrupted after ${err.log.rounds.size} rounds")
@@ -109,7 +109,7 @@ object debug {
       case MissingIdentity(id, q, log) =>
         Document
           .text(
-            s"[ERROR] Identity with id `${id}` for data source `${q.data.name}` not found"
+            s"[ERROR] Identity with id `$id` for data source `${q.data.name}` not found"
           ) :-: showRoundCount(
           err
         )

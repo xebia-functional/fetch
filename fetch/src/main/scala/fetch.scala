@@ -240,9 +240,9 @@ object `package` {
           .get(dsId)
           .fold(
             (ds, blocked)
-          )({ case (d, req) =>
+          ) { case (d, req) =>
             (d, combineRequests(blocked, req))
-          })
+          }
         acc.updated(dsId, combined)
       }
     )
@@ -601,9 +601,9 @@ object `package` {
           requests <- FetchExecution.parallel(
             NonEmptyList
               .fromListUnsafe(blocked)
-              .map({ case (ds, req) =>
+              .map { case (ds, req) =>
                 runBlockedRequest(req, ds, cache, log)
-              })
+              }
           )
           performedRequests = requests.foldLeft(List.empty[Request])(_ ++ _)
           _ <-

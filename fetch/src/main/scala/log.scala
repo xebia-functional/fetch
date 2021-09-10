@@ -19,8 +19,8 @@ package fetch
 import scala.collection.immutable._
 
 /**
- * A log that is passed along during the fetch rounds to record a fetch execution.
- * It holds the a list of rounds that have been executed.
+ * A log that is passed along during the fetch rounds to record a fetch execution. It holds the a
+ * list of rounds that have been executed.
  */
 trait Log {
   def rounds: List[Round]

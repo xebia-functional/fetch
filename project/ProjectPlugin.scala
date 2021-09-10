@@ -15,21 +15,21 @@ object ProjectPlugin extends AutoPlugin {
       Seq(
         libraryDependencies ++=
           Seq(
-            "org.typelevel" %%% "cats-effect" % "3.1.1",
+            "org.typelevel" %%% "cats-effect" % "3.2.8",
             "org.scalatest" %%% "scalatest"   % "3.2.9" % "test"
           )
       )
 
     lazy val micrositeSettings: Seq[Def.Setting[_]] = Seq(
-      micrositeName := "Fetch",
-      micrositeDescription := "Simple & Efficient data fetching",
-      micrositeBaseUrl := "fetch",
+      micrositeName             := "Fetch",
+      micrositeDescription      := "Simple & Efficient data fetching",
+      micrositeBaseUrl          := "fetch",
       micrositeDocumentationUrl := "/fetch/docs",
-      micrositeHighlightTheme := "tomorrow",
+      micrositeHighlightTheme   := "tomorrow",
       micrositeExternalLayoutsDirectory := (Compile / resourceDirectory).value / "microsite" / "_layouts",
       micrositeExternalIncludesDirectory := (Compile / resourceDirectory).value / "microsite" / "_includes",
       micrositeDataDirectory := (Compile / resourceDirectory).value / "microsite" / "_data",
-      micrositeTheme := "pattern",
+      micrositeTheme         := "pattern",
       micrositePalette := Map(
         "brand-primary"   -> "#DD4949",
         "brand-secondary" -> "#104051",
@@ -41,7 +41,7 @@ object ProjectPlugin extends AutoPlugin {
         "white-color"     -> "#FFFFFF"
       ),
       makeSite / includeFilter := "*.html" | "*.css" | "*.png" | "*.svg" | "*.jpg" | "*.gif" | "*.js" | "*.json" | "*.swf" | "*.md",
-      micrositeGithubToken := Option(System.getenv().get("GITHUB_TOKEN")),
+      micrositeGithubToken  := Option(System.getenv().get("GITHUB_TOKEN")),
       micrositePushSiteWith := GitHub4s,
       micrositeConfigYaml := ConfigYml(
         yamlPath = Some((Compile / resourceDirectory).value / "microsite" / "custom-config.yml")
@@ -62,12 +62,12 @@ object ProjectPlugin extends AutoPlugin {
     lazy val examplesSettings = Seq(
       libraryDependencies ++= Seq(
         "io.circe"     %% "circe-generic"       % "0.14.1",
-        "org.tpolecat" %% "doobie-core"         % "1.0.0-M5",
-        "org.tpolecat" %% "doobie-h2"           % "1.0.0-M5",
+        "org.tpolecat" %% "doobie-core"         % "1.0.0-RC1",
+        "org.tpolecat" %% "doobie-h2"           % "1.0.0-RC1",
         "org.tpolecat" %% "atto-core"           % "0.9.5",
-        "org.http4s"   %% "http4s-blaze-client" % "0.23.0-RC1",
-        "org.http4s"   %% "http4s-circe"        % "0.23.0-RC1",
-        "redis.clients" % "jedis"               % "3.6.1"
+        "org.http4s"   %% "http4s-blaze-client" % "0.23.3",
+        "org.http4s"   %% "http4s-circe"        % "0.23.3",
+        "redis.clients" % "jedis"               % "3.7.0"
       )
     ) ++ commonCrossDependencies
   }
@@ -86,8 +86,8 @@ object ProjectPlugin extends AutoPlugin {
           case Some((3, 0)) => Seq()
           case _ =>
             Seq(
-              compilerPlugin("org.typelevel" % "kind-projector"     % "0.13.0" cross CrossVersion.full),
-              compilerPlugin("com.olegpy"   %% "better-monadic-for" % "0.3.1")
+              compilerPlugin("org.typelevel" % "kind-projector" % "0.13.2" cross CrossVersion.full),
+              compilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1")
             )
         }
       },

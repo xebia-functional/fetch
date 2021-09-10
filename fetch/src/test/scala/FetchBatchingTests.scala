@@ -156,12 +156,12 @@ class FetchBatchingTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({ case (log, result) =>
+    io.map { case (log, result) =>
       result shouldEqual List(1, 2, 3, 4, 5)
       log.rounds.size shouldEqual 1
       totalFetched(log.rounds) shouldEqual 5
       totalBatches(log.rounds) shouldEqual 3
-    }).unsafeToFuture()
+    }.unsafeToFuture()
   }
 
   "A large fetch to a datasource with a maximum batch size is split and executed in parallel" in {
@@ -170,12 +170,12 @@ class FetchBatchingTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({ case (log, result) =>
+    io.map { case (log, result) =>
       result shouldEqual List(1, 2, 3, 4, 5)
       log.rounds.size shouldEqual 1
       totalFetched(log.rounds) shouldEqual 5
       totalBatches(log.rounds) shouldEqual 3
-    }).unsafeToFuture()
+    }.unsafeToFuture()
   }
 
   "Fetches to datasources with a maximum batch size should be split and executed in parallel and sequentially when using productR" in {
@@ -185,12 +185,12 @@ class FetchBatchingTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({ case (log, result) =>
+    io.map { case (log, result) =>
       result shouldEqual List(1, 2, 3, 4, 5)
       log.rounds.size shouldEqual 1
       totalFetched(log.rounds) shouldEqual 5 + 5
       totalBatches(log.rounds) shouldEqual 3 + 3
-    }).unsafeToFuture()
+    }.unsafeToFuture()
   }
 
   "Fetches to datasources with a maximum batch size should be split and executed in parallel and sequentially when using productL" in {
@@ -200,12 +200,12 @@ class FetchBatchingTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({ case (log, result) =>
+    io.map { case (log, result) =>
       result shouldEqual List(1, 2, 3, 4, 5)
       log.rounds.size shouldEqual 1
       totalFetched(log.rounds) shouldEqual 5 + 5
       totalBatches(log.rounds) shouldEqual 3 + 3
-    }).unsafeToFuture()
+    }.unsafeToFuture()
   }
 
   "A large (many) fetch to a datasource with a maximum batch size is split and executed in sequence" in {
@@ -214,12 +214,12 @@ class FetchBatchingTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({ case (log, result) =>
+    io.map { case (log, result) =>
       result shouldEqual List(1, 2, 3)
       log.rounds.size shouldEqual 1
       totalFetched(log.rounds) shouldEqual 3
       totalBatches(log.rounds) shouldEqual 2
-    }).unsafeToFuture()
+    }.unsafeToFuture()
   }
 
   "A large (many) fetch to a datasource with a maximum batch size is split and executed in parallel" in {
@@ -228,12 +228,12 @@ class FetchBatchingTests extends FetchSpec {
 
     val io = Fetch.runLog[IO](fetch)
 
-    io.map({ case (log, result) =>
+    io.map { case (log, result) =>
       result shouldEqual List(1, 2, 3)
       log.rounds.size shouldEqual 1
       totalFetched(log.rounds) shouldEqual 3
       totalBatches(log.rounds) shouldEqual 2
-    }).unsafeToFuture()
+    }.unsafeToFuture()
   }
 
   "Very deep fetches don't overflow stack or heap" in {
@@ -250,9 +250,9 @@ class FetchBatchingTests extends FetchSpec {
       ids.toList.traverse(fetchBatchedDataBigId[IO])
     )
 
-    io.map({ case (log, result) =>
+    io.map { case (log, result) =>
       result shouldEqual ids.map(_.toString)
-    }).unsafeToFuture()
+    }.unsafeToFuture()
   }
 
   "Fetches produced across unrelated fetches to a DataSource that is NOT batched across fetch executions should NOT be bundled together" in {
