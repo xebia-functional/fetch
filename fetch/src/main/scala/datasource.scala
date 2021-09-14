@@ -120,7 +120,7 @@ object DataSource {
       ).flatMap {
         case Nil => F.start(F.unit)
         case x =>
-          val asMap        = x.groupMap(_._1)(_._2)
+          val asMap        = x.groupBy(_._1).mapValues(callbacks => callbacks.map(_._2))
           val batchResults = dataSource.batch(NonEmptyList.fromListUnsafe(asMap.keys.toList))
           val resultsHaveBeenSent = batchResults.map { results =>
             asMap.foreach { case (identity, callbacks) =>
