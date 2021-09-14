@@ -12,7 +12,6 @@ The maintainers of the project are:
 - [![alejandrohdezma](https://avatars.githubusercontent.com/u/9027541?v=4&s=20) **Alejandro Hernández (alejandrohdezma)**](https://github.com/alejandrohdezma)
 - [![AntonioMateoGomez](https://avatars.githubusercontent.com/u/25897490?v=4&s=20) **Antonio Mateo (AntonioMateoGomez)**](https://github.com/AntonioMateoGomez)
 - [![BenFradet](https://avatars.githubusercontent.com/u/1737211?v=4&s=20) **Ben Fradet (BenFradet)**](https://github.com/BenFradet)
-- [![benderpremier](https://avatars.githubusercontent.com/u/290994?v=4&s=20) **Damien Favre (benderpremier)**](https://github.com/benderpremier)
 - [![diesalbla](https://avatars.githubusercontent.com/u/1764610?v=4&s=20) **Diego E. Alonso Blas (diesalbla)**](https://github.com/diesalbla)
 - [![fedefernandez](https://avatars.githubusercontent.com/u/720923?v=4&s=20) **Fede Fernández (fedefernandez)**](https://github.com/fedefernandez)
 - [![franciscodr](https://avatars.githubusercontent.com/u/1200151?v=4&s=20) **Francisco Diaz (franciscodr)**](https://github.com/franciscodr)
@@ -31,8 +30,8 @@ The maintainers of the project are:
 
 These are the people that have contributed to the _fetch_ project:
 
-- [![purrgrammer](https://avatars.githubusercontent.com/u/42009830?v=4&s=20) **purrgrammer**](https://github.com/purrgrammer)
 - [![47erbot](https://avatars.githubusercontent.com/u/24799081?v=4&s=20) **47erbot**](https://github.com/47erbot)
+- [![purrgrammer](https://avatars.githubusercontent.com/u/42009830?v=4&s=20) **purrgrammer**](https://github.com/purrgrammer)
 - [![47degdev](https://avatars.githubusercontent.com/u/5580770?v=4&s=20) **47degdev**](https://github.com/47degdev)
 - [![juanpedromoreno](https://avatars.githubusercontent.com/u/4879373?v=4&s=20) **juanpedromoreno**](https://github.com/juanpedromoreno)
 - [![alejandrohdezma](https://avatars.githubusercontent.com/u/9027541?v=4&s=20) **alejandrohdezma**](https://github.com/alejandrohdezma)
@@ -41,6 +40,7 @@ These are the people that have contributed to the _fetch_ project:
 - [![raulraja](https://avatars.githubusercontent.com/u/456796?v=4&s=20) **raulraja**](https://github.com/raulraja)
 - [![calvellido](https://avatars.githubusercontent.com/u/7753447?v=4&s=20) **calvellido**](https://github.com/calvellido)
 - [![sloshy](https://avatars.githubusercontent.com/u/427237?v=4&s=20) **sloshy**](https://github.com/sloshy)
+- [![jordiolivares](https://avatars.githubusercontent.com/u/1163790?v=4&s=20) **jordiolivares**](https://github.com/jordiolivares)
 - [![franciscodr](https://avatars.githubusercontent.com/u/1200151?v=4&s=20) **franciscodr**](https://github.com/franciscodr)
 - [![Daenyth](https://avatars.githubusercontent.com/u/14644?v=4&s=20) **Daenyth**](https://github.com/Daenyth)
 - [![pepegar](https://avatars.githubusercontent.com/u/694179?v=4&s=20) **pepegar**](https://github.com/pepegar)
