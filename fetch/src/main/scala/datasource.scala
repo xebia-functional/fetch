@@ -86,19 +86,22 @@ object DataSource {
   }
 
   /**
-   * Returns a new DataSource that will batch Fetch requests across executions within a given interval.
+   * Returns a new DataSource that will batch Fetch requests across executions within a given
+   * interval.
    *
-   * As an example, if we have a Fetch request A, and a fetch request B that are being executed simultaneously
-   * without knowledge of the other within some milliseconds of the other, the datasource will transparently
-   * batch the two requests in a single batch call execution.
+   * As an example, if we have a Fetch request A, and a fetch request B that are being executed
+   * simultaneously without knowledge of the other within some milliseconds of the other, the
+   * datasource will transparently batch the two requests in a single batch call execution.
    *
-   * This is useful if you want to treat each fetch individually from the others, for example in an HTTP server
-   * processing requests.
+   * This is useful if you want to treat each fetch individually from the others, for example in an
+   * HTTP server processing requests.
    *
    * The original DataSource limits will be respected
    *
-   * @param dataSource the original datasource to be wrapped
-   * @param delayPerBatch the interval for processing Fetch requests as a single Batch call
+   * @param dataSource
+   *   the original datasource to be wrapped
+   * @param delayPerBatch
+   *   the interval for processing Fetch requests as a single Batch call
    * @return
    */
   def batchAcrossFetches[F[_], I, A](
@@ -117,7 +120,7 @@ object DataSource {
       ).flatMap {
         case Nil => F.start(F.unit)
         case x =>
-          val asMap = x.groupMap(_._1)(_._2)
+          val asMap        = x.groupMap(_._1)(_._2)
           val batchResults = dataSource.batch(NonEmptyList.fromListUnsafe(asMap.keys.toList))
           val resultsHaveBeenSent = batchResults.map { results =>
             asMap.foreach { case (identity, callbacks) =>
