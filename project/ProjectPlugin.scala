@@ -65,8 +65,8 @@ object ProjectPlugin extends AutoPlugin {
         "org.tpolecat" %% "doobie-core"         % "1.0.0-RC1",
         "org.tpolecat" %% "doobie-h2"           % "1.0.0-RC1",
         "org.tpolecat" %% "atto-core"           % "0.9.5",
-        "org.http4s"   %% "http4s-blaze-client" % "0.23.3",
-        "org.http4s"   %% "http4s-circe"        % "0.23.3",
+        "org.http4s"   %% "http4s-blaze-client" % "0.23.4",
+        "org.http4s"   %% "http4s-circe"        % "0.23.4",
         "redis.clients" % "jedis"               % "3.7.0"
       )
     ) ++ commonCrossDependencies
