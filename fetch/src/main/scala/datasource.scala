@@ -75,8 +75,10 @@ object DataSource {
       implicit F: Temporal[F]
   ): F[List[T]] = {
     Ref[F].of(List.empty[T]).flatMap { ref =>
-      val takeAndBuffer = queue.take.flatMap { x =>
-        ref.updateAndGet(list => x :: list)
+      val takeAndBuffer = F.uncancelable { poll =>
+        poll(queue.take).flatMap { x =>
+          ref.updateAndGet(list => x :: list)
+        }
       }
       val bufferUntilNumElements = takeAndBuffer.iterateUntil { buffer =>
         buffer.size == maxElements
