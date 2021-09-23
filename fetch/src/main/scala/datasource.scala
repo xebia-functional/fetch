@@ -19,7 +19,7 @@ package fetch
 import cats.data.NonEmptyList
 import cats.effect._
 import cats.effect.implicits._
-import cats.effect.std.Queue
+import cats.effect.std.{Queue, Supervisor}
 import cats.kernel.{Hash => H}
 import cats.syntax.all._
 
@@ -115,14 +115,16 @@ object DataSource {
     type Callback = Either[Throwable, Option[A]] => Unit
     for {
       queue <- Resource.eval(Queue.unbounded[F, (I, Callback)])
+      supervisor <- Supervisor[F]
       workerFiber = upToWithin(
         queue,
         dataSource.maxBatchSize.getOrElse(Int.MaxValue),
         delayPerBatch
-      ).flatMap {
-        case Nil => F.start(F.unit)
-        case x =>
-          val asMap        = x.groupBy(_._1).mapValues(callbacks => callbacks.map(_._2))
+      ).flatMap { x =>
+        if (x.isEmpty) {
+          supervisor.supervise(F.unit)
+        } else {
+          val asMap = x.groupBy(_._1).mapValues(callbacks => callbacks.map(_._2))
           val batchResults = dataSource.batch(NonEmptyList.fromListUnsafe(asMap.keys.toList))
           val resultsHaveBeenSent = batchResults.map { results =>
             asMap.foreach { case (identity, callbacks) =>
@@ -134,7 +136,8 @@ object DataSource {
               callbacks.foreach(cb => cb(Left(ex)))
             }
           }
-          F.start(fiberWork)
+          supervisor.supervise(fiberWork)
+        }
       }.foreverM[Unit]
       _ <- F.background(workerFiber)
     } yield {
