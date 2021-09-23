@@ -114,7 +114,7 @@ object DataSource {
   ): Resource[F, DataSource[F, I, A]] = {
     type Callback = Either[Throwable, Option[A]] => Unit
     for {
-      queue <- Resource.eval(Queue.unbounded[F, (I, Callback)])
+      queue      <- Resource.eval(Queue.unbounded[F, (I, Callback)])
       supervisor <- Supervisor[F]
       workerFiber = upToWithin(
         queue,
@@ -124,7 +124,7 @@ object DataSource {
         if (x.isEmpty) {
           supervisor.supervise(F.unit)
         } else {
-          val asMap = x.groupBy(_._1).mapValues(callbacks => callbacks.map(_._2))
+          val asMap        = x.groupBy(_._1).mapValues(callbacks => callbacks.map(_._2))
           val batchResults = dataSource.batch(NonEmptyList.fromListUnsafe(asMap.keys.toList))
           val resultsHaveBeenSent = batchResults.map { results =>
             asMap.foreach { case (identity, callbacks) =>
