@@ -8,23 +8,11 @@
 
 The maintainers of the project are:
 
-- [![47erbot](https://avatars.githubusercontent.com/u/24799081?v=4&s=20) **47erbot**](https://github.com/47erbot)
 - [![alejandrohdezma](https://avatars.githubusercontent.com/u/9027541?v=4&s=20) **Alejandro Hernández (alejandrohdezma)**](https://github.com/alejandrohdezma)
-- [![AntonioMateoGomez](https://avatars.githubusercontent.com/u/25897490?v=4&s=20) **Antonio Mateo (AntonioMateoGomez)**](https://github.com/AntonioMateoGomez)
 - [![BenFradet](https://avatars.githubusercontent.com/u/1737211?v=4&s=20) **Ben Fradet (BenFradet)**](https://github.com/BenFradet)
-- [![diesalbla](https://avatars.githubusercontent.com/u/1764610?v=4&s=20) **Diego E. Alonso Blas (diesalbla)**](https://github.com/diesalbla)
-- [![fedefernandez](https://avatars.githubusercontent.com/u/720923?v=4&s=20) **Fede Fernández (fedefernandez)**](https://github.com/fedefernandez)
 - [![franciscodr](https://avatars.githubusercontent.com/u/1200151?v=4&s=20) **Francisco Diaz (franciscodr)**](https://github.com/franciscodr)
-- [![Daenyth](https://avatars.githubusercontent.com/u/14644?v=4&s=20) **Gavin Bisesi (Daenyth)**](https://github.com/Daenyth)
-- [![israelperezglez](https://avatars.githubusercontent.com/u/646886?v=4&s=20) **Israel Pérez (israelperezglez)**](https://github.com/israelperezglez)
-- [![jkmcclellan](https://avatars.githubusercontent.com/u/52432856?v=4&s=20) **Jason McClellan (jkmcclellan)**](https://github.com/jkmcclellan)
 - [![juanpedromoreno](https://avatars.githubusercontent.com/u/4879373?v=4&s=20) **Juan Pedro Moreno (juanpedromoreno)**](https://github.com/juanpedromoreno)
-- [![calvellido](https://avatars.githubusercontent.com/u/7753447?v=4&s=20) **Juan Valencia (calvellido)**](https://github.com/calvellido)
-- [![MaureenElsberry](https://avatars.githubusercontent.com/u/17556002?v=4&s=20) **Maureen Elsberry  (MaureenElsberry)**](https://github.com/MaureenElsberry)
 - [![pepegar](https://avatars.githubusercontent.com/u/694179?v=4&s=20) **Pepe García (pepegar)**](https://github.com/pepegar)
-- [![peterneyens](https://avatars.githubusercontent.com/u/6407606?v=4&s=20) **Peter Neyens (peterneyens)**](https://github.com/peterneyens)
-- [![rafaparadela](https://avatars.githubusercontent.com/u/315070?v=4&s=20) **Rafa Paradela (rafaparadela)**](https://github.com/rafaparadela)
-- [![sloshy](https://avatars.githubusercontent.com/u/427237?v=4&s=20) **Ryan Peters (sloshy)**](https://github.com/sloshy)
 
 ## Contributors
 
@@ -38,9 +26,9 @@ These are the people that have contributed to the _fetch_ project:
 - [![peterneyens](https://avatars.githubusercontent.com/u/6407606?v=4&s=20) **peterneyens**](https://github.com/peterneyens)
 - [![AntonioMateoGomez](https://avatars.githubusercontent.com/u/25897490?v=4&s=20) **AntonioMateoGomez**](https://github.com/AntonioMateoGomez)
 - [![raulraja](https://avatars.githubusercontent.com/u/456796?v=4&s=20) **raulraja**](https://github.com/raulraja)
+- [![jordiolivares](https://avatars.githubusercontent.com/u/1163790?v=4&s=20) **jordiolivares**](https://github.com/jordiolivares)
 - [![calvellido](https://avatars.githubusercontent.com/u/7753447?v=4&s=20) **calvellido**](https://github.com/calvellido)
 - [![sloshy](https://avatars.githubusercontent.com/u/427237?v=4&s=20) **sloshy**](https://github.com/sloshy)
-- [![jordiolivares](https://avatars.githubusercontent.com/u/1163790?v=4&s=20) **jordiolivares**](https://github.com/jordiolivares)
 - [![franciscodr](https://avatars.githubusercontent.com/u/1200151?v=4&s=20) **franciscodr**](https://github.com/franciscodr)
 - [![Daenyth](https://avatars.githubusercontent.com/u/14644?v=4&s=20) **Daenyth**](https://github.com/Daenyth)
 - [![pepegar](https://avatars.githubusercontent.com/u/694179?v=4&s=20) **pepegar**](https://github.com/pepegar)

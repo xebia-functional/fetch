@@ -1,5 +1,29 @@
 # Changelog
 
+## [Unreleased](https://github.com/47degrees/fetch/tree/HEAD)
+
+[Full Changelog](https://github.com/47degrees/fetch/compare/v2.1.1...HEAD)
+
+**Closed issues:**
+
+- Update to cats-effect 3 [\#499](https://github.com/47degrees/fetch/issues/499)
+
+## [v2.1.1](https://github.com/47degrees/fetch/tree/v2.1.1) (2021-09-24)
+
+[Full Changelog](https://github.com/47degrees/fetch/compare/v2.1.0...v2.1.1)
+
+🐛 **Bug Fixes**
+
+- Fix problem with fibers being cancelled due to timeout and causing fetch deadlock [\#538](https://github.com/47degrees/fetch/pull/538) ([jordiolivares](https://github.com/jordiolivares))
+
+**Merged pull requests:**
+
+- Update http4s-blaze-client, http4s-circe to 0.23.4 [\#537](https://github.com/47degrees/fetch/pull/537) ([47erbot](https://github.com/47erbot))
+- Update cats-effect to 3.2.9 [\#536](https://github.com/47degrees/fetch/pull/536) ([47erbot](https://github.com/47erbot))
+- Update scalatest to 3.2.10 [\#535](https://github.com/47degrees/fetch/pull/535) ([47erbot](https://github.com/47erbot))
+- Update scalafmt-core to 3.0.4 [\#534](https://github.com/47degrees/fetch/pull/534) ([47erbot](https://github.com/47erbot))
+- Update scala-library to 2.12.15 [\#533](https://github.com/47degrees/fetch/pull/533) ([47erbot](https://github.com/47erbot))
+
 ## [v2.1.0](https://github.com/47degrees/fetch/tree/v2.1.0) (2021-09-14)
 
 [Full Changelog](https://github.com/47degrees/fetch/compare/v2.0.0...v2.1.0)
@@ -83,6 +107,7 @@
 - Update sbt-dotty to 0.5.4 [\#466](https://github.com/47degrees/fetch/pull/466) ([47erbot](https://github.com/47erbot))
 - Update atto-core to 0.9.3 [\#464](https://github.com/47degrees/fetch/pull/464) ([47erbot](https://github.com/47erbot))
 - Update scalatest to 3.2.7 [\#463](https://github.com/47degrees/fetch/pull/463) ([47erbot](https://github.com/47erbot))
+- Update sbt-scalajs, scalajs-compiler, ... to 1.5.1 [\#462](https://github.com/47degrees/fetch/pull/462) ([47erbot](https://github.com/47erbot))
 
 **Closed issues:**
 
@@ -106,7 +131,6 @@
 
 📈 **Dependency updates**
 
-- Update sbt-scalajs, scalajs-compiler, ... to 1.5.1 [\#462](https://github.com/47degrees/fetch/pull/462) ([47erbot](https://github.com/47erbot))
 - Update cats-effect to 2.4.1 [\#461](https://github.com/47degrees/fetch/pull/461) ([47erbot](https://github.com/47erbot))
 - Update mdoc, sbt-mdoc to 2.2.19 [\#460](https://github.com/47degrees/fetch/pull/460) ([47erbot](https://github.com/47erbot))
 - Update http4s-blaze-client, http4s-circe to 0.21.21 [\#459](https://github.com/47degrees/fetch/pull/459) ([47erbot](https://github.com/47erbot))
@@ -343,6 +367,7 @@
 - Release 1.2.0 [\#214](https://github.com/47degrees/fetch/pull/214) ([purrgrammer](https://github.com/purrgrammer))
 - chore\(dependencies\): Update cats and monix dependencies. [\#212](https://github.com/47degrees/fetch/pull/212) ([paulpdaniels](https://github.com/paulpdaniels))
 - \[website\] Various bugfixes/improvements [\#210](https://github.com/47degrees/fetch/pull/210) ([calvellido](https://github.com/calvellido))
+- Fix typo on home page [\#209](https://github.com/47degrees/fetch/pull/209) ([calvellido](https://github.com/calvellido))
 - Update README.md [\#208](https://github.com/47degrees/fetch/pull/208) ([jkmcclellan](https://github.com/jkmcclellan))
 - Only run Travis builds agains OpenJDK8 [\#207](https://github.com/47degrees/fetch/pull/207) ([purrgrammer](https://github.com/purrgrammer))
 - Update CODE\_OF\_CONDUCT.md [\#205](https://github.com/47degrees/fetch/pull/205) ([jkmcclellan](https://github.com/jkmcclellan))
@@ -363,7 +388,6 @@
 
 **Merged pull requests:**
 
-- Fix typo on home page [\#209](https://github.com/47degrees/fetch/pull/209) ([calvellido](https://github.com/calvellido))
 - 1.1.0 release [\#198](https://github.com/47degrees/fetch/pull/198) ([purrgrammer](https://github.com/purrgrammer))
 - Improve Redis example [\#197](https://github.com/47degrees/fetch/pull/197) ([purrgrammer](https://github.com/purrgrammer))
 - Upgrades sbt-org-policies [\#196](https://github.com/47degrees/fetch/pull/196) ([juanpedromoreno](https://github.com/juanpedromoreno))
@@ -390,7 +414,6 @@
 - Fix travis deployment [\#180](https://github.com/47degrees/fetch/pull/180) ([purrgrammer](https://github.com/purrgrammer))
 - Release 1.0.0 [\#179](https://github.com/47degrees/fetch/pull/179) ([purrgrammer](https://github.com/purrgrammer))
 - Graphql interpreter example [\#178](https://github.com/47degrees/fetch/pull/178) ([purrgrammer](https://github.com/purrgrammer))
-- GitHub example [\#162](https://github.com/47degrees/fetch/pull/162) ([purrgrammer](https://github.com/purrgrammer))
 
 ## [v1.0.0-RC2](https://github.com/47degrees/fetch/tree/v1.0.0-RC2) (2019-02-08)
 
@@ -411,6 +434,7 @@
 - Update Copyright Notices to 2019. [\#172](https://github.com/47degrees/fetch/pull/172) ([diesalbla](https://github.com/diesalbla))
 - Add F\[\_\] type parameter to DataSource [\#171](https://github.com/47degrees/fetch/pull/171) ([purrgrammer](https://github.com/purrgrammer))
 - Remove Par typeclass [\#166](https://github.com/47degrees/fetch/pull/166) ([purrgrammer](https://github.com/purrgrammer))
+- GitHub example [\#162](https://github.com/47degrees/fetch/pull/162) ([purrgrammer](https://github.com/purrgrammer))
 - Proof-of-concept Redis cache implementation of DataSourceCache [\#161](https://github.com/47degrees/fetch/pull/161) ([purrgrammer](https://github.com/purrgrammer))
 - DataSourceCache parameterised to F\[\_\] [\#160](https://github.com/47degrees/fetch/pull/160) ([purrgrammer](https://github.com/purrgrammer))
 - Introduce Fetch\#optional for performing optional fetches [\#159](https://github.com/47degrees/fetch/pull/159) ([purrgrammer](https://github.com/purrgrammer))
@@ -506,7 +530,6 @@
 - Releases 0.6.2 [\#125](https://github.com/47degrees/fetch/pull/125) ([juanpedromoreno](https://github.com/juanpedromoreno))
 - Refactor interpreters + Change Fetch.traverse [\#123](https://github.com/47degrees/fetch/pull/123) ([peterneyens](https://github.com/peterneyens))
 - typo in README [\#120](https://github.com/47degrees/fetch/pull/120) ([pepegar](https://github.com/pepegar))
-- Installs Travis to be able to publish the Microsite automatically [\#119](https://github.com/47degrees/fetch/pull/119) ([juanpedromoreno](https://github.com/juanpedromoreno))
 - orgScriptCI task integration [\#118](https://github.com/47degrees/fetch/pull/118) ([juanpedromoreno](https://github.com/juanpedromoreno))
 - Removes dup doc files [\#117](https://github.com/47degrees/fetch/pull/117) ([juanpedromoreno](https://github.com/juanpedromoreno))
 
@@ -520,6 +543,7 @@
 
 **Merged pull requests:**
 
+- Installs Travis to be able to publish the Microsite automatically [\#119](https://github.com/47degrees/fetch/pull/119) ([juanpedromoreno](https://github.com/juanpedromoreno))
 - Auto-updating fetch version in docs [\#116](https://github.com/47degrees/fetch/pull/116) ([juanpedromoreno](https://github.com/juanpedromoreno))
 - Integrates sbt-org-policies plugin [\#115](https://github.com/47degrees/fetch/pull/115) ([juanpedromoreno](https://github.com/juanpedromoreno))
 - Reduce stack consumption [\#95](https://github.com/47degrees/fetch/pull/95) ([ghost](https://github.com/ghost))
@@ -620,7 +644,6 @@
 - Refactor and use some more cats features [\#73](https://github.com/47degrees/fetch/pull/73) ([peterneyens](https://github.com/peterneyens))
 - Finish cats 0.7.2 update and change `deps` method [\#70](https://github.com/47degrees/fetch/pull/70) ([peterneyens](https://github.com/peterneyens))
 - Improved reporting and error handling [\#66](https://github.com/47degrees/fetch/pull/66) ([ghost](https://github.com/ghost))
-- Separate fetching a single identity and fetching many in DataSource [\#53](https://github.com/47degrees/fetch/pull/53) ([ghost](https://github.com/ghost))
 
 ## [0.3.0](https://github.com/47degrees/fetch/tree/0.3.0) (2016-07-25)
 
@@ -642,10 +665,10 @@
 - Bump 0.3.0 release [\#58](https://github.com/47degrees/fetch/pull/58) ([ghost](https://github.com/ghost))
 - Add code coverage reporting [\#57](https://github.com/47degrees/fetch/pull/57) ([ghost](https://github.com/ghost))
 - Support asynchronous data sources [\#54](https://github.com/47degrees/fetch/pull/54) ([ghost](https://github.com/ghost))
+- Separate fetching a single identity and fetching many in DataSource [\#53](https://github.com/47degrees/fetch/pull/53) ([ghost](https://github.com/ghost))
 - Fix feature warning, typo, tab [\#51](https://github.com/47degrees/fetch/pull/51) ([williamho](https://github.com/williamho))
 - Don't depend on the cache contents for simplifying joined trees [\#50](https://github.com/47degrees/fetch/pull/50) ([ghost](https://github.com/ghost))
 - Use Tomorrow theme [\#49](https://github.com/47degrees/fetch/pull/49) ([ghost](https://github.com/ghost))
-- Add alternatives and acknowledgements [\#43](https://github.com/47degrees/fetch/pull/43) ([ghost](https://github.com/ghost))
 - Update implicits.scala [\#40](https://github.com/47degrees/fetch/pull/40) ([rafaparadela](https://github.com/rafaparadela))
 
 ## [0.2.0](https://github.com/47degrees/fetch/tree/0.2.0) (2016-05-22)
@@ -676,6 +699,7 @@
 
 **Merged pull requests:**
 
+- Add alternatives and acknowledgements [\#43](https://github.com/47degrees/fetch/pull/43) ([ghost](https://github.com/ghost))
 - Typechecked and more thorough README [\#39](https://github.com/47degrees/fetch/pull/39) ([ghost](https://github.com/ghost))
 - Use NonEmptyList instead of List in fetch's signature [\#37](https://github.com/47degrees/fetch/pull/37) ([ghost](https://github.com/ghost))
 - Delete uneeded type parameter [\#36](https://github.com/47degrees/fetch/pull/36) ([ghost](https://github.com/ghost))
