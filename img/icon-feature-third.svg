@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="93px" height="101px" viewBox="0 0 93 101" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: sketchtool 55.2 (78181) - https://sketchapp.com -->
+    <title>DB30719F-CD45-47DB-8887-3821AD36BF79</title>
+    <desc>Created with sketchtool.</desc>
+    <defs>
+        <filter x="-3.2%" y="-3.4%" width="106.5%" height="106.9%" filterUnits="objectBoundingBox" id="filter-1">
+            <feOffset dx="0" dy="2" in="SourceAlpha" result="shadowOffsetOuter1"></feOffset>
+            <feGaussianBlur stdDeviation="10" in="shadowOffsetOuter1" result="shadowBlurOuter1"></feGaussianBlur>
+            <feColorMatrix values="0 0 0 0 0.062745098   0 0 0 0 0.250980392   0 0 0 0 0.317647059  0 0 0 0.049770542 0" type="matrix" in="shadowBlurOuter1" result="shadowMatrixOuter1"></feColorMatrix>
+            <feMerge>
+                <feMergeNode in="shadowMatrixOuter1"></feMergeNode>
+                <feMergeNode in="SourceGraphic"></feMergeNode>
+            </feMerge>
+        </filter>
+    </defs>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="fetch-scala" transform="translate(-1111.000000, -1724.000000)">
+            <g id="home-scala" filter="url(#filter-1)" transform="translate(120.000000, 816.000000)">
+                <g id="site-main" transform="translate(160.000000, 925.000000)">
+                    <g id="main-features">
+                        <g id="item" transform="translate(715.000000, 0.000000)">
+                            <g id="icon-feature-third" transform="translate(135.000000, 0.000000)">
+                                <g>
+                                    <path d="M27.4907,31.2146 L51.5027,17.3576" id="Stroke-17" stroke="#DD3D3D" stroke-width="2"></path>
+                                    <path d="M3.4997,17.3516 L27.4907,3.5006" id="Stroke-19" stroke="#DD3D3D" stroke-width="2"></path>
+                                    <path d="M3.4997,17.3516 L3.4997,45.0596" id="Stroke-21" stroke="#DD3D3D" stroke-width="2"></path>
+                                    <path d="M3.4997,45.0605 L27.4997,58.9205" id="Stroke-23" stroke="#DD3D3D" stroke-width="2"></path>
+                                    <path d="M3.4997,17.3516 L27.5087,31.2116" id="Stroke-25" stroke="#DD3D3D" stroke-width="2"></path>
+                                    <path d="M27.4997,58.9208 L27.4997,31.2158" id="Stroke-29" stroke="#DD3D3D" stroke-width="2"></path>
+                                    <path d="M27.5084,31.2119 L3.4994,45.0599" id="Stroke-33" stroke="#DD3D3D" stroke-width="2"></path>
+                                    <path d="M51.5054,45.0722 L27.4994,58.9202" id="Stroke-37" stroke="#DD3D3D" stroke-width="2"></path>
+                                    <path d="M3.4997,17.3516 L27.4997,58.9196" id="Stroke-39" stroke="#DD3D3D" stroke-width="2"></path>
+                                    <path d="M27.5084,3.5 L51.5054,45.071" id="Stroke-43" stroke="#DD3D3D" stroke-width="2" stroke-dasharray="3,3"></path>
+                                    <polygon id="opacity" fill="#DD3D3D" opacity="0.3" points="39.5069 24.2816 27.4907 31.2158 27.4907 58.9208 51.5054 45.0596"></polygon>
+                                    <path d="M30.4997,31.121 C30.4997,32.78 29.1587,34.121 27.4997,34.121 C25.8437,34.121 24.4997,32.78 24.4997,31.121 C24.4997,29.462 25.8437,28.121 27.4997,28.121 C29.1587,28.121 30.4997,29.462 30.4997,31.121 Z" id="Stroke-1" stroke="#DD3D3D" stroke-width="2" fill="#FFFFFF"></path>
+                                    <path d="M6.4997,45.0605 C6.4997,46.7195 5.1587,48.0605 3.4997,48.0605 C1.8437,48.0605 0.4997,46.7195 0.4997,45.0605 C0.4997,43.4015 1.8437,42.0605 3.4997,42.0605 C5.1587,42.0605 6.4997,43.4015 6.4997,45.0605 Z" id="Stroke-3" stroke="#DD3D3D" stroke-width="2" fill="#FFFFFF"></path>
+                                    <path d="M6.4997,17.3516 C6.4997,19.0076 5.1587,20.3516 3.4997,20.3516 C1.8437,20.3516 0.4997,19.0076 0.4997,17.3516 C0.4997,15.6926 1.8437,14.3516 3.4997,14.3516 C5.1587,14.3516 6.4997,15.6926 6.4997,17.3516 Z" id="Stroke-5" stroke="#DD3D3D" stroke-width="2" fill="#FFFFFF"></path>
+                                    <path d="M30.4997,58.9208 C30.4997,60.5768 29.1587,61.9208 27.4997,61.9208 C25.8437,61.9208 24.4997,60.5768 24.4997,58.9208 C24.4997,57.2618 25.8437,55.9208 27.4997,55.9208 C29.1587,55.9208 30.4997,57.2618 30.4997,58.9208 Z" id="Stroke-7" stroke="#DD3D3D" stroke-width="2" fill="#FFFFFF"></path>
+                                    <path d="M54.4997,17.3573 C54.4997,19.0163 53.1587,20.3573 51.4997,20.3573 C49.8437,20.3573 48.4997,19.0163 48.4997,17.3573 C48.4997,15.7013 49.8437,14.3573 51.4997,14.3573 C53.1587,14.3573 54.4997,15.7013 54.4997,17.3573 Z" id="Stroke-9" stroke="#DD3D3D" stroke-width="2" fill="#FFFFFF"></path>
+                                    <path d="M54.4997,45.0722 C54.4997,46.7312 53.1587,48.0722 51.4997,48.0722 C49.8437,48.0722 48.4997,46.7312 48.4997,45.0722 C48.4997,43.4162 49.8437,42.0722 51.4997,42.0722 C53.1587,42.0722 54.4997,43.4162 54.4997,45.0722 Z" id="Stroke-11" stroke="#DD3D3D" stroke-width="2" fill="#FFFFFF"></path>
+                                    <path d="M30.5084,3.5 C30.5084,5.159 29.1674,6.5 27.5084,6.5 C25.8524,6.5 24.5084,5.159 24.5084,3.5 C24.5084,1.844 25.8524,0.5 27.5084,0.5 C29.1674,0.5 30.5084,1.844 30.5084,3.5 Z" id="Stroke-13" stroke="#DD3D3D" stroke-width="2" fill="#FFFFFF"></path>
+                                </g>
+                            </g>
+                        </g>
+                    </g>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>
