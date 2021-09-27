@@ -262,13 +262,13 @@ class FetchTests extends FetchSpec {
   "The product of concurrent fetches of the same type implies everything fetched in a single batch" in {
     def aFetch[F[_]: Concurrent] =
       for {
-        a <- one(1) // round 1
+        a <- one(1)  // round 1
         b <- many(1) // round 2
         c <- one(1)
       } yield c
     def anotherFetch[F[_]: Concurrent] =
       for {
-        a <- one(2) // round 1
+        a <- one(2)  // round 1
         m <- many(2) // round 2
         c <- one(2)
       } yield c
@@ -292,13 +292,13 @@ class FetchTests extends FetchSpec {
   "Every level of joined concurrent fetches is combined and batched" in {
     def aFetch[F[_]: Concurrent] =
       for {
-        a <- one(1) // round 1
+        a <- one(1)  // round 1
         b <- many(1) // round 2
         c <- one(1)
       } yield c
     def anotherFetch[F[_]: Concurrent] =
       for {
-        a <- one(2) // round 1
+        a <- one(2)  // round 1
         m <- many(2) // round 2
         c <- one(2)
       } yield c
@@ -318,15 +318,15 @@ class FetchTests extends FetchSpec {
   "Every level of sequenced concurrent fetches is batched" in {
     def aFetch[F[_]: Concurrent] =
       for {
-        a <- List(2, 3, 4).traverse(one[F]) // round 1
-        b <- List(0, 1).traverse(many[F]) // round 2
+        a <- List(2, 3, 4).traverse(one[F])   // round 1
+        b <- List(0, 1).traverse(many[F])     // round 2
         c <- List(9, 10, 11).traverse(one[F]) // round 3
       } yield c
 
     def anotherFetch[F[_]: Concurrent] =
       for {
-        a <- List(5, 6, 7).traverse(one[F]) // round 1
-        b <- List(2, 3).traverse(many[F]) // round 2
+        a <- List(5, 6, 7).traverse(one[F])    // round 1
+        b <- List(2, 3).traverse(many[F])      // round 2
         c <- List(12, 13, 14).traverse(one[F]) // round 3
       } yield c
 
