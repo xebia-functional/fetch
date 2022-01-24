@@ -114,7 +114,7 @@ object HttpExample {
     fetchUserById(UserId(id))
 
   def fetchManyUsers[F[_]: Async](ids: List[Int]): Fetch[F, List[User]] =
-    ids.traverse(i => fetchUserById(UserId(i)))
+    Fetch.batchAll(ids.map(i => fetchUserById(UserId(i))): _*)
 
   def fetchPosts[F[_]: Async](user: User): Fetch[F, (User, List[Post])] =
     fetchPostsForUser(user.id).map(posts => (user, posts))
@@ -149,7 +149,7 @@ class Http4sExample extends AnyWordSpec with Matchers {
     def fetch[F[_]: Async]: Fetch[F, List[(User, List[Post])]] =
       for {
         users          <- fetchManyUsers(List(1, 2))
-        usersWithPosts <- users.traverse(fetchPosts[F])
+        usersWithPosts <- Fetch.batchAll(users.map(fetchPosts[F]): _*)
       } yield usersWithPosts
 
     val io = Fetch.runLog[IO](fetch)

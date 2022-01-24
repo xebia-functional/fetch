@@ -150,7 +150,7 @@ class DoobieExample extends AnyWordSpec with Matchers with BeforeAndAfterAll {
 
   "We can fetch multiple authors from the DB in parallel" in {
     def fetch[F[_]: Async]: Fetch[F, List[Author]] =
-      List(1, 2).traverse(Authors.fetchAuthor[F])
+      Fetch.batchAll(List(1, 2).map(Authors.fetchAuthor[F]): _*)
 
     val io: IO[(Log, List[Author])] = Fetch.runLog[IO](fetch)
 

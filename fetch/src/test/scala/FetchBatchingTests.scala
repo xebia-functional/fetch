@@ -152,7 +152,7 @@ class FetchBatchingTests extends FetchSpec {
 
   "A large fetch to a datasource with a maximum batch size is split and executed in sequence" in {
     def fetch[F[_]: Concurrent]: Fetch[F, List[Int]] =
-      List.range(1, 6).traverse(fetchBatchedDataSeq[F])
+      Fetch.batchAll(List.range(1, 6).map(fetchBatchedDataSeq[F]): _*)
 
     val io = Fetch.runLog[IO](fetch)
 
@@ -166,7 +166,7 @@ class FetchBatchingTests extends FetchSpec {
 
   "A large fetch to a datasource with a maximum batch size is split and executed in parallel" in {
     def fetch[F[_]: Concurrent]: Fetch[F, List[Int]] =
-      List.range(1, 6).traverse(fetchBatchedDataPar[F])
+      Fetch.batchAll(List.range(1, 6).map(fetchBatchedDataPar[F]): _*)
 
     val io = Fetch.runLog[IO](fetch)
 
@@ -180,8 +180,8 @@ class FetchBatchingTests extends FetchSpec {
 
   "Fetches to datasources with a maximum batch size should be split and executed in parallel and sequentially when using productR" in {
     def fetch[F[_]: Concurrent]: Fetch[F, List[Int]] =
-      List.range(1, 6).traverse(fetchBatchedDataPar[F]) *>
-        List.range(1, 6).traverse(fetchBatchedDataSeq[F])
+      Fetch.batchAll(List.range(1, 6).map(fetchBatchedDataPar[F]): _*) *>
+        Fetch.batchAll(List.range(1, 6).map(fetchBatchedDataSeq[F]): _*)
 
     val io = Fetch.runLog[IO](fetch)
 
@@ -195,8 +195,8 @@ class FetchBatchingTests extends FetchSpec {
 
   "Fetches to datasources with a maximum batch size should be split and executed in parallel and sequentially when using productL" in {
     def fetch[F[_]: Concurrent]: Fetch[F, List[Int]] =
-      List.range(1, 6).traverse(fetchBatchedDataPar[F]) <*
-        List.range(1, 6).traverse(fetchBatchedDataSeq[F])
+      Fetch.batchAll(List.range(1, 6).map(fetchBatchedDataPar[F]): _*) <*
+        Fetch.batchAll(List.range(1, 6).map(fetchBatchedDataSeq[F]): _*)
 
     val io = Fetch.runLog[IO](fetch)
 
@@ -210,7 +210,7 @@ class FetchBatchingTests extends FetchSpec {
 
   "A large (many) fetch to a datasource with a maximum batch size is split and executed in sequence" in {
     def fetch[F[_]: Concurrent]: Fetch[F, List[Int]] =
-      List(fetchBatchedDataSeq[F](1), fetchBatchedDataSeq[F](2), fetchBatchedDataSeq[F](3)).sequence
+      Fetch.batchAll(List(1, 2, 3).map(fetchBatchedDataSeq[F]): _*)
 
     val io = Fetch.runLog[IO](fetch)
 
@@ -224,7 +224,7 @@ class FetchBatchingTests extends FetchSpec {
 
   "A large (many) fetch to a datasource with a maximum batch size is split and executed in parallel" in {
     def fetch[F[_]: Concurrent]: Fetch[F, List[Int]] =
-      List(fetchBatchedDataPar[F](1), fetchBatchedDataPar[F](2), fetchBatchedDataPar[F](3)).sequence
+      Fetch.batchAll(List(1, 2, 3).map(fetchBatchedDataPar[F]): _*)
 
     val io = Fetch.runLog[IO](fetch)
 
@@ -247,7 +247,7 @@ class FetchBatchingTests extends FetchSpec {
     )
 
     val io = Fetch.runLog[IO](
-      ids.toList.traverse(fetchBatchedDataBigId[IO])
+      Fetch.batchAll(ids.toList.map(fetchBatchedDataBigId[IO]): _*)
     )
 
     io.map { case (log, result) =>

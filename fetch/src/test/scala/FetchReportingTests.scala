@@ -84,11 +84,25 @@ class FetchReportingTests extends FetchSpec {
     }.unsafeToFuture()
   }
 
-  "Single fetches combined with traverse are run in one round" in {
+  "Single fetches combined with traverse are NOT run in one round" in {
     def fetch[F[_]: Concurrent] =
       for {
         manies <- many(3)                 // round 1
-        ones   <- manies.traverse(one[F]) // round 2
+        ones   <- manies.traverse(one[F]) // rounds 2, 3, 4
+      } yield ones
+
+    val io = Fetch.runLog[IO](fetch)
+
+    io.map { case (log, result) =>
+      log.rounds.size shouldEqual 4
+    }.unsafeToFuture()
+  }
+
+  "Single fetches combined with Fetch.batchAll are run in one round" in {
+    def fetch[F[_]: Concurrent] =
+      for {
+        manies <- many(3)                                // round 1
+        ones   <- Fetch.batchAll(manies.map(one[F]): _*) // round 2
       } yield ones
 
     val io = Fetch.runLog[IO](fetch)
