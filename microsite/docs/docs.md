@@ -232,7 +232,7 @@ object OnlyBatched extends Data[Int, Int]{
 
 ## Creating a runtime
 
-Since we'lll use `IO` from the `cats-effect` library to execute our fetches, we'll need a runtime for executing our `IO` instances. This includes a `ContextShift[IO]` used for running the `IO` instances and a `Timer[IO]` that is used for scheduling, let's go ahead and create them, we'll use a `java.util.concurrent.ScheduledThreadPoolExecutor` with a few threads to run our fetches.
+Since we'll use `IO` from the `cats-effect` library to execute our fetches, we'll need a runtime for executing our `IO` instances. This includes a `ContextShift[IO]` used for running the `IO` instances and a `Timer[IO]` that is used for scheduling, let's go ahead and create them, we'll use a `java.util.concurrent.ScheduledThreadPoolExecutor` with a few threads to run our fetches.
 
 ```scala mdoc:silent
 import cats.effect._
