@@ -21,10 +21,10 @@ A library for Simple & Efficient data access in Scala and Scala.js
 
 Add the following dependency to your project's build file.
 
-For Scala 2.11.x and 2.12.x:
+For Scala 2.11.x through 3.x:
 
 ```scala
-"com.47deg" %% "fetch" % "2.1.1"
+"com.47deg" %% "fetch" % "3.0.0"
 ```
 
 Or, if using Scala.js (0.6.x):
