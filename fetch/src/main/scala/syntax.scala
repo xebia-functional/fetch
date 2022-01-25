@@ -44,4 +44,9 @@ object syntax {
 
     def batchAll: Fetch[F, List[A]] = Fetch.batchAll(fetches: _*)
   }
+
+  implicit class SeqSyntax[A](val as: Seq[A]) extends AnyVal {
+
+    def batchAllWith[F[_]: Monad, B](f: A => Fetch[F, B]) = Fetch.batchAll(as.map(f): _*)
+  }
 }

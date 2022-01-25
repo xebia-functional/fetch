@@ -48,13 +48,23 @@ class FetchSyntaxTests extends FetchSpec {
   }
 
   "`batchAll` syntax allows batching sequences of fetches and is equivalent to Fetch.batchAll" in {
-    def fetches[F[_]: Concurrent] = List(one(1), one(2), one(3))
+    def fetches[F[_]: Concurrent] = List(1, 2, 3).map(one[IO])
     val fetchWithSyntax           = fetches[IO].batchAll
+    val fetchWithOtherSyntax      = List(1, 2, 3).batchAllWith(one[IO])
     val fetchManual               = Fetch.batchAll(fetches[IO]: _*)
 
     val result1 = Fetch.runLog[IO](fetchWithSyntax)
-    val result2 = Fetch.runLog[IO](fetchManual)
+    val result2 = Fetch.runLog[IO](fetchWithOtherSyntax)
+    val result3 = Fetch.runLog[IO](fetchManual)
 
-    result1 shouldEqual result2
+    (result1, result2, result3).tupled
+      .map { case ((log1, r1), (log2, r2), (log3, r3)) =>
+        Set(r1, r2, r3).size shouldBe 1
+
+        log1.rounds.size shouldBe 1
+        log2.rounds.size shouldBe 1
+        log3.rounds.size shouldBe 1
+      }
+      .unsafeToFuture()
   }
 }
