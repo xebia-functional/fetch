@@ -18,6 +18,7 @@ package fetch
 
 import cats._
 import cats.effect._
+import fetch.Fetch
 
 object syntax {
 
@@ -37,5 +38,10 @@ object syntax {
 
     def fetch[F[_]: Concurrent]: Fetch[F, B] =
       Fetch.error[F, B](a)
+  }
+
+  implicit class FetchSeqBatchSyntax[F[_]: Monad, A](fetches: Seq[Fetch[F, A]]) {
+
+    def batchAll: Fetch[F, List[A]] = Fetch.batchAll(fetches: _*)
   }
 }

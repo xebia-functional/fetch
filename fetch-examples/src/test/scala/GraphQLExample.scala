@@ -23,6 +23,7 @@ import atto._, Atto._
 import cats.syntax.all._
 import cats.data.NonEmptyList
 import cats.effect._
+import fetch.syntax._
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
@@ -206,7 +207,7 @@ class GraphQLExample extends AnyWordSpec with Matchers {
                 Project(name >> Some(repo.name), ls, cs)
               }
             }
-            Fetch.batchAll(fetches: _*)
+            fetches.batchAll
           }
         } yield projects
 
@@ -220,7 +221,7 @@ class GraphQLExample extends AnyWordSpec with Matchers {
             val fetches = repos.map { r =>
               Languages.fetch(r).map(ls => Project(name >> Some(r.name), ls, List()))
             }
-            Fetch.batchAll(fetches: _*)
+            fetches.batchAll
           }
         } yield projects
 
@@ -231,7 +232,7 @@ class GraphQLExample extends AnyWordSpec with Matchers {
             val fetches = repos.map { r =>
               Collaborators.fetch(r).map(cs => Project(name >> Some(r.name), List(), cs))
             }
-            Fetch.batchAll(fetches: _*)
+            fetches.batchAll
           }
         } yield projects
     }

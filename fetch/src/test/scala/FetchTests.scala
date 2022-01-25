@@ -26,6 +26,7 @@ import cats.instances.list._
 import cats.instances.option._
 import cats.data.NonEmptyList
 import cats.syntax.all._
+import fetch.syntax._
 
 class FetchTests extends FetchSpec {
   import TestHelper._
@@ -186,7 +187,7 @@ class FetchTests extends FetchSpec {
   "Identities are deduped when batched" in {
     val sources = List(1, 1, 2)
     def fetch[F[_]: Concurrent]: Fetch[F, List[Int]] =
-      Fetch.batchAll(sources.map(one[F]): _*)
+      sources.map(one[F]).batchAll
 
     val io = Fetch.runLog[IO](fetch)
 
@@ -318,22 +319,22 @@ class FetchTests extends FetchSpec {
   "Every level of batched, concurrent fetches is batched" in {
     def aFetch[F[_]: Concurrent] =
       for {
-        a <- Fetch.batchAll(List(2, 3, 4).map(one[F]): _*)   // round 1
-        b <- Fetch.batchAll(List(0, 1).map(many[F]): _*)     // round 2
-        c <- Fetch.batchAll(List(9, 10, 11).map(one[F]): _*) // round 3
+        a <- List(2, 3, 4).map(one[F]).batchAll   // round 1
+        b <- List(0, 1).map(many[F]).batchAll     // round 2
+        c <- List(9, 10, 11).map(one[F]).batchAll // round 3
       } yield c
 
     def anotherFetch[F[_]: Concurrent] =
       for {
-        a <- Fetch.batchAll(List(5, 6, 7).map(one[F]): _*)    // round 1
-        b <- Fetch.batchAll(List(2, 3).map(many[F]): _*)      // round 2
-        c <- Fetch.batchAll(List(12, 13, 14).map(one[F]): _*) // round 3
+        a <- List(5, 6, 7).map(one[F]).batchAll    // round 1
+        b <- List(2, 3).map(many[F]).batchAll      // round 2
+        c <- List(12, 13, 14).map(one[F]).batchAll // round 3
       } yield c
 
     def fetch[F[_]: Concurrent] =
       (
         (aFetch[F], anotherFetch[F]).tupled,
-        Fetch.batchAll(List(15, 16, 17).map(one[F]): _*) // round 1
+        List(15, 16, 17).map(one[F]).batchAll // round 1
       ).tupled
 
     val io = Fetch.runLog[IO](fetch)
@@ -374,7 +375,7 @@ class FetchTests extends FetchSpec {
 
   "Manually batched fetches are run concurrently" in {
     def fetch[F[_]: Concurrent]: Fetch[F, List[Int]] =
-      Fetch.batchAll((List(1, 2, 3).map(one(_)) ++ List(4, 5).map(anotherOne(_))): _*)
+      (List(1, 2, 3).map(one(_)) ++ List(4, 5).map(anotherOne(_))).batchAll
 
     val io = Fetch.runLog[IO](fetch)
 
@@ -401,7 +402,7 @@ class FetchTests extends FetchSpec {
 
   "Manually batched fetches are deduped" in {
     def fetch[F[_]: Concurrent]: Fetch[F, List[Int]] =
-      Fetch.batchAll(List(1, 2, 1).map(one(_)): _*)
+      List(1, 2, 1).map(one(_)).batchAll
 
     val io = Fetch.runLog[IO](fetch)
 
@@ -428,7 +429,7 @@ class FetchTests extends FetchSpec {
 
   "Duplicated sources are only fetched once" in {
     def fetch[F[_]: Concurrent]: Fetch[F, List[Int]] =
-      Fetch.batchAll(List(1, 2, 1).map(one[F]): _*)
+      List(1, 2, 1).map(one[F]).batchAll
 
     val io = Fetch.runLog[IO](fetch)
 
@@ -459,7 +460,7 @@ class FetchTests extends FetchSpec {
     def fetch[F[_]: Concurrent] =
       for {
         v      <- Fetch.pure[F, List[Int]](List(1, 2, 1))
-        result <- Fetch.batchAll(v.map(one[F]): _*)
+        result <- v.map(one[F]).batchAll
       } yield result
 
     val io = Fetch.runLog[IO](fetch)
@@ -516,7 +517,7 @@ class FetchTests extends FetchSpec {
   "Batched elements are cached and thus not fetched more than once" in {
     def fetch[F[_]: Concurrent] =
       for {
-        _          <- Fetch.batchAll(List(1, 2, 3).map(one[F]): _*)
+        _          <- List(1, 2, 3).map(one[F]).batchAll
         aOne       <- one(1)
         anotherOne <- one(1)
         _          <- one(1)
@@ -674,7 +675,7 @@ class FetchTests extends FetchSpec {
         anotherOne <- one(1)
         _          <- one(1)
         _          <- one(2)
-        _          <- Fetch.batchAll(List(1, 2, 3).map(one[F]): _*)
+        _          <- List(1, 2, 3).map(one[F]).batchAll
         _          <- one(3)
         _          <- one(1)
         _          <- one(1)
@@ -832,7 +833,7 @@ class FetchTests extends FetchSpec {
 
   "We can run optional fetches with Fetch.batchAll" in {
     def fetch[F[_]: Concurrent]: Fetch[F, List[Int]] =
-      Fetch.batchAll(List(1, 2, 3).map(maybeOpt[F]): _*).map(_.flatten)
+      List(1, 2, 3).map(maybeOpt[F]).batchAll.map(_.flatten)
 
     Fetch.run[IO](fetch).map(_ shouldEqual List(1, 3)).unsafeToFuture()
   }
