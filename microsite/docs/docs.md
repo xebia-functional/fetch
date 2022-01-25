@@ -235,19 +235,14 @@ object OnlyBatched extends Data[Int, Int]{
 
 ## Creating a runtime
 
-Since we'll use `IO` from the `cats-effect` library to execute our fetches, we'll need a runtime for executing our `IO` instances. This includes a `ContextShift[IO]` used for running the `IO` instances and a `Timer[IO]` that is used for scheduling, let's go ahead and create them, we'll use a `java.util.concurrent.ScheduledThreadPoolExecutor` with a few threads to run our fetches.
+Since we'll use `IO` from the `cats-effect` library to execute our fetches, we'll need an `IORuntime` for executing our `IO` instances.
 
 ```scala mdoc:silent
-import cats.effect._
-import java.util.concurrent._
-import scala.concurrent.ExecutionContext
-import scala.concurrent.duration._
-
-val executor = new ScheduledThreadPoolExecutor(4)
-val executionContext: ExecutionContext = ExecutionContext.fromExecutor(executor)
-
-import cats.effect.unsafe.implicits.global
+import cats.effect.unsafe.implicits.global //Give
 ```
+
+Normally, in your applications, this is provided by `IOApp`, and you should not need to import this except in limited scenarios such as test environments that do not have Cats Effect integration.
+For more information, and particularly on why you would usually not want to make one of these yourself, [see this post by Daniel Spiewak](https://github.com/typelevel/cats-effect/discussions/1562#discussioncomment-254838)
 
 ## Creating and running a fetch
 
@@ -925,10 +920,6 @@ Let's break down the output from `describe`:
  - The nested lines represent the different rounds of execution
   + "Fetch one" rounds are executed for getting an identity from one data source
   + "Batch" rounds are executed for getting a batch of identities from one data source
-
-```scala mdoc:invisible
-executor.shutdownNow()
-```
 
 # Resources
 
