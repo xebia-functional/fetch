@@ -369,13 +369,12 @@ object `package` {
      * `traverse` on lists of `Fetch` values.
      */
     def batchAll[F[_]: Monad, A](fetches: Fetch[F, A]*): Fetch[F, List[A]] = {
-      fetches.toNeSeq
+      fetches.toList.toNel
         .map { nes =>
           nes
             .map(_.map(Chain.one(_)))
             .reduceLeft { (fa, fb) =>
-              val mon = Monad[Fetch[F, *]]
-              mon.map2(fa, fb)((a, b) => a ++ b)
+              fetchM[F].map2(fa, fb)((a, b) => a ++ b)
             }
             .map(_.toList)
         }
