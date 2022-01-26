@@ -15,8 +15,8 @@ object ProjectPlugin extends AutoPlugin {
       Seq(
         libraryDependencies ++=
           Seq(
-            "org.typelevel" %%% "cats-effect" % "3.3.4",
-            "org.scalatest" %%% "scalatest"   % "3.2.10" % "test"
+            "org.typelevel" %%% "cats-effect" % "3.2.9",
+            "org.scalatest" %%% "scalatest"   % "3.2.11" % "test"
           )
       )
 
@@ -62,8 +62,8 @@ object ProjectPlugin extends AutoPlugin {
     lazy val examplesSettings = Seq(
       libraryDependencies ++= Seq(
         "io.circe"     %% "circe-generic"       % "0.14.1",
-        "org.tpolecat" %% "doobie-core"         % "1.0.0-RC1",
-        "org.tpolecat" %% "doobie-h2"           % "1.0.0-RC1",
+        "org.tpolecat" %% "doobie-core"         % "1.0.0-RC2",
+        "org.tpolecat" %% "doobie-h2"           % "1.0.0-RC2",
         "org.tpolecat" %% "atto-core"           % "0.9.5",
         "org.http4s"   %% "http4s-blaze-client" % "0.23.7",
         "org.http4s"   %% "http4s-circe"        % "0.23.7",
