@@ -27,7 +27,7 @@ For Scala 2.12.x through 3.x:
 "com.47deg" %% "fetch" % "3.0.0"
 ```
 
-Or, if using Scala.js (1.0.x):
+Or, if using Scala.js (1.8.x):
 
 ```scala
 "com.47deg" %%% "fetch" % "3.0.0"
