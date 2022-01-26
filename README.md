@@ -27,10 +27,10 @@ For Scala 2.12.x through 3.x:
 "com.47deg" %% "fetch" % "3.0.0"
 ```
 
-Or, if using Scala.js (0.6.x):
+Or, if using Scala.js (1.0.x):
 
 ```scala
-"com.47deg" %%% "fetch" % "2.1.1"
+"com.47deg" %%% "fetch" % "3.0.0"
 ```
 
 
@@ -105,19 +105,14 @@ def fetchString[F[_] : Async](n: Int): Fetch[F, String] =
 
 ## Creating a runtime
 
-Since `Fetch` relies on `Concurrent` from the `cats-effect` library, we'll need a runtime for executing our effects. We'll be using `IO` from `cats-effect` to run fetches, but you can use any type that has a `Concurrent` instance.
+Since we'll use `IO` from the `cats-effect` library to execute our fetches, we'll need an `IORuntime` for executing our `IO` instances.
 
-For executing `IO`, we need a `ContextShift[IO]` used for running `IO` instances and a `Timer[IO]` that is used for scheduling. Let's go ahead and create them. We'll use a `java.util.concurrent.ScheduledThreadPoolExecutor` with a couple of threads to run our fetches.
-
-```scala
-import java.util.concurrent._
-import scala.concurrent.ExecutionContext
-
-val executor = new ScheduledThreadPoolExecutor(4)
-val executionContext: ExecutionContext = ExecutionContext.fromExecutor(executor)
-
-import cats.effect.unsafe.implicits.global
+```scala mdoc:silent
+import cats.effect.unsafe.implicits.global //Gives us an IORuntime in places it is normally not provided
 ```
+
+Normally, in your applications, this is provided by `IOApp`, and you should not need to import this except in limited scenarios such as test environments that do not have Cats Effect integration.
+For more information, and particularly on why you would usually not want to make one of these yourself, [see this post by Daniel Spiewak](https://github.com/typelevel/cats-effect/discussions/1562#discussioncomment-254838)
 
 ## Creating and running a fetch
 
