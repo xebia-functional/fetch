@@ -26,12 +26,12 @@ we read) concerns.</p>
 
 <p>To begin, add the following dependency to your SBT build file:</p>
 
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="s">"com.47deg"</span> <span class="o">%%</span> <span class="s">"fetch"</span> <span class="o">%</span> <span class="s">"2.1.1"</span>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="s">"com.47deg"</span> <span class="o">%%</span> <span class="s">"fetch"</span> <span class="o">%</span> <span class="s">"3.0.0"</span>
 </code></pre></div></div>
 
 <p>Or, if using Scala.js:</p>
 
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="s">"com.47deg"</span> <span class="o">%%%</span> <span class="s">"fetch"</span> <span class="o">%</span> <span class="s">"2.1.1"</span>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="s">"com.47deg"</span> <span class="o">%%%</span> <span class="s">"fetch"</span> <span class="o">%</span> <span class="s">"3.0.0"</span>
 </code></pre></div></div>
 
 <p>Now you’ll have Fetch available in both Scala and Scala.js.</p>
@@ -97,11 +97,13 @@ source for fetching users given their id. The first thing we’ll do is define t
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="nn">fetch._</span>
 <span class="k">import</span> <span class="nn">cats.implicits._</span>
 <span class="k">import</span> <span class="nn">cats.effect._</span>
+<span class="k">import</span> <span class="nn">cats.effect.std.Console</span>
+<span class="k">import</span> <span class="nn">scala.concurrent.duration._</span>
 
-<span class="k">def</span> <span class="nf">latency</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span><span class="kt">:</span> <span class="kt">Sync</span><span class="o">](</span><span class="n">msg</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span><span class="k">:</span> <span class="kt">F</span><span class="o">[</span><span class="kt">Unit</span><span class="o">]</span> <span class="k">=</span> <span class="k">for</span> <span class="o">{</span>
-  <span class="k">_</span> <span class="k">&lt;-</span> <span class="nc">Sync</span><span class="o">[</span><span class="kt">F</span><span class="o">].</span><span class="py">delay</span><span class="o">(</span><span class="nf">println</span><span class="o">(</span><span class="n">s</span><span class="s">"--&gt; [${Thread.currentThread.getId}] $msg"</span><span class="o">))</span>
-  <span class="k">_</span> <span class="k">&lt;-</span> <span class="nc">Sync</span><span class="o">[</span><span class="kt">F</span><span class="o">].</span><span class="py">delay</span><span class="o">(</span><span class="nv">Thread</span><span class="o">.</span><span class="py">sleep</span><span class="o">(</span><span class="mi">100</span><span class="o">))</span>
-  <span class="k">_</span> <span class="k">&lt;-</span> <span class="nc">Sync</span><span class="o">[</span><span class="kt">F</span><span class="o">].</span><span class="py">delay</span><span class="o">(</span><span class="nf">println</span><span class="o">(</span><span class="n">s</span><span class="s">"&lt;-- [${Thread.currentThread.getId}] $msg"</span><span class="o">))</span>
+<span class="k">def</span> <span class="nf">latency</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span><span class="kt">:</span> <span class="kt">Console:</span> <span class="kt">Temporal</span><span class="o">](</span><span class="n">msg</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span><span class="k">:</span> <span class="kt">F</span><span class="o">[</span><span class="kt">Unit</span><span class="o">]</span> <span class="k">=</span> <span class="k">for</span> <span class="o">{</span>
+  <span class="k">_</span> <span class="k">&lt;-</span> <span class="nc">Console</span><span class="o">[</span><span class="kt">F</span><span class="o">].</span><span class="py">println</span><span class="o">(</span><span class="n">s</span><span class="s">"--&gt; [${Thread.currentThread.getId}] $msg"</span><span class="o">)</span>
+  <span class="k">_</span> <span class="k">&lt;-</span> <span class="nc">Temporal</span><span class="o">[</span><span class="kt">F</span><span class="o">].</span><span class="py">sleep</span><span class="o">(</span><span class="mf">100.</span><span class="n">milliseconds</span><span class="o">)</span>
+  <span class="k">_</span> <span class="k">&lt;-</span> <span class="nc">Console</span><span class="o">[</span><span class="kt">F</span><span class="o">].</span><span class="py">println</span><span class="o">(</span><span class="n">s</span><span class="s">"&lt;-- [${Thread.currentThread.getId}] $msg"</span><span class="o">)</span>
 <span class="o">}</span> <span class="nf">yield</span> <span class="o">()</span>
 </code></pre></div></div>
 
@@ -119,7 +121,7 @@ source for fetching users given their id. The first thing we’ll do is define t
 <span class="k">object</span> <span class="nc">Users</span> <span class="k">extends</span> <span class="nc">Data</span><span class="o">[</span><span class="kt">UserId</span>, <span class="kt">User</span><span class="o">]</span> <span class="o">{</span>
   <span class="k">def</span> <span class="nf">name</span> <span class="k">=</span> <span class="s">"Users"</span>
 
-  <span class="k">def</span> <span class="nf">source</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span> <span class="kt">:</span> <span class="kt">Async</span><span class="o">]</span><span class="k">:</span> <span class="kt">DataSource</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">UserId</span>, <span class="kt">User</span><span class="o">]</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">DataSource</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">UserId</span>, <span class="kt">User</span><span class="o">]</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="nf">source</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span><span class="kt">:</span> <span class="kt">Console:</span> <span class="kt">Temporal</span><span class="o">]</span><span class="k">:</span> <span class="kt">DataSource</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">UserId</span>, <span class="kt">User</span><span class="o">]</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">DataSource</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">UserId</span>, <span class="kt">User</span><span class="o">]</span> <span class="o">{</span>
     <span class="k">override</span> <span class="k">def</span> <span class="nf">data</span> <span class="k">=</span> <span class="nc">Users</span>
 
     <span class="k">override</span> <span class="k">def</span> <span class="nf">CF</span> <span class="k">=</span> <span class="nc">Concurrent</span><span class="o">[</span><span class="kt">F</span><span class="o">]</span>
@@ -136,7 +138,7 @@ source for fetching users given their id. The first thing we’ll do is define t
 <p>Now that we have a data source we can write a function for fetching users
 given a <code class="highlighter-rouge">DataSource</code>, an id and the data source as arguments to <code class="highlighter-rouge">Fetch</code>.</p>
 
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">getUser</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span> <span class="kt">:</span> <span class="kt">Async</span><span class="o">](</span><span class="n">id</span><span class="k">:</span> <span class="kt">UserId</span><span class="o">)</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">User</span><span class="o">]</span> <span class="k">=</span>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">getUser</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span><span class="kt">:</span> <span class="kt">Console:</span> <span class="kt">Temporal</span><span class="o">](</span><span class="n">id</span><span class="k">:</span> <span class="kt">UserId</span><span class="o">)</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">User</span><span class="o">]</span> <span class="k">=</span>
   <span class="nc">Fetch</span><span class="o">(</span><span class="n">id</span><span class="o">,</span> <span class="nv">Users</span><span class="o">.</span><span class="py">source</span><span class="o">)</span>
 </code></pre></div></div>
 
@@ -144,7 +146,7 @@ given a <code class="highlighter-rouge">DataSource</code>, an id and the data so
 
 <p>If you want to create a Fetch that doesn’t fail if the identity is not found, you can use <code class="highlighter-rouge">Fetch#optional</code> instead of <code class="highlighter-rouge">Fetch#apply</code>. Note that instead of a <code class="highlighter-rouge">Fetch[F, A]</code> you will get a <code class="highlighter-rouge">Fetch[F, Option[A]]</code>.</p>
 
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">maybeGetUser</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span> <span class="kt">:</span> <span class="kt">Async</span><span class="o">](</span><span class="n">id</span><span class="k">:</span> <span class="kt">UserId</span><span class="o">)</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">Option</span><span class="o">[</span><span class="kt">User</span><span class="o">]]</span> <span class="k">=</span>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">maybeGetUser</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span><span class="kt">:</span> <span class="kt">Console:</span> <span class="kt">Temporal</span><span class="o">](</span><span class="n">id</span><span class="k">:</span> <span class="kt">UserId</span><span class="o">)</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">Option</span><span class="o">[</span><span class="kt">User</span><span class="o">]]</span> <span class="k">=</span>
   <span class="nv">Fetch</span><span class="o">.</span><span class="py">optional</span><span class="o">(</span><span class="n">id</span><span class="o">,</span> <span class="nv">Users</span><span class="o">.</span><span class="py">source</span><span class="o">)</span>
 </code></pre></div></div>
 
@@ -152,10 +154,10 @@ given a <code class="highlighter-rouge">DataSource</code>, an id and the data so
 
 <p>If your data source doesn’t support batching, you can simply leave the <code class="highlighter-rouge">batch</code> method unimplemented. Note that it will use the <code class="highlighter-rouge">fetch</code> implementation for requesting identities in parallel.</p>
 
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">object</span> <span class="nc">Unbatched</span> <span class="k">extends</span> <span class="nc">Data</span><span class="o">[</span><span class="kt">Int</span>, <span class="kt">Int</span><span class="o">]{</span>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">object</span> <span class="nc">Unbatched</span> <span class="k">extends</span> <span class="nc">Data</span><span class="o">[</span><span class="kt">Int</span>, <span class="kt">Int</span><span class="o">]</span> <span class="o">{</span>
   <span class="k">def</span> <span class="nf">name</span> <span class="k">=</span> <span class="s">"Unbatched"</span>
 
-  <span class="k">def</span> <span class="nf">source</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span> <span class="kt">:</span> <span class="kt">Async</span><span class="o">]</span><span class="k">:</span> <span class="kt">DataSource</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">Int</span>, <span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">DataSource</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">Int</span>, <span class="kt">Int</span><span class="o">]{</span>
+  <span class="k">def</span> <span class="nf">source</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span><span class="kt">:</span> <span class="kt">Console:</span> <span class="kt">Temporal</span><span class="o">]</span><span class="k">:</span> <span class="kt">DataSource</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">Int</span>, <span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">DataSource</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">Int</span>, <span class="kt">Int</span><span class="o">]{</span>
     <span class="k">override</span> <span class="k">def</span> <span class="nf">data</span> <span class="k">=</span> <span class="nc">Unbatched</span>
 
     <span class="k">override</span> <span class="k">def</span> <span class="nf">CF</span> <span class="k">=</span> <span class="nc">Concurrent</span><span class="o">[</span><span class="kt">F</span><span class="o">]</span>
@@ -173,7 +175,8 @@ given a <code class="highlighter-rouge">DataSource</code>, an id and the data so
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">object</span> <span class="nc">UnbatchedSeq</span> <span class="k">extends</span> <span class="nc">Data</span><span class="o">[</span><span class="kt">Int</span>, <span class="kt">Int</span><span class="o">]{</span>
   <span class="k">def</span> <span class="nf">name</span> <span class="k">=</span> <span class="s">"UnbatchedSeq"</span>
 
-  <span class="k">def</span> <span class="nf">source</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span> <span class="kt">:</span> <span class="kt">Async</span><span class="o">]</span><span class="k">:</span> <span class="kt">DataSource</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">Int</span>, <span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">DataSource</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">Int</span>, <span class="kt">Int</span><span class="o">]{</span>
+  <span class="c1">//Normally you only need F[_]: Concurrent; other examples use Console and Temporal due to the `latency` function.</span>
+  <span class="k">def</span> <span class="nf">source</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span><span class="kt">:</span> <span class="kt">Concurrent</span><span class="o">]</span><span class="k">:</span> <span class="kt">DataSource</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">Int</span>, <span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">DataSource</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">Int</span>, <span class="kt">Int</span><span class="o">]{</span>
     <span class="k">override</span> <span class="k">def</span> <span class="nf">data</span> <span class="k">=</span> <span class="nc">UnbatchedSeq</span>
 
     <span class="k">override</span> <span class="k">def</span> <span class="nf">CF</span> <span class="k">=</span> <span class="nc">Concurrent</span><span class="o">[</span><span class="kt">F</span><span class="o">]</span>
@@ -196,7 +199,7 @@ given a <code class="highlighter-rouge">DataSource</code>, an id and the data so
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">object</span> <span class="nc">OnlyBatched</span> <span class="k">extends</span> <span class="nc">Data</span><span class="o">[</span><span class="kt">Int</span>, <span class="kt">Int</span><span class="o">]{</span>
   <span class="k">def</span> <span class="nf">name</span> <span class="k">=</span> <span class="s">"OnlyBatched"</span>
 
-  <span class="k">def</span> <span class="nf">source</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span> <span class="kt">:</span> <span class="kt">Async</span><span class="o">]</span><span class="k">:</span> <span class="kt">DataSource</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">Int</span>, <span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">DataSource</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">Int</span>, <span class="kt">Int</span><span class="o">]{</span>
+  <span class="k">def</span> <span class="nf">source</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span><span class="kt">:</span> <span class="kt">Concurrent</span><span class="o">]</span><span class="k">:</span> <span class="kt">DataSource</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">Int</span>, <span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">DataSource</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">Int</span>, <span class="kt">Int</span><span class="o">]{</span>
     <span class="k">override</span> <span class="k">def</span> <span class="nf">data</span> <span class="k">=</span> <span class="nc">OnlyBatched</span>
 
     <span class="k">override</span> <span class="k">def</span> <span class="nf">CF</span> <span class="k">=</span> <span class="nc">Concurrent</span><span class="o">[</span><span class="kt">F</span><span class="o">]</span>
@@ -212,18 +215,13 @@ given a <code class="highlighter-rouge">DataSource</code>, an id and the data so
 
 <h2 id="creating-a-runtime">Creating a runtime</h2>
 
-<p>Since we’lll use <code class="highlighter-rouge">IO</code> from the <code class="highlighter-rouge">cats-effect</code> library to execute our fetches, we’ll need a runtime for executing our <code class="highlighter-rouge">IO</code> instances. This includes a <code class="highlighter-rouge">ContextShift[IO]</code> used for running the <code class="highlighter-rouge">IO</code> instances and a <code class="highlighter-rouge">Timer[IO]</code> that is used for scheduling, let’s go ahead and create them, we’ll use a <code class="highlighter-rouge">java.util.concurrent.ScheduledThreadPoolExecutor</code> with a few threads to run our fetches.</p>
+<p>Since we’ll use <code class="highlighter-rouge">IO</code> from the <code class="highlighter-rouge">cats-effect</code> library to execute our fetches, we’ll need an <code class="highlighter-rouge">IORuntime</code> for executing our <code class="highlighter-rouge">IO</code> instances.</p>
 
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="nn">cats.effect._</span>
-<span class="k">import</span> <span class="nn">java.util.concurrent._</span>
-<span class="k">import</span> <span class="nn">scala.concurrent.ExecutionContext</span>
-<span class="k">import</span> <span class="nn">scala.concurrent.duration._</span>
-
-<span class="k">val</span> <span class="nv">executor</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">ScheduledThreadPoolExecutor</span><span class="o">(</span><span class="mi">4</span><span class="o">)</span>
-<span class="k">val</span> <span class="nv">executionContext</span><span class="k">:</span> <span class="kt">ExecutionContext</span> <span class="o">=</span> <span class="nv">ExecutionContext</span><span class="o">.</span><span class="py">fromExecutor</span><span class="o">(</span><span class="n">executor</span><span class="o">)</span>
-
-<span class="k">import</span> <span class="nn">cats.effect.unsafe.implicits.global</span>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="nn">cats.effect.unsafe.implicits.global</span> <span class="c1">//Give</span>
 </code></pre></div></div>
+
+<p>Normally, in your applications, this is provided by <code class="highlighter-rouge">IOApp</code>, and you should not need to import this except in limited scenarios such as test environments that do not have Cats Effect integration.
+For more information, and particularly on why you would usually not want to make one of these yourself, <a href="https://github.com/typelevel/cats-effect/discussions/1562#discussioncomment-254838">see this post by Daniel Spiewak</a></p>
 
 <h2 id="creating-and-running-a-fetch">Creating and running a fetch</h2>
 
@@ -231,7 +229,7 @@ given a <code class="highlighter-rouge">DataSource</code>, an id and the data so
 When we are creating and combining <code class="highlighter-rouge">Fetch</code> values, we are just constructing a recipe of our data
 dependencies.</p>
 
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">fetchUser</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span> <span class="kt">:</span> <span class="kt">Async</span><span class="o">]</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">User</span><span class="o">]</span> <span class="k">=</span>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">fetchUser</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span><span class="kt">:</span> <span class="kt">Console:</span> <span class="kt">Temporal</span><span class="o">]</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">User</span><span class="o">]</span> <span class="k">=</span>
   <span class="nf">getUser</span><span class="o">(</span><span class="mi">1</span><span class="o">)</span>
 </code></pre></div></div>
 
@@ -245,8 +243,6 @@ dependencies.</p>
 <p>We can now run the <code class="highlighter-rouge">IO</code> and see its result:</p>
 
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">Fetch</span><span class="o">.</span><span class="py">run</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="n">fetchUser</span><span class="o">).</span><span class="py">unsafeRunTimed</span><span class="o">(</span><span class="mf">5.</span><span class="n">seconds</span><span class="o">)</span>
-<span class="c1">// --&gt; [218] One User 1</span>
-<span class="c1">// &lt;-- [218] One User 1</span>
 <span class="c1">// res1: Option[User] = Some(value = User(id = 1, username = "@one"))</span>
 </code></pre></div></div>
 
@@ -254,7 +250,7 @@ dependencies.</p>
 
 <p>When we have two fetches that depend on each other, we can use <code class="highlighter-rouge">flatMap</code> to combine them. The most straightforward way is to use a for comprehension:</p>
 
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">fetchTwoUsers</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span> <span class="kt">:</span> <span class="kt">Async</span><span class="o">]</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="o">(</span><span class="kt">User</span>, <span class="kt">User</span><span class="o">)]</span> <span class="k">=</span> <span class="k">for</span> <span class="o">{</span>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">fetchTwoUsers</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span><span class="kt">:</span> <span class="kt">Console:</span> <span class="kt">Temporal</span><span class="o">]</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="o">(</span><span class="kt">User</span>, <span class="kt">User</span><span class="o">)]</span> <span class="k">=</span> <span class="k">for</span> <span class="o">{</span>
   <span class="n">aUser</span> <span class="k">&lt;-</span> <span class="nf">getUser</span><span class="o">(</span><span class="mi">1</span><span class="o">)</span>
   <span class="n">anotherUser</span> <span class="k">&lt;-</span> <span class="nf">getUser</span><span class="o">(</span><span class="nv">aUser</span><span class="o">.</span><span class="py">id</span> <span class="o">+</span> <span class="mi">1</span><span class="o">)</span>
 <span class="o">}</span> <span class="nf">yield</span> <span class="o">(</span><span class="n">aUser</span><span class="o">,</span> <span class="n">anotherUser</span><span class="o">)</span>
@@ -263,10 +259,6 @@ dependencies.</p>
 <p>When composing fetches with <code class="highlighter-rouge">flatMap</code> we are telling Fetch that the second one depends on the previous one, so it isn’t able to make any optimizations. When running the above fetch, we will query the user data source in two rounds: one for the user with id 1 and another for the user with id 2.</p>
 
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">Fetch</span><span class="o">.</span><span class="py">run</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="n">fetchTwoUsers</span><span class="o">).</span><span class="py">unsafeRunTimed</span><span class="o">(</span><span class="mf">5.</span><span class="n">seconds</span><span class="o">)</span>
-<span class="c1">// --&gt; [218] One User 1</span>
-<span class="c1">// &lt;-- [218] One User 1</span>
-<span class="c1">// --&gt; [217] One User 2</span>
-<span class="c1">// &lt;-- [217] One User 2</span>
 <span class="c1">// res2: Option[(User, User)] = Some(</span>
 <span class="c1">//   value = (User(id = 1, username = "@one"), User(id = 2, username = "@two"))</span>
 <span class="c1">// )</span>
@@ -278,15 +270,13 @@ dependencies.</p>
 automatically batch them together into a single request. Applicative operations like the product of two fetches
 help us tell the library that those fetches are independent, and thus can be batched if they use the same data source:</p>
 
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">fetchProduct</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span> <span class="kt">:</span> <span class="kt">Async</span><span class="o">]</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="o">(</span><span class="kt">User</span>, <span class="kt">User</span><span class="o">)]</span> <span class="k">=</span>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">fetchProduct</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span><span class="kt">:</span> <span class="kt">Console:</span> <span class="kt">Temporal</span><span class="o">]</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="o">(</span><span class="kt">User</span>, <span class="kt">User</span><span class="o">)]</span> <span class="k">=</span>
   <span class="o">(</span><span class="nf">getUser</span><span class="o">(</span><span class="mi">1</span><span class="o">),</span> <span class="nf">getUser</span><span class="o">(</span><span class="mi">2</span><span class="o">)).</span><span class="py">tupled</span>
 </code></pre></div></div>
 
 <p>Note how both ids (1 and 2) are requested in a single query to the data source when executing the fetch.</p>
 
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">Fetch</span><span class="o">.</span><span class="py">run</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="n">fetchProduct</span><span class="o">).</span><span class="py">unsafeRunTimed</span><span class="o">(</span><span class="mf">5.</span><span class="n">seconds</span><span class="o">)</span>
-<span class="c1">// --&gt; [218] Batch Users NonEmptyList(1, 2)</span>
-<span class="c1">// &lt;-- [218] Batch Users NonEmptyList(1, 2)</span>
 <span class="c1">// res3: Option[(User, User)] = Some(</span>
 <span class="c1">//   value = (User(id = 1, username = "@one"), User(id = 2, username = "@two"))</span>
 <span class="c1">// )</span>
@@ -296,15 +286,13 @@ help us tell the library that those fetches are independent, and thus can be bat
 
 <p>If two independent requests ask for the same identity, Fetch will detect it and deduplicate the id.</p>
 
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">fetchDuped</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span> <span class="kt">:</span> <span class="kt">Async</span><span class="o">]</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="o">(</span><span class="kt">User</span>, <span class="kt">User</span><span class="o">)]</span> <span class="k">=</span>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">fetchDuped</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span><span class="kt">:</span> <span class="kt">Console:</span> <span class="kt">Temporal</span><span class="o">]</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="o">(</span><span class="kt">User</span>, <span class="kt">User</span><span class="o">)]</span> <span class="k">=</span>
   <span class="o">(</span><span class="nf">getUser</span><span class="o">(</span><span class="mi">1</span><span class="o">),</span> <span class="nf">getUser</span><span class="o">(</span><span class="mi">1</span><span class="o">)).</span><span class="py">tupled</span>
 </code></pre></div></div>
 
 <p>Note that when running the fetch, the identity 1 is only requested once even when it is needed by both fetches.</p>
 
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">Fetch</span><span class="o">.</span><span class="py">run</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="n">fetchDuped</span><span class="o">).</span><span class="py">unsafeRunTimed</span><span class="o">(</span><span class="mf">5.</span><span class="n">seconds</span><span class="o">)</span>
-<span class="c1">// --&gt; [217] One User 1</span>
-<span class="c1">// &lt;-- [217] One User 1</span>
 <span class="c1">// res4: Option[(User, User)] = Some(</span>
 <span class="c1">//   value = (User(id = 1, username = "@one"), User(id = 1, username = "@one"))</span>
 <span class="c1">// )</span>
@@ -317,7 +305,7 @@ fetches in a very modular way, asking for all the data they need as if it
 was in memory; furthermore, it also avoids re-fetching an identity that may have changed
 during the course of a fetch execution, which can lead to inconsistencies in the data.</p>
 
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">fetchCached</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span> <span class="kt">:</span> <span class="kt">Async</span><span class="o">]</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="o">(</span><span class="kt">User</span>, <span class="kt">User</span><span class="o">)]</span> <span class="k">=</span> <span class="k">for</span> <span class="o">{</span>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">fetchCached</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span><span class="kt">:</span> <span class="kt">Console:</span> <span class="kt">Temporal</span><span class="o">]</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="o">(</span><span class="kt">User</span>, <span class="kt">User</span><span class="o">)]</span> <span class="k">=</span> <span class="k">for</span> <span class="o">{</span>
   <span class="n">aUser</span> <span class="k">&lt;-</span> <span class="nf">getUser</span><span class="o">(</span><span class="mi">1</span><span class="o">)</span>
   <span class="n">anotherUser</span> <span class="k">&lt;-</span> <span class="nf">getUser</span><span class="o">(</span><span class="mi">1</span><span class="o">)</span>
 <span class="o">}</span> <span class="nf">yield</span> <span class="o">(</span><span class="n">aUser</span><span class="o">,</span> <span class="n">anotherUser</span><span class="o">)</span>
@@ -326,8 +314,6 @@ during the course of a fetch execution, which can lead to inconsistencies in the
 <p>The above fetch asks for the same identity multiple times. Let’s see what happens when executing it.</p>
 
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">Fetch</span><span class="o">.</span><span class="py">run</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="n">fetchCached</span><span class="o">).</span><span class="py">unsafeRunTimed</span><span class="o">(</span><span class="mf">5.</span><span class="n">seconds</span><span class="o">)</span>
-<span class="c1">// --&gt; [217] One User 1</span>
-<span class="c1">// &lt;-- [217] One User 1</span>
 <span class="c1">// res5: Option[(User, User)] = Some(</span>
 <span class="c1">//   value = (User(id = 1, username = "@one"), User(id = 1, username = "@one"))</span>
 <span class="c1">// )</span>
@@ -359,7 +345,8 @@ let’s look at how we can combine more than one data source.</p>
 <span class="k">object</span> <span class="nc">Posts</span> <span class="k">extends</span> <span class="nc">Data</span><span class="o">[</span><span class="kt">PostId</span>, <span class="kt">Post</span><span class="o">]</span> <span class="o">{</span>
   <span class="k">def</span> <span class="nf">name</span> <span class="k">=</span> <span class="s">"Posts"</span>
 
-  <span class="k">def</span> <span class="nf">source</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span> <span class="kt">:</span> <span class="kt">Async</span><span class="o">]</span><span class="k">:</span> <span class="kt">DataSource</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">PostId</span>, <span class="kt">Post</span><span class="o">]</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">DataSource</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">PostId</span>, <span class="kt">Post</span><span class="o">]</span> <span class="o">{</span>
+  <span class="c1">//Calls to `latency` need to sleep and use the console, so we need Console and Temporal (which extends Concurrent) instances</span>
+  <span class="k">def</span> <span class="nf">source</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span><span class="kt">:</span> <span class="kt">Console:</span> <span class="kt">Temporal</span><span class="o">]</span><span class="k">:</span> <span class="kt">DataSource</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">PostId</span>, <span class="kt">Post</span><span class="o">]</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">DataSource</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">PostId</span>, <span class="kt">Post</span><span class="o">]</span> <span class="o">{</span>
     <span class="k">override</span> <span class="k">def</span> <span class="nf">data</span> <span class="k">=</span> <span class="nc">Posts</span> 
 
     <span class="k">override</span> <span class="k">def</span> <span class="nf">CF</span> <span class="k">=</span> <span class="nc">Concurrent</span><span class="o">[</span><span class="kt">F</span><span class="o">]</span>
@@ -372,7 +359,7 @@ let’s look at how we can combine more than one data source.</p>
   <span class="o">}</span>
 <span class="o">}</span>
 
-<span class="k">def</span> <span class="nf">getPost</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span> <span class="kt">:</span> <span class="kt">Async</span><span class="o">](</span><span class="n">id</span><span class="k">:</span> <span class="kt">PostId</span><span class="o">)</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">Post</span><span class="o">]</span> <span class="k">=</span>
+<span class="k">def</span> <span class="nf">getPost</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span><span class="kt">:</span> <span class="kt">Console:</span> <span class="kt">Temporal</span><span class="o">](</span><span class="n">id</span><span class="k">:</span> <span class="kt">PostId</span><span class="o">)</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">Post</span><span class="o">]</span> <span class="k">=</span>
   <span class="nc">Fetch</span><span class="o">(</span><span class="n">id</span><span class="o">,</span> <span class="nv">Posts</span><span class="o">.</span><span class="py">source</span><span class="o">)</span>
 </code></pre></div></div>
 
@@ -386,7 +373,7 @@ let’s look at how we can combine more than one data source.</p>
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">object</span> <span class="nc">PostTopics</span> <span class="k">extends</span> <span class="nc">Data</span><span class="o">[</span><span class="kt">Post</span>, <span class="kt">PostTopic</span><span class="o">]</span> <span class="o">{</span>
   <span class="k">def</span> <span class="nf">name</span> <span class="k">=</span> <span class="s">"Post Topics"</span>
 
-  <span class="k">def</span> <span class="nf">source</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span> <span class="kt">:</span> <span class="kt">Async</span><span class="o">]</span><span class="k">:</span> <span class="kt">DataSource</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">Post</span>, <span class="kt">PostTopic</span><span class="o">]</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">DataSource</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">Post</span>, <span class="kt">PostTopic</span><span class="o">]</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="nf">source</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span><span class="kt">:</span> <span class="kt">Console:</span> <span class="kt">Temporal</span><span class="o">]</span><span class="k">:</span> <span class="kt">DataSource</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">Post</span>, <span class="kt">PostTopic</span><span class="o">]</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">DataSource</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">Post</span>, <span class="kt">PostTopic</span><span class="o">]</span> <span class="o">{</span>
     <span class="k">override</span> <span class="k">def</span> <span class="nf">data</span> <span class="k">=</span> <span class="nc">PostTopics</span> 
 
     <span class="k">override</span> <span class="k">def</span> <span class="nf">CF</span> <span class="k">=</span> <span class="nc">Concurrent</span><span class="o">[</span><span class="kt">F</span><span class="o">]</span>
@@ -403,13 +390,13 @@ let’s look at how we can combine more than one data source.</p>
   <span class="o">}</span>
 <span class="o">}</span>
 
-<span class="k">def</span> <span class="nf">getPostTopic</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span> <span class="kt">:</span> <span class="kt">Async</span><span class="o">](</span><span class="n">post</span><span class="k">:</span> <span class="kt">Post</span><span class="o">)</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">PostTopic</span><span class="o">]</span> <span class="k">=</span>
+<span class="k">def</span> <span class="nf">getPostTopic</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span><span class="kt">:</span> <span class="kt">Console:</span> <span class="kt">Temporal</span><span class="o">](</span><span class="n">post</span><span class="k">:</span> <span class="kt">Post</span><span class="o">)</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">PostTopic</span><span class="o">]</span> <span class="k">=</span>
   <span class="nc">Fetch</span><span class="o">(</span><span class="n">post</span><span class="o">,</span> <span class="nv">PostTopics</span><span class="o">.</span><span class="py">source</span><span class="o">)</span>
 </code></pre></div></div>
 
 <p>Now that we have multiple sources let’s mix them in the same fetch.</p>
 
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">fetchMulti</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span> <span class="kt">:</span> <span class="kt">Async</span><span class="o">]</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="o">(</span><span class="kt">Post</span>, <span class="kt">PostTopic</span><span class="o">)]</span> <span class="k">=</span> <span class="k">for</span> <span class="o">{</span>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">fetchMulti</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span><span class="kt">:</span> <span class="kt">Console:</span> <span class="kt">Temporal</span><span class="o">]</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="o">(</span><span class="kt">Post</span>, <span class="kt">PostTopic</span><span class="o">)]</span> <span class="k">=</span> <span class="k">for</span> <span class="o">{</span>
   <span class="n">post</span> <span class="k">&lt;-</span> <span class="nf">getPost</span><span class="o">(</span><span class="mi">1</span><span class="o">)</span>
   <span class="n">topic</span> <span class="k">&lt;-</span> <span class="nf">getPostTopic</span><span class="o">(</span><span class="n">post</span><span class="o">)</span>
 <span class="o">}</span> <span class="nf">yield</span> <span class="o">(</span><span class="n">post</span><span class="o">,</span> <span class="n">topic</span><span class="o">)</span>
@@ -418,10 +405,6 @@ let’s look at how we can combine more than one data source.</p>
 <p>We can now run the previous fetch, querying the posts data source first and the user data source afterwards.</p>
 
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">Fetch</span><span class="o">.</span><span class="py">run</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="n">fetchMulti</span><span class="o">).</span><span class="py">unsafeRunTimed</span><span class="o">(</span><span class="mf">5.</span><span class="n">seconds</span><span class="o">)</span>
-<span class="c1">// --&gt; [217] One Post 1</span>
-<span class="c1">// &lt;-- [217] One Post 1</span>
-<span class="c1">// --&gt; [218] One Post Topic Post(1,2,An article)</span>
-<span class="c1">// &lt;-- [218] One Post Topic Post(1,2,An article)</span>
 <span class="c1">// res6: Option[(Post, PostTopic)] = Some(</span>
 <span class="c1">//   value = (Post(id = 1, author = 2, content = "An article"), "applicative")</span>
 <span class="c1">// )</span>
@@ -443,17 +426,13 @@ of data very easy.</p>
 <p>In the following example we are fetching from different data sources so both requests will be
 evaluated together.</p>
 
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">fetchConcurrent</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span> <span class="kt">:</span> <span class="kt">Async</span><span class="o">]</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="o">(</span><span class="kt">Post</span>, <span class="kt">User</span><span class="o">)]</span> <span class="k">=</span>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">fetchConcurrent</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span><span class="kt">:</span> <span class="kt">Console:</span> <span class="kt">Temporal</span><span class="o">]</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="o">(</span><span class="kt">Post</span>, <span class="kt">User</span><span class="o">)]</span> <span class="k">=</span>
   <span class="o">(</span><span class="nf">getPost</span><span class="o">(</span><span class="mi">1</span><span class="o">),</span> <span class="nf">getUser</span><span class="o">(</span><span class="mi">2</span><span class="o">)).</span><span class="py">tupled</span>
 </code></pre></div></div>
 
 <p>The above example combines data from two different sources, and the library knows they are independent.</p>
 
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">Fetch</span><span class="o">.</span><span class="py">run</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="n">fetchConcurrent</span><span class="o">).</span><span class="py">unsafeRunTimed</span><span class="o">(</span><span class="mf">5.</span><span class="n">seconds</span><span class="o">)</span>
-<span class="c1">// --&gt; [218] One User 2</span>
-<span class="c1">// --&gt; [217] One Post 1</span>
-<span class="c1">// &lt;-- [218] One User 2</span>
-<span class="c1">// &lt;-- [217] One Post 1</span>
 <span class="c1">// res7: Option[(Post, User)] = Some(</span>
 <span class="c1">//   value = (</span>
 <span class="c1">//     Post(id = 1, author = 2, content = "An article"),</span>
@@ -462,57 +441,45 @@ evaluated together.</p>
 <span class="c1">// )</span>
 </code></pre></div></div>
 
-<h2 id="combinators">Combinators</h2>
+<h2 id="batchall">BatchAll</h2>
 
-<p>Besides <code class="highlighter-rouge">flatMap</code> for sequencing fetches and products for running them concurrently, Fetch provides a number of
-other combinators.</p>
+<p>In versions of Fetch before 3.0.0, calls to <code class="highlighter-rouge">sequence</code> or <code class="highlighter-rouge">traverse</code> on sequences of fetches would automatically try to batch or run fetches concurrently where possible.
+This is no longer the case as of version 3.0.0, which is changed to explicitly batch requests with a new combinator.</p>
 
-<h3 id="sequence">Sequence</h3>
+<p>Consider the following code:</p>
 
-<p>Whenever we have a list of fetches of the same type and want to run them concurrently, we can use the <code class="highlighter-rouge">sequence</code>
-combinator. It takes a <code class="highlighter-rouge">List[Fetch[A]]</code> and gives you back a <code class="highlighter-rouge">Fetch[List[A]]</code>, batching the fetches to the same
-data source and running fetches to different sources in parallel. Note that the <code class="highlighter-rouge">sequence</code> combinator is more general and works not only on lists but on any type that has a <a href="https://typelevel.org/cats/typeclasses/traverse.html">Traverse</a> instance.</p>
-
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">fetchSequence</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span> <span class="kt">:</span> <span class="kt">Async</span><span class="o">]</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">List</span><span class="o">[</span><span class="kt">User</span><span class="o">]]</span> <span class="k">=</span>
-  <span class="nc">List</span><span class="o">(</span><span class="nf">getUser</span><span class="o">(</span><span class="mi">1</span><span class="o">),</span> <span class="nf">getUser</span><span class="o">(</span><span class="mi">2</span><span class="o">),</span> <span class="nf">getUser</span><span class="o">(</span><span class="mi">3</span><span class="o">)).</span><span class="py">sequence</span>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">listOfFetches</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span><span class="kt">:</span> <span class="kt">Console:</span> <span class="kt">Temporal</span><span class="o">]</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">Post</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">List</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">).</span><span class="py">map</span><span class="o">(</span><span class="n">getPost</span><span class="o">[</span><span class="kt">F</span><span class="o">])</span>
+<span class="k">val</span> <span class="nv">sequencedList</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">IO</span>, <span class="kt">List</span><span class="o">[</span><span class="kt">Post</span><span class="o">]]</span> <span class="k">=</span> <span class="n">listOfFetches</span><span class="o">[</span><span class="kt">IO</span><span class="o">].</span><span class="py">sequence</span>
 </code></pre></div></div>
 
-<p>Since <code class="highlighter-rouge">sequence</code> uses applicative operations internally, the library is able to perform optimizations across all the sequenced fetches.</p>
+<p>In versions &lt;3.0.0, you could call <code class="highlighter-rouge">.sequence</code> on this list and it would make a single request for IDs 1, 2, and 3 if possible in a batch.
+In versions &gt;=3.0.0, calling <code class="highlighter-rouge">.sequence</code> is essentially the same as this code:</p>
 
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">Fetch</span><span class="o">.</span><span class="py">run</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="n">fetchSequence</span><span class="o">).</span><span class="py">unsafeRunTimed</span><span class="o">(</span><span class="mf">5.</span><span class="n">seconds</span><span class="o">)</span>
-<span class="c1">// --&gt; [218] Batch Users NonEmptyList(1, 2, 3)</span>
-<span class="c1">// &lt;-- [218] Batch Users NonEmptyList(1, 2, 3)</span>
-<span class="c1">// res8: Option[List[User]] = Some(</span>
-<span class="c1">//   value = List(</span>
-<span class="c1">//     User(id = 1, username = "@one"),</span>
-<span class="c1">//     User(id = 2, username = "@two"),</span>
-<span class="c1">//     User(id = 3, username = "@three")</span>
-<span class="c1">//   )</span>
-<span class="c1">// )</span>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">val</span> <span class="nv">sequencedListEquivalent</span> <span class="k">=</span> <span class="n">getPost</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="mi">1</span><span class="o">).</span><span class="py">flatMap</span> <span class="o">{</span> <span class="n">postOne</span> <span class="k">=&gt;</span>
+  <span class="n">getPost</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="mi">2</span><span class="o">).</span><span class="py">flatMap</span> <span class="o">{</span> <span class="n">postTwo</span> <span class="k">=&gt;</span>
+    <span class="n">getPost</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="mi">3</span><span class="o">).</span><span class="py">map</span> <span class="o">{</span> <span class="n">postThree</span> <span class="k">=&gt;</span>
+      <span class="nc">List</span><span class="o">(</span><span class="n">postOne</span><span class="o">,</span> <span class="n">postTwo</span><span class="o">,</span> <span class="n">postThree</span><span class="o">)</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+<span class="o">}</span>
 </code></pre></div></div>
 
-<p>As you can see, requests to the user data source were batched, thus fetching all the data in one round.</p>
+<p>As mentioned above, you can use <code class="highlighter-rouge">.flatMap</code> to sequence fetches, but not batch them.
+Therefore we have added a new combinator that guarantees batching and we do not support batching via <code class="highlighter-rouge">.sequence</code> or <code class="highlighter-rouge">.traverse</code> anymore.
+Here is an example showing how to batch fetches using <code class="highlighter-rouge">Fetch.batchAll</code></p>
 
-<h3 id="traverse">Traverse</h3>
-
-<p>Another interesting combinator is <code class="highlighter-rouge">traverse</code>, which is the composition of <code class="highlighter-rouge">map</code> and <code class="highlighter-rouge">sequence</code>.</p>
-
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">fetchTraverse</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span> <span class="kt">:</span> <span class="kt">Async</span><span class="o">]</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">List</span><span class="o">[</span><span class="kt">User</span><span class="o">]]</span> <span class="k">=</span>
-  <span class="nc">List</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">).</span><span class="py">traverse</span><span class="o">(</span><span class="n">getUser</span><span class="o">[</span><span class="kt">F</span><span class="o">])</span>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">val</span> <span class="nv">batchedList</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">IO</span>, <span class="kt">List</span><span class="o">[</span><span class="kt">Post</span><span class="o">]]</span> <span class="k">=</span> <span class="nv">Fetch</span><span class="o">.</span><span class="py">batchAll</span><span class="o">(</span><span class="n">listOfFetches</span><span class="o">[</span><span class="kt">IO</span><span class="o">]</span><span class="k">:</span> <span class="k">_</span><span class="kt">*</span><span class="o">)</span>
 </code></pre></div></div>
 
-<p>As you may have guessed, all the optimizations made by <code class="highlighter-rouge">sequence</code> still apply when using <code class="highlighter-rouge">traverse</code>.</p>
+<p>You can also use helpful syntax by importing <code class="highlighter-rouge">fetch.syntax._</code> for batching sequences, like so:</p>
 
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">Fetch</span><span class="o">.</span><span class="py">run</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="n">fetchTraverse</span><span class="o">).</span><span class="py">unsafeRunTimed</span><span class="o">(</span><span class="mf">5.</span><span class="n">seconds</span><span class="o">)</span>
-<span class="c1">// --&gt; [218] Batch Users NonEmptyList(1, 2, 3)</span>
-<span class="c1">// &lt;-- [218] Batch Users NonEmptyList(1, 2, 3)</span>
-<span class="c1">// res9: Option[List[User]] = Some(</span>
-<span class="c1">//   value = List(</span>
-<span class="c1">//     User(id = 1, username = "@one"),</span>
-<span class="c1">//     User(id = 2, username = "@two"),</span>
-<span class="c1">//     User(id = 3, username = "@three")</span>
-<span class="c1">//   )</span>
-<span class="c1">// )</span>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="nn">fetch.syntax._</span>
+
+<span class="c1">//Takes a sequence of fetches and batches them</span>
+<span class="k">val</span> <span class="nv">batchedListWithSyntax</span> <span class="k">=</span> <span class="n">listOfFetches</span><span class="o">[</span><span class="kt">IO</span><span class="o">].</span><span class="py">batchAll</span>
+
+<span class="c1">//Allows you to supply your own function to batch a sequence as fetches</span>
+<span class="k">val</span> <span class="nv">listToBatchWithSyntax</span> <span class="k">=</span> <span class="nc">List</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">).</span><span class="py">batchAllWith</span><span class="o">(</span><span class="n">id</span> <span class="k">=&gt;</span> <span class="n">getPost</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="n">id</span><span class="o">))</span>
 </code></pre></div></div>
 
 <h1 id="caching-1">Caching</h1>
@@ -526,7 +493,7 @@ one, and even implement a custom cache.</p>
 <p>We’ll be using the default in-memory cache, prepopulated with some data. The cache key of an identity
 is calculated with the <code class="highlighter-rouge">DataSource</code>’s <code class="highlighter-rouge">name</code> method and the request identity.</p>
 
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">cache</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span> <span class="kt">:</span> <span class="kt">Async</span><span class="o">]</span> <span class="k">=</span> <span class="nv">InMemoryCache</span><span class="o">.</span><span class="py">from</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">UserId</span>, <span class="kt">User</span><span class="o">](</span>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">cache</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span><span class="kt">:</span> <span class="kt">Concurrent</span><span class="o">]</span> <span class="k">=</span> <span class="nv">InMemoryCache</span><span class="o">.</span><span class="py">from</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">UserId</span>, <span class="kt">User</span><span class="o">](</span>
  <span class="o">(</span><span class="nc">Users</span><span class="o">,</span> <span class="mi">1</span><span class="o">)</span> <span class="o">-&gt;</span> <span class="nc">User</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="s">"purrgrammer"</span><span class="o">)</span>
 <span class="o">)</span>
 </code></pre></div></div>
@@ -534,22 +501,20 @@ is calculated with the <code class="highlighter-rouge">DataSource</code>’s <co
 <p>We can pass a cache as the second argument when running a fetch with <code class="highlighter-rouge">Fetch.run</code>.</p>
 
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">Fetch</span><span class="o">.</span><span class="py">run</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="n">fetchUser</span><span class="o">,</span> <span class="n">cache</span><span class="o">).</span><span class="py">unsafeRunTimed</span><span class="o">(</span><span class="mf">5.</span><span class="n">seconds</span><span class="o">)</span>
-<span class="c1">// res10: Option[User] = Some(value = User(id = 1, username = "purrgrammer"))</span>
+<span class="c1">// res8: Option[User] = Some(value = User(id = 1, username = "purrgrammer"))</span>
 </code></pre></div></div>
 
 <p>As you can see, when all the data is cached, no query to the data sources is executed since the results are available
 in the cache.</p>
 
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">fetchManyUsers</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span> <span class="kt">:</span> <span class="kt">Async</span><span class="o">]</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">List</span><span class="o">[</span><span class="kt">User</span><span class="o">]]</span> <span class="k">=</span>
-  <span class="nc">List</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">).</span><span class="py">traverse</span><span class="o">(</span><span class="n">getUser</span><span class="o">[</span><span class="kt">F</span><span class="o">])</span>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">fetchManyUsers</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span><span class="kt">:</span> <span class="kt">Console:</span> <span class="kt">Temporal</span><span class="o">]</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">List</span><span class="o">[</span><span class="kt">User</span><span class="o">]]</span> <span class="k">=</span>
+  <span class="nc">List</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">).</span><span class="py">batchAllWith</span><span class="o">(</span><span class="n">getUser</span><span class="o">[</span><span class="kt">F</span><span class="o">])</span>
 </code></pre></div></div>
 
 <p>If only part of the data is cached, the cached data won’t be asked for:</p>
 
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">Fetch</span><span class="o">.</span><span class="py">run</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="n">fetchManyUsers</span><span class="o">,</span> <span class="n">cache</span><span class="o">).</span><span class="py">unsafeRunTimed</span><span class="o">(</span><span class="mf">5.</span><span class="n">seconds</span><span class="o">)</span>
-<span class="c1">// --&gt; [217] Batch Users NonEmptyList(2, 3)</span>
-<span class="c1">// &lt;-- [217] Batch Users NonEmptyList(2, 3)</span>
-<span class="c1">// res11: Option[List[User]] = Some(</span>
+<span class="c1">// res9: Option[List[User]] = Some(</span>
 <span class="c1">//   value = List(</span>
 <span class="c1">//     User(id = 1, username = "purrgrammer"),</span>
 <span class="c1">//     User(id = 2, username = "@two"),</span>
@@ -566,13 +531,11 @@ in the cache.</p>
 data sources.</p>
 
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nf">val</span> <span class="o">(</span><span class="n">populatedCache</span><span class="o">,</span> <span class="n">result</span><span class="o">)</span> <span class="k">=</span> <span class="nv">Fetch</span><span class="o">.</span><span class="py">runCache</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="n">fetchManyUsers</span><span class="o">).</span><span class="py">unsafeRunSync</span><span class="o">()</span>
-<span class="c1">// --&gt; [217] Batch Users NonEmptyList(1, 2, 3)</span>
-<span class="c1">// &lt;-- [217] Batch Users NonEmptyList(1, 2, 3)</span>
 <span class="c1">// populatedCache: DataCache[IO] = InMemoryCache(</span>
 <span class="c1">//   state = Map(</span>
-<span class="c1">//     (repl.MdocSession$App$Users$@43d050ef, fetch.DataSourceId@1) -&gt; fetch.DataSourceResult@d3eb82b3,</span>
-<span class="c1">//     (repl.MdocSession$App$Users$@43d050ef, fetch.DataSourceId@2) -&gt; fetch.DataSourceResult@d43da1de,</span>
-<span class="c1">//     (repl.MdocSession$App$Users$@43d050ef, fetch.DataSourceId@3) -&gt; fetch.DataSourceResult@30b9ef3f</span>
+<span class="c1">//     (repl.MdocSession$App$Users$@3d7df006, fetch.DataSourceId@1) -&gt; fetch.DataSourceResult@d3eb82b3,</span>
+<span class="c1">//     (repl.MdocSession$App$Users$@3d7df006, fetch.DataSourceId@2) -&gt; fetch.DataSourceResult@d43da1de,</span>
+<span class="c1">//     (repl.MdocSession$App$Users$@3d7df006, fetch.DataSourceId@3) -&gt; fetch.DataSourceResult@30b9ef3f</span>
 <span class="c1">//   )</span>
 <span class="c1">// )</span>
 <span class="c1">// result: List[User] = List(</span>
@@ -582,7 +545,7 @@ data sources.</p>
 <span class="c1">// )</span>
 
 <span class="nv">Fetch</span><span class="o">.</span><span class="py">run</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="n">fetchManyUsers</span><span class="o">,</span> <span class="n">populatedCache</span><span class="o">).</span><span class="py">unsafeRunTimed</span><span class="o">(</span><span class="mf">5.</span><span class="n">seconds</span><span class="o">)</span>
-<span class="c1">// res12: Option[List[User]] = Some(</span>
+<span class="c1">// res10: Option[List[User]] = Some(</span>
 <span class="c1">//   value = List(</span>
 <span class="c1">//     User(id = 1, username = "@one"),</span>
 <span class="c1">//     User(id = 2, username = "@two"),</span>
@@ -615,22 +578,18 @@ data sources.</p>
     <span class="nc">Applicative</span><span class="o">[</span><span class="kt">F</span><span class="o">].</span><span class="py">pure</span><span class="o">(</span><span class="nc">None</span><span class="o">)</span>
 <span class="o">}</span>
 
-<span class="k">def</span> <span class="nf">forgetfulCache</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span> <span class="kt">:</span> <span class="kt">Async</span><span class="o">]</span> <span class="k">=</span> <span class="nc">ForgetfulCache</span><span class="o">[</span><span class="kt">F</span><span class="o">]()</span>
+<span class="k">def</span> <span class="nf">forgetfulCache</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span><span class="kt">:</span> <span class="kt">Concurrent</span><span class="o">]</span> <span class="k">=</span> <span class="nc">ForgetfulCache</span><span class="o">[</span><span class="kt">F</span><span class="o">]()</span>
 </code></pre></div></div>
 
 <p>We can now use our implementation of the cache when running a fetch.</p>
 
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">fetchSameTwice</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span> <span class="kt">:</span> <span class="kt">Async</span><span class="o">]</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="o">(</span><span class="kt">User</span>, <span class="kt">User</span><span class="o">)]</span> <span class="k">=</span> <span class="k">for</span> <span class="o">{</span>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">fetchSameTwice</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span><span class="kt">:</span> <span class="kt">Console:</span> <span class="kt">Temporal</span><span class="o">]</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="o">(</span><span class="kt">User</span>, <span class="kt">User</span><span class="o">)]</span> <span class="k">=</span> <span class="k">for</span> <span class="o">{</span>
   <span class="n">one</span> <span class="k">&lt;-</span> <span class="nf">getUser</span><span class="o">(</span><span class="mi">1</span><span class="o">)</span>
   <span class="n">another</span> <span class="k">&lt;-</span> <span class="nf">getUser</span><span class="o">(</span><span class="mi">1</span><span class="o">)</span>
 <span class="o">}</span> <span class="nf">yield</span> <span class="o">(</span><span class="n">one</span><span class="o">,</span> <span class="n">another</span><span class="o">)</span>
 
 <span class="nv">Fetch</span><span class="o">.</span><span class="py">run</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="n">fetchSameTwice</span><span class="o">,</span> <span class="n">forgetfulCache</span><span class="o">).</span><span class="py">unsafeRunTimed</span><span class="o">(</span><span class="mf">5.</span><span class="n">seconds</span><span class="o">)</span>
-<span class="c1">// --&gt; [218] One User 1</span>
-<span class="c1">// &lt;-- [218] One User 1</span>
-<span class="c1">// --&gt; [217] One User 1</span>
-<span class="c1">// &lt;-- [217] One User 1</span>
-<span class="c1">// res13: Option[(User, User)] = Some(</span>
+<span class="c1">// res11: Option[(User, User)] = Some(</span>
 <span class="c1">//   value = (User(id = 1, username = "@one"), User(id = 1, username = "@one"))</span>
 <span class="c1">// )</span>
 </code></pre></div></div>
@@ -648,7 +607,7 @@ we can specify the maximum size of the batched requests to this data source, let
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">object</span> <span class="nc">BatchedUsers</span> <span class="k">extends</span> <span class="nc">Data</span><span class="o">[</span><span class="kt">UserId</span>, <span class="kt">User</span><span class="o">]{</span>
   <span class="k">def</span> <span class="nf">name</span> <span class="k">=</span> <span class="s">"Batched Users"</span>
 
-  <span class="k">def</span> <span class="nf">source</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span> <span class="kt">:</span> <span class="kt">Async</span><span class="o">]</span><span class="k">:</span> <span class="kt">DataSource</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">UserId</span>, <span class="kt">User</span><span class="o">]</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">DataSource</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">UserId</span>, <span class="kt">User</span><span class="o">]</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="nf">source</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span><span class="kt">:</span> <span class="kt">Console:</span> <span class="kt">Temporal</span><span class="o">]</span><span class="k">:</span> <span class="kt">DataSource</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">UserId</span>, <span class="kt">User</span><span class="o">]</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">DataSource</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">UserId</span>, <span class="kt">User</span><span class="o">]</span> <span class="o">{</span>
     <span class="k">override</span> <span class="k">def</span> <span class="nf">data</span> <span class="k">=</span> <span class="nc">BatchedUsers</span>
 
     <span class="k">override</span> <span class="k">def</span> <span class="nf">CF</span> <span class="k">=</span> <span class="nc">Concurrent</span><span class="o">[</span><span class="kt">F</span><span class="o">]</span>
@@ -663,22 +622,18 @@ we can specify the maximum size of the batched requests to this data source, let
   <span class="o">}</span>
 <span class="o">}</span>
 
-<span class="k">def</span> <span class="nf">getBatchedUser</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span> <span class="kt">:</span> <span class="kt">Async</span><span class="o">](</span><span class="n">id</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">User</span><span class="o">]</span> <span class="k">=</span>
+<span class="k">def</span> <span class="nf">getBatchedUser</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span><span class="kt">:</span> <span class="kt">Console:</span> <span class="kt">Temporal</span><span class="o">](</span><span class="n">id</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">User</span><span class="o">]</span> <span class="k">=</span>
   <span class="nc">Fetch</span><span class="o">(</span><span class="n">id</span><span class="o">,</span> <span class="nv">BatchedUsers</span><span class="o">.</span><span class="py">source</span><span class="o">)</span>
 </code></pre></div></div>
 
 <p>We have defined the maximum batch size to be 2, let’s see what happens when running a fetch that needs more
 than two users:</p>
 
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">fetchManyBatchedUsers</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span> <span class="kt">:</span> <span class="kt">Async</span><span class="o">]</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">List</span><span class="o">[</span><span class="kt">User</span><span class="o">]]</span> <span class="k">=</span>
-  <span class="nc">List</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">,</span> <span class="mi">4</span><span class="o">).</span><span class="py">traverse</span><span class="o">(</span><span class="n">getBatchedUser</span><span class="o">[</span><span class="kt">F</span><span class="o">])</span>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">fetchManyBatchedUsers</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span><span class="kt">:</span> <span class="kt">Console:</span> <span class="kt">Temporal</span><span class="o">]</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">List</span><span class="o">[</span><span class="kt">User</span><span class="o">]]</span> <span class="k">=</span>
+  <span class="nc">List</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">,</span> <span class="mi">4</span><span class="o">).</span><span class="py">batchAllWith</span><span class="o">(</span><span class="n">getBatchedUser</span><span class="o">[</span><span class="kt">F</span><span class="o">])</span>
 
 <span class="nv">Fetch</span><span class="o">.</span><span class="py">run</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="n">fetchManyBatchedUsers</span><span class="o">).</span><span class="py">unsafeRunTimed</span><span class="o">(</span><span class="mf">5.</span><span class="n">seconds</span><span class="o">)</span>
-<span class="c1">// --&gt; [217] Batch Users NonEmptyList(1, 2)</span>
-<span class="c1">// --&gt; [218] Batch Users NonEmptyList(3, 4)</span>
-<span class="c1">// &lt;-- [217] Batch Users NonEmptyList(1, 2)</span>
-<span class="c1">// &lt;-- [218] Batch Users NonEmptyList(3, 4)</span>
-<span class="c1">// res14: Option[List[User]] = Some(</span>
+<span class="c1">// res12: Option[List[User]] = Some(</span>
 <span class="c1">//   value = List(</span>
 <span class="c1">//     User(id = 1, username = "@one"),</span>
 <span class="c1">//     User(id = 2, username = "@two"),</span>
@@ -695,7 +650,7 @@ than two users:</p>
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">object</span> <span class="nc">SequentialUsers</span> <span class="k">extends</span> <span class="nc">Data</span><span class="o">[</span><span class="kt">UserId</span>, <span class="kt">User</span><span class="o">]{</span>
   <span class="k">def</span> <span class="nf">name</span> <span class="k">=</span> <span class="s">"Sequential Users"</span>
 
-  <span class="k">def</span> <span class="nf">source</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span><span class="kt">:</span> <span class="kt">Async</span><span class="o">]</span><span class="k">:</span> <span class="kt">DataSource</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">UserId</span>, <span class="kt">User</span><span class="o">]</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">DataSource</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">UserId</span>, <span class="kt">User</span><span class="o">]</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="nf">source</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span><span class="kt">:</span> <span class="kt">Console:</span> <span class="kt">Temporal</span><span class="o">]</span><span class="k">:</span> <span class="kt">DataSource</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">UserId</span>, <span class="kt">User</span><span class="o">]</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">DataSource</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">UserId</span>, <span class="kt">User</span><span class="o">]</span> <span class="o">{</span>
     <span class="k">override</span> <span class="k">def</span> <span class="nf">data</span> <span class="k">=</span> <span class="nc">SequentialUsers</span>
 
     <span class="k">override</span> <span class="k">def</span> <span class="nf">CF</span> <span class="k">=</span> <span class="nc">Concurrent</span><span class="o">[</span><span class="kt">F</span><span class="o">]</span>
@@ -711,21 +666,17 @@ than two users:</p>
   <span class="o">}</span>
 <span class="o">}</span>
 
-<span class="k">def</span> <span class="nf">getSequentialUser</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span> <span class="kt">:</span> <span class="kt">Async</span><span class="o">](</span><span class="n">id</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">User</span><span class="o">]</span> <span class="k">=</span>
+<span class="k">def</span> <span class="nf">getSequentialUser</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span><span class="kt">:</span> <span class="kt">Console:</span> <span class="kt">Temporal</span><span class="o">](</span><span class="n">id</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">User</span><span class="o">]</span> <span class="k">=</span>
   <span class="nc">Fetch</span><span class="o">(</span><span class="n">id</span><span class="o">,</span> <span class="nv">SequentialUsers</span><span class="o">.</span><span class="py">source</span><span class="o">)</span>
 </code></pre></div></div>
 
 <p>We have defined the maximum batch size to be 2 and the batch execution to be sequential, let’s see what happens when running a fetch that needs more than one batch:</p>
 
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">fetchManySeqBatchedUsers</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span> <span class="kt">:</span> <span class="kt">Async</span><span class="o">]</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">List</span><span class="o">[</span><span class="kt">User</span><span class="o">]]</span> <span class="k">=</span>
-  <span class="nc">List</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">,</span> <span class="mi">4</span><span class="o">).</span><span class="py">traverse</span><span class="o">(</span><span class="n">getSequentialUser</span><span class="o">[</span><span class="kt">F</span><span class="o">])</span>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">fetchManySeqBatchedUsers</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span><span class="kt">:</span> <span class="kt">Console:</span> <span class="kt">Temporal</span><span class="o">]</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">List</span><span class="o">[</span><span class="kt">User</span><span class="o">]]</span> <span class="k">=</span>
+  <span class="nc">List</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">,</span> <span class="mi">4</span><span class="o">).</span><span class="py">batchAllWith</span><span class="o">(</span><span class="n">getSequentialUser</span><span class="o">[</span><span class="kt">F</span><span class="o">])</span>
 
 <span class="nv">Fetch</span><span class="o">.</span><span class="py">run</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="n">fetchManySeqBatchedUsers</span><span class="o">).</span><span class="py">unsafeRunTimed</span><span class="o">(</span><span class="mf">5.</span><span class="n">seconds</span><span class="o">)</span>
-<span class="c1">// --&gt; [218] Batch Users NonEmptyList(1, 2)</span>
-<span class="c1">// &lt;-- [218] Batch Users NonEmptyList(1, 2)</span>
-<span class="c1">// --&gt; [218] Batch Users NonEmptyList(3, 4)</span>
-<span class="c1">// &lt;-- [218] Batch Users NonEmptyList(3, 4)</span>
-<span class="c1">// res15: Option[List[User]] = Some(</span>
+<span class="c1">// res13: Option[List[User]] = Some(</span>
 <span class="c1">//   value = List(</span>
 <span class="c1">//     User(id = 1, username = "@one"),</span>
 <span class="c1">//     User(id = 2, username = "@two"),</span>
@@ -753,7 +704,7 @@ you want.</p>
 
 <p>What happens if we run a fetch and fails with an exception? We’ll create a fetch that always fails to learn about it.</p>
 
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">fetchException</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span> <span class="kt">:</span> <span class="kt">Async</span><span class="o">]</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">User</span><span class="o">]</span> <span class="k">=</span>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">fetchException</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span><span class="kt">:</span> <span class="kt">Applicative</span><span class="o">]</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">User</span><span class="o">]</span> <span class="k">=</span>
   <span class="nv">Fetch</span><span class="o">.</span><span class="py">error</span><span class="o">(</span><span class="k">new</span> <span class="nc">Exception</span><span class="o">(</span><span class="s">"Oh noes"</span><span class="o">))</span>
 </code></pre></div></div>
 
@@ -766,7 +717,7 @@ you want.</p>
 <p>A safer version would use Cats’ <code class="highlighter-rouge">.attempt</code> method:</p>
 
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">Fetch</span><span class="o">.</span><span class="py">run</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="n">fetchException</span><span class="o">).</span><span class="py">attempt</span><span class="o">.</span><span class="py">unsafeRunTimed</span><span class="o">(</span><span class="mf">5.</span><span class="n">seconds</span><span class="o">)</span>
-<span class="c1">// res16: Option[Either[Throwable, User]] = Some(</span>
+<span class="c1">// res14: Option[Either[Throwable, User]] = Some(</span>
 <span class="c1">//   value = Left(</span>
 <span class="c1">//     value = UnhandledException(</span>
 <span class="c1">//       e = java.lang.Exception: Oh noes,</span>
@@ -781,10 +732,10 @@ you want.</p>
 <p>Using fetch’s debugging facilities, we can visualize a failed fetch’s execution up until the point where it failed. Let’s create
 a fetch that fails after a couple rounds to see it in action:</p>
 
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">failingFetch</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span> <span class="kt">:</span> <span class="kt">Async</span><span class="o">]</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">String</span><span class="o">]</span> <span class="k">=</span> <span class="k">for</span> <span class="o">{</span>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">failingFetch</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span><span class="kt">:</span> <span class="kt">Console:</span> <span class="kt">Temporal</span><span class="o">]</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">String</span><span class="o">]</span> <span class="k">=</span> <span class="k">for</span> <span class="o">{</span>
   <span class="n">a</span> <span class="k">&lt;-</span> <span class="nf">getUser</span><span class="o">(</span><span class="mi">1</span><span class="o">)</span>
   <span class="n">b</span> <span class="k">&lt;-</span> <span class="nf">getUser</span><span class="o">(</span><span class="mi">2</span><span class="o">)</span>
-  <span class="n">c</span> <span class="k">&lt;-</span> <span class="n">fetchException</span>
+  <span class="n">c</span> <span class="k">&lt;-</span> <span class="n">fetchException</span><span class="o">[</span><span class="kt">F</span><span class="o">]</span>
 <span class="o">}</span> <span class="k">yield</span> <span class="n">s</span><span class="s">"${a.username} loves ${b.username}"</span>
 
 <span class="k">val</span> <span class="nv">result2</span><span class="k">:</span> <span class="kt">IO</span><span class="o">[</span><span class="kt">Either</span><span class="o">[</span><span class="kt">Throwable</span>, <span class="o">(</span><span class="kt">Log</span>, <span class="kt">String</span><span class="o">)]]</span> <span class="k">=</span> <span class="nv">Fetch</span><span class="o">.</span><span class="py">runLog</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="n">failingFetch</span><span class="o">).</span><span class="py">attempt</span>
@@ -795,10 +746,6 @@ a fetch that fails after a couple rounds to see it in action:</p>
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="nn">fetch.debug.describe</span>
 
 <span class="k">val</span> <span class="nv">value</span><span class="k">:</span> <span class="kt">Either</span><span class="o">[</span><span class="kt">Throwable</span>, <span class="o">(</span><span class="kt">Log</span>, <span class="kt">String</span><span class="o">)]</span> <span class="k">=</span> <span class="nv">result2</span><span class="o">.</span><span class="py">unsafeRunSync</span><span class="o">()</span>
-<span class="c1">// --&gt; [218] One User 1</span>
-<span class="c1">// &lt;-- [218] One User 1</span>
-<span class="c1">// --&gt; [217] One User 2</span>
-<span class="c1">// &lt;-- [217] One User 2</span>
 <span class="c1">// value: Either[Throwable, (Log, String)] = Left(</span>
 <span class="c1">//   value = UnhandledException(</span>
 <span class="c1">//     e = java.lang.Exception: Oh noes,</span>
@@ -809,10 +756,10 @@ a fetch that fails after a couple rounds to see it in action:</p>
 <span class="c1">//             Request(</span>
 <span class="c1">//               request = FetchOne(</span>
 <span class="c1">//                 id = 1,</span>
-<span class="c1">//                 data = repl.MdocSession$App$Users$@43d050ef</span>
+<span class="c1">//                 data = repl.MdocSession$App$Users$@3d7df006</span>
 <span class="c1">//               ),</span>
-<span class="c1">//               start = 661233L,</span>
-<span class="c1">//               end = 661334L</span>
+<span class="c1">//               start = 518904L,</span>
+<span class="c1">//               end = 519004L</span>
 <span class="c1">//             )</span>
 <span class="c1">//           )</span>
 <span class="c1">//         ),</span>
@@ -821,10 +768,10 @@ a fetch that fails after a couple rounds to see it in action:</p>
 <span class="c1">//             Request(</span>
 <span class="c1">//               request = FetchOne(</span>
 <span class="c1">//                 id = 2,</span>
-<span class="c1">//                 data = repl.MdocSession$App$Users$@43d050ef</span>
+<span class="c1">//                 data = repl.MdocSession$App$Users$@3d7df006</span>
 <span class="c1">//               ),</span>
-<span class="c1">//               start = 661338L,</span>
-<span class="c1">//               end = 661439L</span>
+<span class="c1">//               start = 519009L,</span>
+<span class="c1">//               end = 519110L</span>
 <span class="c1">//             )</span>
 <span class="c1">//           )</span>
 <span class="c1">//         )</span>
@@ -851,7 +798,7 @@ rounds for getting users 1 and 2.</p>
 <p>You’ve probably noticed that <code class="highlighter-rouge">DataSource.fetch</code> and <code class="highlighter-rouge">DataSource.batch</code> return types help Fetch know if any requested
 identity was not found. Whenever an identity cannot be found, the fetch execution will fail with an instance of <code class="highlighter-rouge">MissingIdentity</code>.</p>
 
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">missingUser</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span> <span class="kt">:</span> <span class="kt">Async</span><span class="o">]</span> <span class="k">=</span>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">missingUser</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span><span class="kt">:</span> <span class="kt">Console:</span> <span class="kt">Temporal</span><span class="o">]</span> <span class="k">=</span>
   <span class="nf">getUser</span><span class="o">(</span><span class="mi">5</span><span class="o">)</span>
 
 <span class="k">val</span> <span class="nv">result3</span><span class="k">:</span> <span class="kt">IO</span><span class="o">[</span><span class="kt">Either</span><span class="o">[</span><span class="kt">Throwable</span>, <span class="o">(</span><span class="kt">Log</span>, <span class="kt">User</span><span class="o">)]]</span> <span class="k">=</span> <span class="nv">Fetch</span><span class="o">.</span><span class="py">runLog</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="n">missingUser</span><span class="o">).</span><span class="py">attempt</span>
@@ -860,12 +807,10 @@ identity was not found. Whenever an identity cannot be found, the fetch executio
 <p>And now we can execute the fetch and describe its execution:</p>
 
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">val</span> <span class="nv">value2</span><span class="k">:</span> <span class="kt">Either</span><span class="o">[</span><span class="kt">Throwable</span>, <span class="o">(</span><span class="kt">Log</span>, <span class="kt">User</span><span class="o">)]</span> <span class="k">=</span> <span class="nv">result3</span><span class="o">.</span><span class="py">unsafeRunSync</span><span class="o">()</span>
-<span class="c1">// --&gt; [217] One User 5</span>
-<span class="c1">// &lt;-- [217] One User 5</span>
 <span class="c1">// value2: Either[Throwable, (Log, User)] = Left(</span>
 <span class="c1">//   value = MissingIdentity(</span>
 <span class="c1">//     i = 5,</span>
-<span class="c1">//     request = FetchOne(id = 5, data = repl.MdocSession$App$Users$@43d050ef),</span>
+<span class="c1">//     request = FetchOne(id = 5, data = repl.MdocSession$App$Users$@3d7df006),</span>
 <span class="c1">//     log = FetchLog(</span>
 <span class="c1">//       q = Queue(</span>
 <span class="c1">//         Round(</span>
@@ -873,10 +818,10 @@ identity was not found. Whenever an identity cannot be found, the fetch executio
 <span class="c1">//             Request(</span>
 <span class="c1">//               request = FetchOne(</span>
 <span class="c1">//                 id = 5,</span>
-<span class="c1">//                 data = repl.MdocSession$App$Users$@43d050ef</span>
+<span class="c1">//                 data = repl.MdocSession$App$Users$@3d7df006</span>
 <span class="c1">//               ),</span>
-<span class="c1">//               start = 661483L,</span>
-<span class="c1">//               end = 661583L</span>
+<span class="c1">//               start = 519145L,</span>
+<span class="c1">//               end = 519246L</span>
 <span class="c1">//             )</span>
 <span class="c1">//           )</span>
 <span class="c1">//         )</span>
@@ -927,21 +872,21 @@ directly.</p>
 
 <p>Plain values can be lifted to the Fetch monad with <code class="highlighter-rouge">Fetch#pure</code>:</p>
 
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">fetchPure</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span> <span class="kt">:</span> <span class="kt">Async</span><span class="o">]</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">Int</span><span class="o">]</span> <span class="k">=</span>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">fetchPure</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span><span class="kt">:</span> <span class="kt">Applicative</span><span class="o">]</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">Int</span><span class="o">]</span> <span class="k">=</span>
   <span class="nv">Fetch</span><span class="o">.</span><span class="py">pure</span><span class="o">(</span><span class="mi">42</span><span class="o">)</span>
 </code></pre></div></div>
 
 <p>Executing a pure fetch doesn’t query any data source, as expected.</p>
 
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">Fetch</span><span class="o">.</span><span class="py">run</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="n">fetchPure</span><span class="o">).</span><span class="py">unsafeRunTimed</span><span class="o">(</span><span class="mf">5.</span><span class="n">seconds</span><span class="o">)</span>
-<span class="c1">// res20: Option[Int] = Some(value = 42)</span>
+<span class="c1">// res18: Option[Int] = Some(value = 42)</span>
 </code></pre></div></div>
 
 <h3 id="error">error</h3>
 
 <p>Errors can also be lifted to the Fetch monad via <code class="highlighter-rouge">Fetch#error</code>.</p>
 
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">fetchFail</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span> <span class="kt">:</span> <span class="kt">Async</span><span class="o">]</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">Int</span><span class="o">]</span> <span class="k">=</span>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">fetchFail</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span><span class="kt">:</span> <span class="kt">Applicative</span><span class="o">]</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">Int</span><span class="o">]</span> <span class="k">=</span>
   <span class="nv">Fetch</span><span class="o">.</span><span class="py">error</span><span class="o">(</span><span class="k">new</span> <span class="nc">Exception</span><span class="o">(</span><span class="s">"Something went terribly wrong"</span><span class="o">))</span>
 </code></pre></div></div>
 
@@ -949,6 +894,22 @@ directly.</p>
 
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">Fetch</span><span class="o">.</span><span class="py">run</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="n">fetchFail</span><span class="o">).</span><span class="py">unsafeRunTimed</span><span class="o">(</span><span class="mf">5.</span><span class="n">seconds</span><span class="o">)</span>
 <span class="c1">// fetch.package$UnhandledException</span>
+</code></pre></div></div>
+
+<h3 id="batchall-1">batchAll</h3>
+
+<p>The <code class="highlighter-rouge">Fetch.batchAll</code> function can be ran on any <code class="highlighter-rouge">Seq[Fetch[F, A]]</code> to turn it into a <code class="highlighter-rouge">Fetch[F, List[A]]</code>.
+It works similarly to calling <code class="highlighter-rouge">.sequence</code> on a sequence of fetches, only it tries to batch them where possible.
+You can also use <code class="highlighter-rouge">.batchAllWith</code> which works similarly to <code class="highlighter-rouge">.traverse</code> in that it works just like <code class="highlighter-rouge">.map</code> followed by <code class="highlighter-rouge">.batchAll</code>.</p>
+
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">//Longer, manual syntax for batching lists of fetches</span>
+<span class="k">val</span> <span class="nv">batchAllManual</span> <span class="k">=</span> <span class="nv">Fetch</span><span class="o">.</span><span class="py">batchAll</span><span class="o">(</span><span class="nc">List</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">).</span><span class="py">map</span><span class="o">(</span><span class="n">getPost</span><span class="o">[</span><span class="kt">IO</span><span class="o">])</span><span class="k">:</span> <span class="k">_</span><span class="kt">*</span><span class="o">)</span>
+
+<span class="c1">//Handy, smaller syntax directly on your list that works like .sequence</span>
+<span class="k">val</span> <span class="nv">batchAllWithSyntax</span> <span class="k">=</span> <span class="nc">List</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">).</span><span class="py">map</span><span class="o">(</span><span class="n">getPost</span><span class="o">[</span><span class="kt">IO</span><span class="o">]).</span><span class="py">batchAll</span>
+
+<span class="c1">//Similar syntax that works like .traverse, allowing you to pass a function</span>
+<span class="k">val</span> <span class="nv">batchAllDifferentSyntax</span> <span class="k">=</span> <span class="nc">List</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">).</span><span class="py">batchAllWith</span><span class="o">(</span><span class="n">getPost</span><span class="o">[</span><span class="kt">IO</span><span class="o">])</span>
 </code></pre></div></div>
 
 <h2 id="cats">cats</h2>
@@ -970,18 +931,14 @@ we wouldn’t have information about the independency of multiple fetches.</p>
 are from different types, and apply a pure function to their results. We can use it
 as a more powerful alternative to the <code class="highlighter-rouge">product</code> method:</p>
 
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">fetchThree</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span> <span class="kt">:</span> <span class="kt">Async</span><span class="o">]</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="o">(</span><span class="kt">Post</span>, <span class="kt">User</span>, <span class="kt">Post</span><span class="o">)]</span> <span class="k">=</span>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">fetchThree</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span><span class="kt">:</span> <span class="kt">Console:</span> <span class="kt">Temporal</span><span class="o">]</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="o">(</span><span class="kt">Post</span>, <span class="kt">User</span>, <span class="kt">Post</span><span class="o">)]</span> <span class="k">=</span>
   <span class="o">(</span><span class="nf">getPost</span><span class="o">(</span><span class="mi">1</span><span class="o">),</span> <span class="nf">getUser</span><span class="o">(</span><span class="mi">2</span><span class="o">),</span> <span class="nf">getPost</span><span class="o">(</span><span class="mi">2</span><span class="o">)).</span><span class="py">tupled</span>
 </code></pre></div></div>
 
 <p>Notice how the queries to posts are batched.</p>
 
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">Fetch</span><span class="o">.</span><span class="py">run</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="n">fetchThree</span><span class="o">).</span><span class="py">unsafeRunTimed</span><span class="o">(</span><span class="mf">5.</span><span class="n">seconds</span><span class="o">)</span>
-<span class="c1">// --&gt; [218] Batch Posts NonEmptyList(1, 2)</span>
-<span class="c1">// --&gt; [217] One User 2</span>
-<span class="c1">// &lt;-- [218] Batch Posts NonEmptyList(1, 2)</span>
-<span class="c1">// &lt;-- [217] One User 2</span>
-<span class="c1">// res21: Option[(Post, User, Post)] = Some(</span>
+<span class="c1">// res19: Option[(Post, User, Post)] = Some(</span>
 <span class="c1">//   value = (</span>
 <span class="c1">//     Post(id = 1, author = 2, content = "An article"),</span>
 <span class="c1">//     User(id = 2, username = "@two"),</span>
@@ -993,14 +950,12 @@ as a more powerful alternative to the <code class="highlighter-rouge">product</c
 <p>More interestingly, we can use it to apply a pure function to the results of various
 fetches.</p>
 
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">fetchFriends</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span> <span class="kt">:</span> <span class="kt">Async</span><span class="o">]</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">String</span><span class="o">]</span> <span class="k">=</span> <span class="o">(</span><span class="nf">getUser</span><span class="o">(</span><span class="mi">1</span><span class="o">),</span> <span class="nf">getUser</span><span class="o">(</span><span class="mi">2</span><span class="o">)).</span><span class="py">mapN</span> <span class="o">{</span> <span class="o">(</span><span class="n">one</span><span class="o">,</span> <span class="n">other</span><span class="o">)</span> <span class="k">=&gt;</span>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">fetchFriends</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span><span class="kt">:</span> <span class="kt">Console:</span> <span class="kt">Temporal</span><span class="o">]</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">String</span><span class="o">]</span> <span class="k">=</span> <span class="o">(</span><span class="nf">getUser</span><span class="o">(</span><span class="mi">1</span><span class="o">),</span> <span class="nf">getUser</span><span class="o">(</span><span class="mi">2</span><span class="o">)).</span><span class="py">mapN</span> <span class="o">{</span> <span class="o">(</span><span class="n">one</span><span class="o">,</span> <span class="n">other</span><span class="o">)</span> <span class="k">=&gt;</span>
   <span class="n">s</span><span class="s">"${one.username} is friends with ${other.username}"</span>
 <span class="o">}</span>
 
 <span class="nv">Fetch</span><span class="o">.</span><span class="py">run</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="n">fetchFriends</span><span class="o">).</span><span class="py">unsafeRunTimed</span><span class="o">(</span><span class="mf">5.</span><span class="n">seconds</span><span class="o">)</span>
-<span class="c1">// --&gt; [217] Batch Users NonEmptyList(1, 2)</span>
-<span class="c1">// &lt;-- [217] Batch Users NonEmptyList(1, 2)</span>
-<span class="c1">// res22: Option[String] = Some(value = "@one is friends with @two")</span>
+<span class="c1">// res20: Option[String] = Some(value = "@one is friends with @two")</span>
 </code></pre></div></div>
 
 <h1 id="debugging">Debugging</h1>
@@ -1010,7 +965,7 @@ a fetch execution given an execution log.</p>
 
 <p>Add the following line to your dependencies for including Fetch’s debugging facilities:</p>
 
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="s">"com.47deg"</span> <span class="o">%%</span> <span class="s">"fetch-debug"</span> <span class="o">%</span> <span class="s">"2.1.1"</span>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="s">"com.47deg"</span> <span class="o">%%</span> <span class="s">"fetch-debug"</span> <span class="o">%</span> <span class="s">"3.0.0"</span>
 </code></pre></div></div>
 
 <h2 id="fetch-execution">Fetch execution</h2>
@@ -1018,19 +973,19 @@ a fetch execution given an execution log.</p>
 <p>We are going to create an interesting fetch that applies all the optimizations available (caching, batching and concurrent request) for ilustrating how we can
 visualize fetch executions using the execution log.</p>
 
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">batched</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span> <span class="kt">:</span> <span class="kt">Async</span><span class="o">]</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">List</span><span class="o">[</span><span class="kt">User</span><span class="o">]]</span> <span class="k">=</span>
-  <span class="nc">List</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">).</span><span class="py">traverse</span><span class="o">(</span><span class="n">getUser</span><span class="o">[</span><span class="kt">F</span><span class="o">])</span>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">batched</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span><span class="kt">:</span> <span class="kt">Console:</span> <span class="kt">Temporal</span><span class="o">]</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">List</span><span class="o">[</span><span class="kt">User</span><span class="o">]]</span> <span class="k">=</span>
+  <span class="nc">List</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">).</span><span class="py">batchAllWith</span><span class="o">(</span><span class="n">getUser</span><span class="o">[</span><span class="kt">F</span><span class="o">])</span>
 
-<span class="k">def</span> <span class="nf">cached</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span> <span class="kt">:</span> <span class="kt">Async</span><span class="o">]</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">User</span><span class="o">]</span> <span class="k">=</span>
+<span class="k">def</span> <span class="nf">cached</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span><span class="kt">:</span> <span class="kt">Console:</span> <span class="kt">Temporal</span><span class="o">]</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">User</span><span class="o">]</span> <span class="k">=</span>
   <span class="nf">getUser</span><span class="o">(</span><span class="mi">2</span><span class="o">)</span>
 
-<span class="k">def</span> <span class="nf">notCached</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span> <span class="kt">:</span> <span class="kt">Async</span><span class="o">]</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">User</span><span class="o">]</span> <span class="k">=</span>
+<span class="k">def</span> <span class="nf">notCached</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span><span class="kt">:</span> <span class="kt">Console:</span> <span class="kt">Temporal</span><span class="o">]</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">User</span><span class="o">]</span> <span class="k">=</span>
   <span class="nf">getUser</span><span class="o">(</span><span class="mi">4</span><span class="o">)</span>
 
-<span class="k">def</span> <span class="nf">concurrent</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span> <span class="kt">:</span> <span class="kt">Async</span><span class="o">]</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="o">(</span><span class="kt">List</span><span class="o">[</span><span class="kt">User</span><span class="o">]</span>, <span class="kt">List</span><span class="o">[</span><span class="kt">Post</span><span class="o">])]</span> <span class="k">=</span>
-  <span class="o">(</span><span class="nc">List</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">).</span><span class="py">traverse</span><span class="o">(</span><span class="n">getUser</span><span class="o">[</span><span class="kt">F</span><span class="o">]),</span> <span class="nc">List</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">).</span><span class="py">traverse</span><span class="o">(</span><span class="n">getPost</span><span class="o">[</span><span class="kt">F</span><span class="o">])).</span><span class="py">tupled</span>
+<span class="k">def</span> <span class="nf">concurrent</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span><span class="kt">:</span> <span class="kt">Console:</span> <span class="kt">Temporal</span><span class="o">]</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="o">(</span><span class="kt">List</span><span class="o">[</span><span class="kt">User</span><span class="o">]</span>, <span class="kt">List</span><span class="o">[</span><span class="kt">Post</span><span class="o">])]</span> <span class="k">=</span>
+  <span class="o">(</span><span class="nc">List</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">).</span><span class="py">batchAllWith</span><span class="o">(</span><span class="n">getUser</span><span class="o">[</span><span class="kt">F</span><span class="o">]),</span> <span class="nc">List</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">).</span><span class="py">batchAllWith</span><span class="o">(</span><span class="n">getPost</span><span class="o">[</span><span class="kt">F</span><span class="o">])).</span><span class="py">tupled</span>
 
-<span class="k">def</span> <span class="nf">interestingFetch</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span> <span class="kt">:</span> <span class="kt">Async</span><span class="o">]</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">String</span><span class="o">]</span> <span class="k">=</span>
+<span class="k">def</span> <span class="nf">interestingFetch</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]</span><span class="kt">:</span> <span class="kt">Console:</span> <span class="kt">Temporal</span><span class="o">]</span><span class="k">:</span> <span class="kt">Fetch</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">String</span><span class="o">]</span> <span class="k">=</span>
   <span class="n">batched</span> <span class="o">&gt;&gt;</span> <span class="n">cached</span> <span class="o">&gt;&gt;</span> <span class="n">notCached</span> <span class="o">&gt;&gt;</span> <span class="n">concurrent</span> <span class="o">&gt;&gt;</span> <span class="nv">Fetch</span><span class="o">.</span><span class="py">pure</span><span class="o">(</span><span class="s">"done"</span><span class="o">)</span>
 </code></pre></div></div>
 
@@ -1041,28 +996,20 @@ visualize fetch executions using the execution log.</p>
 <span class="c1">//   ioe = Map(</span>
 <span class="c1">//     ioe = FlatMap(</span>
 <span class="c1">//       ioe = Delay(</span>
-<span class="c1">//         thunk = cats.effect.IO$$$Lambda$15610/1253106384@392e89ae,</span>
+<span class="c1">//         thunk = cats.effect.IO$$$Lambda$15759/340759078@753c1163,</span>
 <span class="c1">//         event = cats.effect.tracing.TracingEvent$StackTrace</span>
 <span class="c1">//       ),</span>
-<span class="c1">//       f = cats.FlatMap$$Lambda$15700/453108808@42eb4cee,</span>
+<span class="c1">//       f = cats.FlatMap$$Lambda$15860/704713281@3eea363c,</span>
 <span class="c1">//       event = cats.effect.tracing.TracingEvent$StackTrace</span>
 <span class="c1">//     ),</span>
-<span class="c1">//     f = cats.SemigroupalArityFunctions$$Lambda$15701/608302724@f6d773a,</span>
+<span class="c1">//     f = cats.SemigroupalArityFunctions$$Lambda$15861/1145705059@b9b9296,</span>
 <span class="c1">//     event = cats.effect.tracing.TracingEvent$StackTrace</span>
 <span class="c1">//   ),</span>
-<span class="c1">//   f = fetch.package$Fetch$FetchRunnerLog$$$Lambda$15775/1371920678@536a55fd,</span>
+<span class="c1">//   f = fetch.package$Fetch$FetchRunnerLog$$$Lambda$15942/1480593753@13323699,</span>
 <span class="c1">//   event = cats.effect.tracing.TracingEvent$StackTrace</span>
 <span class="c1">// )</span>
 
 <span class="nf">val</span> <span class="o">(</span><span class="n">log</span><span class="o">,</span> <span class="n">result4</span><span class="o">)</span> <span class="k">=</span> <span class="nv">io</span><span class="o">.</span><span class="py">unsafeRunSync</span><span class="o">()</span>
-<span class="c1">// --&gt; [218] Batch Users NonEmptyList(1, 2)</span>
-<span class="c1">// &lt;-- [218] Batch Users NonEmptyList(1, 2)</span>
-<span class="c1">// --&gt; [218] One User 4</span>
-<span class="c1">// &lt;-- [218] One User 4</span>
-<span class="c1">// --&gt; [218] Batch Posts NonEmptyList(1, 2, 3)</span>
-<span class="c1">// --&gt; [217] Batch Users NonEmptyList(3)</span>
-<span class="c1">// &lt;-- [218] Batch Posts NonEmptyList(1, 2, 3)</span>
-<span class="c1">// &lt;-- [217] Batch Users NonEmptyList(3)</span>
 <span class="c1">// log: Log = FetchLog(</span>
 <span class="c1">//   q = Queue(</span>
 <span class="c1">//     Round(</span>
@@ -1070,10 +1017,10 @@ visualize fetch executions using the execution log.</p>
 <span class="c1">//         Request(</span>
 <span class="c1">//           request = Batch(</span>
 <span class="c1">//             ids = NonEmptyList(head = 1, tail = List(2)),</span>
-<span class="c1">//             data = repl.MdocSession$App$Users$@43d050ef</span>
+<span class="c1">//             data = repl.MdocSession$App$Users$@3d7df006</span>
 <span class="c1">//           ),</span>
-<span class="c1">//           start = 661820L,</span>
-<span class="c1">//           end = 661920L</span>
+<span class="c1">//           start = 519479L,</span>
+<span class="c1">//           end = 519580L</span>
 <span class="c1">//         )</span>
 <span class="c1">//       )</span>
 <span class="c1">//     ),</span>
@@ -1082,10 +1029,10 @@ visualize fetch executions using the execution log.</p>
 <span class="c1">//         Request(</span>
 <span class="c1">//           request = FetchOne(</span>
 <span class="c1">//             id = 4,</span>
-<span class="c1">//             data = repl.MdocSession$App$Users$@43d050ef</span>
+<span class="c1">//             data = repl.MdocSession$App$Users$@3d7df006</span>
 <span class="c1">//           ),</span>
-<span class="c1">//           start = 661922L,</span>
-<span class="c1">//           end = 662022L</span>
+<span class="c1">//           start = 519581L,</span>
+<span class="c1">//           end = 519682L</span>
 <span class="c1">//         )</span>
 <span class="c1">//       )</span>
 <span class="c1">//     ),</span>
@@ -1094,18 +1041,18 @@ visualize fetch executions using the execution log.</p>
 <span class="c1">//         Request(</span>
 <span class="c1">//           request = Batch(</span>
 <span class="c1">//             ids = NonEmptyList(head = 1, tail = List(2, 3)),</span>
-<span class="c1">//             data = repl.MdocSession$App$Posts$@24193008</span>
+<span class="c1">//             data = repl.MdocSession$App$Posts$@462ef551</span>
 <span class="c1">//           ),</span>
-<span class="c1">//           start = 662026L,</span>
-<span class="c1">//           end = 662127L</span>
+<span class="c1">//           start = 519686L,</span>
+<span class="c1">//           end = 519787L</span>
 <span class="c1">//         ),</span>
 <span class="c1">//         Request(</span>
 <span class="c1">//           request = Batch(</span>
 <span class="c1">//             ids = NonEmptyList(head = 3, tail = List()),</span>
-<span class="c1">//             data = repl.MdocSession$App$Users$@43d050ef</span>
+<span class="c1">//             data = repl.MdocSession$App$Users$@3d7df006</span>
 <span class="c1">//           ),</span>
-<span class="c1">//           start = 662027L,</span>
-<span class="c1">//           end = 662128L</span>
+<span class="c1">//           start = 519686L,</span>
+<span class="c1">//           end = 519787L</span>
 <span class="c1">//         )</span>
 <span class="c1">//       )</span>
 <span class="c1">//     )</span>
@@ -1117,14 +1064,6 @@ visualize fetch executions using the execution log.</p>
  <span class="k">case</span> <span class="nc">Some</span><span class="o">((</span><span class="n">log</span><span class="o">,</span> <span class="k">_</span><span class="o">))</span> <span class="k">=&gt;</span> <span class="nf">println</span><span class="o">(</span><span class="nf">describe</span><span class="o">(</span><span class="n">log</span><span class="o">))</span>
  <span class="k">case</span> <span class="nc">None</span> <span class="k">=&gt;</span> <span class="nf">println</span><span class="o">(</span><span class="s">"Unable to run fetch"</span><span class="o">)</span>
 <span class="o">}</span>
-<span class="c1">// --&gt; [218] Batch Users NonEmptyList(1, 2)</span>
-<span class="c1">// &lt;-- [218] Batch Users NonEmptyList(1, 2)</span>
-<span class="c1">// --&gt; [218] One User 4</span>
-<span class="c1">// &lt;-- [218] One User 4</span>
-<span class="c1">// --&gt; [218] Batch Users NonEmptyList(3)</span>
-<span class="c1">// --&gt; [217] Batch Posts NonEmptyList(1, 2, 3)</span>
-<span class="c1">// &lt;-- [218] Batch Users NonEmptyList(3)</span>
-<span class="c1">// &lt;-- [217] Batch Posts NonEmptyList(1, 2, 3)</span>
 <span class="c1">// Fetch execution 🕛 0.31 seconds</span>
 <span class="c1">// </span>
 <span class="c1">//   [Round 1] 🕛 0.10 seconds</span>
