@@ -31,6 +31,7 @@ import scala.concurrent.ExecutionContext
 import java.util.concurrent.Executors
 
 import fetch._
+import fetch.syntax._
 
 object DatabaseExample {
   case class AuthorId(id: Int)
@@ -150,7 +151,7 @@ class DoobieExample extends AnyWordSpec with Matchers with BeforeAndAfterAll {
 
   "We can fetch multiple authors from the DB in parallel" in {
     def fetch[F[_]: Async]: Fetch[F, List[Author]] =
-      List(1, 2).traverse(Authors.fetchAuthor[F])
+      List(1, 2).map(Authors.fetchAuthor[F]).batchAll
 
     val io: IO[(Log, List[Author])] = Fetch.runLog[IO](fetch)
 

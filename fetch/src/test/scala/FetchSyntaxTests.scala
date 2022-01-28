@@ -20,6 +20,7 @@ import cats.syntax.all._
 import cats.effect._
 
 import fetch.syntax._
+import fetch.Fetch
 
 class FetchSyntaxTests extends FetchSpec {
   import TestHelper._
@@ -44,5 +45,26 @@ class FetchSyntaxTests extends FetchSpec {
     val e2 = io2.handleError(err => 42)
 
     (e1, e2).mapN(_ shouldEqual _).unsafeToFuture()
+  }
+
+  "`batchAll` syntax allows batching sequences of fetches and is equivalent to Fetch.batchAll" in {
+    def fetches[F[_]: Concurrent] = List(1, 2, 3).map(one[IO])
+    val fetchWithSyntax           = fetches[IO].batchAll
+    val fetchWithOtherSyntax      = List(1, 2, 3).batchAllWith(one[IO])
+    val fetchManual               = Fetch.batchAll(fetches[IO]: _*)
+
+    val result1 = Fetch.runLog[IO](fetchWithSyntax)
+    val result2 = Fetch.runLog[IO](fetchWithOtherSyntax)
+    val result3 = Fetch.runLog[IO](fetchManual)
+
+    (result1, result2, result3).tupled
+      .map { case ((log1, r1), (log2, r2), (log3, r3)) =>
+        Set(r1, r2, r3).size shouldBe 1
+
+        log1.rounds.size shouldBe 1
+        log2.rounds.size shouldBe 1
+        log3.rounds.size shouldBe 1
+      }
+      .unsafeToFuture()
   }
 }

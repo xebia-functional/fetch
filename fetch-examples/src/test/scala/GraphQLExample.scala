@@ -23,6 +23,7 @@ import atto._, Atto._
 import cats.syntax.all._
 import cats.data.NonEmptyList
 import cats.effect._
+import fetch.syntax._
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
@@ -199,14 +200,15 @@ class GraphQLExample extends AnyWordSpec with Matchers {
       case RepositoriesQuery(n, name, Some(_), Some(_)) =>
         for {
           repos <- Repos.fetch(org)
-          projects <-
-            repos
-              .take(n)
-              .traverse(repo =>
-                (Languages.fetch(repo), Collaborators.fetch(repo)).mapN { case (ls, cs) =>
-                  Project(name >> Some(repo.name), ls, cs)
-                }
-              )
+          projects <- {
+            val nRepos = repos.take(n)
+            val fetches = nRepos.map { repo =>
+              (Languages.fetch(repo), Collaborators.fetch(repo)).mapN { case (ls, cs) =>
+                Project(name >> Some(repo.name), ls, cs)
+              }
+            }
+            fetches.batchAll
+          }
         } yield projects
 
       case RepositoriesQuery(n, name, None, None) =>
@@ -215,16 +217,22 @@ class GraphQLExample extends AnyWordSpec with Matchers {
       case RepositoriesQuery(n, name, Some(_), None) =>
         for {
           repos <- Repos.fetch(org)
-          projects <- repos.traverse { r =>
-            Languages.fetch(r).map(ls => Project(name >> Some(r.name), ls, List()))
+          projects <- {
+            val fetches = repos.map { r =>
+              Languages.fetch(r).map(ls => Project(name >> Some(r.name), ls, List()))
+            }
+            fetches.batchAll
           }
         } yield projects
 
       case RepositoriesQuery(n, name, None, Some(_)) =>
         for {
           repos <- Repos.fetch(org)
-          projects <- repos.traverse { r =>
-            Collaborators.fetch(r).map(cs => Project(name >> Some(r.name), List(), cs))
+          projects <- {
+            val fetches = repos.map { r =>
+              Collaborators.fetch(r).map(cs => Project(name >> Some(r.name), List(), cs))
+            }
+            fetches.batchAll
           }
         } yield projects
     }

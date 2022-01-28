@@ -17,6 +17,7 @@
 import cats.effect._
 import cats.syntax.all._
 import fetch.{Data, DataSource, Fetch}
+import fetch.syntax._
 import io.circe._
 import io.circe.generic.semiauto._
 import org.http4s._
@@ -204,7 +205,7 @@ class GithubExample extends AnyWordSpec with Matchers {
   def fetchOrg[F[_]: Async](org: String) =
     for {
       repos    <- orgRepos(org)
-      projects <- repos.traverse(fetchProject[F])
+      projects <- repos.batchAllWith(fetchProject[F])
     } yield projects
 
   def fetchOrgStars[F[_]: Async](org: String): Fetch[F, Int] =
