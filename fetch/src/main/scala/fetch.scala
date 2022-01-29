@@ -303,7 +303,11 @@ object `package` {
           }
         } yield result)
 
-      override def product[A, B](fa: Fetch[F, A], fb: Fetch[F, B]): Fetch[F, (A, B)] = {
+      override def map2Eval[A, B, Z](fa: Fetch[F, A], fb: Eval[Fetch[F, B]])(
+          f: (A, B) => Z
+      ): Eval[Fetch[F, Z]] = Eval.now(map2(fa, fb.value)(f))
+
+      override def product[A, B](fa: Fetch[F, A], fb: Fetch[F, B]): Fetch[F, (A, B)] =
         Unfetch[F, (A, B)](for {
           fab <- (fa.run, fb.run).tupled
           result = fab match {
@@ -321,7 +325,6 @@ object `package` {
               Throw[F, (A, B)](e)
           }
         } yield result)
-      }
 
       override def productR[A, B](fa: Fetch[F, A])(fb: Fetch[F, B]): Fetch[F, B] =
         Unfetch[F, B](for {
