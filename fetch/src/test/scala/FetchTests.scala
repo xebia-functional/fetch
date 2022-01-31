@@ -180,7 +180,7 @@ class FetchTests extends FetchSpec {
       result shouldEqual List(1, 2, 3)
       log.rounds.size shouldEqual 1
       totalFetched(log.rounds) shouldEqual 3
-      totalBatches(log.rounds) shouldEqual 0
+      totalBatches(log.rounds) shouldEqual 1
     }.unsafeToFuture()
   }
 
@@ -369,7 +369,7 @@ class FetchTests extends FetchSpec {
     io.map { case (log, result) =>
       result shouldEqual List(1, 2, 3, 4, 5)
       log.rounds.size shouldEqual 1
-      totalBatches(log.rounds) shouldEqual 0
+      totalBatches(log.rounds) shouldEqual 2
     }.unsafeToFuture()
   }
 
@@ -395,7 +395,7 @@ class FetchTests extends FetchSpec {
     io.map { case (log, result) =>
       result shouldEqual List(1, 2, 1)
       log.rounds.size shouldEqual 1
-      totalBatches(log.rounds) shouldEqual 0
+      totalBatches(log.rounds) shouldEqual 1
       totalFetched(log.rounds) shouldEqual 2
     }.unsafeToFuture()
   }
@@ -423,7 +423,7 @@ class FetchTests extends FetchSpec {
     io.map { case (log, result) =>
       result shouldEqual List(1, 2, 3)
       log.rounds.size shouldEqual 1
-      totalBatches(log.rounds) shouldEqual 0
+      totalBatches(log.rounds) shouldEqual 1
     }.unsafeToFuture()
   }
 
