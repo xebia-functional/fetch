@@ -155,7 +155,7 @@ class FetchTests extends FetchSpec {
     }.unsafeToFuture()
   }
 
-  "Traversals are NOT implicitly batched" in {
+  "Traversals are implicitly batched" in {
     def fetch[F[_]: Concurrent]: Fetch[F, List[Int]] =
       for {
         manies <- many(3)
@@ -166,11 +166,11 @@ class FetchTests extends FetchSpec {
 
     io.map { case (log, result) =>
       result shouldEqual List(0, 1, 2)
-      log.rounds.size shouldEqual 4
+      log.rounds.size shouldEqual 2
     }.unsafeToFuture()
   }
 
-  "Sequencing is NOT implicitly batched" in {
+  "Sequencing is implicitly batched" in {
     def fetch[F[_]: Concurrent]: Fetch[F, List[Int]] =
       List(one(1), one(2), one(3)).sequence
 
@@ -178,7 +178,7 @@ class FetchTests extends FetchSpec {
 
     io.map { case (log, result) =>
       result shouldEqual List(1, 2, 3)
-      log.rounds.size shouldEqual 3
+      log.rounds.size shouldEqual 1
       totalFetched(log.rounds) shouldEqual 3
       totalBatches(log.rounds) shouldEqual 0
     }.unsafeToFuture()
@@ -360,7 +360,7 @@ class FetchTests extends FetchSpec {
     }.unsafeToFuture()
   }
 
-  "Sequenced fetches are NOT run concurrently" in {
+  "Sequenced fetches are run concurrently" in {
     def fetch[F[_]: Concurrent]: Fetch[F, List[Int]] =
       List(one(1), one(2), one(3), anotherOne(4), anotherOne(5)).sequence
 
@@ -368,7 +368,7 @@ class FetchTests extends FetchSpec {
 
     io.map { case (log, result) =>
       result shouldEqual List(1, 2, 3, 4, 5)
-      log.rounds.size shouldEqual 5
+      log.rounds.size shouldEqual 1
       totalBatches(log.rounds) shouldEqual 0
     }.unsafeToFuture()
   }
@@ -386,7 +386,7 @@ class FetchTests extends FetchSpec {
     }.unsafeToFuture()
   }
 
-  "Sequenced fetches are NOT deduped" in {
+  "Sequenced fetches are deduped" in {
     def fetch[F[_]: Concurrent]: Fetch[F, List[Int]] =
       List(one(1), one(2), one(1)).sequence
 
@@ -394,7 +394,7 @@ class FetchTests extends FetchSpec {
 
     io.map { case (log, result) =>
       result shouldEqual List(1, 2, 1)
-      log.rounds.size shouldEqual 2
+      log.rounds.size shouldEqual 1
       totalBatches(log.rounds) shouldEqual 0
       totalFetched(log.rounds) shouldEqual 2
     }.unsafeToFuture()
@@ -414,7 +414,7 @@ class FetchTests extends FetchSpec {
     }.unsafeToFuture()
   }
 
-  "Traversals are NOT batched" in {
+  "Traversals are batched" in {
     def fetch[F[_]: Concurrent]: Fetch[F, List[Int]] =
       List(1, 2, 3).traverse(one[F])
 
@@ -422,7 +422,7 @@ class FetchTests extends FetchSpec {
 
     io.map { case (log, result) =>
       result shouldEqual List(1, 2, 3)
-      log.rounds.size shouldEqual 3
+      log.rounds.size shouldEqual 1
       totalBatches(log.rounds) shouldEqual 0
     }.unsafeToFuture()
   }
@@ -440,7 +440,7 @@ class FetchTests extends FetchSpec {
     }.unsafeToFuture()
   }
 
-  "Sources that can be fetched concurrently inside a for comprehension will NOT automatically be concurrent" in {
+  "Sources that can be fetched concurrently inside a for comprehension will automatically be concurrent" in {
     def fetch[F[_]: Concurrent] =
       for {
         v      <- Fetch.pure[F, List[Int]](List(1, 2, 1))
@@ -451,7 +451,7 @@ class FetchTests extends FetchSpec {
 
     io.map { case (log, result) =>
       result shouldEqual List(1, 2, 1)
-      log.rounds.size shouldEqual 2
+      log.rounds.size shouldEqual 1
       totalFetched(log.rounds) shouldEqual 2
     }.unsafeToFuture()
   }
