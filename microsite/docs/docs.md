@@ -470,7 +470,8 @@ In hindsight, we felt that those ideas would be best explored in other projects 
 Here is an example showing how to batch fetches using `Fetch.batchAll`
 
 ```scala mdoc:silent
-val batchedList: Fetch[IO, List[Post]] = Fetch.batchAll(listOfFetches[IO]: _*)
+val listOfFetches = List(1, 2, 3).map(getPost[IO])
+val batchedList: Fetch[IO, List[Post]] = Fetch.batchAll(listOfFetches: _*)
 ```
 
 You can also use helpful syntax by importing `fetch.syntax._` for batching sequences, like so:
@@ -479,7 +480,7 @@ You can also use helpful syntax by importing `fetch.syntax._` for batching seque
 import fetch.syntax._
 
 //Takes a sequence of fetches and batches them
-val batchedListWithSyntax = listOfFetches[IO].batchAll
+val batchedListWithSyntax = listOfFetches.batchAll
 
 //Allows you to supply your own function to batch a sequence as fetches
 val listToBatchWithSyntax = List(1, 2, 3).batchAllWith(id => getPost[IO](id))
