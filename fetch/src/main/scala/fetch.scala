@@ -303,7 +303,11 @@ object `package` {
           }
         } yield result)
 
-      override def product[A, B](fa: Fetch[F, A], fb: Fetch[F, B]): Fetch[F, (A, B)] = {
+      override def map2Eval[A, B, Z](fa: Fetch[F, A], fb: Eval[Fetch[F, B]])(
+          f: (A, B) => Z
+      ): Eval[Fetch[F, Z]] = Eval.now(map2(fa, fb.value)(f))
+
+      override def product[A, B](fa: Fetch[F, A], fb: Fetch[F, B]): Fetch[F, (A, B)] =
         Unfetch[F, (A, B)](for {
           fab <- (fa.run, fb.run).tupled
           result = fab match {
@@ -321,7 +325,6 @@ object `package` {
               Throw[F, (A, B)](e)
           }
         } yield result)
-      }
 
       override def productR[A, B](fa: Fetch[F, A])(fb: Fetch[F, B]): Fetch[F, B] =
         Unfetch[F, B](for {
@@ -365,21 +368,11 @@ object `package` {
      * Given a number of fetches, returns all of the results in a `List`. In the event that multiple
      * fetches are made to the same data source, this will attempt to batch them together.
      *
-     * This should be used in code that previously relied on the auto-batching behavior of calling
-     * `traverse` on lists of `Fetch` values.
+     * As of 3.1.x, this is functionally equivalent to using `.sequence` syntax from Cats on any
+     * data structure implementing `Traverse`.
      */
-    def batchAll[F[_]: Monad, A](fetches: Fetch[F, A]*): Fetch[F, List[A]] = {
-      fetches.toList.toNel
-        .map { nes =>
-          nes
-            .map(_.map(Chain.one(_)))
-            .reduceLeft { (fa, fb) =>
-              fetchM[F].map2(fa, fb)((a, b) => a ++ b)
-            }
-            .map(_.toList)
-        }
-        .getOrElse(Fetch.pure[F, List[A]](List.empty))
-    }
+    def batchAll[F[_]: Monad, A](fetches: Fetch[F, A]*): Fetch[F, List[A]] =
+      fetches.toList.sequence
 
     def exception[F[_]: Applicative, A](e: Log => FetchException): Fetch[F, A] =
       Unfetch(Applicative[F].pure(Throw[F, A](e)))
