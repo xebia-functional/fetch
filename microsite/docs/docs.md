@@ -458,37 +458,20 @@ The above example combines data from two different sources, and the library know
 Fetch.run[IO](fetchConcurrent).unsafeRunTimed(5.seconds)
 ```
 
-## BatchAll
+## Auto-batching
 
-In versions of Fetch before 3.0.0, calls to `sequence` or `traverse` on sequences of fetches would automatically try to batch or run fetches concurrently where possible.
-This is no longer the case as of version 3.0.0, which is changed to explicitly batch requests with a new combinator.
+Fetch supports automatically batching multiple fetch requests in sequence using various combinators.
+This means that if you make multiple requests at once using combinators from Cats such as `.sequence` or `.traverse` you will get your requests as fast as possible, every time.
 
-Consider the following code:
+In Fetch 2.x and 3.1.x, calls to `sequence` or `traverse` on sequences of fetches will automatically try to batch or run fetches concurrently where possible.
+However, in Fetch 3.0.0, we briefly went in the direction of not guaranteeing batches on sequences and introducing explicit batching support to work around this.
+In hindsight, we felt that those ideas would be best explored in other projects and have decided to revert behavior to the way it was in 2.x, but keeping the new syntax added so as to not break projects.
 
-```scala mdoc:silent
-def listOfFetches[F[_]: Console: Temporal]: List[Fetch[F, Post]] = List(1, 2, 3).map(getPost[F])
-val sequencedList: Fetch[IO, List[Post]] = listOfFetches[IO].sequence
-```
-
-In versions <3.0.0, you could call `.sequence` on this list and it would make a single request for IDs 1, 2, and 3 if possible in a batch.
-In versions >=3.0.0, calling `.sequence` is essentially the same as this code:
-
-```scala mdoc:silent
-val sequencedListEquivalent = getPost[IO](1).flatMap { postOne =>
-  getPost[IO](2).flatMap { postTwo =>
-    getPost[IO](3).map { postThree =>
-      List(postOne, postTwo, postThree)
-    }
-  }
-}
-```
-
-As mentioned above, you can use `.flatMap` to sequence fetches, but not batch them.
-Therefore we have added a new combinator that guarantees batching and we do not support batching via `.sequence` or `.traverse` anymore.
 Here is an example showing how to batch fetches using `Fetch.batchAll`
 
 ```scala mdoc:silent
-val batchedList: Fetch[IO, List[Post]] = Fetch.batchAll(listOfFetches[IO]: _*)
+val listOfFetches = List(1, 2, 3).map(getPost[IO])
+val batchedList: Fetch[IO, List[Post]] = Fetch.batchAll(listOfFetches: _*)
 ```
 
 You can also use helpful syntax by importing `fetch.syntax._` for batching sequences, like so:
@@ -497,11 +480,14 @@ You can also use helpful syntax by importing `fetch.syntax._` for batching seque
 import fetch.syntax._
 
 //Takes a sequence of fetches and batches them
-val batchedListWithSyntax = listOfFetches[IO].batchAll
+val batchedListWithSyntax = listOfFetches.batchAll
 
 //Allows you to supply your own function to batch a sequence as fetches
 val listToBatchWithSyntax = List(1, 2, 3).batchAllWith(id => getPost[IO](id))
 ```
+
+Underneath, `.batchAll` and its siblings are synonymous with the methods from Cats named `.sequence` or `.traverse`, but converting the final result to a `List` explicitly afterward.
+If you currently use `.sequence` or `.traverse`, you will automatically batch a sequence of fetches as always, and `.batchAll` is there for less cats-heavy usage.
 
 # Caching
 
@@ -531,7 +517,7 @@ in the cache.
 
 ```scala mdoc:silent
 def fetchManyUsers[F[_]: Console: Temporal]: Fetch[F, List[User]] =
-  List(1, 2, 3).batchAllWith(getUser[F])
+  List(1, 2, 3).traverse(getUser[F])
 ```
 
 If only part of the data is cached, the cached data won't be asked for:
@@ -631,7 +617,7 @@ than two users:
 
 ```scala mdoc
 def fetchManyBatchedUsers[F[_]: Console: Temporal]: Fetch[F, List[User]] =
-  List(1, 2, 3, 4).batchAllWith(getBatchedUser[F])
+  List(1, 2, 3, 4).traverse(getBatchedUser[F])
 
 Fetch.run[IO](fetchManyBatchedUsers).unsafeRunTimed(5.seconds)
 ```
@@ -669,7 +655,7 @@ We have defined the maximum batch size to be 2 and the batch execution to be seq
 
 ```scala mdoc
 def fetchManySeqBatchedUsers[F[_]: Console: Temporal]: Fetch[F, List[User]] =
-  List(1, 2, 3, 4).batchAllWith(getSequentialUser[F])
+  List(1, 2, 3, 4).traverse(getSequentialUser[F])
 
 Fetch.run[IO](fetchManySeqBatchedUsers).unsafeRunTimed(5.seconds)
 ```
@@ -886,7 +872,7 @@ visualize fetch executions using the execution log.
 
 ```scala mdoc:silent
 def batched[F[_]: Console: Temporal]: Fetch[F, List[User]] =
-  List(1, 2).batchAllWith(getUser[F])
+  List(1, 2).traverse(getUser[F])
 
 def cached[F[_]: Console: Temporal]: Fetch[F, User] =
   getUser(2)
@@ -895,7 +881,7 @@ def notCached[F[_]: Console: Temporal]: Fetch[F, User] =
   getUser(4)
 
 def concurrent[F[_]: Console: Temporal]: Fetch[F, (List[User], List[Post])] =
-  (List(1, 2, 3).batchAllWith(getUser[F]), List(1, 2, 3).batchAllWith(getPost[F])).tupled
+  (List(1, 2, 3).traverse(getUser[F]), List(1, 2, 3).traverse(getPost[F])).tupled
 
 def interestingFetch[F[_]: Console: Temporal]: Fetch[F, String] =
   batched >> cached >> notCached >> concurrent >> Fetch.pure("done")
