@@ -83,7 +83,7 @@ object ProjectPlugin extends AutoPlugin {
       },
       libraryDependencies ++= {
         CrossVersion.partialVersion(scalaVersion.value) match {
-          case Some((3, 0)) => Seq()
+          case Some((3, _)) => Seq()
           case _ =>
             Seq(
               compilerPlugin("org.typelevel" % "kind-projector" % "0.13.2" cross CrossVersion.full),
