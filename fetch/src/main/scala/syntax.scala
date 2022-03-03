@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2021 47 Degrees Open Source <https://www.47deg.com>
+ * Copyright 2016-2022 47 Degrees Open Source <https://www.47deg.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package fetch
 
 import cats._
 import cats.effect._
+import fetch.Fetch
 
 object syntax {
 
@@ -37,5 +38,15 @@ object syntax {
 
     def fetch[F[_]: Concurrent]: Fetch[F, B] =
       Fetch.error[F, B](a)
+  }
+
+  implicit class FetchSeqBatchSyntax[F[_]: Monad, A](fetches: Seq[Fetch[F, A]]) {
+
+    def batchAll: Fetch[F, List[A]] = Fetch.batchAll(fetches: _*)
+  }
+
+  implicit class SeqSyntax[A](val as: Seq[A]) extends AnyVal {
+
+    def batchAllWith[F[_]: Monad, B](f: A => Fetch[F, B]) = Fetch.batchAll(as.map(f): _*)
   }
 }

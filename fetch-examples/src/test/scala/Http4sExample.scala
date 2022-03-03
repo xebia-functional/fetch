@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2021 47 Degrees Open Source <https://www.47deg.com>
+ * Copyright 2016-2022 47 Degrees Open Source <https://www.47deg.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,6 +34,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import java.util.concurrent._
 
 import fetch._
+import fetch.syntax._
 
 object HttpExample {
   case class UserId(id: Int)
@@ -114,7 +115,7 @@ object HttpExample {
     fetchUserById(UserId(id))
 
   def fetchManyUsers[F[_]: Async](ids: List[Int]): Fetch[F, List[User]] =
-    ids.traverse(i => fetchUserById(UserId(i)))
+    ids.map(i => fetchUserById(UserId(i))).batchAll
 
   def fetchPosts[F[_]: Async](user: User): Fetch[F, (User, List[Post])] =
     fetchPostsForUser(user.id).map(posts => (user, posts))
@@ -149,7 +150,7 @@ class Http4sExample extends AnyWordSpec with Matchers {
     def fetch[F[_]: Async]: Fetch[F, List[(User, List[Post])]] =
       for {
         users          <- fetchManyUsers(List(1, 2))
-        usersWithPosts <- users.traverse(fetchPosts[F])
+        usersWithPosts <- users.map(fetchPosts[F]).batchAll
       } yield usersWithPosts
 
     val io = Fetch.runLog[IO](fetch)

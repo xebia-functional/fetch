@@ -21,16 +21,16 @@ A library for Simple & Efficient data access in Scala and Scala.js
 
 Add the following dependency to your project's build file.
 
-For Scala 2.11.x and 2.12.x:
+For Scala 2.12.x through 3.x:
 
 ```scala
-"com.47deg" %% "fetch" % "2.1.1"
+"com.47deg" %% "fetch" % "3.1.0"
 ```
 
-Or, if using Scala.js (0.6.x):
+Or, if using Scala.js (1.8.x):
 
 ```scala
-"com.47deg" %%% "fetch" % "2.1.1"
+"com.47deg" %%% "fetch" % "3.1.0"
 ```
 
 
@@ -105,19 +105,14 @@ def fetchString[F[_] : Async](n: Int): Fetch[F, String] =
 
 ## Creating a runtime
 
-Since `Fetch` relies on `Concurrent` from the `cats-effect` library, we'll need a runtime for executing our effects. We'll be using `IO` from `cats-effect` to run fetches, but you can use any type that has a `Concurrent` instance.
-
-For executing `IO`, we need a `ContextShift[IO]` used for running `IO` instances and a `Timer[IO]` that is used for scheduling. Let's go ahead and create them. We'll use a `java.util.concurrent.ScheduledThreadPoolExecutor` with a couple of threads to run our fetches.
+Since we'll use `IO` from the `cats-effect` library to execute our fetches, we'll need an `IORuntime` for executing our `IO` instances.
 
 ```scala
-import java.util.concurrent._
-import scala.concurrent.ExecutionContext
-
-val executor = new ScheduledThreadPoolExecutor(4)
-val executionContext: ExecutionContext = ExecutionContext.fromExecutor(executor)
-
-import cats.effect.unsafe.implicits.global
+import cats.effect.unsafe.implicits.global //Gives us an IORuntime in places it is normally not provided
 ```
+
+Normally, in your applications, this is provided by `IOApp`, and you should not need to import this except in limited scenarios such as test environments that do not have Cats Effect integration.
+For more information, and particularly on why you would usually not want to make one of these yourself, [see this post by Daniel Spiewak](https://github.com/typelevel/cats-effect/discussions/1562#discussioncomment-254838)
 
 ## Creating and running a fetch
 
@@ -134,8 +129,8 @@ Let's run it and wait for the fetch to complete. We'll use `IO#unsafeRunTimed` f
 import scala.concurrent.duration._
 
 Fetch.run[IO](fetchOne).unsafeRunTimed(5.seconds)
-// --> [177] One ToString 1
-// <-- [177] One ToString 1
+// --> [178] One ToString 1
+// <-- [178] One ToString 1
 // res0: Option[String] = Some(value = "1")
 ```
 
@@ -193,12 +188,12 @@ When executing the above fetch, note how the three identities get requested in p
 
 ```scala
 Fetch.run[IO](fetchUnbatchedThree).unsafeRunTimed(5.seconds)
-// --> [177] One UnbatchedToString 1
-// --> [178] One UnbatchedToString 2
-// <-- [177] One UnbatchedToString 1
-// --> [177] One UnbatchedToString 3
-// <-- [178] One UnbatchedToString 2
-// <-- [177] One UnbatchedToString 3
+// --> [178] One UnbatchedToString 1
+// --> [177] One UnbatchedToString 2
+// <-- [178] One UnbatchedToString 1
+// --> [178] One UnbatchedToString 3
+// <-- [177] One UnbatchedToString 2
+// <-- [178] One UnbatchedToString 3
 // res2: Option[(String, String, String)] = Some(value = ("1", "2", "3"))
 ```
 
@@ -244,8 +239,8 @@ Note how the two independent data fetches run in parallel, minimizing the latenc
 
 ```scala
 Fetch.run[IO](fetchMulti).unsafeRunTimed(5.seconds)
-// --> [178] One Length one
 // --> [177] One ToString 1
+// --> [178] One Length one
 // <-- [177] One ToString 1
 // <-- [178] One Length one
 // res3: Option[(String, Int)] = Some(value = ("1", 3))
@@ -310,7 +305,6 @@ runFetchFourTimesSharedCache.unsafeRunTimed(5.seconds)
 
 As you can see above, the cache will now work between calls and can be used to deduplicate requests over a period of time.
 Note that this does not support any kind of automatic cache invalidation, so you will need to keep track of which values you want to re-fetch if you plan on sharing the cache.
-
 ---
 
 For more in-depth information, take a look at our [documentation](https://47degrees.github.io/fetch/docs.html).
@@ -319,4 +313,4 @@ For more in-depth information, take a look at our [documentation](https://47degr
 
 Fetch is designed and developed by 47 Degrees
 
-Copyright (C) 2016-2021 47 Degrees. <http://47deg.com>
+Copyright (C) 2016-2022 47 Degrees. <http://47deg.com>

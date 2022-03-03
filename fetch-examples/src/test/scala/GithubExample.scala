@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2021 47 Degrees Open Source <https://www.47deg.com>
+ * Copyright 2016-2022 47 Degrees Open Source <https://www.47deg.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 import cats.effect._
 import cats.syntax.all._
 import fetch.{Data, DataSource, Fetch}
+import fetch.syntax._
 import io.circe._
 import io.circe.generic.semiauto._
 import org.http4s._
@@ -204,7 +205,7 @@ class GithubExample extends AnyWordSpec with Matchers {
   def fetchOrg[F[_]: Async](org: String) =
     for {
       repos    <- orgRepos(org)
-      projects <- repos.traverse(fetchProject[F])
+      projects <- repos.batchAllWith(fetchProject[F])
     } yield projects
 
   def fetchOrgStars[F[_]: Async](org: String): Fetch[F, Int] =

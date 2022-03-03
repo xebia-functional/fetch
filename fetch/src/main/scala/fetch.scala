@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2021 47 Degrees Open Source <https://www.47deg.com>
+ * Copyright 2016-2022 47 Degrees Open Source <https://www.47deg.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -303,6 +303,10 @@ object `package` {
           }
         } yield result)
 
+      override def map2Eval[A, B, Z](fa: Fetch[F, A], fb: Eval[Fetch[F, B]])(
+          f: (A, B) => Z
+      ): Eval[Fetch[F, Z]] = Eval.now(map2(fa, fb.value)(f))
+
       override def product[A, B](fa: Fetch[F, A], fb: Fetch[F, B]): Fetch[F, (A, B)] =
         Unfetch[F, (A, B)](for {
           fab <- (fa.run, fb.run).tupled
@@ -359,6 +363,16 @@ object `package` {
      */
     def pure[F[_]: Applicative, A](a: A): Fetch[F, A] =
       Unfetch(Applicative[F].pure(Done(a)))
+
+    /**
+     * Given a number of fetches, returns all of the results in a `List`. In the event that multiple
+     * fetches are made to the same data source, this will attempt to batch them together.
+     *
+     * As of 3.1.x, this is functionally equivalent to using `.sequence` syntax from Cats on any
+     * data structure implementing `Traverse`.
+     */
+    def batchAll[F[_]: Monad, A](fetches: Fetch[F, A]*): Fetch[F, List[A]] =
+      fetches.toList.sequence
 
     def exception[F[_]: Applicative, A](e: Log => FetchException): Fetch[F, A] =
       Unfetch(Applicative[F].pure(Throw[F, A](e)))

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2021 47 Degrees Open Source <https://www.47deg.com>
+ * Copyright 2016-2022 47 Degrees Open Source <https://www.47deg.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import cats.instances.list._
 import cats.syntax.all._
 import cats.effect._
 import fetch._
+import fetch.syntax._
 
 import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
@@ -152,7 +153,7 @@ class FetchBatchingTests extends FetchSpec {
 
   "A large fetch to a datasource with a maximum batch size is split and executed in sequence" in {
     def fetch[F[_]: Concurrent]: Fetch[F, List[Int]] =
-      List.range(1, 6).traverse(fetchBatchedDataSeq[F])
+      List.range(1, 6).map(fetchBatchedDataSeq[F]).batchAll
 
     val io = Fetch.runLog[IO](fetch)
 
@@ -166,7 +167,7 @@ class FetchBatchingTests extends FetchSpec {
 
   "A large fetch to a datasource with a maximum batch size is split and executed in parallel" in {
     def fetch[F[_]: Concurrent]: Fetch[F, List[Int]] =
-      List.range(1, 6).traverse(fetchBatchedDataPar[F])
+      List.range(1, 6).map(fetchBatchedDataPar[F]).batchAll
 
     val io = Fetch.runLog[IO](fetch)
 
@@ -180,8 +181,8 @@ class FetchBatchingTests extends FetchSpec {
 
   "Fetches to datasources with a maximum batch size should be split and executed in parallel and sequentially when using productR" in {
     def fetch[F[_]: Concurrent]: Fetch[F, List[Int]] =
-      List.range(1, 6).traverse(fetchBatchedDataPar[F]) *>
-        List.range(1, 6).traverse(fetchBatchedDataSeq[F])
+      List.range(1, 6).map(fetchBatchedDataPar[F]).batchAll *>
+        List.range(1, 6).map(fetchBatchedDataSeq[F]).batchAll
 
     val io = Fetch.runLog[IO](fetch)
 
@@ -195,8 +196,8 @@ class FetchBatchingTests extends FetchSpec {
 
   "Fetches to datasources with a maximum batch size should be split and executed in parallel and sequentially when using productL" in {
     def fetch[F[_]: Concurrent]: Fetch[F, List[Int]] =
-      List.range(1, 6).traverse(fetchBatchedDataPar[F]) <*
-        List.range(1, 6).traverse(fetchBatchedDataSeq[F])
+      List.range(1, 6).map(fetchBatchedDataPar[F]).batchAll <*
+        List.range(1, 6).map(fetchBatchedDataSeq[F]).batchAll
 
     val io = Fetch.runLog[IO](fetch)
 
@@ -210,7 +211,7 @@ class FetchBatchingTests extends FetchSpec {
 
   "A large (many) fetch to a datasource with a maximum batch size is split and executed in sequence" in {
     def fetch[F[_]: Concurrent]: Fetch[F, List[Int]] =
-      List(fetchBatchedDataSeq[F](1), fetchBatchedDataSeq[F](2), fetchBatchedDataSeq[F](3)).sequence
+      List(1, 2, 3).map(fetchBatchedDataSeq[F]).batchAll
 
     val io = Fetch.runLog[IO](fetch)
 
@@ -224,7 +225,7 @@ class FetchBatchingTests extends FetchSpec {
 
   "A large (many) fetch to a datasource with a maximum batch size is split and executed in parallel" in {
     def fetch[F[_]: Concurrent]: Fetch[F, List[Int]] =
-      List(fetchBatchedDataPar[F](1), fetchBatchedDataPar[F](2), fetchBatchedDataPar[F](3)).sequence
+      List(1, 2, 3).map(fetchBatchedDataPar[F]).batchAll
 
     val io = Fetch.runLog[IO](fetch)
 
@@ -247,7 +248,7 @@ class FetchBatchingTests extends FetchSpec {
     )
 
     val io = Fetch.runLog[IO](
-      ids.toList.traverse(fetchBatchedDataBigId[IO])
+      ids.toList.map(fetchBatchedDataBigId[IO]).batchAll
     )
 
     io.map { case (log, result) =>

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2021 47 Degrees Open Source <https://www.47deg.com>
+ * Copyright 2016-2022 47 Degrees Open Source <https://www.47deg.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import cats.syntax.all._
 import cats.effect._
 
 import fetch.syntax._
+import fetch.Fetch
 
 class FetchSyntaxTests extends FetchSpec {
   import TestHelper._
@@ -44,5 +45,26 @@ class FetchSyntaxTests extends FetchSpec {
     val e2 = io2.handleError(err => 42)
 
     (e1, e2).mapN(_ shouldEqual _).unsafeToFuture()
+  }
+
+  "`batchAll` syntax allows batching sequences of fetches and is equivalent to Fetch.batchAll" in {
+    def fetches[F[_]: Concurrent] = List(1, 2, 3).map(one[IO])
+    val fetchWithSyntax           = fetches[IO].batchAll
+    val fetchWithOtherSyntax      = List(1, 2, 3).batchAllWith(one[IO])
+    val fetchManual               = Fetch.batchAll(fetches[IO]: _*)
+
+    val result1 = Fetch.runLog[IO](fetchWithSyntax)
+    val result2 = Fetch.runLog[IO](fetchWithOtherSyntax)
+    val result3 = Fetch.runLog[IO](fetchManual)
+
+    (result1, result2, result3).tupled
+      .map { case ((log1, r1), (log2, r2), (log3, r3)) =>
+        Set(r1, r2, r3).size shouldBe 1
+
+        log1.rounds.size shouldBe 1
+        log2.rounds.size shouldBe 1
+        log3.rounds.size shouldBe 1
+      }
+      .unsafeToFuture()
   }
 }

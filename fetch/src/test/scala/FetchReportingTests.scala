@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2021 47 Degrees Open Source <https://www.47deg.com>
+ * Copyright 2016-2022 47 Degrees Open Source <https://www.47deg.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -88,7 +88,21 @@ class FetchReportingTests extends FetchSpec {
     def fetch[F[_]: Concurrent] =
       for {
         manies <- many(3)                 // round 1
-        ones   <- manies.traverse(one[F]) // round 2
+        ones   <- manies.traverse(one[F]) // rounds 2, 3, 4
+      } yield ones
+
+    val io = Fetch.runLog[IO](fetch)
+
+    io.map { case (log, result) =>
+      log.rounds.size shouldEqual 2
+    }.unsafeToFuture()
+  }
+
+  "Single fetches combined with Fetch.batchAll are run in one round" in {
+    def fetch[F[_]: Concurrent] =
+      for {
+        manies <- many(3)                                // round 1
+        ones   <- Fetch.batchAll(manies.map(one[F]): _*) // round 2
       } yield ones
 
     val io = Fetch.runLog[IO](fetch)
