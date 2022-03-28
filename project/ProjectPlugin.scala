@@ -15,7 +15,7 @@ object ProjectPlugin extends AutoPlugin {
       Seq(
         libraryDependencies ++=
           Seq(
-            "org.typelevel" %%% "cats-effect" % "3.3.8",
+            "org.typelevel" %%% "cats-effect" % "3.3.9",
             "org.typelevel" %%% "cats-effect-testkit" % "3.3.8" % "test",
             "org.scalatest" %%% "scalatest"   % "3.2.11" % "test",
             "org.typelevel" %%% "cats-laws" % "2.7.0" % "test",
@@ -70,7 +70,7 @@ object ProjectPlugin extends AutoPlugin {
         "org.tpolecat" %% "atto-core"           % "0.9.5",
         "org.http4s"   %% "http4s-blaze-client" % "0.23.11",
         "org.http4s"   %% "http4s-circe"        % "0.23.11",
-        "redis.clients" % "jedis"               % "4.1.1"
+        "redis.clients" % "jedis"               % "4.2.0"
       )
     ) ++ commonCrossDependencies
   }
