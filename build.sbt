@@ -5,7 +5,7 @@ addCommandAlias("ci-test", "scalafmtCheckAll; scalafmtSbtCheck; mdoc; ++test")
 addCommandAlias("ci-docs", "github; mdoc; headerCreateAll; publishMicrosite")
 addCommandAlias("ci-publish", "github; ci-release")
 
-lazy val scala212         = "2.12.15"
+lazy val scala212         = "2.12.16"
 lazy val scala213         = "2.13.8"
 lazy val scala3Version    = "3.1.2"
 lazy val scala2Versions   = Seq(scala212, scala213)
