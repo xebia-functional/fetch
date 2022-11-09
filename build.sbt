@@ -7,7 +7,7 @@ addCommandAlias("ci-publish", "github; ci-release")
 
 lazy val scala212         = "2.12.17"
 lazy val scala213         = "2.13.10"
-lazy val scala3Version    = "3.2.0"
+lazy val scala3Version    = "3.2.1"
 lazy val scala2Versions   = Seq(scala212, scala213)
 lazy val allScalaVersions = scala2Versions :+ scala3Version
 
