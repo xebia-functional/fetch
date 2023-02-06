@@ -15,7 +15,7 @@ object ProjectPlugin extends AutoPlugin {
       Seq(
         libraryDependencies ++=
           Seq(
-            "org.typelevel" %%% "cats-effect" % "3.4.5",
+            "org.typelevel" %%% "cats-effect" % "3.4.6",
             "org.scalatest" %%% "scalatest"   % "3.2.15" % "test"
           )
       )
