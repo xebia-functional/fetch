@@ -26,12 +26,12 @@ we read) concerns.</p>
 
 <p>To begin, add the following dependency to your SBT build file:</p>
 
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="s">"com.47deg"</span> <span class="o">%%</span> <span class="s">"fetch"</span> <span class="o">%</span> <span class="s">"3.1.0"</span>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="s">"com.47deg"</span> <span class="o">%%</span> <span class="s">"fetch"</span> <span class="o">%</span> <span class="s">"3.1.1"</span>
 </code></pre></div></div>
 
 <p>Or, if using Scala.js:</p>
 
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="s">"com.47deg"</span> <span class="o">%%%</span> <span class="s">"fetch"</span> <span class="o">%</span> <span class="s">"3.1.0"</span>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="s">"com.47deg"</span> <span class="o">%%%</span> <span class="s">"fetch"</span> <span class="o">%</span> <span class="s">"3.1.1"</span>
 </code></pre></div></div>
 
 <p>Now you’ll have Fetch available in both Scala and Scala.js.</p>
@@ -521,9 +521,9 @@ data sources.</p>
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nf">val</span> <span class="o">(</span><span class="n">populatedCache</span><span class="o">,</span> <span class="n">result</span><span class="o">)</span> <span class="k">=</span> <span class="nv">Fetch</span><span class="o">.</span><span class="py">runCache</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="n">fetchManyUsers</span><span class="o">).</span><span class="py">unsafeRunSync</span><span class="o">()</span>
 <span class="c1">// populatedCache: DataCache[IO] = InMemoryCache(</span>
 <span class="c1">//   state = Map(</span>
-<span class="c1">//     (repl.MdocSession$App$Users$@542b5e89, fetch.DataSourceId@1) -&gt; fetch.DataSourceResult@d3eb82b3,</span>
-<span class="c1">//     (repl.MdocSession$App$Users$@542b5e89, fetch.DataSourceId@2) -&gt; fetch.DataSourceResult@d43da1de,</span>
-<span class="c1">//     (repl.MdocSession$App$Users$@542b5e89, fetch.DataSourceId@3) -&gt; fetch.DataSourceResult@30b9ef3f</span>
+<span class="c1">//     (repl.MdocSession$MdocApp$Users$@116f0543, fetch.DataSourceId@1) -&gt; fetch.DataSourceResult@d3eb82b3,</span>
+<span class="c1">//     (repl.MdocSession$MdocApp$Users$@116f0543, fetch.DataSourceId@2) -&gt; fetch.DataSourceResult@d43da1de,</span>
+<span class="c1">//     (repl.MdocSession$MdocApp$Users$@116f0543, fetch.DataSourceId@3) -&gt; fetch.DataSourceResult@30b9ef3f</span>
 <span class="c1">//   )</span>
 <span class="c1">// )</span>
 <span class="c1">// result: List[User] = List(</span>
@@ -744,10 +744,10 @@ a fetch that fails after a couple rounds to see it in action:</p>
 <span class="c1">//             Request(</span>
 <span class="c1">//               request = FetchOne(</span>
 <span class="c1">//                 id = 1,</span>
-<span class="c1">//                 data = repl.MdocSession$App$Users$@542b5e89</span>
+<span class="c1">//                 data = repl.MdocSession$MdocApp$Users$@116f0543</span>
 <span class="c1">//               ),</span>
-<span class="c1">//               start = 349167L,</span>
-<span class="c1">//               end = 349268L</span>
+<span class="c1">//               start = 526540L,</span>
+<span class="c1">//               end = 526640L</span>
 <span class="c1">//             )</span>
 <span class="c1">//           )</span>
 <span class="c1">//         ),</span>
@@ -756,10 +756,10 @@ a fetch that fails after a couple rounds to see it in action:</p>
 <span class="c1">//             Request(</span>
 <span class="c1">//               request = FetchOne(</span>
 <span class="c1">//                 id = 2,</span>
-<span class="c1">//                 data = repl.MdocSession$App$Users$@542b5e89</span>
+<span class="c1">//                 data = repl.MdocSession$MdocApp$Users$@116f0543</span>
 <span class="c1">//               ),</span>
-<span class="c1">//               start = 349271L,</span>
-<span class="c1">//               end = 349372L</span>
+<span class="c1">//               start = 526643L,</span>
+<span class="c1">//               end = 526744L</span>
 <span class="c1">//             )</span>
 <span class="c1">//           )</span>
 <span class="c1">//         )</span>
@@ -770,7 +770,7 @@ a fetch that fails after a couple rounds to see it in action:</p>
 
 <span class="nf">println</span><span class="o">(</span><span class="nv">value</span><span class="o">.</span><span class="py">fold</span><span class="o">(</span><span class="n">describe</span><span class="o">,</span> <span class="nv">_</span><span class="o">.</span><span class="py">toString</span><span class="o">))</span>
 <span class="c1">// [ERROR] Unhandled `java.lang.Exception`: 'Oh noes', fetch interrupted after 2 rounds</span>
-<span class="c1">// Fetch execution 🕛 0.21 seconds</span>
+<span class="c1">// Fetch execution 🕛 0.20 seconds</span>
 <span class="c1">//   </span>
 <span class="c1">//     [Round 1] 🕛 0.10 seconds</span>
 <span class="c1">//       [Fetch one] From `Users` with id 1 🕛 0.10 seconds</span>
@@ -798,7 +798,7 @@ identity was not found. Whenever an identity cannot be found, the fetch executio
 <span class="c1">// value2: Either[Throwable, (Log, User)] = Left(</span>
 <span class="c1">//   value = MissingIdentity(</span>
 <span class="c1">//     i = 5,</span>
-<span class="c1">//     request = FetchOne(id = 5, data = repl.MdocSession$App$Users$@542b5e89),</span>
+<span class="c1">//     request = FetchOne(id = 5, data = repl.MdocSession$MdocApp$Users$@116f0543),</span>
 <span class="c1">//     log = FetchLog(</span>
 <span class="c1">//       q = Queue(</span>
 <span class="c1">//         Round(</span>
@@ -806,10 +806,10 @@ identity was not found. Whenever an identity cannot be found, the fetch executio
 <span class="c1">//             Request(</span>
 <span class="c1">//               request = FetchOne(</span>
 <span class="c1">//                 id = 5,</span>
-<span class="c1">//                 data = repl.MdocSession$App$Users$@542b5e89</span>
+<span class="c1">//                 data = repl.MdocSession$MdocApp$Users$@116f0543</span>
 <span class="c1">//               ),</span>
-<span class="c1">//               start = 349405L,</span>
-<span class="c1">//               end = 349505L</span>
+<span class="c1">//               start = 526776L,</span>
+<span class="c1">//               end = 526877L</span>
 <span class="c1">//             )</span>
 <span class="c1">//           )</span>
 <span class="c1">//         )</span>
@@ -953,7 +953,7 @@ a fetch execution given an execution log.</p>
 
 <p>Add the following line to your dependencies for including Fetch’s debugging facilities:</p>
 
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="s">"com.47deg"</span> <span class="o">%%</span> <span class="s">"fetch-debug"</span> <span class="o">%</span> <span class="s">"3.1.0"</span>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="s">"com.47deg"</span> <span class="o">%%</span> <span class="s">"fetch-debug"</span> <span class="o">%</span> <span class="s">"3.1.1"</span>
 </code></pre></div></div>
 
 <h2 id="fetch-execution">Fetch execution</h2>
@@ -984,16 +984,16 @@ visualize fetch executions using the execution log.</p>
 <span class="c1">//   ioe = Map(</span>
 <span class="c1">//     ioe = FlatMap(</span>
 <span class="c1">//       ioe = Delay(</span>
-<span class="c1">//         thunk = cats.effect.IO$$$Lambda$15683/953041301@994efef,</span>
+<span class="c1">//         thunk = cats.effect.IO$$$Lambda$16312/0x000000010485d440@6654c319,</span>
 <span class="c1">//         event = cats.effect.tracing.TracingEvent$StackTrace</span>
 <span class="c1">//       ),</span>
-<span class="c1">//       f = cats.FlatMap$$Lambda$15783/1086316539@6e39911b,</span>
+<span class="c1">//       f = cats.FlatMap$$Lambda$16434/0x0000000104945040@1f9fd4af,</span>
 <span class="c1">//       event = cats.effect.tracing.TracingEvent$StackTrace</span>
 <span class="c1">//     ),</span>
-<span class="c1">//     f = cats.SemigroupalArityFunctions$$Lambda$15784/707902276@329f69e4,</span>
+<span class="c1">//     f = cats.SemigroupalArityFunctions$$Lambda$16435/0x0000000104944040@2c1ba14d,</span>
 <span class="c1">//     event = cats.effect.tracing.TracingEvent$StackTrace</span>
 <span class="c1">//   ),</span>
-<span class="c1">//   f = fetch.package$Fetch$FetchRunnerLog$$$Lambda$15857/771393257@34851ee2,</span>
+<span class="c1">//   f = fetch.package$Fetch$FetchRunnerLog$$$Lambda$16508/0x000000010498e040@272c1ef3,</span>
 <span class="c1">//   event = cats.effect.tracing.TracingEvent$StackTrace</span>
 <span class="c1">// )</span>
 
@@ -1005,10 +1005,10 @@ visualize fetch executions using the execution log.</p>
 <span class="c1">//         Request(</span>
 <span class="c1">//           request = Batch(</span>
 <span class="c1">//             ids = NonEmptyList(head = 1, tail = List(2)),</span>
-<span class="c1">//             data = repl.MdocSession$App$Users$@542b5e89</span>
+<span class="c1">//             data = repl.MdocSession$MdocApp$Users$@116f0543</span>
 <span class="c1">//           ),</span>
-<span class="c1">//           start = 349731L,</span>
-<span class="c1">//           end = 349832L</span>
+<span class="c1">//           start = 527099L,</span>
+<span class="c1">//           end = 527200L</span>
 <span class="c1">//         )</span>
 <span class="c1">//       )</span>
 <span class="c1">//     ),</span>
@@ -1017,10 +1017,10 @@ visualize fetch executions using the execution log.</p>
 <span class="c1">//         Request(</span>
 <span class="c1">//           request = FetchOne(</span>
 <span class="c1">//             id = 4,</span>
-<span class="c1">//             data = repl.MdocSession$App$Users$@542b5e89</span>
+<span class="c1">//             data = repl.MdocSession$MdocApp$Users$@116f0543</span>
 <span class="c1">//           ),</span>
-<span class="c1">//           start = 349833L,</span>
-<span class="c1">//           end = 349933L</span>
+<span class="c1">//           start = 527201L,</span>
+<span class="c1">//           end = 527302L</span>
 <span class="c1">//         )</span>
 <span class="c1">//       )</span>
 <span class="c1">//     ),</span>
@@ -1029,18 +1029,18 @@ visualize fetch executions using the execution log.</p>
 <span class="c1">//         Request(</span>
 <span class="c1">//           request = Batch(</span>
 <span class="c1">//             ids = NonEmptyList(head = 1, tail = List(2, 3)),</span>
-<span class="c1">//             data = repl.MdocSession$App$Posts$@219a3757</span>
+<span class="c1">//             data = repl.MdocSession$MdocApp$Posts$@47a3d898</span>
 <span class="c1">//           ),</span>
-<span class="c1">//           start = 349937L,</span>
-<span class="c1">//           end = 350037L</span>
+<span class="c1">//           start = 527305L,</span>
+<span class="c1">//           end = 527406L</span>
 <span class="c1">//         ),</span>
 <span class="c1">//         Request(</span>
 <span class="c1">//           request = Batch(</span>
 <span class="c1">//             ids = NonEmptyList(head = 3, tail = List()),</span>
-<span class="c1">//             data = repl.MdocSession$App$Users$@542b5e89</span>
+<span class="c1">//             data = repl.MdocSession$MdocApp$Users$@116f0543</span>
 <span class="c1">//           ),</span>
-<span class="c1">//           start = 349937L,</span>
-<span class="c1">//           end = 350038L</span>
+<span class="c1">//           start = 527305L,</span>
+<span class="c1">//           end = 527406L</span>
 <span class="c1">//         )</span>
 <span class="c1">//       )</span>
 <span class="c1">//     )</span>
@@ -1052,7 +1052,7 @@ visualize fetch executions using the execution log.</p>
  <span class="k">case</span> <span class="nc">Some</span><span class="o">((</span><span class="n">log</span><span class="o">,</span> <span class="k">_</span><span class="o">))</span> <span class="k">=&gt;</span> <span class="nf">println</span><span class="o">(</span><span class="nf">describe</span><span class="o">(</span><span class="n">log</span><span class="o">))</span>
  <span class="k">case</span> <span class="nc">None</span> <span class="k">=&gt;</span> <span class="nf">println</span><span class="o">(</span><span class="s">"Unable to run fetch"</span><span class="o">)</span>
 <span class="o">}</span>
-<span class="c1">// Fetch execution 🕛 0.30 seconds</span>
+<span class="c1">// Fetch execution 🕛 0.31 seconds</span>
 <span class="c1">// </span>
 <span class="c1">//   [Round 1] 🕛 0.10 seconds</span>
 <span class="c1">//     [Batch] From `Users` with ids List(1, 2) 🕛 0.10 seconds</span>
