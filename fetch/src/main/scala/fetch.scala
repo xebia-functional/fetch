@@ -261,7 +261,7 @@ object `package` {
     private[fetch] def run: F[FetchResult[F, A]]
   }
   private[fetch] final case class Unfetch[F[_], A](
-      private[fetch] run: F[FetchResult[F, A]]
+      private[fetch] val run: F[FetchResult[F, A]]
   ) extends Fetch[F, A]
 
   // Fetch Monad
