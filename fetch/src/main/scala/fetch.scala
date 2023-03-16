@@ -22,20 +22,21 @@ import cats.effect._
 import cats.effect.implicits._
 import cats.syntax.all._
 
-import scala.collection.immutable.Map
 import scala.util.control.NoStackTrace
 
 object `package` {
-  private[fetch] sealed trait FetchRequest extends Product with Serializable
+  private[fetch] sealed trait FetchRequest extends Product with Serializable {
+    def cached: Boolean
+  }
 
   private[fetch] sealed trait FetchQuery[I, A] extends FetchRequest {
     def data: Data[I, A]
     def identities: Set[I]
   }
-  private[fetch] final case class FetchOne[I, A](id: I, data: Data[I, A]) extends FetchQuery[I, A] {
+  private[fetch] final case class FetchOne[I, A](id: I, data: Data[I, A], cached: Boolean = false) extends FetchQuery[I, A] {
     override def identities: Set[I] = Set(id)
   }
-  private[fetch] final case class Batch[I, A](ids: NonEmptyList[I], data: Data[I, A])
+  private[fetch] final case class Batch[I, A](ids: NonEmptyList[I], data: Data[I, A], cached: Boolean = false)
       extends FetchQuery[I, A] {
     override def identities: Set[I] = ids.toList.toSet
   }
@@ -657,16 +658,18 @@ object `package` {
       T: Clock[F]
   ): F[List[Request]] =
     for {
+      startTime   <- T.monotonic.map(_.toMillis)
       c           <- cache.get
       maybeCached <- c.lookup(q.id, q.data)
       result <- maybeCached match {
         // Cached
-        case Some(v) => runCombinationResult(putResult, FetchDone(v)).as(Nil)
+        case Some(v) => runCombinationResult(putResult, FetchDone(v)).as(
+          List(Request(FetchOne(q.id, q.data, cached = true), startTime, startTime))
+        )
 
         // Not cached, must fetch
         case None =>
           for {
-            startTime <- T.monotonic.map(_.toMillis)
             o         <- ds.fetch(q.id)
             endTime   <- T.monotonic.map(_.toMillis)
             result <- o match {
@@ -711,6 +714,10 @@ object `package` {
         result.tupleLeft(i).toRight(i)
       }
       cachedResults = cached.toMap
+      startTime <- T.monotonic.map(_.toMillis)
+      cachedRequests = cached.toNel.map(
+        x => Request(Batch(x.map(_._1), q.data, cached = true), startTime, startTime)
+      )
       result <- uncachedIds.toNel match {
         // All cached
         case None =>
@@ -718,11 +725,8 @@ object `package` {
 
         // Some uncached
         case Some(uncached) =>
+          val request = Batch[Any, Any](uncached, q.data)
           for {
-            startTime <- T.monotonic.map(_.toMillis)
-
-            request = Batch[Any, Any](uncached, q.data)
-
             batchedRequest <- ds.maxBatchSize match {
               // Unbatched
               case None =>
@@ -743,7 +747,7 @@ object `package` {
 
           } yield batchedRequest.batches.map(Request(_, startTime, endTime))
       }
-    } yield result
+    } yield result ++ cachedRequests.toList
 
   private def runBatchedRequest[F[_]](
       q: Batch[Any, Any],

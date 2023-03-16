@@ -30,8 +30,10 @@ class FetchSpec extends AsyncFreeSpec with Matchers {
 
   def countFetches(r: Request): Int =
     r.request match {
-      case FetchOne(_, _) => 1
-      case Batch(ids, _)  => ids.toList.size
+      case FetchOne(_, _, false) => 1
+      case Batch(ids, _, false)  => ids.toList.size
+      case FetchOne(_, _, true)  => 0
+      case Batch(_, _, true)     => 0
     }
 
   def totalFetched(rs: Seq[Round]): Int =
@@ -39,8 +41,10 @@ class FetchSpec extends AsyncFreeSpec with Matchers {
 
   def countBatches(r: Request): Int =
     r.request match {
-      case FetchOne(_, _) => 0
-      case Batch(_, _)    => 1
+      case FetchOne(_, _, false) => 0
+      case Batch(_, _, false)    => 1
+      case FetchOne(_, _, true)  => 0
+      case Batch(_, _, true)     => 0
     }
 
   def totalBatches(rs: Seq[Round]): Int =
