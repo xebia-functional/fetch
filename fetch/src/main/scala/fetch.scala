@@ -33,11 +33,18 @@ object `package` {
     def data: Data[I, A]
     def identities: Set[I]
   }
-  private[fetch] final case class FetchOne[I, A](id: I, data: Data[I, A], cached: Boolean = false) extends FetchQuery[I, A] {
+  private[fetch] final case class FetchOne[I, A](
+      id: I,
+      data: Data[I, A],
+      cached: Boolean = false
+  ) extends FetchQuery[I, A] {
     override def identities: Set[I] = Set(id)
   }
-  private[fetch] final case class Batch[I, A](ids: NonEmptyList[I], data: Data[I, A], cached: Boolean = false)
-      extends FetchQuery[I, A] {
+  private[fetch] final case class Batch[I, A](
+      ids: NonEmptyList[I],
+      data: Data[I, A],
+      cached: Boolean = false
+  ) extends FetchQuery[I, A] {
     override def identities: Set[I] = ids.toList.toSet
   }
 
@@ -663,15 +670,16 @@ object `package` {
       maybeCached <- c.lookup(q.id, q.data)
       result <- maybeCached match {
         // Cached
-        case Some(v) => runCombinationResult(putResult, FetchDone(v)).as(
-          List(Request(FetchOne(q.id, q.data, cached = true), startTime, startTime))
-        )
+        case Some(v) =>
+          runCombinationResult(putResult, FetchDone(v)).as(
+            List(Request(FetchOne(q.id, q.data, cached = true), startTime, startTime))
+          )
 
         // Not cached, must fetch
         case None =>
           for {
-            o         <- ds.fetch(q.id)
-            endTime   <- T.monotonic.map(_.toMillis)
+            o       <- ds.fetch(q.id)
+            endTime <- T.monotonic.map(_.toMillis)
             result <- o match {
               // Fetched
               case Some(a) =>
@@ -715,8 +723,8 @@ object `package` {
       }
       cachedResults = cached.toMap
       startTime <- T.monotonic.map(_.toMillis)
-      cachedRequests = cached.toNel.map(
-        x => Request(Batch(x.map(_._1), q.data, cached = true), startTime, startTime)
+      cachedRequests = cached.toNel.map(x =>
+        Request(Batch(x.map(_._1), q.data, cached = true), startTime, startTime)
       )
       result <- uncachedIds.toNel match {
         // All cached

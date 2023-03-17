@@ -16,15 +16,10 @@
 
 package fetch
 
-import scala.concurrent._
-import java.util.concurrent._
-import scala.concurrent.duration._
-
 import cats._
+import cats.data.NonEmptyList
 import cats.effect._
 import cats.instances.list._
-import cats.instances.option._
-import cats.data.NonEmptyList
 import cats.syntax.all._
 import fetch.syntax._
 
@@ -284,8 +279,8 @@ class FetchTests extends FetchSpec {
 
     io.map { case (log, result) =>
       result shouldEqual ((1, 2), 3)
-      log.rounds.count(_.queries.forall(_.request.cached)) shouldEqual 1  // cached rounds
-      log.rounds.size shouldEqual 3                                       // all rounds
+      log.rounds.count(_.queries.forall(_.request.cached)) shouldEqual 1 // cached rounds
+      log.rounds.size shouldEqual 3                                      // all rounds
       totalBatches(log.rounds) shouldEqual 2
       totalFetched(log.rounds) shouldEqual 5
     }.unsafeToFuture()
@@ -311,8 +306,8 @@ class FetchTests extends FetchSpec {
 
     io.map { case (log, result) =>
       result shouldEqual (1, 2)
-      log.rounds.count(_.queries.forall(_.request.cached)) shouldEqual 1  // cached rounds
-      log.rounds.size shouldEqual 3                                       // all rounds
+      log.rounds.count(_.queries.forall(_.request.cached)) shouldEqual 1 // cached rounds
+      log.rounds.size shouldEqual 3                                      // all rounds
       totalBatches(log.rounds) shouldEqual 2
       totalFetched(log.rounds) shouldEqual 4
     }.unsafeToFuture()
@@ -532,8 +527,8 @@ class FetchTests extends FetchSpec {
     val io = Fetch.runLog[IO](fetch)
 
     io.map { case (log, result) =>
-      log.rounds.count(_.queries.forall(_.request.cached)) shouldEqual 7  // cached rounds
-      log.rounds.size shouldEqual 8                                       // all rounds
+      log.rounds.count(_.queries.forall(_.request.cached)) shouldEqual 7 // cached rounds
+      log.rounds.size shouldEqual 8                                      // all rounds
       totalFetched(log.rounds) shouldEqual 3
     }.unsafeToFuture()
   }
