@@ -59,7 +59,7 @@ jobs:
             ${{ env.CACHE_FOLDER }}
           key: ci-cache-key
       - name: Run checks
-        run: sbt exit
+        run: sbt ci-test
         env:
           GITHUB_TOKEN: ${{ secrets.ADMIN_GITHUB_TOKEN }}
       - name: Save cached
@@ -69,7 +69,7 @@ jobs:
         with:
           path: |
             ${{ env.CACHE_FOLDER }}
-          key: ${{ steps.ci-cache.outputs.cache-primary-key }}
+          key: ${{ steps.ci-cache-restore.outputs.cache-primary-key }}
       - name: Run post-conditions
         run: test -f .github/actions.yml && eval "$(yq e '.post.ci // "true"' .github/actions.yml)" || true
       - name: Automerge Scala Steward PRs
