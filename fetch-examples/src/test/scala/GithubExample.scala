@@ -218,7 +218,7 @@ class GithubExample extends AnyWordSpec with Matchers {
     fetchOrg(org).map(projects => projects.map(_.languages.toSet).fold(Set())(_ ++ _).size)
 
   "We can fetch org repos" in {
-    val io = Fetch.runLog[IO](fetchOrg[IO]("47deg"))
+    val io = Fetch.runLog[IO](fetchOrg[IO]("47degrees"))
 
     val (log, result) = io.unsafeRunSync()
 
