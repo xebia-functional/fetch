@@ -24,23 +24,70 @@ import org.http4s._
 import org.http4s.blaze.client._
 import org.http4s.circe._
 import org.http4s.client._
-import org.http4s.headers.Authorization
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.typelevel.ci.CIString
+import org.typelevel.log4cats.Logger
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 
-import scala.concurrent.ExecutionContext
+import java.io.{BufferedReader, BufferedWriter, File, FileReader, FileWriter}
 
 class GithubExample extends AnyWordSpec with Matchers {
-  implicit val executionContext            = ExecutionContext.Implicits.global
   implicit val ioRuntime: unsafe.IORuntime = unsafe.IORuntime.global
 
   val ACCESS_TOKEN: String = sys.env("GITHUB_TOKEN")
+  val CACHE_FOLDER: String = sys.env.getOrElse("GITHUB_RESPONSES", "target/github-responses")
+
+  def cleanUpCache: IO[Unit] = IO {
+    val folder = new File(CACHE_FOLDER)
+    if (folder.isDirectory) folder.listFiles().toList else Nil
+  }.flatMap(_.traverse_(f => IO.blocking(f.delete()).attempt.void))
 
   // http4s client which is used by the datasources
 
-  def client[F[_]: Async] =
-    BlazeClientBuilder[F](executionContext).resource
+  object FileMiddleware {
+
+    def file(uri: Uri): File =
+      new File(CACHE_FOLDER + "/" + uri.path.toString.replaceAll("/", "_") + ".json")
+
+    def fileWriter[F[_]: Async](file: File): Resource[F, BufferedWriter] =
+      Resource.fromAutoCloseable(Async[F].blocking(new BufferedWriter(new FileWriter(file))))
+
+    def fileReader[F[_]: Async](file: File): Resource[F, BufferedReader] =
+      Resource.fromAutoCloseable(Async[F].blocking(new BufferedReader(new FileReader(file))))
+
+    def apply[F[_]: Async]: Client[F] => Client[F] = { client =>
+      val logger: Logger[F] = Slf4jLogger.getLogger[F]
+      Client[F] { request =>
+        val cacheFile = file(request.uri)
+        for {
+          _ <- Resource.eval(Async[F].catchNonFatal(cacheFile.getParentFile.mkdirs()))
+          json <-
+            if (cacheFile.exists()) {
+              fileReader(cacheFile)
+                .evalMap(br =>
+                  Async[F].delay(
+                    Stream.continually(br.readLine()).takeWhile(_ != null).mkString("\n")
+                  )
+                )
+                .evalMap(s => Async[F].fromEither(io.circe.parser.parse(s)))
+                .evalTap(_ => logger.info(s"Got JSON for uri ${request.uri} from cache"))
+            } else {
+              client
+                .run(request)
+                .evalMap(_.as[Json])
+                .flatTap(json =>
+                  fileWriter(cacheFile).evalMap(fw => Async[F].blocking(fw.write(json.spaces4)))
+                )
+                .evalTap(_ => logger.info(s"Request to ${request.uri}"))
+            }
+        } yield Response[F](Status.Ok).withEntity[Json](json)
+      }
+    }
+  }
+
+  def client[F[_]: Async]: Resource[F, Client[F]] =
+    BlazeClientBuilder[F].resource.map(FileMiddleware.apply)
 
   // -- repos
 
@@ -55,47 +102,6 @@ class GithubExample extends AnyWordSpec with Matchers {
       contributors_url: String
   )
 
-  object Repos extends Data[(String, String), Repo] {
-    def name = "Repositories"
-
-    implicit val repoD: Decoder[Repo] = deriveDecoder
-
-    def source[F[_]: Async]: DataSource[F, (String, String), Repo] = {
-      implicit val repoED: EntityDecoder[F, Repo]        = jsonOf
-      implicit val reposED: EntityDecoder[F, List[Repo]] = jsonOf
-
-      new DataSource[F, (String, String), Repo] {
-
-        def CF = Concurrent[F]
-
-        def data = Repos
-
-        def fetch(id: (String, String)): F[Option[Repo]] = {
-          client[F].use { (c) =>
-            val (owner, repo) = id
-            val url           = GITHUB / "repos" / owner / repo
-            val req = Request[F](Method.GET, url).withHeaders(
-              Header.Raw(CIString("Authorization"), s"token $ACCESS_TOKEN")
-            )
-            for {
-              result <- c
-                .run(req)
-                .use[Repo] {
-                  case Status.Ok(res) =>
-                    res.as[Repo]
-                  case res =>
-                    CF.raiseError(new Exception(res.body.toString))
-                }
-            } yield Option(result)
-          }
-        }
-      }
-    }
-  }
-
-  def fetchRepo[F[_]: Async](r: (String, String)): Fetch[F, Repo] =
-    Fetch(r, Repos.source)
-
   object OrgRepos extends Data[Org, List[Repo]] {
     def name = "Org repositories"
 
@@ -103,15 +109,14 @@ class GithubExample extends AnyWordSpec with Matchers {
 
     def source[F[_]: Async]: DataSource[F, Org, List[Repo]] =
       new DataSource[F, Org, List[Repo]] {
-        implicit val repoED: EntityDecoder[F, Repo]        = jsonOf
         implicit val reposED: EntityDecoder[F, List[Repo]] = jsonOf
 
-        def CF = Concurrent[F]
+        def CF: Concurrent[F] = Concurrent[F]
 
-        def data = OrgRepos
+        def data: Data[Org, List[Repo]] = OrgRepos
 
         def fetch(org: Org): F[Option[List[Repo]]] = {
-          client[F].use { (c) =>
+          client[F].use { c =>
             val url =
               GITHUB / "orgs" / org / "repos" +? ("type", "public") +? ("per_page", 100)
             val req = Request[F](Method.GET, url).withHeaders(
@@ -140,12 +145,12 @@ class GithubExample extends AnyWordSpec with Matchers {
         )
         implicit val langED: EntityDecoder[F, List[Language]] = jsonOf
 
-        def CF = Concurrent[F]
+        def CF: Concurrent[F] = Concurrent[F]
 
-        def data = Languages
+        def data: Data[Repo, List[Language]] = Languages
 
         def fetch(repo: Repo): F[Option[List[Language]]] = {
-          client[F].use { (c) =>
+          client[F].use { c =>
             val url = Uri.unsafeFromString(repo.languages_url)
             val req = Request[F](Method.GET, url).withHeaders(
               Header.Raw(CIString("Authorization"), s"token $ACCESS_TOKEN")
@@ -169,15 +174,14 @@ class GithubExample extends AnyWordSpec with Matchers {
     def source[F[_]: Async]: DataSource[F, Repo, List[Contributor]] =
       new DataSource[F, Repo, List[Contributor]] {
         implicit val contribD: Decoder[Contributor]                 = deriveDecoder
-        implicit val contribE: EntityDecoder[F, Contributor]        = jsonOf
         implicit val contribED: EntityDecoder[F, List[Contributor]] = jsonOf
 
-        def CF = Concurrent[F]
+        def CF: Concurrent[F] = Concurrent[F]
 
-        def data = Contributors
+        def data: Data[Repo, List[Contributor]] = Contributors
 
         def fetch(repo: Repo): F[Option[List[Contributor]]] = {
-          client[F].use { (c) =>
+          client[F].use { c =>
             val url = Uri
               .unsafeFromString(
                 repo.contributors_url
@@ -202,10 +206,12 @@ class GithubExample extends AnyWordSpec with Matchers {
       Project(repo = repo, contributors = contribs, languages = langs)
     }
 
-  def fetchOrg[F[_]: Async](org: String) =
+  def fetchOrg[F[_]: Async](org: String): Fetch[F, List[Project]] =
     for {
-      repos    <- orgRepos(org)
-      projects <- repos.batchAllWith(fetchProject[F])
+      repos <- orgRepos(org)
+      projects <- repos
+        .filter(r => r.name == "fetch" || r.name == "github4s" || r.name == "memeid")
+        .batchAllWith(fetchProject[F])
     } yield projects
 
   def fetchOrgStars[F[_]: Async](org: String): Fetch[F, Int] =
@@ -220,7 +226,7 @@ class GithubExample extends AnyWordSpec with Matchers {
   "We can fetch org repos" in {
     val io = Fetch.runLog[IO](fetchOrg[IO]("47degrees"))
 
-    val (log, result) = io.unsafeRunSync()
+    val (log, _) = io.onError(_ => cleanUpCache).unsafeRunSync()
 
     log.rounds.size shouldEqual 2
   }
@@ -258,27 +264,26 @@ class GithubExample extends AnyWordSpec with Matchers {
           getNextLink(hs.head.value).map(Uri.unsafeFromString)
         }
 
-    F.delay(println(req)) >>
-      c.run(req).use[List[A]] {
-        case Status.Ok(res) =>
-          if (hasNext(res)) {
-            for {
-              repos <- res.as[List[A]]
-              nxt   <- getNext(res)
-              newReq = req.withUri(nxt)
-              moreRepos <- fetchCollectionRecursively(c, newReq)
-            } yield repos ++ moreRepos
-          } else
-            res.as[List[A]]
-        case res =>
-          res.bodyText.compile.string.flatMap(respBody =>
-            F.raiseError(
-              new Exception(
-                s"Couldn't complete request, returned status: ${res.status}: Body:\n$respBody"
-              )
+    c.run(req).use[List[A]] {
+      case Status.Ok(res) =>
+        if (hasNext(res)) {
+          for {
+            repos <- res.as[List[A]]
+            nxt   <- getNext(res)
+            newReq = req.withUri(nxt)
+            moreRepos <- fetchCollectionRecursively(c, newReq)
+          } yield repos ++ moreRepos
+        } else
+          res.as[List[A]]
+      case res =>
+        res.bodyText.compile.string.flatMap(respBody =>
+          F.raiseError(
+            new Exception(
+              s"Couldn't complete request, returned status: ${res.status}: Body:\n$respBody"
             )
           )
-      }
+        )
+    }
   }
 
 }

@@ -42,10 +42,24 @@ jobs:
         uses: stefanzweifel/git-auto-commit-action@v4.5.1
         with:
           commit_message: Run formatter/linter
+      - name: Restore cached github responses
+        id: cache-github-restore
+        uses: actions/cache/restore@v3
+        with:
+          path: |
+            target/github-responses
+          key: github-cache
       - name: Run checks
         run: sbt ci-test
         env:
           GITHUB_TOKEN: ${{ secrets.ADMIN_GITHUB_TOKEN }}
+      - name: Save cached github responses
+        id: cache-github-save
+        uses: actions/cache/save@v3
+        with:
+          path: |
+            target/github-responses
+          key: ${{ steps.cache-github-restore.outputs.cache-primary-key }}
       - name: Run post-conditions
         run: test -f .github/actions.yml && eval "$(yq e '.post.ci // "true"' .github/actions.yml)" || true
       - name: Automerge Scala Steward PRs
