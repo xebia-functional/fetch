@@ -67,7 +67,7 @@ class GithubExample extends AnyWordSpec with Matchers {
               fileReader(cacheFile)
                 .evalMap(br =>
                   Async[F].delay(
-                    LazyList.continually(br.readLine()).takeWhile(_ != null).mkString("\n")
+                    Stream.continually(br.readLine()).takeWhile(_ != null).mkString("\n")
                   )
                 )
                 .evalMap(s => Async[F].fromEither(io.circe.parser.parse(s)))
