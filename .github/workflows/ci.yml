@@ -9,6 +9,12 @@ on:
     branches: [main]
   pull_request:
 
+env:
+  USE_RUBY: ${{ vars.USE_RUBY || 'true' }}
+  USE_YQ: ${{ vars.USE_YQ || 'true' }}
+  USE_CACHE: ${{ vars.SKIP_CACHE || 'false' }}
+  CACHE_FOLDER: ${{ vars.CACHE_FOLDER || '.cache' }}
+
 jobs:
   test:
     if: "!contains(github.event.head_commit.message, 'skip ci')"
@@ -28,10 +34,12 @@ jobs:
         with:
           java-version: adopt@1.11
       - name: Setup Ruby
+        if: ${{ env.USE_RUBY == 'true' }}
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: .ruby-version
       - name: Setup yq
+        if: ${{ env.USE_YQ == 'true' }}
         run: sudo snap install yq
       - name: Run pre-conditions
         run: test -f .github/actions.yml && eval "$(yq e '.pre.ci // "true"' .github/actions.yml)" || true
@@ -42,24 +50,26 @@ jobs:
         uses: stefanzweifel/git-auto-commit-action@v4.5.1
         with:
           commit_message: Run formatter/linter
-      - name: Restore cached github responses
-        id: cache-github-restore
+      - name: Restore cache
+        id: ci-cache-restore
+        if: ${{ env.USE_CACHE == 'true' }}
         uses: actions/cache/restore@v3
         with:
           path: |
-            target/github-responses
-          key: github-cache
+            ${{ env.CACHE_FOLDER }}
+          key: ci-cache-key
       - name: Run checks
-        run: sbt ci-test
+        run: sbt exit
         env:
           GITHUB_TOKEN: ${{ secrets.ADMIN_GITHUB_TOKEN }}
-      - name: Save cached github responses
-        id: cache-github-save
+      - name: Save cached
+        id: ci-cache-save
+        if: ${{ env.USE_CACHE == 'true' }}
         uses: actions/cache/save@v3
         with:
           path: |
-            target/github-responses
-          key: ${{ steps.cache-github-restore.outputs.cache-primary-key }}
+            ${{ env.CACHE_FOLDER }}
+          key: ${{ steps.ci-cache.outputs.cache-primary-key }}
       - name: Run post-conditions
         run: test -f .github/actions.yml && eval "$(yq e '.post.ci // "true"' .github/actions.yml)" || true
       - name: Automerge Scala Steward PRs

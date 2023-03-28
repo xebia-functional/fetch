@@ -36,7 +36,7 @@ class GithubExample extends AnyWordSpec with Matchers {
   implicit val ioRuntime: unsafe.IORuntime = unsafe.IORuntime.global
 
   val ACCESS_TOKEN: String = sys.env("GITHUB_TOKEN")
-  val CACHE_FOLDER: String = sys.env.getOrElse("GITHUB_RESPONSES", "target/github-responses")
+  val CACHE_FOLDER: String = sys.env.getOrElse("CACHE_FOLDER", "target") + "/github-responses"
 
   def cleanUpCache: IO[Unit] = IO {
     val folder = new File(CACHE_FOLDER)
