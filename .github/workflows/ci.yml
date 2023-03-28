@@ -12,7 +12,7 @@ on:
 env:
   USE_RUBY: ${{ vars.USE_RUBY || 'true' }}
   USE_YQ: ${{ vars.USE_YQ || 'true' }}
-  USE_CACHE: ${{ vars.SKIP_CACHE || 'false' }}
+  USE_CACHE: ${{ vars.USE_CACHE || 'false' }}
   CACHE_FOLDER: ${{ vars.CACHE_FOLDER || '.cache' }}
 
 jobs:
