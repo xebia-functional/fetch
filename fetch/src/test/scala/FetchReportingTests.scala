@@ -144,7 +144,7 @@ class FetchReportingTests extends FetchSpec {
     val io = Fetch.runLog[IO](fetch)
 
     io.map { case (log, result) =>
-      log.rounds.size shouldEqual 2
+      log.rounds.size shouldEqual 3
       totalBatches(log.rounds) shouldEqual 1
       totalFetched(log.rounds) shouldEqual 3 + 1
     }.unsafeToFuture()

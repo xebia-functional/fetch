@@ -90,12 +90,12 @@ object debug {
 
   def showRequest(r: Request): Document =
     r.request match {
-      case FetchOne(id, d) =>
-        Document.text(s"[Fetch one] From `${d.name}` with id $id") :-: showDuration(r.duration)
-      case Batch(ids, d) =>
-        Document.text(s"[Batch] From `${d.name}` with ids ${ids.toList}") :-: showDuration(
-          r.duration
-        )
+      case FetchOne(id, d, cached) =>
+        Document.text(s"[Fetch one] From `${d.name}` with id $id cached $cached") :-:
+          showDuration(r.duration)
+      case Batch(ids, d, cached) =>
+        Document.text(s"[Batch] From `${d.name}` with ids ${ids.toList} cached $cached") :-:
+          showDuration(r.duration)
     }
 
   def showMissing(d: Data[_, _], ids: List[_]): Document =
