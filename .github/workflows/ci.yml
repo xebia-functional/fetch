@@ -8,16 +8,25 @@ on:
   push:
     branches: [main]
   pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
-  USE_RUBY: ${{ vars.USE_RUBY || 'true' }}
-  USE_YQ: ${{ vars.USE_YQ || 'true' }}
+  USE_RUBY: ${{ vars.USE_RUBY || 'false' }}
+  USE_YQ: ${{ vars.USE_YQ || 'false' }}
   USE_CACHE: ${{ vars.USE_CACHE || 'false' }}
   CACHE_FOLDER: ${{ vars.CACHE_FOLDER || '.cache' }}
 
 jobs:
   test:
-    if: "!contains(github.event.head_commit.message, 'skip ci')"
+    if: ${{!contains(github.event.head_commit.message, 'skip ci') && !github.event.pull_request.draft}}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout project (pull-request)
@@ -62,7 +71,7 @@ jobs:
         run: sbt ci-test
         env:
           GITHUB_TOKEN: ${{ secrets.ADMIN_GITHUB_TOKEN }}
-      - name: Save cached
+      - name: Save cache
         id: ci-cache-save
         if: ${{ env.USE_CACHE == 'true' }}
         uses: actions/cache/save@v3
