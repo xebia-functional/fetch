@@ -279,7 +279,7 @@ As you can see above, the cache will now work between calls and can be used to d
 Note that this does not support any kind of automatic cache invalidation, so you will need to keep track of which values you want to re-fetch if you plan on sharing the cache.
 ---
 
-For more in-depth information, take a look at our [documentation](https://47degrees.github.io/fetch/docs.html).
+For more in-depth information, take a look at our [documentation](https://xebia-functional.github.io/fetch/docs.html).
 
 # Copyright
 
