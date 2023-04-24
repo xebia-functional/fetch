@@ -910,7 +910,7 @@ Let's break down the output from `describe`:
 # Resources
 
 - [Code](https://github.com/47degrees/fetch) on GitHub.
-- [Documentation site](https://47degrees.github.io/fetch/)
+- [Documentation site](https://xebia-functional.github.io/fetch/)
 - [Fetch: Simple & Efficient data access](https://www.youtube.com/watch?v=45fcKYFb0EU) talk at [Typelevel Summit in Oslo](http://typelevel.org/event/2016-05-summit-oslo/)
 
 # Acknowledgements
