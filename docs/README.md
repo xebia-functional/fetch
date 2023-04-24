@@ -4,7 +4,7 @@
 
 A library for Simple & Efficient data access in Scala and Scala.js
 
-- [Documentation](https://47degrees.github.io/fetch/docs)
+- [Documentation](https://xebia-functional.github.io/fetch/docs)
 
 ```scala mdoc:toc
 ```
