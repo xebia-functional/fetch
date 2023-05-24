@@ -15,8 +15,8 @@ object ProjectPlugin extends AutoPlugin {
       Seq(
         libraryDependencies ++=
           Seq(
-            "org.typelevel" %%% "cats-effect" % "3.4.9",
-            "org.scalatest" %%% "scalatest"   % "3.2.15" % "test"
+            "org.typelevel" %%% "cats-effect" % "3.5.0",
+            "org.scalatest" %%% "scalatest"   % "3.2.16" % "test"
           )
       )
 
@@ -65,9 +65,9 @@ object ProjectPlugin extends AutoPlugin {
         "org.tpolecat" %% "doobie-core"         % "1.0.0-RC2",
         "org.tpolecat" %% "doobie-h2"           % "1.0.0-RC2",
         "org.tpolecat" %% "atto-core"           % "0.9.5",
-        "org.http4s"   %% "http4s-blaze-client" % "0.23.14",
-        "org.http4s"   %% "http4s-circe"        % "0.23.18",
-        "redis.clients" % "jedis"               % "4.3.2",
+        "org.http4s"   %% "http4s-blaze-client" % "0.23.15",
+        "org.http4s"   %% "http4s-circe"        % "0.23.19",
+        "redis.clients" % "jedis"               % "4.4.1",
         "io.circe"     %% "circe-parser"        % "0.14.5" % Test,
         "org.slf4j"     % "slf4j-simple"        % "2.0.7"  % Test
       )
