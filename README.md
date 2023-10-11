@@ -1,10 +1,10 @@
 # Fetch
 
-[![Join the chat at https://gitter.im/47deg/fetch](https://badges.gitter.im/47deg/fetch.svg)](https://gitter.im/47deg/fetch?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) [![Maven Central](https://img.shields.io/badge/maven%20central-1.2.1-green.svg)](https://oss.sonatype.org/#nexus-search;gav~com.47deg~fetch*) [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](https://raw.githubusercontent.com/47deg/fetch/master/LICENSE) [![Latest version](https://img.shields.io/badge/fetch-1.2.1-green.svg)](https://index.scala-lang.org/47deg/fetch) [![Scala.js](http://scala-js.org/assets/badges/scalajs-0.6.15.svg)](http://scala-js.org) [![GitHub Issues](https://img.shields.io/github/issues/47deg/fetch.svg)](https://github.com/47deg/fetch/issues)
+[![Join the chat at https://gitter.im/47deg/fetch](https://badges.gitter.im/47deg/fetch.svg)](https://gitter.im/47deg/fetch?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) [![Maven Central](https://img.shields.io/badge/maven%20central-1.2.1-green.svg)](https://oss.sonatype.org/#nexus-search;gav~com.47deg~fetch*) [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](https://raw.githubusercontent.com/xebia-functional/fetch/master/LICENSE) [![Latest version](https://img.shields.io/badge/fetch-1.2.1-green.svg)](https://index.scala-lang.org/47deg/fetch) [![Scala.js](http://scala-js.org/assets/badges/scalajs-0.6.15.svg)](http://scala-js.org) [![GitHub Issues](https://img.shields.io/github/issues/47deg/fetch.svg)](https://github.com/xebia-functional/fetch/issues)
 
 A library for Simple & Efficient data access in Scala and Scala.js
 
-- [Documentation](https://47degrees.github.io/fetch/docs)
+- [Documentation](https://xebia-functional.github.io/fetch/docs)
 
 ---
 
@@ -307,7 +307,7 @@ As you can see above, the cache will now work between calls and can be used to d
 Note that this does not support any kind of automatic cache invalidation, so you will need to keep track of which values you want to re-fetch if you plan on sharing the cache.
 ---
 
-For more in-depth information, take a look at our [documentation](https://47degrees.github.io/fetch/docs.html).
+For more in-depth information, take a look at our [documentation](https://xebia-functional.github.io/fetch/docs.html).
 
 # Copyright
 
