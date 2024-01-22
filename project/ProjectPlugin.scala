@@ -69,7 +69,7 @@ object ProjectPlugin extends AutoPlugin {
         "org.http4s"   %% "http4s-circe"        % "0.23.25",
         "redis.clients" % "jedis"               % "5.1.0",
         "io.circe"     %% "circe-parser"        % "0.14.6" % Test,
-        "org.slf4j"     % "slf4j-simple"        % "2.0.10" % Test
+        "org.slf4j"     % "slf4j-simple"        % "2.0.11" % Test
       )
     ) ++ commonCrossDependencies
   }
