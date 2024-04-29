@@ -61,14 +61,14 @@ object ProjectPlugin extends AutoPlugin {
 
     lazy val examplesSettings = Seq(
       libraryDependencies ++= Seq(
-        "io.circe"     %% "circe-generic"       % "0.14.6",
+        "io.circe"     %% "circe-generic"       % "0.14.7",
         "org.tpolecat" %% "doobie-core"         % "1.0.0-RC5",
         "org.tpolecat" %% "doobie-h2"           % "1.0.0-RC5",
         "org.tpolecat" %% "atto-core"           % "0.9.5",
         "org.http4s"   %% "http4s-blaze-client" % "0.23.16",
         "org.http4s"   %% "http4s-circe"        % "0.23.26",
         "redis.clients" % "jedis"               % "5.1.2",
-        "io.circe"     %% "circe-parser"        % "0.14.6" % Test,
+        "io.circe"     %% "circe-parser"        % "0.14.7" % Test,
         "org.slf4j"     % "slf4j-simple"        % "2.0.13" % Test
       )
     ) ++ commonCrossDependencies
