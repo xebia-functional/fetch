@@ -6,7 +6,7 @@ addCommandAlias("ci-docs", "github; mdoc; headerCreateAll; publishMicrosite")
 addCommandAlias("ci-publish", "github; ci-release")
 
 lazy val scala212         = "2.12.19"
-lazy val scala213         = "2.13.13"
+lazy val scala213         = "2.13.14"
 lazy val scala3Version    = "3.3.3"
 lazy val scala2Versions   = Seq(scala212, scala213)
 lazy val allScalaVersions = scala2Versions :+ scala3Version
