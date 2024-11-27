@@ -63,7 +63,7 @@ object ProjectPlugin extends AutoPlugin {
       libraryDependencies ++= Seq(
         "io.circe"     %% "circe-generic"       % "0.14.10",
         "org.tpolecat" %% "doobie-core"         % "1.0.0-RC5",
-        "org.tpolecat" %% "doobie-h2"           % "1.0.0-RC5",
+        "org.tpolecat" %% "doobie-h2"           % "1.0.0-RC6",
         "org.tpolecat" %% "atto-core"           % "0.9.5",
         "org.http4s"   %% "http4s-blaze-client" % "0.23.17",
         "org.http4s"   %% "http4s-circe"        % "0.23.29",
