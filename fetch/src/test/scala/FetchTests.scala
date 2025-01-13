@@ -35,9 +35,8 @@ class FetchTests extends FetchSpec {
     Fetch.run[IO](fetch).map(_ shouldEqual 42).unsafeToFuture()
   }
 
-  "We can lift values which have a Data Source to Fetch" in {
+  "We can lift values which have a Data Source to Fetch" in
     Fetch.run[IO](one(1)).map(_ shouldEqual 1).unsafeToFuture()
-  }
 
   "We can map over Fetch values" in {
     def fetch[F[_]: Concurrent]: Fetch[F, (Int)] =
