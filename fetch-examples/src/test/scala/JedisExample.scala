@@ -133,11 +133,11 @@ case class RedisCache[F[_]: Sync](host: String) extends DataCache[F] {
 
   private def bulkSet(ivs: List[(Array[Byte], Array[Byte])]): F[Unit] =
     connection.use(c =>
-      Sync[F].delay({
+      Sync[F].delay {
         val pipe = c.pipelined
         ivs.foreach(i => pipe.set(i._1, i._2))
         pipe.sync
-      })
+      }
     )
 
   private def cacheId[I, A](i: I, data: Data[I, A]): Array[Byte] =
