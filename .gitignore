@@ -35,7 +35,15 @@ project/plugins/project/
 .bloop/
 .metals/
 metals.sbt
+
+### Scala-CLI ###
+
 .scala-build/
+
+### Mill ###
+
+# Techinically a duplicate of the IDEA section.
+out/
 
 ### Vim ###
 
@@ -74,6 +82,13 @@ tags
 !.vscode/launch.json
 !.vscode/extensions.json
 
-# Direnv
+### Direnv ###
 
 .direnv
+.envrc
+
+### JavaScript / NPM / Yarn / Bundlers ###
+
+node_modules
+.parcel-cache
+dist
