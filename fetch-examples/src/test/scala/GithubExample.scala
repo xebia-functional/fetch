@@ -226,7 +226,7 @@ class GithubExample extends AnyWordSpec with Matchers {
   "We can fetch org repos" in {
     val io = Fetch.runLog[IO](fetchOrg[IO]("47degrees"))
 
-    val (log, _) = io.onError(_ => cleanUpCache).unsafeRunSync()
+    val (log, _) = io.onError { case _ => cleanUpCache }.unsafeRunSync()
 
     log.rounds.size shouldEqual 2
   }
