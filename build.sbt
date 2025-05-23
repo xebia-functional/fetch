@@ -1,5 +1,6 @@
-ThisBuild / scalaVersion := scala213
-ThisBuild / organization := "com.47deg"
+ThisBuild / scalaVersion       := scala213
+ThisBuild / organization       := "com.47deg"
+ThisBuild / githubOrganization := "xebia-functional"
 
 addCommandAlias("ci-test", "scalafmtCheckAll; scalafmtSbtCheck; mdoc; ++test")
 addCommandAlias("ci-docs", "github; mdoc; headerCreateAll; publishMicrosite")
