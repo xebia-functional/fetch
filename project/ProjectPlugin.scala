@@ -93,6 +93,14 @@ object ProjectPlugin extends AutoPlugin {
             )
         }
       },
+      developers := List(
+        Developer(
+          "47erbot",
+          "Xebia",
+          "developer.xf@xebia.com",
+          url("https://xebia.com/")
+        )
+      ),
       scalacOptions := Seq(
         "-unchecked",
         "-deprecation",
