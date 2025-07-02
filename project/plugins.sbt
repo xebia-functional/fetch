@@ -1,7 +1,7 @@
 addSbtPlugin("com.github.sbt"       % "sbt-ci-release"           % "1.11.1")
 addSbtPlugin("org.portable-scala"   % "sbt-scalajs-crossproject" % "1.3.2")
 addSbtPlugin("org.scala-js"         % "sbt-scalajs"              % "1.19.0")
-addSbtPlugin("org.scalameta"        % "sbt-scalafmt"             % "2.5.4")
+addSbtPlugin("org.scalameta"        % "sbt-scalafmt"             % "2.5.5")
 addSbtPlugin("com.47deg"            % "sbt-microsites"           % "1.4.4")
 addSbtPlugin("org.scalameta"        % "sbt-mdoc"                 % "2.7.1")
 addSbtPlugin("de.heikoseeberger"    % "sbt-header"               % "5.10.0")
