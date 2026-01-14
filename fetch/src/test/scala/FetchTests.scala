@@ -942,4 +942,51 @@ class FetchTests extends FetchSpec {
 
     io.map(_ shouldEqual List(0, 1, 2, 42)).unsafeToFuture()
   }
+
+  // Side effect re-execution tests (Issue #912)
+
+  "Product should not re-execute side effects from completed fetches" in {
+    Ref[IO]
+      .of(0)
+      .flatMap { counter =>
+        val fetchWithSideEffect: Fetch[IO, Unit] = Fetch.liftF(counter.update(_ + 1))
+
+        val program = (
+          List.range(1, 10).map(one[IO]).reduce(_ >> _),
+          fetchWithSideEffect
+        ).tupled
+
+        Fetch.run[IO](program) >> counter.get.map(_ shouldEqual 1)
+      }
+      .unsafeToFuture()
+  }
+
+  "ProductR should not re-execute side effects from completed fetches" in {
+    Ref[IO]
+      .of(0)
+      .flatMap { counter =>
+        val fetchWithSideEffect: Fetch[IO, Unit] = Fetch.liftF(counter.update(_ + 1))
+
+        val program = List.range(1, 10).map(one[IO]).reduce(_ >> _) *> fetchWithSideEffect
+
+        Fetch.run[IO](program) >> counter.get.map(_ shouldEqual 1)
+      }
+      .unsafeToFuture()
+  }
+
+  "mapN should not re-execute side effects from completed fetches" in {
+    Ref[IO]
+      .of(0)
+      .flatMap { counter =>
+        val fetchWithSideEffect: Fetch[IO, Int] = Fetch.liftF(counter.updateAndGet(_ + 1))
+
+        val program = (
+          List.range(1, 10).map(one[IO]).reduce(_ >> _),
+          fetchWithSideEffect
+        ).mapN((_, n) => n)
+
+        Fetch.run[IO](program) >> counter.get.map(_ shouldEqual 1)
+      }
+      .unsafeToFuture()
+  }
 }
