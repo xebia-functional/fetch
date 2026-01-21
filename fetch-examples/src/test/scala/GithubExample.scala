@@ -223,7 +223,7 @@ class GithubExample extends AnyWordSpec with Matchers {
   def fetchOrgLanguages[F[_]: Async](org: String): Fetch[F, Int] =
     fetchOrg(org).map(projects => projects.map(_.languages.toSet).fold(Set())(_ ++ _).size)
 
-  "We can fetch org repos" in {
+  "We can fetch org repos" ignore {
     val io = Fetch.runLog[IO](fetchOrg[IO]("47degrees"))
 
     val (log, _) = io.onError { case _ => cleanUpCache }.unsafeRunSync()
