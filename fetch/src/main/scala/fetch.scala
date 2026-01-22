@@ -301,9 +301,9 @@ object `package` {
             case (Done(a), Done(b)) =>
               Done[F, Z](f(a, b))
             case (Done(a), Blocked(br, c)) =>
-              Blocked[F, Z](br, map2(fa, c)(f))
+              Blocked[F, Z](br, c.map(b => f(a, b)))
             case (Blocked(br, c), Done(b)) =>
-              Blocked[F, Z](br, map2(c, fb)(f))
+              Blocked[F, Z](br, c.map(a => f(a, b)))
             case (Blocked(br, c), Blocked(br2, c2)) =>
               Blocked[F, Z](combineRequestMaps(br, br2), map2(c, c2)(f))
             case (_, Throw(e)) =>
@@ -324,9 +324,9 @@ object `package` {
             case (Done(a), Done(b)) =>
               Done[F, (A, B)]((a, b))
             case (Done(a), Blocked(br, c)) =>
-              Blocked[F, (A, B)](br, product(fa, c))
+              Blocked[F, (A, B)](br, c.map((a, _)))
             case (Blocked(br, c), Done(b)) =>
-              Blocked[F, (A, B)](br, product(c, fb))
+              Blocked[F, (A, B)](br, c.map((_, b)))
             case (Blocked(br, c), Blocked(br2, c2)) =>
               Blocked[F, (A, B)](combineRequestMaps(br, br2), product(c, c2))
             case (_, Throw(e)) =>
@@ -343,9 +343,9 @@ object `package` {
             case (Done(a), Done(b)) =>
               Done[F, B](b)
             case (Done(a), Blocked(br, c)) =>
-              Blocked[F, B](br, productR(fa)(c))
+              Blocked[F, B](br, c)
             case (Blocked(br, c), Done(b)) =>
-              Blocked[F, B](br, productR(c)(fb))
+              Blocked[F, B](br, c.as(b))
             case (Blocked(br, c), Blocked(br2, c2)) =>
               Blocked[F, B](combineRequestMaps(br, br2), productR(c)(c2))
             case (_, Throw(e)) =>
