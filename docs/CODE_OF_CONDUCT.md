@@ -11,7 +11,7 @@ appearance, body size, race, ethnicity, age, religion, nationality, or
 other such characteristics.
 
 Everyone is expected to follow the
-[Typelevel Code of Conduct]([https://www.scala-lang.org/conduct/](https://typelevel.org/code-of-conduct/)) when
+[Typelevel Code of Conduct](https://typelevel.org/code-of-conduct/) when
 discussing the project on the available communication channels. If you
 are being harassed, please contact us immediately so that we can
 support you.
