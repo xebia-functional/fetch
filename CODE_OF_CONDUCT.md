@@ -11,12 +11,12 @@ appearance, body size, race, ethnicity, age, religion, nationality, or
 other such characteristics.
 
 Everyone is expected to follow the
-[Scala Code of Conduct](https://www.scala-lang.org/conduct/) when
+[Typelevel Code of Conduct]([https://www.scala-lang.org/conduct/](https://typelevel.org/code-of-conduct/)) when
 discussing the project on the available communication channels. If you
 are being harassed, please contact us immediately so that we can
 support you.
 
 ## Moderation
 
-For any questions, concerns, or moderation requests please contact a
+For any questions, concerns, or moderation requests, please contact a
 [member of the project](AUTHORS.md#maintainers).
